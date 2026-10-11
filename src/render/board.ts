@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { baseLabel, getUnitFrames, placeUnitLabel } from './view-model';
+import {
+  baseLabel,
+  getUnitFrames,
+  ownGroupPreviews,
+  ownUnitIds,
+  placeUnitLabel,
+  type GroupMovePreview,
+} from './view-model';
 import { ISOLATED_CELL, MAP_HEIGHT, MAP_WIDTH } from '../simulation/config';
 import { isCellBlocked } from '../simulation/map';
 import type {
@@ -21,6 +28,7 @@ export interface BoardView {
   readonly available: boolean;
   sync(previous: FactionView, current: FactionView, alpha: number): void;
   setSelection(unitId: string | null): void;
+  setSelections(unitIds: readonly string[]): void;
   pick(clientX: number, clientY: number): BoardPick | null;
   /** Ground-only picking, even when a unit marker is under the pointer. */
   pickGround(clientX: number, clientY: number): Cell | null;
@@ -28,6 +36,10 @@ export interface BoardView {
     unitId: string,
     target: Cell,
     path: readonly Cell[] | null,
+  ): void;
+  setGroupMovePreview(
+    previews: readonly GroupMovePreview[],
+    target: Cell,
   ): void;
   clearMovePreview(): void;
   pan(
@@ -177,9 +189,11 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       available: false,
       sync: () => undefined,
       setSelection: () => undefined,
+      setSelections: () => undefined,
       pick: () => null,
       pickGround: () => null,
       setMovePreview: () => undefined,
+      setGroupMovePreview: () => undefined,
       clearMovePreview: () => undefined,
       pan: () => undefined,
       zoomBy: () => undefined,
@@ -372,25 +386,21 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       side: THREE.DoubleSide,
     }),
   );
+  const movePreviewMixedMaterial = ownMaterial(
+    new THREE.MeshBasicMaterial({
+      color: 0xb87520,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    }),
+  );
   const unitObjects = new Map<string, UnitObjects>();
   const unitRaycastTargets: THREE.Mesh[] = [];
-  const movePreviewGeometry = ownGeometry(new THREE.BufferGeometry());
-  movePreviewGeometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(
-      new Float32Array((MAX_ROUTE_CELLS + 1) * 3),
-      3,
-    ).setUsage(THREE.DynamicDrawUsage),
-  );
-  const movePreviewLine = new THREE.Line(
-    movePreviewGeometry,
-    movePreviewMaterial,
-  );
-  movePreviewLine.renderOrder = 4;
-  movePreviewLine.name = 'move-preview-route';
-  movePreviewLine.frustumCulled = false;
-  movePreviewLine.visible = false;
-  scene.add(movePreviewLine);
+  const movePreviewLines = new Map<
+    string,
+    THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
+  >();
+  const movePreviewCapacity = new Map<string, number>();
   const movePreviewTarget = new THREE.Mesh(
     ringGeometry,
     movePreviewValidMaterial,
@@ -557,21 +567,72 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     scene.add(mapMesh);
   };
 
-  let selectedUnitId: string | null = null;
+  let selectedUnitIds: readonly string[] = [];
   let lastCurrent: FactionView | null = null;
   let lastAlpha = 0;
   let contextLost = false;
   let disposed = false;
   let movePreviewRequest: {
-    readonly unitId: string;
+    readonly previews: readonly GroupMovePreview[];
     readonly target: Cell;
-    readonly path: readonly Cell[] | null;
   } | null = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const scratchVector = new THREE.Vector3();
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
+  const releasePreviewLine = (unitId: string): void => {
+    const line = movePreviewLines.get(unitId);
+    if (line === undefined) return;
+    scene.remove(line);
+    line.geometry.dispose();
+    resources.geometries.delete(line.geometry);
+    movePreviewLines.delete(unitId);
+    movePreviewCapacity.delete(unitId);
+  };
+  const clearPreviewObjects = (): void => {
+    for (const unitId of [...movePreviewLines.keys()])
+      releasePreviewLine(unitId);
+    movePreviewTarget.visible = false;
+    for (const objects of unitObjects.values()) {
+      objects.selection.material = selectionMaterial;
+      objects.label.dataset.previewRejected = 'false';
+      objects.label.style.outline = '';
+    }
+  };
+  const previewLineFor = (
+    unitId: string,
+    vertexCount: number,
+  ): THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial> => {
+    let line = movePreviewLines.get(unitId);
+    const capacity = movePreviewCapacity.get(unitId) ?? 0;
+    if (line === undefined) {
+      const geometry = ownGeometry(new THREE.BufferGeometry());
+      line = new THREE.Line(geometry, movePreviewMaterial);
+      line.renderOrder = 4;
+      line.name = `${unitId}-move-preview-route`;
+      line.frustumCulled = false;
+      scene.add(line);
+      movePreviewLines.set(unitId, line);
+    }
+    if (vertexCount > capacity) {
+      const nextCapacity = Math.max(2, capacity * 2, vertexCount);
+      const oldGeometry = line.geometry;
+      const geometry = ownGeometry(new THREE.BufferGeometry());
+      geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(
+          new Float32Array(nextCapacity * 3),
+          3,
+        ).setUsage(THREE.DynamicDrawUsage),
+      );
+      line.geometry = geometry;
+      oldGeometry.dispose();
+      resources.geometries.delete(oldGeometry);
+      movePreviewCapacity.set(unitId, nextCapacity);
+    }
+    return line;
+  };
   const refreshMovePreview = (): void => {
     const request = movePreviewRequest;
     if (
@@ -581,47 +642,67 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       lastCurrent.phase !== 'running' ||
       request === null
     ) {
-      movePreviewLine.visible = false;
-      movePreviewTarget.visible = false;
+      clearPreviewObjects();
       return;
     }
-    const unit = lastCurrent.ownUnits.find(
-      (candidate) => candidate.id === request.unitId,
-    );
-    if (unit === undefined) {
-      movePreviewLine.visible = false;
-      movePreviewTarget.visible = false;
+    const previews = ownGroupPreviews(lastCurrent, request.previews);
+    if (previews.length === 0) {
+      clearPreviewObjects();
       return;
+    }
+    const ownUnits = new Map(
+      lastCurrent.ownUnits.map((unit) => [unit.id, unit]),
+    );
+    const previewIds = new Set(previews.map(({ unitId }) => unitId));
+    for (const unitId of [...movePreviewLines.keys()]) {
+      if (!previewIds.has(unitId)) releasePreviewLine(unitId);
+    }
+    const invalidIds = new Set(
+      previews.filter(({ path }) => path === null).map(({ unitId }) => unitId),
+    );
+    for (const [unitId, objects] of unitObjects) {
+      const invalid = invalidIds.has(unitId);
+      objects.selection.material = invalid
+        ? movePreviewInvalidMaterial
+        : selectionMaterial;
+      objects.label.dataset.previewRejected = String(invalid);
+      objects.label.style.outline = invalid ? '2px solid #b42318' : '';
     }
     movePreviewTarget.position.copy(cellPosition(request.target, 0.085));
     movePreviewTarget.material =
-      request.path === null
+      invalidIds.size === previews.length
         ? movePreviewInvalidMaterial
-        : movePreviewValidMaterial;
+        : invalidIds.size > 0
+          ? movePreviewMixedMaterial
+          : movePreviewValidMaterial;
     movePreviewTarget.visible = true;
-
-    const attribute = movePreviewGeometry.getAttribute(
-      'position',
-    ) as THREE.BufferAttribute;
-    const positions = attribute.array as Float32Array;
-    let count = 0;
-    const startPosition = discreteUnitPosition(unit);
-    positions[count * 3] = startPosition.x;
-    positions[count * 3 + 1] = 0.095;
-    positions[count * 3 + 2] = startPosition.z;
-    count += 1;
-    if (request.path !== null) {
-      for (const cell of request.path) {
-        positions[count * 3] = cell.x + 0.5;
-        positions[count * 3 + 1] = 0.095;
-        positions[count * 3 + 2] = cell.y + 0.5;
-        count += 1;
+    for (const { unitId, path } of previews) {
+      if (path === null) {
+        releasePreviewLine(unitId);
+        continue;
       }
+      const unit = ownUnits.get(unitId)!;
+      const count = path.length + 1;
+      const line = previewLineFor(unitId, count);
+      const attribute = line.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const positions = attribute.array as Float32Array;
+      const startPosition = discreteUnitPosition(unit);
+      positions[0] = startPosition.x;
+      positions[1] = 0.095;
+      positions[2] = startPosition.z;
+      for (let index = 0; index < path.length; index += 1) {
+        const cell = path[index]!;
+        positions[(index + 1) * 3] = cell.x + 0.5;
+        positions[(index + 1) * 3 + 1] = 0.095;
+        positions[(index + 1) * 3 + 2] = cell.y + 0.5;
+      }
+      attribute.needsUpdate = true;
+      line.geometry.setDrawRange(0, count);
+      line.geometry.computeBoundingSphere();
+      line.visible = count > 1;
     }
-    attribute.needsUpdate = true;
-    movePreviewGeometry.setDrawRange(0, count);
-    movePreviewGeometry.computeBoundingSphere();
-    movePreviewLine.visible = request.path !== null && count > 1;
   };
 
   const resize = (): void => {
@@ -785,7 +866,20 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     alpha: number,
   ): void => {
     if (disposed) return;
+    if (
+      lastCurrent !== null &&
+      (current.seed !== lastCurrent.seed ||
+        current.scenarioId !== lastCurrent.scenarioId ||
+        current.tick < lastCurrent.tick ||
+        (current.phase === 'ready' && lastCurrent.phase !== 'ready'))
+    ) {
+      selectedUnitIds = [];
+      movePreviewRequest = null;
+      clearPreviewObjects();
+    }
     lastCurrent = current;
+    if (current.phase !== 'running') movePreviewRequest = null;
+    selectedUnitIds = ownUnitIds(current, selectedUnitIds);
     lastAlpha = Math.max(0, Math.min(1, alpha));
     installMap(current.map);
     const frames = getUnitFrames(previous, current, lastAlpha);
@@ -818,7 +912,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         currentPosition.z,
       );
       objects.selection.visible =
-        unit.control === 'own' && selectedUnitId === unit.id;
+        unit.control === 'own' && selectedUnitIds.includes(unit.id);
+      objects.label.classList.toggle('selected', objects.selection.visible);
+      objects.label.dataset.selected = String(objects.selection.visible);
 
       const positionAttribute = objects.route.geometry.getAttribute(
         'position',
@@ -831,6 +927,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         routeArray[routeCount * 3 + 2] = currentPosition.z;
         routeCount += 1;
         for (const cell of path) {
+          if (routeCount >= routeArray.length / 3) break;
           routeArray[routeCount * 3] = cell.x + 0.5;
           routeArray[routeCount * 3 + 1] = 0.075;
           routeArray[routeCount * 3 + 2] = cell.y + 0.5;
@@ -915,6 +1012,8 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   const onContextLost = (event: Event): void => {
     event.preventDefault();
     contextLost = true;
+    movePreviewRequest = null;
+    clearPreviewObjects();
     options.onContextLost?.();
   };
   const onContextRestored = (): void => {
@@ -933,21 +1032,49 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   resizeObserver.observe(container);
   resize();
 
+  const setSelections = (unitIds: readonly string[]): void => {
+    if (disposed) return;
+    selectedUnitIds = lastCurrent
+      ? ownUnitIds(lastCurrent, unitIds)
+      : [...new Set(unitIds)];
+    const selected = new Set(selectedUnitIds);
+    for (const [id, objects] of unitObjects) {
+      const active = selected.has(id);
+      objects.selection.visible = active;
+      objects.label.classList.toggle('selected', active);
+      objects.label.dataset.selected = String(active);
+    }
+    if (!contextLost) renderer.render(scene, camera);
+  };
+  const setGroupMovePreview = (
+    previews: readonly GroupMovePreview[],
+    target: Cell,
+  ): void => {
+    if (disposed) return;
+    movePreviewRequest = {
+      previews: previews.map(({ unitId, path }) => ({
+        unitId,
+        path: path?.map((cell) => ({ ...cell })) ?? null,
+      })),
+      target: { ...target },
+    };
+    refreshMovePreview();
+    if (!contextLost) renderer.render(scene, camera);
+  };
+  const clearMovePreview = (): void => {
+    movePreviewRequest = null;
+    clearPreviewObjects();
+    if (!contextLost && !disposed) renderer.render(scene, camera);
+  };
+
   return {
     canvas,
     available: true,
     sync,
     setSelection(unitId) {
-      selectedUnitId =
-        unitId !== null &&
-        lastCurrent?.ownUnits.some((unit) => unit.id === unitId)
-          ? unitId
-          : null;
-      for (const [id, objects] of unitObjects) {
-        objects.selection.visible = selectedUnitId === id;
-      }
-      if (!contextLost) renderer.render(scene, camera);
+      setSelections(unitId === null ? [] : [unitId]);
     },
+    setSelections,
     pick(clientX, clientY) {
       if (disposed || contextLost || !rayFromClient(clientX, clientY))
         return null;
@@ -1019,16 +1146,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       return { x, y };
     },
     setMovePreview(unitId, target, path) {
-      movePreviewRequest = { unitId, target, path };
-      refreshMovePreview();
-      if (!contextLost && !disposed) renderer.render(scene, camera);
+      setGroupMovePreview([{ unitId, path }], target);
     },
-    clearMovePreview() {
-      movePreviewRequest = null;
-      movePreviewLine.visible = false;
-      movePreviewTarget.visible = false;
-      if (!contextLost && !disposed) renderer.render(scene, camera);
-    },
+    setGroupMovePreview,
+    clearMovePreview,
     pan(from, to) {
       const fromGround = groundPointAt(from.x, from.y);
       const toGround = groundPointAt(to.x, to.y);
@@ -1051,6 +1172,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       resize();
     },
     resetCamera() {
+      clearMovePreview();
       cameraTarget.set(MAP_WIDTH / 2, 0, MAP_HEIGHT / 2);
       zoom = 1;
       resize();
@@ -1059,6 +1181,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     dispose() {
       if (disposed) return;
       disposed = true;
+      selectedUnitIds = [];
+      movePreviewRequest = null;
+      clearPreviewObjects();
       resizeObserver.disconnect();
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);

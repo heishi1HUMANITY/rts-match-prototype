@@ -17,11 +17,17 @@ export type GestureOrigin =
   | { readonly kind: 'none' };
 export type GestureResult =
   | { readonly kind: 'tap'; readonly point: Point }
+  | {
+      readonly kind: 'unit-tap';
+      readonly unitId: string;
+      readonly point: Point;
+    }
   | { readonly kind: 'move'; readonly unitId: string; readonly point: Point }
   | null;
 export interface GestureCallbacks {
   readonly onPointerDown: (point: Point) => GestureOrigin;
   readonly onTap: (point: Point) => void;
+  readonly onUnitTap?: (unitId: string) => void;
   readonly onPan: (from: Point, to: Point) => void;
   readonly onZoom: (factor: number, midpoint: Point) => void;
   readonly onMovePreview: (unitId: string, point: Point) => void;
@@ -163,7 +169,16 @@ export class GestureTracker {
             this.hudPointers.size === 0 &&
             this.origin?.kind === 'ground'
           ? { kind: 'tap', point: { x: pointer.x, y: pointer.y } }
-          : null;
+          : this.mode === 'tap' &&
+              this.active.size === 1 &&
+              this.hudPointers.size === 0 &&
+              this.origin?.kind === 'unit'
+            ? {
+                kind: 'unit-tap',
+                unitId: this.origin.unitId,
+                point: { x: pointer.x, y: pointer.y },
+              }
+            : null;
     this.active.delete(pointer.id);
     if (this.active.size === 0 && this.hudPointers.size === 0) this.clear();
     else if (this.mode === 'pinch' || this.mode === 'move') {
@@ -275,6 +290,8 @@ export class CanvasInput {
     );
     const endedInside = this.isCanvasHit(event);
     if (result?.kind === 'tap' && endedInside) this.options.onTap(result.point);
+    else if (result?.kind === 'unit-tap' && endedInside)
+      this.options.onUnitTap?.(result.unitId);
     else if (result?.kind === 'move' && endedInside)
       this.options.onMoveDrop(result.unitId, result.point);
     else if (result !== null || !endedInside) this.options.onGestureCancel();

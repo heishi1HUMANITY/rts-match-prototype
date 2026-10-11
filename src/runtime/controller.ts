@@ -29,9 +29,18 @@ export interface RuntimeSnapshot {
   readonly state: MatchState;
   readonly history: readonly CommandEntry[];
   readonly selectedUnitId: string | null;
+  readonly selectedUnitIds: readonly string[];
   readonly droppedTimeMs: number;
   readonly contextLost: boolean;
   readonly message: string;
+}
+
+export interface BatchCommandResult {
+  readonly accepted: readonly string[];
+  readonly rejected: readonly {
+    readonly unitId: string;
+    readonly reason: RejectCode;
+  }[];
 }
 export interface RuntimeOptions {
   readonly onChange: (snapshot: PlayerSnapshot) => void;
@@ -48,6 +57,7 @@ export interface RuntimeOptions {
 export interface PlayerSnapshot {
   readonly view: FactionView;
   readonly selectedUnitId: string | null;
+  readonly selectedUnitIds: readonly string[];
   readonly droppedTimeMs: number;
   readonly contextLost: boolean;
   readonly message: string;
@@ -135,7 +145,7 @@ export class MatchRuntime {
   private state: MatchState;
   private previousTickState: MatchState;
   private history: CommandEntry[] = [];
-  private selectedUnitId: string | null = null;
+  private selectedUnitIds: string[] = [];
   private readonly clock = new FixedStepClock();
   private frame: number | null = null;
   private started = false;
@@ -162,6 +172,7 @@ export class MatchRuntime {
       state: this.state,
       history: this.history,
       selectedUnitId: this.selectedUnitId,
+      selectedUnitIds: [...this.selectedUnitIds],
       droppedTimeMs: this.clock.droppedTimeMs,
       contextLost: this.contextLost,
       message: this.message,
@@ -181,6 +192,7 @@ export class MatchRuntime {
     return {
       view: this.viewFor(this.state),
       selectedUnitId: this.selectedUnitId,
+      selectedUnitIds: [...this.selectedUnitIds],
       droppedTimeMs: this.clock.droppedTimeMs,
       contextLost: this.contextLost,
       message: this.message,
@@ -200,6 +212,47 @@ export class MatchRuntime {
         .find((unit) => unit.id === unitId && unit.factionId === 'A')
         ?.path.map((cell) => ({ ...cell })) ?? null
     );
+  }
+
+  previewGroupMove(
+    unitIds: readonly string[],
+    target: Cell,
+  ): readonly {
+    readonly unitId: string;
+    readonly path: readonly Cell[] | null;
+    readonly reason: RejectCode | null;
+  }[] {
+    return uniqueSortedIds(unitIds).map((unitId) => {
+      if (this.contextLost)
+        return { unitId, path: null, reason: 'INVALID_PHASE' as const };
+      const result = applyCommand(this.state, 'A', {
+        type: 'move',
+        unitId,
+        target,
+      });
+      if (!result.ok) return { unitId, path: null, reason: result.reason };
+      const unit = result.state.units.find(
+        (entry) => entry.id === unitId && entry.factionId === 'A',
+      );
+      return {
+        unitId,
+        path: unit?.path.map((cell) => ({ ...cell })) ?? null,
+        reason: null,
+      };
+    });
+  }
+
+  groupMove(
+    target: Cell,
+    unitIds: readonly string[] = this.selectedUnitIds,
+  ): BatchCommandResult {
+    return this.dispatchBatch('move', unitIds, target);
+  }
+
+  groupStop(
+    unitIds: readonly string[] = this.selectedUnitIds,
+  ): BatchCommandResult {
+    return this.dispatchBatch('stop', unitIds);
   }
 
   startLoop(): void {
@@ -237,38 +290,8 @@ export class MatchRuntime {
   }
 
   dispatch(input: unknown): CommandResult {
-    const safe = safeCommand(input);
     const previous = this.state;
-    const tickBefore = this.state.elapsedTicks;
-    let result: CommandResult = applyCommand(this.state, 'A', input);
-    const runtimeReject =
-      this.contextLost &&
-      result.ok &&
-      (safe.command?.type === 'resume' || safe.command?.type === 'start')
-        ? ('CONTEXT_LOST' as const)
-        : undefined;
-    if (runtimeReject !== undefined)
-      result = { ok: false, state: this.state, reason: 'INVALID_PHASE' };
-    else this.state = result.state;
-    const resultReason = result.ok ? undefined : result.reason;
-    this.history = [
-      ...this.history,
-      {
-        seq: this.history.length + 1,
-        tickBefore,
-        actor: 'A',
-        command: resultReason === 'INVALID_COMMAND' ? null : safe.command,
-        summary: safe.summary,
-        ok: result.ok,
-        ...(resultReason === undefined ? {} : { reason: resultReason }),
-        ...(runtimeReject === undefined ? {} : { runtimeReject }),
-      },
-    ];
-    if (previous.phase !== this.state.phase) this.clock.reset(false);
-    this.previousTickState = this.state;
-    this.message = result.ok
-      ? this.phaseMessage()
-      : rejectMessage(result.reason);
+    const result = this.dispatchCommand(input);
     this.emit(previous);
     return result;
   }
@@ -278,7 +301,7 @@ export class MatchRuntime {
     this.state = createMatch(seed, { scenarioId });
     this.previousTickState = this.state;
     this.history = [];
-    this.selectedUnitId = null;
+    this.selectedUnitIds = [];
     this.clock.reset(true);
     this.message = this.contextLost
       ? '盤面復旧待ち · リセット済み'
@@ -288,11 +311,25 @@ export class MatchRuntime {
 
   select(unitId: string | null): void {
     const previous = this.state;
-    this.selectedUnitId = this.state.units.some(
-      (unit) => unit.id === unitId && unit.factionId === 'A',
-    )
-      ? unitId
-      : null;
+    this.selectedUnitIds =
+      unitId !== null && this.isLivingOwnUnit(unitId) ? [unitId] : [];
+    this.emit(previous);
+  }
+
+  toggleSelection(unitId: string): void {
+    if (!this.isLivingOwnUnit(unitId)) return;
+    const previous = this.state;
+    this.selectedUnitIds = this.selectedUnitIds.includes(unitId)
+      ? this.selectedUnitIds.filter((selected) => selected !== unitId)
+      : [...this.selectedUnitIds, unitId];
+    this.emit(previous);
+  }
+
+  selectAll(): void {
+    const previous = this.state;
+    this.selectedUnitIds = this.state.units
+      .filter((unit) => unit.factionId === 'A' && unit.hp > 0)
+      .map((unit) => unit.id);
     this.emit(previous);
   }
 
@@ -326,6 +363,79 @@ export class MatchRuntime {
     return this.clock.droppedTimeMs;
   }
 
+  private get selectedUnitId(): string | null {
+    return this.selectedUnitIds[0] ?? null;
+  }
+
+  private isLivingOwnUnit(unitId: string): boolean {
+    return this.state.units.some(
+      (unit) => unit.id === unitId && unit.factionId === 'A' && unit.hp > 0,
+    );
+  }
+
+  private dispatchBatch(
+    type: 'move' | 'stop',
+    unitIds: readonly string[],
+    target?: Cell,
+  ): BatchCommandResult {
+    const ids = uniqueSortedIds(unitIds);
+    if (ids.length === 0) {
+      this.message = '部隊を選択してください';
+      this.emit(this.state);
+      return { accepted: [], rejected: [] };
+    }
+
+    const previous = this.state;
+    const accepted: string[] = [];
+    const rejected: { unitId: string; reason: RejectCode }[] = [];
+    for (const unitId of ids) {
+      const input: Command =
+        type === 'move' ? { type, unitId, target: target! } : { type, unitId };
+      const result = this.dispatchCommand(input);
+      if (result.ok) accepted.push(unitId);
+      else rejected.push({ unitId, reason: result.reason });
+    }
+    this.message = batchMessage(type, accepted, rejected);
+    this.emit(previous);
+    return { accepted, rejected };
+  }
+
+  private dispatchCommand(input: unknown): CommandResult {
+    const safe = safeCommand(input);
+    const previous = this.state;
+    const tickBefore = this.state.elapsedTicks;
+    let result: CommandResult = applyCommand(this.state, 'A', input);
+    const runtimeReject =
+      this.contextLost &&
+      result.ok &&
+      (safe.command?.type === 'resume' || safe.command?.type === 'start')
+        ? ('CONTEXT_LOST' as const)
+        : undefined;
+    if (runtimeReject !== undefined)
+      result = { ok: false, state: this.state, reason: 'INVALID_PHASE' };
+    else this.state = result.state;
+    const resultReason = result.ok ? undefined : result.reason;
+    this.history = [
+      ...this.history,
+      {
+        seq: this.history.length + 1,
+        tickBefore,
+        actor: 'A',
+        command: resultReason === 'INVALID_COMMAND' ? null : safe.command,
+        summary: safe.summary,
+        ok: result.ok,
+        ...(resultReason === undefined ? {} : { reason: resultReason }),
+        ...(runtimeReject === undefined ? {} : { runtimeReject }),
+      },
+    ];
+    if (previous.phase !== this.state.phase) this.clock.reset(false);
+    this.previousTickState = this.state;
+    this.message = result.ok
+      ? this.phaseMessage()
+      : rejectMessage(result.reason);
+    return result;
+  }
+
   private phaseMessage(): string {
     if (this.state.phase === 'finished')
       return '試合終了 · 結果から再戦できます';
@@ -343,19 +453,15 @@ export class MatchRuntime {
         : `seed ${this.state.seed} · 開始待ち`;
   }
   private emit(_previous: MatchState): void {
-    if (
-      this.selectedUnitId !== null &&
-      !this.state.units.some(
-        (unit) => unit.id === this.selectedUnitId && unit.factionId === 'A',
-      )
-    )
-      this.selectedUnitId = null;
+    this.selectedUnitIds = this.selectedUnitIds.filter((id) =>
+      this.isLivingOwnUnit(id),
+    );
     if (
       this.state.phase === 'finished' ||
       this.state.factions.find((faction) => faction.id === 'A')
         ?.eliminatedAtTick !== null
     ) {
-      this.selectedUnitId = null;
+      this.selectedUnitIds = [];
       this.message = this.phaseMessage();
     }
     this.options.onChange(this.playerSnapshot());
@@ -385,4 +491,22 @@ export function rejectMessage(reason: RejectCode): string {
     PREREQUISITE_MISSING: '先に戦力研究Iを完了してください',
   };
   return messages[reason];
+}
+
+function uniqueSortedIds(unitIds: readonly string[]): string[] {
+  return [...new Set(unitIds)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+function batchMessage(
+  type: 'move' | 'stop',
+  accepted: readonly string[],
+  rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
+): string {
+  const acceptedLabel = type === 'move' ? '移動指示' : '停止指示';
+  const prefix = `${accepted.length}部隊に${acceptedLabel}`;
+  if (rejected.length === 0) return prefix;
+  const details = rejected
+    .map(({ unitId, reason }) => `${unitId} ${rejectMessage(reason)}`)
+    .join('、');
+  return `${prefix} / ${rejected.length}部隊は拒否: ${details}`;
 }

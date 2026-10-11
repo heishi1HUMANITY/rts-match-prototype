@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createMatch } from '../simulation/match';
 import { getFactionView } from '../simulation/view';
 import type { FactionView, VisibleEnemyUnitView } from '../simulation/types';
-import { baseLabel, getUnitFrames, placeUnitLabel } from './view-model';
+import {
+  baseLabel,
+  getUnitFrames,
+  ownGroupPreviews,
+  ownUnitIds,
+  placeUnitLabel,
+} from './view-model';
 
 const enemy: VisibleEnemyUnitView = {
   control: 'enemy',
@@ -27,6 +33,43 @@ function view(
 }
 
 describe('V06 view-only render frames', () => {
+  it('keeps only distinct living own unit selections', () => {
+    const current = view(1, [enemy]);
+    expect(
+      ownUnitIds(current, ['A-01', enemy.id, 'A-01', 'missing', 'A-02']),
+    ).toEqual(['A-01', 'A-02']);
+    expect(
+      ownUnitIds({ ...current, ownUnits: current.ownUnits.slice(1) }, [
+        'A-01',
+        'A-02',
+      ]),
+    ).toEqual(['A-02']);
+  });
+  it('keeps legal and rejected group previews separate and copies arbitrary path lengths', () => {
+    const current = view(1, [enemy]);
+    const longPath = Array.from({ length: 1_601 }, (_, index) => ({
+      x: index % 40,
+      y: Math.floor(index / 40),
+    }));
+    const requested = [
+      { unitId: 'A-01', path: longPath },
+      { unitId: 'A-02', path: null },
+      { unitId: 'A-01', path: null },
+      { unitId: enemy.id, path: longPath },
+      { unitId: 'missing', path: longPath },
+    ];
+    const result = ownGroupPreviews(current, requested);
+    expect(result.map(({ unitId, path }) => [unitId, path === null])).toEqual([
+      ['A-01', false],
+      ['A-02', true],
+    ]);
+    expect(result[0]?.path).toHaveLength(1_601);
+    expect(result[0]?.path).not.toBe(longPath);
+    expect(result[0]?.path?.[0]).not.toBe(longPath[0]);
+    expect(ownGroupPreviews({ ...current, ownUnits: [] }, requested)).toEqual(
+      [],
+    );
+  });
   it('keeps six stacked production units individually selectable at the lower board edge', () => {
     const labels: { x: number; y: number }[] = [];
     for (let index = 0; index < 6; index += 1)

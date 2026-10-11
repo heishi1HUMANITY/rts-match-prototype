@@ -26,6 +26,7 @@ export interface HudElements {
   readonly download: HTMLButtonElement;
   panel: HudPanel;
   selectedBaseId: string;
+  multiSelect: boolean;
 }
 const kindName = (kind: UnitKind): string =>
   kind === 'assault' ? '強襲' : '偵察';
@@ -39,7 +40,7 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>G3 · NPCと決着</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F01 · 集団移動</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
@@ -49,7 +50,7 @@ export function createHud(app: HTMLElement): HudElements {
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
-    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">部隊をドラッグして移動 · 地面ドラッグでカメラ · 中立拠点のそばに3秒で制圧</div><span class="scenario-badge"></span>
+    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">部隊をドラッグで移動 · 複数選択でまとめて移動 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
           <div class="action-card"><button data-produce="assault">強襲を生産</button><small>補給120 · 12秒 · HP100 · 射程2</small><span data-production-reason="assault"></span></div>
@@ -64,7 +65,7 @@ export function createHud(app: HTMLElement): HudElements {
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
-      <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
+      <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>`;
   const find = <T extends Element>(selector: string): T =>
@@ -89,6 +90,7 @@ export function createHud(app: HTMLElement): HudElements {
     status: find('.status'),
     panel: null,
     selectedBaseId: 'HQ-A',
+    multiSelect: false,
   };
 }
 export function setHudPanel(
@@ -152,9 +154,27 @@ export function updateHud(
   elements.start.hidden = view.phase !== 'ready' || snapshot.contextLost;
   elements.pause.hidden = view.phase !== 'running';
   elements.resume.hidden = view.phase !== 'paused' || snapshot.contextLost;
+  const selectedIds = new Set(snapshot.selectedUnitIds);
+  const selectedUnits = view.ownUnits.filter((unit) =>
+    selectedIds.has(unit.id),
+  );
+  const canSelect =
+    view.phase !== 'finished' &&
+    own.eliminatedAtTick === null &&
+    !snapshot.contextLost;
+  const multiSelectButton = elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="multi-select"]',
+  )!;
+  multiSelectButton.disabled = !canSelect;
+  multiSelectButton.setAttribute('aria-pressed', String(elements.multiSelect));
+  elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="select-all"]',
+  )!.disabled = !canSelect || view.ownUnits.length === 0;
   elements.stop.disabled =
-    view.phase !== 'running' || snapshot.selectedUnitId === null;
-  elements.clear.disabled = snapshot.selectedUnitId === null;
+    !canSelect || view.phase !== 'running' || selectedUnits.length === 0;
+  elements.stop.textContent =
+    selectedUnits.length > 1 ? `${selectedUnits.length}部隊を停止` : '部隊停止';
+  elements.clear.disabled = !canSelect || selectedUnits.length === 0;
   elements.status.textContent = snapshot.message;
   text('.tick-readout', `TICK ${view.tick} · ${view.phase.toUpperCase()}`);
   for (const id of ['A', 'B', 'C'] as const)
@@ -201,27 +221,34 @@ export function updateHud(
         ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
         : `バンク中 · 研究完了 ${own.completedResearchIds.length}/2`,
   );
-  const selected = view.ownUnits.find(
-    (unit) => unit.id === snapshot.selectedUnitId,
-  );
+  const selected = selectedUnits[0];
   text(
     '.selection-name',
-    selected
-      ? `◆ ${selected.id} ${kindName(selected.kind)} HP${selected.hp}/${selected.maxHp}`
-      : '部隊未選択',
+    selectedUnits.length > 1
+      ? `◆ ${selectedUnits.length}部隊を選択`
+      : selected
+        ? `◆ ${selected.id} ${kindName(selected.kind)} HP${selected.hp}/${selected.maxHp}`
+        : '部隊未選択',
   );
-  text(
-    '.selection-instruction',
-    selected
-      ? selected.path.length
-        ? '移動中 · ドラッグで行先変更'
-        : 'ドラッグで目的地を指定'
-      : own.eliminatedAtTick !== null
-        ? '脱落 · 探索済み盤面で観戦できます'
-        : view.phase === 'finished'
-          ? '試合終了'
-          : 'A部隊をドラッグして移動',
-  );
+  let selectionInstruction: string;
+  if (own.eliminatedAtTick !== null)
+    selectionInstruction = '脱落 · 探索済み盤面で観戦できます';
+  else if (view.phase === 'finished') selectionInstruction = '試合終了';
+  else if (view.phase === 'paused')
+    selectionInstruction = '一時停止中 · 再開後に移動できます';
+  else if (view.phase === 'ready')
+    selectionInstruction = '開始後にドラッグ・地面タップで移動';
+  else if (selectedUnits.length > 1)
+    selectionInstruction = 'まとめてドラッグ、または地面タップで移動';
+  else if (selected)
+    selectionInstruction = selected.path.length
+      ? `移動中 · ${elements.multiSelect ? 'タップで選択を追加' : 'ドラッグで行先変更'}`
+      : `ドラッグで移動${elements.multiSelect ? ' · タップで追加/解除' : ''}`;
+  else
+    selectionInstruction = elements.multiSelect
+      ? '複数選択中 · 自軍をタップで追加、すべて選択も可'
+      : '自軍をドラッグで移動 · 複数選択も可';
+  text('.selection-instruction', selectionInstruction);
   const expected = view.ownUnits.map((unit) => unit.id).join('|');
   if (elements.units.dataset.ids !== expected) {
     elements.units.dataset.ids = expected;
@@ -243,7 +270,7 @@ export function updateHud(
     '[data-unit]',
   )) {
     const unit = view.ownUnits.find((item) => item.id === node.dataset.unit)!;
-    const selected = unit.id === snapshot.selectedUnitId;
+    const selected = selectedIds.has(unit.id);
     node.classList.toggle('selected', selected);
     node.setAttribute('aria-pressed', String(selected));
     node.querySelector('small')!.textContent =

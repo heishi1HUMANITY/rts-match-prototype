@@ -65,9 +65,9 @@ describe('GestureTracker', () => {
   it('keeps short unit and enemy taps bound to their pointerdown origin', () => {
     const own = setup({ kind: 'unit', unitId: 'A-01', movable: true });
     own.tracker.pointerDown({ id: 1, x: 5, y: 5 }, own.callbacks);
-    expect(
-      own.tracker.pointerUp({ id: 1, x: 6, y: 5 }, own.callbacks),
-    ).toBeNull();
+    expect(own.tracker.pointerUp({ id: 1, x: 6, y: 5 }, own.callbacks)).toEqual(
+      { kind: 'unit-tap', unitId: 'A-01', point: { x: 6, y: 5 } },
+    );
 
     const enemy = setup({ kind: 'enemy' });
     enemy.tracker.pointerDown({ id: 2, x: 5, y: 5 }, enemy.callbacks);
@@ -151,7 +151,10 @@ describe('GestureTracker', () => {
     expect(tracker.currentMode).toBe('idle');
     expect(callbacks.onMoveDrop).not.toHaveBeenCalled();
     tracker.pointerDown({ id: 4, x: 1, y: 1 }, callbacks);
-    expect(tracker.pointerUp({ id: 4, x: 1, y: 1 }, callbacks)).toBeNull();
+    expect(tracker.pointerUp({ id: 4, x: 1, y: 1 }, callbacks)).toMatchObject({
+      kind: 'unit-tap',
+      unitId: 'A-01',
+    });
     expect(tracker.currentMode).toBe('idle');
 
     tracker.pointerDown({ id: 5, x: 0, y: 0 }, callbacks);
