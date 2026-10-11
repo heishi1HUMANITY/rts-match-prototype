@@ -2,13 +2,11 @@
 
 ブラウザの対戦本編を新規に作るプロジェクト。目標は **プレイヤー1人＋NPC2人の 1v1v1** を、世界観の知識なしで開始・操作・終了・再戦できること。
 
-mainではG1の盤面・部隊ドラッグ移動とG2の戦略ループ・研究充填方式までユーザー合格・マージ済みです。NPC2陣営の判断と勝敗・再戦は [G3 / PR #11](https://github.com/heishi1HUMANITY/rts-match-prototype/pull/11) で確認中です。
+G1・G2と、NPC/決着/再戦のG3はmainへマージ済みです。必要なゲームプレイ全体は [網羅表](docs/project/GAMEPLAY_COVERAGE.md) / [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) で追跡します。建築・中立NPC・兵種/研究などを含み、最小試作だけで全体完成とはしません。複数部隊一括移動→対象追跡→マスタ管理の順に基盤を整えます。
 
-G2では「生産」「研究」「拠点」を開いて操作します。検査設定の通常/制圧/相互交戦/生産・研究で短時間に変化を試せます。[G2の画面確認手順](docs/project/inspection/G2_SCENARIOS.md)を参照してください。
+通常設定はNPC2陣営と5分制で対戦し、結果から再戦できます。[G3の画面確認手順](docs/project/inspection/G3_SCENARIOS.md)を参照してください。
 
 研究は選択中の対象へポイントを充填し、必要量で即完了します。未指定ならバンク、指定解除でも進捗は残り、再選択でバンクを充填して続けます。基本研究収入は拠点なしでも0.2/秒、所有拠点ごとに＋1/秒です。
-
-必要なゲームプレイ全体は [網羅表](docs/project/GAMEPLAY_COVERAGE.md) / [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) で追跡します。建築・中立NPC・6兵種・研究各分野などを含み、G1〜G4の最小試作だけで全体完成とはしません。複数部隊一括移動と敵部隊/拠点の追跡を先に改善します。
 
 ## 起動
 
@@ -46,6 +44,7 @@ GitHub CI は Windows / Linux の両方で同じ検査を実行し、commit SHA�
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md) / [lunaへの実装指示](docs/project/G1_LUNA_INSTRUCTIONS.md): 盤面・移動・入力・検査の契約
+- [G3設計](docs/project/preparation/G3_DESIGN.md): NPCの情報制約・脱落・順位・再戦の契約
 - [G2の先行設計案](docs/project/preparation/G2_DESIGN.md): G1検査待ちに進める調査・設計。実装開始前に合格版との照合が必要
 - [AGENTS.md](AGENTS.md): エージェントの作業方針
 - [初期スコープ](docs/project/SCOPE.md): 今回作る範囲と未決定事項

@@ -1,4 +1,5 @@
 import { isCellBlocked } from './map';
+import { resolveMatchOutcome } from './outcome';
 import { findPath } from './pathfinding';
 import { cancelProduction, enqueueProduction } from './production';
 import { startResearch } from './research';
@@ -143,6 +144,7 @@ export function applyCommand(
   const command = parseCommand(input);
   if (command === null) return reject(state, 'INVALID_COMMAND');
   if (!isFactionId(actor)) return reject(state, 'INVALID_ACTOR');
+  if (state.phase === 'finished') return reject(state, 'INVALID_PHASE');
 
   if (
     command.type === 'start' ||
@@ -159,10 +161,19 @@ export function applyCommand(
       command.type === 'start' || command.type === 'resume'
         ? 'running'
         : 'paused';
-    return succeed({ ...state, phase });
+    const next: MatchState = { ...state, phase };
+    return succeed(command.type === 'start' ? resolveMatchOutcome(next) : next);
   }
 
   if (state.phase !== 'running') return reject(state, 'INVALID_PHASE');
+  const faction = state.factions.find(({ id }) => id === actor);
+  if (
+    faction === undefined ||
+    faction.eliminatedAtTick !== null ||
+    faction.ticketsCenti <= 0
+  ) {
+    return reject(state, 'FACTION_ELIMINATED');
+  }
   if (command.type === 'enqueue-production') {
     return enqueueProduction(state, actor, command.baseId, command.unitKind);
   }

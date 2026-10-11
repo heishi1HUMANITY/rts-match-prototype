@@ -7,6 +7,8 @@ import {
   INITIAL_UNIT_PLACEMENTS,
   SCENARIO_IDS,
   SCHEMA_VERSION,
+  SHORT_TIME_LIMIT_TICKS,
+  STANDARD_TIME_LIMIT_TICKS,
   UNIT_STATS,
 } from './config';
 import { createMap } from './map';
@@ -31,6 +33,10 @@ export type {
   FactionState,
   FactionView,
   GridMap,
+  MatchResult,
+  MatchStanding,
+  EliminationReason,
+  EliminationStatus,
   MatchState,
   Phase,
   ProductionJob,
@@ -65,6 +71,8 @@ function freshFactions(): FactionState[] {
       'firepower-2': 0,
     },
     ticketsCenti: INITIAL_TICKETS_CENTI,
+    eliminatedAtTick: null,
+    eliminationReason: null,
     productionJobs: [],
     activeResearch: null,
     completedResearchIds: [],
@@ -138,11 +146,21 @@ function configuredFixture(
     bases = bases.map((base) =>
       base.id === 'OUT-03' ? { ...base, owner: 'A', hp: 100 } : base,
     );
+  } else if (scenarioId === 'g3-elimination') {
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? faction : { ...faction, ticketsCenti: 0 },
+    );
+  } else if (scenarioId === 'g3-mutual') {
+    factions = factions.map((faction) => ({ ...faction, ticketsCenti: 0 }));
+  } else if (scenarioId === 'g3-spectate') {
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, ticketsCenti: 0 } : faction,
+    );
   }
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v3 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-v5 match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},
@@ -159,8 +177,13 @@ export function createMatch(
       seed,
       scenarioId,
       elapsedTicks: 0,
+      timeLimitTicks:
+        scenarioId === 'g3-timeout' || scenarioId === 'g3-spectate'
+          ? SHORT_TIME_LIMIT_TICKS
+          : STANDARD_TIME_LIMIT_TICKS,
       factions: freshFactions(),
       phase: 'ready',
+      result: null,
       map: createMap(seed),
       units: buildUnits(),
       bases: buildBases(),

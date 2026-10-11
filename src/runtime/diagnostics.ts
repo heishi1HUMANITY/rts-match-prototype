@@ -7,7 +7,7 @@ import {
   TICK_DURATION_MS,
 } from '../simulation/config';
 import { createMatch } from '../simulation/match';
-import { stepMatch } from '../simulation/step';
+import { advanceMatch } from './advance';
 import type { MatchState, ScenarioId } from '../simulation/types';
 import type { CommandEntry, RuntimeSnapshot } from './controller';
 
@@ -18,8 +18,8 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 4;
-  readonly rulesVersion: 'g2-v2';
+  readonly schemaVersion: 5;
+  readonly rulesVersion: 'g3-v1';
   readonly scenarioId: ScenarioId;
   readonly seed: number;
   readonly history: readonly CommandEntry[];
@@ -46,7 +46,7 @@ export function replay(input: ReplayInput): {
 } {
   if (
     input.schemaVersion !== SCHEMA_VERSION ||
-    input.rulesVersion !== 'g2-v2' ||
+    input.rulesVersion !== 'g3-v1' ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -65,7 +65,7 @@ export function replay(input: ReplayInput): {
     )
       throw new Error(`invalid tick order at seq ${entry.seq}`);
     while (state.elapsedTicks < entry.tickBefore && state.phase === 'running')
-      state = stepMatch(state);
+      state = advanceMatch(state);
     if (state.elapsedTicks !== entry.tickBefore)
       throw new Error(`unreachable tick at seq ${entry.seq}`);
     if (entry.runtimeReject === 'CONTEXT_LOST') {
@@ -94,7 +94,7 @@ export function replay(input: ReplayInput): {
     previousTick = entry.tickBefore;
   }
   while (state.elapsedTicks < input.finalTick && state.phase === 'running')
-    state = stepMatch(state);
+    state = advanceMatch(state);
   if (state.elapsedTicks !== input.finalTick)
     throw new Error('finalTick cannot be replayed');
   return { state, outcomes };
@@ -102,8 +102,8 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
-    schemaVersion: 4,
-    rulesVersion: 'g2-v2',
+    schemaVersion: 5,
+    rulesVersion: 'g3-v1',
     scenarioId: snapshot.state.scenarioId,
     seed: snapshot.state.seed,
     history: snapshot.history,

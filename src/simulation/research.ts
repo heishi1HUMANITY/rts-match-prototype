@@ -95,6 +95,7 @@ export function startResearch(
 export function advanceResearch(state: MatchState): MatchState {
   let changed = false;
   const factions = state.factions.map((faction) => {
+    if (faction.eliminatedAtTick !== null) return faction;
     const active = faction.activeResearch;
     if (active === null) return faction;
     const updated = fillSelectedResearch(faction, active);

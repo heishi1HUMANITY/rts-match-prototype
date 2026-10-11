@@ -7,7 +7,9 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
+export const STANDARD_TIME_LIMIT_TICKS = 3_000;
+export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
 export const MAP_HEIGHT = 40;
 export const BLOCKED_CELL_PERCENT = 10;
@@ -141,4 +143,8 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'g2-capture',
   'g2-combat',
   'g2-economy',
+  'g3-timeout',
+  'g3-elimination',
+  'g3-mutual',
+  'g3-spectate',
 ];

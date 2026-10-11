@@ -123,6 +123,44 @@ export function getFactionView(
     scenarioId: state.scenarioId,
     phase: state.phase,
     tick: state.elapsedTicks,
+    timeLimitTicks: state.timeLimitTicks,
+    result:
+      state.result === null
+        ? null
+        : {
+            reason: state.result.reason,
+            endedAtTick: state.result.endedAtTick,
+            standings: state.result.standings.map((standing) => ({
+              factionId: standing.factionId,
+              rank: standing.rank,
+              ticketsCenti: standing.ticketsCenti,
+              eliminatedAtTick: standing.eliminatedAtTick,
+              eliminationReason: standing.eliminationReason,
+            })),
+          },
+    publicEliminations: {
+      A: {
+        eliminatedAtTick:
+          state.factions.find(({ id }) => id === 'A')?.eliminatedAtTick ?? null,
+        eliminationReason:
+          state.factions.find(({ id }) => id === 'A')?.eliminationReason ??
+          null,
+      },
+      B: {
+        eliminatedAtTick:
+          state.factions.find(({ id }) => id === 'B')?.eliminatedAtTick ?? null,
+        eliminationReason:
+          state.factions.find(({ id }) => id === 'B')?.eliminationReason ??
+          null,
+      },
+      C: {
+        eliminatedAtTick:
+          state.factions.find(({ id }) => id === 'C')?.eliminatedAtTick ?? null,
+        eliminationReason:
+          state.factions.find(({ id }) => id === 'C')?.eliminationReason ??
+          null,
+      },
+    },
     map: {
       width: state.map.width,
       height: state.map.height,
@@ -140,6 +178,8 @@ export function getFactionView(
       researchCenti: faction.researchCenti,
       researchProgressCenti: { ...faction.researchProgressCenti },
       ticketsCenti: faction.ticketsCenti,
+      eliminatedAtTick: faction.eliminatedAtTick,
+      eliminationReason: faction.eliminationReason,
       productionJobs: faction.productionJobs.map((job) => ({ ...job })),
       activeResearch: faction.activeResearch
         ? { ...faction.activeResearch }

@@ -65,6 +65,8 @@ G1検査待ちの先行準備は [G2設計案](preparation/G2_DESIGN.md)、[段�
 
 ## G3 / M3: NPC2陣営との試合が最後まで成立する
 
+具体契約は [G3_DESIGN.md](preparation/G3_DESIGN.md)、画面検査手順は [G3_SCENARIOS.md](inspection/G3_SCENARIOS.md) を参照。
+
 ブランチ例: gate/g3-npc-match。前提: G2合格・マージ。主な編集範囲: src/ai、src/simulation、src/ui、src/render、テスト・docs/project。
 
 | ID   | 実装内容                           | 依存       | 技術的な完了条件                                                                                  |
@@ -105,7 +107,7 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## 最小試作に続くゲームプレイ全体
 
-2026-10-11ユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F16で追跡する。建築・中立NPCを後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
+2026-10-11ユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F17で追跡する。建築・中立NPCを後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
 
 ## 共通の技術検証
 

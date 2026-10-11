@@ -19,6 +19,7 @@ let activeMovePreview: {
   readonly point: Point;
 } | null = null;
 let bootError: string | null = null;
+let lifecycleKey = 'ready:false';
 let board = createBoardView({
   container: hud.board,
   onContextLost: () => {
@@ -33,6 +34,18 @@ let board = createBoardView({
 
 runtime = new MatchRuntime({
   onChange: (snapshot) => {
+    const nextLifecycleKey = `${snapshot.view.phase}:${snapshot.view.ownFaction.eliminatedAtTick !== null}`;
+    if (
+      nextLifecycleKey !== lifecycleKey &&
+      (snapshot.view.phase === 'finished' ||
+        snapshot.view.phase === 'ready' ||
+        snapshot.view.ownFaction.eliminatedAtTick !== null)
+    ) {
+      input?.reset();
+      activeMovePreview = null;
+      board.clearMovePreview();
+    }
+    lifecycleKey = nextLifecycleKey;
     updateHud(hud, snapshot);
     board.setSelection(snapshot.selectedUnitId);
     refreshActiveMovePreview();
@@ -196,7 +209,7 @@ function downloadDiagnostic(): void {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `g2-${runtime.playerSnapshot().view.scenarioId}-seed-${runtime.playerSnapshot().view.seed}-tick-${runtime.playerSnapshot().view.tick}.json`;
+    anchor.download = `g3-${runtime.playerSnapshot().view.scenarioId}-seed-${runtime.playerSnapshot().view.seed}-tick-${runtime.playerSnapshot().view.tick}.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (error) {
@@ -242,7 +255,16 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'start' });
   } else if (action === 'pause') runtime.dispatch({ type: 'pause' });
   else if (action === 'resume') runtime.dispatch({ type: 'resume' });
-  else if (action === 'reset') {
+  else if (action === 'replay') {
+    input.reset();
+    activeMovePreview = null;
+    board.clearMovePreview();
+    setHudPanel(hud, null);
+    hud.selectedBaseId = 'HQ-A';
+    runtime.reset(runtime.playerSnapshot().view.seed);
+    board.resetCamera();
+    if (board.available) runtime.dispatch({ type: 'start' });
+  } else if (action === 'reset') {
     input.reset();
     setHudPanel(hud, null);
     runtime.reset(runtime.playerSnapshot().view.seed);
@@ -277,6 +299,10 @@ const handleClick = (event: MouseEvent): void => {
   }
 };
 hud.root.addEventListener('click', handleClick);
+const resultDialog =
+  hud.root.querySelector<HTMLDialogElement>('.result-dialog')!;
+const keepResultOpen = (event: Event): void => event.preventDefault();
+resultDialog.addEventListener('cancel', keepResultOpen);
 const handleBaseChange = (event: Event): void => {
   if (
     event.target instanceof HTMLSelectElement &&
@@ -306,6 +332,7 @@ const handlePageHide = (event: PageTransitionEvent): void => {
   runtime.stopLoop();
   if (event.persisted) return;
   hud.root.removeEventListener('click', handleClick);
+  resultDialog.removeEventListener('cancel', keepResultOpen);
   hud.root.removeEventListener('change', handleBaseChange);
   document.removeEventListener('visibilitychange', handleVisibility);
   window.removeEventListener('pageshow', handlePageShow);
