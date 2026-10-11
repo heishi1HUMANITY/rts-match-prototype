@@ -122,7 +122,7 @@ findPath(map: GridMap, from: Cell, to: Cell): readonly Cell[] | null;
 4. commandはブラウザイベントの到着順に同期的に適用する。tick途中の割込みはJS単一スレッド上で生じない。stateを適用したらUI通知、次の描画で反映。
 5. 履歴に `{seq, tickBefore, actor, command, ok, reason?}` を全試行分記録。pause/resumeも同じtick内のseqで順序を保つ。command構造が壊れている場合はcommand=nullへ正規化し、安全な短いsummaryを別に記録する。構造検証は最優先なので、再適用したnullもINVALID_COMMANDとなりstate不変を再現できる。元の壊れた値そのものの復元は対象外。
 6. 再現入力は `{seed, history, finalTick}`。初期seedから履歴順にtickBeforeまでstepし、commandを適用して結果を比較する。全命令の適用後にfinalTickまで進めて最終stateを比較する。paused/readyのままtickを進める必要がある不整合な履歴はエラーとし、無限ループしない。壁時計・非表示時間・カメラは再現対象外。非表示によるpauseは通常のpause命令として履歴へ残す。
-7. 診断出力はJSONとしてダウンロード可能にする（Clipboard APIへの依存は不要）。build commit、schemaVersion、ルール定数、seed、phase、tick、履歴、最新state、捨てた時間のカウンタを含める。読込み／永続保存UIは不要。
+7. 診断出力はJSONとしてダウンロード可能にする（Clipboard APIへの依存は不要）。build commit、schemaVersion、ルール定数、seed、phase、finalTick（出力時のelapsedTicks）、履歴、最新state、捨てた時間のカウンタを含める。読込み／永続保存UIは不要。
 
 リセットは同じcontrollerのstateをcreateMatchで置換し、履歴と入力／選択／描画補間を初期化する。requestAnimationFrameを追加で作らない。アプリdisposeではRAF、DOMイベント、ResizeObserver、メッシュ／geometry／material／rendererを解放する。
 

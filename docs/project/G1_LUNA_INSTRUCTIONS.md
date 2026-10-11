@@ -21,7 +21,7 @@
 
 > あなたはG1の実装担当lunaです。作業場所は `D:/git/rts-match-prototype`。親がチェックアウトした `gate/g1-map-movement` 上で作業し、branchの切替、commit、push、PR/Issue編集、merge、deployは親へ任せてください。基点は作業開始時の `git rev-parse HEAD` を読んで報告してください。旧 `D:/git/rts` へ実装しないでください。
 >
-> 最初にAGENTS.md、README.md、docs/project/SCOPE.md、ARCHITECTURE.md、DECISIONS.md、WORKFLOW.md、TASKS.mdのG1、G1_IMPLEMENTATION_DESIGN.md、本指示を読んでください。GitHub Issue #2の本文は親が確認済みで、TASKSのT101〜T105と同じ範囲です。追加変更があれば親が伝えます。
+> 最初にAGENTS.md、README.md、docs/project/SCOPE.md、docs/project/ARCHITECTURE.md、docs/project/DECISIONS.md、docs/project/WORKFLOW.md、docs/project/TASKS.mdのG1、docs/project/G1_IMPLEMENTATION_DESIGN.md、docs/project/G1_LUNA_INSTRUCTIONS.mdを読んでください。GitHub Issue #2の本文は親が確認済みで、TASKSのT101〜T105と同じ範囲です。追加変更があれば親が伝えます。
 >
 > 利用者が開始→自軍選択→地面指定→障害物を避けた移動→停止/再開→リセットを検査できる状態を作ります。今の段階の編集範囲だけを変更してください。範囲外ファイル・公開契約・ルール値の変更が必要なら、理由と影響を親へ報告してください。内部ヘルパー、見た目の微調整、型安全な分割は判断して進めてかまいません。
 >
@@ -67,7 +67,7 @@
 >
 > 斜め見下ろしorthographic camera、地面・障害物・6部隊、陣営記号、選択・経路・目的地、検査地点の表示、pick、pan、zoom、resize、dispose、WebGL失敗とcontext loss通知を実装します。simulationを改変しません。カメラ回転、GLB素材、影、後処理は不要です。
 >
-> 完了条件: G1設計のBoardView契約が型検査を通り、cameraとrenderer資源の所有・解放が明確なこと。pickはcanvas rectで正規化し盤外を有効化しないこと。DOMイベントやrequestAnimationFrameの恒久ループは段階Dのruntimeが所有します。
+> 完了条件: G1設計のBoardView契約が型検査を通り、cameraとrenderer資源の所有・解放が明確なこと。pickはcanvas rectで正規化し盤外を有効化しないこと。入力・visibilityイベントとrequestAnimationFrameの恒久ループは段階Dが所有します。WebGL contextイベントはrenderが登録・解除し、注入されたcallbackでruntimeへ通知します。
 >
 > 実行: `npm run typecheck`、`npm run build`。ブラウザ操作の実証は統合後に行うため、この段階では検証未了と明記してください。依存version・API・dispose範囲を親へ報告してください。
 
