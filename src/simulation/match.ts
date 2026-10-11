@@ -1,32 +1,49 @@
-/** Plain, serializable state. Browser and renderer dependencies belong elsewhere. */
-export type FactionId = 'A' | 'B' | 'C';
+import { INITIAL_UNIT_PLACEMENTS, SCHEMA_VERSION } from './config';
+import { createMap } from './map';
+import type { Faction, MatchState, UnitState } from './types';
 
-export interface Faction {
-  readonly id: FactionId;
-  readonly controller: 'human' | 'bot';
-}
+export type { Faction, FactionId } from './types';
+export type {
+  Cell,
+  Command,
+  CommandResult,
+  GridMap,
+  MatchState,
+  Phase,
+  RejectCode,
+  UnitState,
+} from './types';
 
-export interface MatchState {
-  readonly schemaVersion: 1;
-  readonly seed: number;
-  readonly elapsedTicks: number;
-  readonly factions: readonly Faction[];
-}
+export { applyCommand } from './commands';
+export { findPath } from './pathfinding';
+export { stepMatch } from './step';
 
-/** Initial contract only; movement, combat, AI and victory rules are not implemented. */
+/** Creates a fresh schema-v2 match with a seeded, connected map. */
 export function createMatch(seed: number): MatchState {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
     throw new RangeError('seed must be an unsigned 32-bit integer');
   }
 
+  const factions: Faction[] = [
+    { id: 'A', controller: 'human' },
+    { id: 'B', controller: 'bot' },
+    { id: 'C', controller: 'bot' },
+  ];
+  const units: UnitState[] = INITIAL_UNIT_PLACEMENTS.map((placement) => ({
+    id: placement.id,
+    factionId: placement.factionId,
+    cell: { x: placement.cell.x, y: placement.cell.y },
+    path: [],
+    edgeProgress: 0,
+  }));
+
   return {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     seed,
     elapsedTicks: 0,
-    factions: [
-      { id: 'A', controller: 'human' },
-      { id: 'B', controller: 'bot' },
-      { id: 'C', controller: 'bot' },
-    ],
+    factions,
+    phase: 'ready',
+    map: createMap(seed),
+    units,
   };
 }

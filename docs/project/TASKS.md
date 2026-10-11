@@ -1,7 +1,7 @@
 # 実装タスクとユーザー検査
 
 この文書は仕様と受入条件を管理する。作業状態・修正履歴・検査結果は各GのGitHub Issue/PRを正とする。
-すべて未着手。現在の実装は開発基盤のみ。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
+実装・検証の最新状態は各Issueを参照。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
 
 ## GitHub索引
 

@@ -16,7 +16,8 @@ ui / render / ai → simulation。simulation は他の層をimportしない。
 - ui: 開始、HUD、研究、生産、結果、ガイド。入力をcommandへ変換。
 - assets: 安定キーのmanifest。artwork原本と配信ファイルを分離。
 
-現時点ではcreateMatch(seed)と初期状態だけを実装している。
+G1の盤面・状態契約は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md) と [DECISIONS.md](DECISIONS.md) のD015以降を参照する。createMatch(seed)はschemaVersion=2のready状態、seed付き盤面、3陣営6部隊を生成する。
+
 commands、tick、NPC方針、rendererはこれから追加する。
 
 ## 進行と再現性
@@ -28,7 +29,7 @@ commands、tick、NPC方針、rendererはこれから追加する。
 同じseedとcommand列から同じ結果を得られることを検証する。
 
 保存・リプレイは初期必須ではないが、状態はJSON化可能に保つ。
-初期のschemaVersionは1。スキーマ変更時は互換性の扱いを明示する。
+現在のMatchStateはschemaVersion=2。v1からの読込みは提供しない。以後スキーマを変更するときも互換性の扱いを明示する。
 
 ## 入力とカメラ
 
