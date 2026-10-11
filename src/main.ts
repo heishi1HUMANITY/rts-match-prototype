@@ -1,6 +1,8 @@
 import { createBoardView } from './render/board';
 import { createDiagnostic } from './runtime/diagnostics';
 import { MatchRuntime } from './runtime/controller';
+import { applyCommand } from './simulation/commands';
+import type { GestureOrigin, Point } from './ui/input';
 import { CanvasInput } from './ui/input';
 import { createHud, updateHud } from './ui/hud';
 import './ui/styles.css';
@@ -11,6 +13,10 @@ if (!app) throw new Error('Missing application root');
 const hud = createHud(app);
 let runtime!: MatchRuntime;
 let input!: CanvasInput;
+let activeMovePreview: {
+  readonly unitId: string;
+  readonly point: Point;
+} | null = null;
 let bootError: string | null = null;
 let board = createBoardView({
   container: hud.board,
@@ -28,43 +34,131 @@ runtime = new MatchRuntime({
   onChange: (snapshot) => {
     updateHud(hud, snapshot);
     board.setSelection(snapshot.selectedUnitId);
+    refreshActiveMovePreview();
   },
   onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
 });
 updateHud(hud, runtime.snapshot());
 if (bootError !== null) runtime.notify(bootError);
 if (!board.available) hud.start.disabled = true;
+
+function isBoardPoint(point: Point): boolean {
+  const rect = board.canvas.getBoundingClientRect();
+  if (
+    point.x < rect.left ||
+    point.x >= rect.right ||
+    point.y < rect.top ||
+    point.y >= rect.bottom
+  )
+    return false;
+  return document.elementFromPoint(point.x, point.y) === board.canvas;
+}
+
+function updateMovePreview(unitId: string, point: Point): void {
+  if (!isBoardPoint(point)) {
+    activeMovePreview = null;
+    board.clearMovePreview();
+    return;
+  }
+  const target = board.pickGround(point.x, point.y);
+  const snapshot = runtime.snapshot();
+  if (
+    target === null ||
+    snapshot.state.phase !== 'running' ||
+    snapshot.contextLost
+  ) {
+    activeMovePreview = null;
+    board.clearMovePreview();
+    return;
+  }
+  const result = applyCommand(snapshot.state, 'A', {
+    type: 'move',
+    unitId,
+    target,
+  });
+  const previewUnit = result.state.units.find((unit) => unit.id === unitId);
+  board.setMovePreview(
+    unitId,
+    target,
+    result.ok ? (previewUnit?.path ?? []) : null,
+  );
+}
+
+function refreshActiveMovePreview(): void {
+  const active = activeMovePreview;
+  if (active !== null) updateMovePreview(active.unitId, active.point);
+}
+
 input = new CanvasInput(
   {
     canvas: board.canvas,
-    onTap: ({ x, y }) => {
+    onPointerDown: ({ x, y }): GestureOrigin => {
       const picked = board.pick(x, y);
-      if (picked === null) return;
-      if (picked.kind === 'unit') {
+      if (picked?.kind === 'unit') {
         const unit = runtime
           .snapshot()
           .state.units.find((item) => item.id === picked.unitId);
-        if (unit?.factionId === 'A') runtime.select(unit.id);
-        else {
+        if (unit?.factionId === 'A') {
+          runtime.select(unit.id);
+          const snapshot = runtime.snapshot();
+          return {
+            kind: 'unit',
+            unitId: unit.id,
+            movable:
+              snapshot.state.phase === 'running' && !snapshot.contextLost,
+          };
+        }
+        if (unit !== undefined) {
           runtime.select(null);
           runtime.notify(
             '敵陣営は操作できません。自軍の部隊を選択してください。',
           );
+          return { kind: 'enemy' };
         }
-        return;
       }
-      const selected = runtime.snapshot().selectedUnitId;
-      if (selected !== null && runtime.snapshot().state.phase === 'running') {
-        runtime.dispatch({
-          type: 'move',
-          unitId: selected,
-          target: picked.cell,
-        });
+      return board.pickGround(x, y) === null
+        ? { kind: 'none' }
+        : { kind: 'ground' };
+    },
+    onTap: ({ x, y }) => {
+      const cell = board.pickGround(x, y);
+      if (cell === null) return;
+      const snapshot = runtime.snapshot();
+      const selected = snapshot.selectedUnitId;
+      if (selected !== null && snapshot.state.phase === 'running') {
+        runtime.dispatch({ type: 'move', unitId: selected, target: cell });
       } else if (selected === null)
         runtime.notify('移動する自軍部隊を選択してください。');
     },
-    onPan: (from, to) => board.pan(from, to),
-    onZoom: (factor) => board.zoomBy(factor),
+    onPan: (from, to) => {
+      board.pan(from, to);
+      refreshActiveMovePreview();
+    },
+    onZoom: (factor) => {
+      board.zoomBy(factor);
+      refreshActiveMovePreview();
+    },
+    onMovePreview: (unitId, point) => {
+      activeMovePreview = { unitId, point };
+      updateMovePreview(unitId, point);
+    },
+    onMoveDrop: (unitId, point) => {
+      activeMovePreview = null;
+      board.clearMovePreview();
+      const target = board.pickGround(point.x, point.y);
+      const snapshot = runtime.snapshot();
+      if (
+        target === null ||
+        snapshot.state.phase !== 'running' ||
+        snapshot.contextLost
+      )
+        return;
+      runtime.dispatch({ type: 'move', unitId, target });
+    },
+    onGestureCancel: () => {
+      activeMovePreview = null;
+      board.clearMovePreview();
+    },
     onEscape: () => runtime.select(null),
   },
   hud.root,

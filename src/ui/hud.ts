@@ -42,7 +42,7 @@ export function createHud(app: HTMLElement): HudElements {
       </div></details>
     </header>
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div>
-      <div class="board-hint">自軍を選択して移動先を指定 · ドラッグでカメラ移動 · ホイールでズーム</div>
+      <div class="board-hint">部隊をドラッグして移動 · 地面をドラッグしてカメラ移動 · ホイールでズーム</div>
     </main>
     <footer class="bottom-bar">
       <div class="selection-summary"><strong class="selection-name">部隊未選択</strong><span class="selection-instruction">盤面からA部隊を選択してください</span></div>
@@ -125,7 +125,7 @@ export function updateHud(
       : '部隊未選択';
   if (instruction)
     instruction.textContent = selected
-      ? '移動先を指定 · 停止で次セル中心に停止'
+      ? '選択部隊をドラッグして移動 · 停止で次セル中心に停止'
       : '盤面からA部隊を選択してください';
   const ids = [
     ...elements.units.querySelectorAll<HTMLElement>('[data-unit]'),

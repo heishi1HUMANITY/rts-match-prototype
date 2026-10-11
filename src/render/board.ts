@@ -13,6 +13,14 @@ export interface BoardView {
   sync(previous: MatchState, current: MatchState, alpha: number): void;
   setSelection(unitId: string | null): void;
   pick(clientX: number, clientY: number): BoardPick | null;
+  /** Ground-only picking, even when a unit marker is under the pointer. */
+  pickGround(clientX: number, clientY: number): Cell | null;
+  setMovePreview(
+    unitId: string,
+    target: Cell,
+    path: readonly Cell[] | null,
+  ): void;
+  clearMovePreview(): void;
   pan(
     from: { readonly x: number; readonly y: number },
     to: { readonly x: number; readonly y: number },
@@ -162,6 +170,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       sync: () => undefined,
       setSelection: () => undefined,
       pick: () => null,
+      pickGround: () => null,
+      setMovePreview: () => undefined,
+      clearMovePreview: () => undefined,
       pan: () => undefined,
       zoomBy: () => undefined,
       resetCamera: () => undefined,
@@ -324,8 +335,57 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       side: THREE.DoubleSide,
     }),
   );
+  const movePreviewMaterial = ownMaterial(
+    new THREE.LineBasicMaterial({
+      color: 0x167a9a,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+    }),
+  );
+  const movePreviewValidMaterial = ownMaterial(
+    new THREE.MeshBasicMaterial({
+      color: 0x167a9a,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    }),
+  );
+  const movePreviewInvalidMaterial = ownMaterial(
+    new THREE.MeshBasicMaterial({
+      color: 0xb42318,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    }),
+  );
   const unitObjects = new Map<string, UnitObjects>();
   const unitRaycastTargets: THREE.Mesh[] = [];
+  const movePreviewGeometry = ownGeometry(new THREE.BufferGeometry());
+  movePreviewGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      new Float32Array((MAX_ROUTE_CELLS + 1) * 3),
+      3,
+    ).setUsage(THREE.DynamicDrawUsage),
+  );
+  const movePreviewLine = new THREE.Line(
+    movePreviewGeometry,
+    movePreviewMaterial,
+  );
+  movePreviewLine.name = 'move-preview-route';
+  movePreviewLine.frustumCulled = false;
+  movePreviewLine.visible = false;
+  scene.add(movePreviewLine);
+  const movePreviewTarget = new THREE.Mesh(
+    ringGeometry,
+    movePreviewValidMaterial,
+  );
+  movePreviewTarget.name = 'move-preview-target';
+  movePreviewTarget.rotation.x = -Math.PI / 2;
+  movePreviewTarget.position.y = 0.085;
+  movePreviewTarget.visible = false;
+  scene.add(movePreviewTarget);
 
   const labelsPerFaction: Record<keyof typeof FACTIONS, number> = {
     A: 0,
@@ -485,10 +545,61 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   let lastAlpha = 0;
   let contextLost = false;
   let disposed = false;
+  let movePreviewRequest: {
+    readonly unitId: string;
+    readonly target: Cell;
+    readonly path: readonly Cell[] | null;
+  } | null = null;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const scratchVector = new THREE.Vector3();
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+  const refreshMovePreview = (): void => {
+    const request = movePreviewRequest;
+    if (contextLost || disposed || lastCurrent === null || request === null) {
+      movePreviewLine.visible = false;
+      movePreviewTarget.visible = false;
+      return;
+    }
+    const unit = lastCurrent.units.find(
+      (candidate) => candidate.id === request.unitId,
+    );
+    if (unit === undefined) {
+      movePreviewLine.visible = false;
+      movePreviewTarget.visible = false;
+      return;
+    }
+    movePreviewTarget.position.copy(cellPosition(request.target, 0.085));
+    movePreviewTarget.material =
+      request.path === null
+        ? movePreviewInvalidMaterial
+        : movePreviewValidMaterial;
+    movePreviewTarget.visible = true;
+
+    const attribute = movePreviewGeometry.getAttribute(
+      'position',
+    ) as THREE.BufferAttribute;
+    const positions = attribute.array as Float32Array;
+    let count = 0;
+    const startPosition = discreteUnitPosition(unit);
+    positions[count * 3] = startPosition.x;
+    positions[count * 3 + 1] = 0.095;
+    positions[count * 3 + 2] = startPosition.z;
+    count += 1;
+    if (request.path !== null) {
+      for (const cell of request.path) {
+        positions[count * 3] = cell.x + 0.5;
+        positions[count * 3 + 1] = 0.095;
+        positions[count * 3 + 2] = cell.y + 0.5;
+        count += 1;
+      }
+    }
+    attribute.needsUpdate = true;
+    movePreviewGeometry.setDrawRange(0, count);
+    movePreviewGeometry.computeBoundingSphere();
+    movePreviewLine.visible = request.path !== null && count > 1;
+  };
 
   const resize = (): void => {
     if (disposed) return;
@@ -594,6 +705,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         objects.screenOffsetY,
       );
     }
+    refreshMovePreview();
     updateLabelPosition(inspectionLabel, cellPosition(ISOLATED_CELL, 0.03), -3);
     if (!contextLost) renderer.render(scene, camera);
   };
@@ -698,6 +810,25 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const y = Math.floor(groundHit.point.z);
       if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) return null;
       return { kind: 'ground', cell: { x, y } };
+    },
+    pickGround(clientX, clientY) {
+      const point = groundPointAt(clientX, clientY);
+      if (point === null) return null;
+      const x = Math.floor(point.x);
+      const y = Math.floor(point.z);
+      if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) return null;
+      return { x, y };
+    },
+    setMovePreview(unitId, target, path) {
+      movePreviewRequest = { unitId, target, path };
+      refreshMovePreview();
+      renderer.render(scene, camera);
+    },
+    clearMovePreview() {
+      movePreviewRequest = null;
+      movePreviewLine.visible = false;
+      movePreviewTarget.visible = false;
+      if (!contextLost && !disposed) renderer.render(scene, camera);
     },
     pan(from, to) {
       const fromGround = groundPointAt(from.x, from.y);
