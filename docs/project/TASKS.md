@@ -1,7 +1,7 @@
 # 実装タスクとユーザー検査
 
 この文書は仕様と受入条件を管理する。作業状態・修正履歴・検査結果は各GのGitHub Issue/PRを正とする。
-すべて未着手。現在の実装は開発基盤のみ。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
+実装・検証の最新状態は各Issueを参照。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
 
 ## GitHub索引
 
@@ -17,6 +17,8 @@
 ## G1 / M1: 盤面で部隊を動かせる
 
 ブランチ例: gate/g1-map-movement。前提: M0。主な編集範囲: src/simulation、src/render、src/ui、src/main.ts、必要な設定・テスト・docs/project。
+
+実装前の具体設計は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md)、lunaへの段階別指示は [G1_LUNA_INSTRUCTIONS.md](G1_LUNA_INSTRUCTIONS.md) を参照。設計準備は実装完了を意味しない。
 
 | ID   | 実装内容                                    | 依存           | 技術的な完了条件                                                                                 |
 | ---- | ------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
