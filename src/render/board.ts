@@ -903,8 +903,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const objects = unitObjects.get(unit.id) ?? createUnitObjects(unit);
       const currentPosition = new THREE.Vector3(x, 0.17, z);
       const path = unit.control === 'own' ? unit.path : [];
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${unit.kind === 'scout' ? '偵' : '突'}\n${unit.hp}/${unit.maxHp}`;
-      objects.label.title = `${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}`;
+      const march = unit.control === 'own' ? unit.marchOrder : null;
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${unit.kind === 'scout' ? '偵' : '突'}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
+      objects.label.title = `${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
         currentPosition.x,

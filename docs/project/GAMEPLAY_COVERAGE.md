@@ -15,8 +15,8 @@ G1〜G4は最小の試作・検査手順として作った区切りであり、�
 
 | ID  | 必要な機能・設計                                                                                                         | 原仕様の参照                              | 現状                   |
 | --- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ---------------------- |
-| F01 | [複数部隊の選択と一括移動](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/13)                             | 旧仕様6.2、今回ユーザー指示               | 実装済み・画面検査待ち |
-| F02 | [敵部隊・拠点を追跡対象にする行軍命令](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/14)                 | 今回ユーザー指示、旧仕様6.2               | 未実装・設計対象       |
+| F01 | [複数部隊の選択と一括移動](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/13)                             | 旧仕様6.2、今回ユーザー指示               | 合格・マージ済み       |
+| F02 | [敵部隊・拠点を追跡対象にする行軍命令](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/14)                 | 今回ユーザー指示、旧仕様6.2               | 実装済み・画面検査待ち |
 | F03 | [川・山・中央島・港と拠点規模を持つ対戦マップ](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/15)         | 旧仕様3.2/3.4/4.1/6.1                     | 未実装・設計対象       |
 | F04 | [橋・索道の建設・奪取・解体と経路更新](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/16)                 | 旧仕様4.2                                 | 未実装・設計対象       |
 | F05 | [中立拠点の守備NPCと守備戦闘・制圧](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/17)                    | 旧仕様3.4/3.6、計算モデル7                | 未実装・設計対象       |

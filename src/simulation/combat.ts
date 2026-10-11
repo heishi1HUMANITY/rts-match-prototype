@@ -5,6 +5,7 @@ import {
 } from './config';
 import { cancelAllProductionForDestroyedHq } from './production';
 import { firepowerBonus } from './research';
+import { visibleMarchCombatTarget } from './march';
 import {
   getUnitPositionX2,
   getUnitPositionY2,
@@ -50,6 +51,36 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   const y2 = getUnitPositionY2(attacker);
   const range = UNIT_STATS[attacker.kind].range;
   const rangeSquared = (2 * range) ** 2;
+  const preferred = visibleMarchCombatTarget(state, attacker);
+  if (preferred?.kind === 'unit') {
+    const target = state.units.find(({ id }) => id === preferred.id);
+    if (target !== undefined) {
+      return {
+        kind: 'unit',
+        id: target.id,
+        distanceSquared: distanceSquared(
+          x2,
+          y2,
+          getUnitPositionX2(target),
+          getUnitPositionY2(target),
+        ),
+      };
+    }
+  } else if (preferred?.kind === 'base') {
+    const base = state.bases.find(({ id }) => id === preferred.id);
+    if (base !== undefined) {
+      return {
+        kind: 'base',
+        id: base.id,
+        distanceSquared: distanceSquared(
+          x2,
+          y2,
+          2 * base.cell.x + 1,
+          2 * base.cell.y + 1,
+        ),
+      };
+    }
+  }
   const units = state.units
     .filter(
       (target) => target.factionId !== attacker.factionId && target.hp > 0,

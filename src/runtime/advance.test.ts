@@ -65,6 +65,18 @@ describe('advanceMatch NPC orchestration', () => {
     });
   });
 
+  it('keeps the F02 pursuit fixture free of bot orders for a manual tracking check', () => {
+    const next = advanceMatch(
+      running(createMatch(42, { scenarioId: 'f02-pursuit' })),
+    );
+    expect(next.elapsedTicks).toBe(1);
+    for (const id of ['B', 'C'] as const) {
+      const faction = next.factions.find((entry) => entry.id === id)!;
+      expect(faction.productionJobs).toEqual([]);
+      expect(faction.activeResearch).toBeNull();
+    }
+  });
+
   it('replays standard matches deterministically across seeds', () => {
     for (const seed of [0, 43, 0xffff_ffff]) {
       expect(runTicks(seed, 'standard', 120)).toEqual(

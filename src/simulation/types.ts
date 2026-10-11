@@ -9,7 +9,8 @@ export type ScenarioId =
   | 'g3-timeout'
   | 'g3-elimination'
   | 'g3-mutual'
-  | 'g3-spectate';
+  | 'g3-spectate'
+  | 'f02-pursuit';
 export type UnitKind = 'assault' | 'scout';
 export type ResearchId = 'firepower-1' | 'firepower-2';
 export type BaseKind = 'hq' | 'outpost';
@@ -86,6 +87,19 @@ export interface UnitState {
   readonly path: readonly Cell[];
   /** Completed ticks on the current two-tick edge. */
   readonly edgeProgress: 0 | 1;
+  readonly marchOrder?: MarchOrder | null;
+}
+
+export interface MarchTarget {
+  readonly kind: 'unit' | 'base';
+  readonly id: string;
+}
+
+export interface MarchOrder {
+  readonly target: MarchTarget;
+  readonly lastKnownCell: Cell;
+  readonly lastSeenTick: number;
+  readonly status: 'tracking' | 'searching' | 'blocked' | 'arrived';
 }
 
 export interface BaseState {
@@ -118,7 +132,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 5;
+  readonly schemaVersion: 6;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
   readonly elapsedTicks: number;
@@ -229,6 +243,11 @@ export type Command =
   | { readonly type: 'pause' }
   | { readonly type: 'resume' }
   | { readonly type: 'move'; readonly unitId: string; readonly target: Cell }
+  | {
+      readonly type: 'march';
+      readonly unitId: string;
+      readonly target: MarchTarget;
+    }
   | { readonly type: 'stop'; readonly unitId: string }
   | {
       readonly type: 'enqueue-production';
@@ -257,7 +276,9 @@ export type RejectCode =
   | 'QUEUE_FULL'
   | 'ALREADY_RESEARCHED'
   | 'PREREQUISITE_MISSING'
-  | 'FACTION_ELIMINATED';
+  | 'FACTION_ELIMINATED'
+  | 'TARGET_NOT_FOUND'
+  | 'INVALID_TARGET';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

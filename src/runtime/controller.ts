@@ -9,6 +9,7 @@ import type {
   CommandResult,
   FactionId,
   MatchState,
+  MarchTarget,
   RejectCode,
   ScenarioId,
   UnitKind,
@@ -109,6 +110,27 @@ function safeCommand(value: unknown): {
       command: { type: 'stop', unitId: item.unitId.slice(0, 64) },
       summary: `stop ${item.unitId.slice(0, 64)}`,
     };
+  if (
+    item.type === 'march' &&
+    typeof item.unitId === 'string' &&
+    typeof item.target === 'object' &&
+    item.target !== null &&
+    !Array.isArray(item.target)
+  ) {
+    const target = item.target as Record<string, unknown>;
+    if (
+      (target.kind === 'unit' || target.kind === 'base') &&
+      typeof target.id === 'string'
+    )
+      return {
+        command: {
+          type: 'march',
+          unitId: item.unitId,
+          target: { kind: target.kind, id: target.id },
+        },
+        summary: `追跡/進軍 ${item.unitId.slice(0, 64)} → ${target.kind}:${target.id.slice(0, 64)}`,
+      };
+  }
   if (
     item.type === 'move' &&
     typeof item.unitId === 'string' &&
@@ -242,11 +264,46 @@ export class MatchRuntime {
     });
   }
 
+  previewGroupMarch(
+    unitIds: readonly string[],
+    target: MarchTarget,
+  ): readonly {
+    readonly unitId: string;
+    readonly path: readonly Cell[] | null;
+    readonly reason: RejectCode | null;
+  }[] {
+    return uniqueSortedIds(unitIds).map((unitId) => {
+      if (this.contextLost)
+        return { unitId, path: null, reason: 'INVALID_PHASE' as const };
+      const result = applyCommand(this.state, 'A', {
+        type: 'march',
+        unitId,
+        target,
+      });
+      if (!result.ok) return { unitId, path: null, reason: result.reason };
+      const unit = result.state.units.find(
+        (entry) => entry.id === unitId && entry.factionId === 'A',
+      );
+      return {
+        unitId,
+        path: unit?.path.map((cell) => ({ ...cell })) ?? null,
+        reason: null,
+      };
+    });
+  }
+
   groupMove(
     target: Cell,
     unitIds: readonly string[] = this.selectedUnitIds,
   ): BatchCommandResult {
     return this.dispatchBatch('move', unitIds, target);
+  }
+
+  groupMarch(
+    target: MarchTarget,
+    unitIds: readonly string[] = this.selectedUnitIds,
+  ): BatchCommandResult {
+    return this.dispatchBatch('march', unitIds, target);
   }
 
   groupStop(
@@ -374,9 +431,9 @@ export class MatchRuntime {
   }
 
   private dispatchBatch(
-    type: 'move' | 'stop',
+    type: 'move' | 'stop' | 'march',
     unitIds: readonly string[],
-    target?: Cell,
+    target?: Cell | MarchTarget,
   ): BatchCommandResult {
     const ids = uniqueSortedIds(unitIds);
     if (ids.length === 0) {
@@ -390,7 +447,11 @@ export class MatchRuntime {
     const rejected: { unitId: string; reason: RejectCode }[] = [];
     for (const unitId of ids) {
       const input: Command =
-        type === 'move' ? { type, unitId, target: target! } : { type, unitId };
+        type === 'move'
+          ? { type, unitId, target: target as Cell }
+          : type === 'march'
+            ? { type, unitId, target: target as MarchTarget }
+            : { type, unitId };
       const result = this.dispatchCommand(input);
       if (result.ok) accepted.push(unitId);
       else rejected.push({ unitId, reason: result.reason });
@@ -475,6 +536,8 @@ export function rejectMessage(reason: RejectCode): string {
     INVALID_ACTOR: '操作できない陣営です',
     INVALID_PHASE: '今はその操作をできません',
     UNIT_NOT_FOUND: '部隊が見つかりません',
+    TARGET_NOT_FOUND: '追跡先が見つからないか視界にありません',
+    INVALID_TARGET: '追跡先を指定できません',
     NOT_OWNER: '自軍の部隊を選んでください',
     OUT_OF_BOUNDS: '盤面の外です',
     BLOCKED: '障害物があります',
@@ -498,11 +561,16 @@ function uniqueSortedIds(unitIds: readonly string[]): string[] {
 }
 
 function batchMessage(
-  type: 'move' | 'stop',
+  type: 'move' | 'stop' | 'march',
   accepted: readonly string[],
   rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
 ): string {
-  const acceptedLabel = type === 'move' ? '移動指示' : '停止指示';
+  const acceptedLabel =
+    type === 'move'
+      ? '移動指示'
+      : type === 'march'
+        ? '追跡/進軍指示'
+        : '停止指示';
   const prefix = `${accepted.length}部隊に${acceptedLabel}`;
   if (rejected.length === 0) return prefix;
   const details = rejected

@@ -6,6 +6,7 @@ import { advanceProduction } from './production';
 import { advanceResearch } from './research';
 import { applyTicketTick } from './tickets';
 import { updateFactionKnowledge } from './visibility';
+import { advanceMarchOrders, clearObservedDeadMarchTargets } from './march';
 import type { MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState): UnitState {
@@ -33,12 +34,11 @@ export function stepMatch(state: MatchState): MatchState {
   if (state.phase !== 'running') return state;
   const initial = resolveMatchOutcome(state);
   if (initial.phase === 'finished') return initial;
-  let next: MatchState = {
-    ...initial,
-    elapsedTicks: initial.elapsedTicks + 1,
-  };
+  let next: MatchState = advanceMarchOrders(initial);
+  next = { ...next, elapsedTicks: initial.elapsedTicks + 1 };
   next = { ...next, units: next.units.map(stepUnit) };
-  next = resolveCombat(next);
+  const beforeCombat = next;
+  next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
   next = advanceCapture(next);
   next = applyEconomyTick(next);
   next = advanceResearch(next);

@@ -4,9 +4,9 @@ import { createMap, isCellBlocked } from './map';
 import { createMatch } from './match';
 
 describe('initial match contract', () => {
-  it('creates schema-v5 ready state with three factions, typed units, and bases', () => {
+  it('creates schema-v6 ready state with three factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(5);
+    expect(match.schemaVersion).toBe(6);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -135,6 +135,7 @@ describe('initial match contract', () => {
     'g3-elimination',
     'g3-mutual',
     'g3-spectate',
+    'f02-pursuit',
   ] as const)('reproduces scenario fixture %s', (scenarioId) => {
     const match = createMatch(42, { scenarioId });
     expect(createMatch(42, { scenarioId })).toEqual(match);

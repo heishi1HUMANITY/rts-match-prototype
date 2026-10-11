@@ -12,9 +12,11 @@ import {
   UNIT_STATS,
 } from './config';
 import { createMap } from './map';
+import { findPath } from './pathfinding';
 import { createInitialKnowledge } from './visibility';
 import type {
   BaseState,
+  Cell,
   FactionState,
   MatchState,
   ScenarioId,
@@ -38,6 +40,8 @@ export type {
   EliminationReason,
   EliminationStatus,
   MatchState,
+  MarchOrder,
+  MarchTarget,
   Phase,
   ProductionJob,
   RejectCode,
@@ -109,6 +113,7 @@ function buildUnits(): UnitState[] {
     cell: { ...cell },
     path: [],
     edgeProgress: 0,
+    marchOrder: null,
   }));
 }
 
@@ -156,11 +161,44 @@ function configuredFixture(
     factions = factions.map((faction) =>
       faction.id === 'A' ? { ...faction, ticketsCenti: 0 } : faction,
     );
+  } else if (scenarioId === 'f02-pursuit') {
+    const loop = [
+      { x: 22, y: 20 },
+      { x: 22, y: 21 },
+      { x: 22, y: 22 },
+      { x: 21, y: 22 },
+      { x: 20, y: 22 },
+      { x: 19, y: 22 },
+      { x: 19, y: 21 },
+      { x: 19, y: 20 },
+      { x: 19, y: 19 },
+      { x: 19, y: 18 },
+      { x: 20, y: 18 },
+      { x: 21, y: 18 },
+      { x: 22, y: 18 },
+      { x: 22, y: 19 },
+    ] as const;
+    let cursor = { x: 21, y: 20 };
+    const route: Cell[] = [];
+    for (let lap = 0; lap < 4; lap += 1) {
+      for (const waypoint of loop) {
+        const segment = findPath(state.map, cursor, waypoint);
+        if (segment === null) continue;
+        route.push(...segment);
+        cursor = waypoint;
+      }
+    }
+    units = units.map((unit) => {
+      if (unit.id === 'A-01') return { ...unit, cell: { x: 17, y: 20 } };
+      if (unit.id === 'B-01')
+        return { ...unit, cell: { x: 21, y: 20 }, path: route };
+      return unit;
+    });
   }
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v5 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-v6 match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},
