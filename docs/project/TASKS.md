@@ -1,5 +1,7 @@
 # 実装タスクとユーザー検査
 
+Issue番号からの着手は [共通作業手順](ISSUE_AGENT_RUNBOOK.md)、各機能の設計・依存・実装場所・動作確認は [タスク別実装ガイド](ISSUE_IMPLEMENTATION_GUIDE.md) を参照する。
+
 この文書は仕様と受入条件を管理する。作業状態・修正履歴・検査結果は各GのGitHub Issue/PRを正とする。
 実装・検証の最新状態は各Issueを参照。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
 

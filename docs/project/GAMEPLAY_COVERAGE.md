@@ -1,5 +1,7 @@
 # 必要な試合内ゲームプレイの網羅
 
+各Issueの具体的な実装手順・依存・検査条件は [タスク別実装ガイド](ISSUE_IMPLEMENTATION_GUIDE.md)、番号だけの依頼を受けた際の作業手順は [共通作業手順](ISSUE_AGENT_RUNBOOK.md) を参照する。下表の状態は記載時の参考であり、最新状態はIssue/PRを確認する。
+
 2026-10-11のユーザー指示「必要なゲームプレイはすべて用意する」に基づくスコープ補正。全体の進捗の正は [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12)。Issueを登録しただけでは機能の実装・検証済みを意味しない。
 
 G1〜G4は最小の試作・検査手順として作った区切りであり、建築や中立NPCを含むゲームプレイ全体の完成を保証していなかった。初期対象外とした機能の後続Issueがなく、網羅の計画が不足していた。この文書で追跡先を用意し、G4の最終合格も拡張された全体の通しプレイに結び付ける。
@@ -13,25 +15,25 @@ G1〜G4は最小の試作・検査手順として作った区切りであり、�
 
 ## 機能とIssue
 
-| ID  | 必要な機能・設計                                                                                                         | 原仕様の参照                              | 現状                   |
-| --- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ---------------------- |
-| F01 | [複数部隊の選択と一括移動](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/13)                             | 旧仕様6.2、今回ユーザー指示               | 実装済み・画面検査待ち |
-| F02 | [敵部隊・拠点を追跡対象にする行軍命令](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/14)                 | 今回ユーザー指示、旧仕様6.2               | 未実装・設計対象       |
-| F03 | [川・山・中央島・港と拠点規模を持つ対戦マップ](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/15)         | 旧仕様3.2/3.4/4.1/6.1                     | 未実装・設計対象       |
-| F04 | [橋・索道の建設・奪取・解体と経路更新](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/16)                 | 旧仕様4.2                                 | 未実装・設計対象       |
-| F05 | [中立拠点の守備NPCと守備戦闘・制圧](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/17)                    | 旧仕様3.4/3.6、計算モデル7                | 未実装・設計対象       |
-| F06 | [独立した現地勢力の本拠・部隊生産・拠点侵攻](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/18)           | 旧仕様3.8、計算モデル13                   | 未実装・設計対象       |
-| F07 | [徘徊NPCの採否を確定し出現・侵攻ループを用意](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/19)          | 旧仕様3.1/3.4/4.1と計算モデル13の矛盾     | 未実装・設計対象       |
-| F08 | [6兵種と陸・空・水の移動/戦闘/回復](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/20)                    | 旧仕様3.6、計算モデル6/10                 | 未実装・設計対象       |
-| F09 | [戦力・兵站・情報・工兵の研究ツリーを充填方式で拡張](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/21)   | 旧仕様3.9、ユーザー承認済みの研究充填方式 | 未実装・設計対象       |
-| F10 | [拠点Lv2/Lv3強化・回復・砲座](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/22)                          | 旧仕様3.4/3.12、計算モデル22              | 未実装・設計対象       |
-| F11 | [防御施設の建築・攻撃・視界効果](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/23)                       | 旧仕様3.14、計算モデル24                  | 未実装・設計対象       |
-| F12 | [補給線と接続切断による機能低下](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/24)                       | 旧仕様3.15、計算モデル25                  | 未実装・設計対象       |
-| F13 | [態勢・集結点・退避回復・部隊練度](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/25)                     | 旧仕様3.13/3.18                           | 未実装・設計対象       |
-| F14 | [行軍先の戦闘予測と情報に基づく判断](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/26)                   | 旧仕様3.16/6.2                            | 未実装・設計対象       |
-| F15 | [作戦指令・定型合図のゲームプレイ採否と実装](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/27)           | 旧仕様3.10/3.17、現行の文明/世界観除外    | 未実装・設計対象       |
-| F16 | [首都再建・試合フェーズ・脱落と全要素のバランス再設計](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/28) | 旧仕様3.1/3.5/3.7、G3暫定契約             | 未実装・設計対象       |
-| F17 | [ゲームパラメータのマスタ管理](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/30)                         | 今回のユーザー追加指示                    | 未実装・設計対象       |
+| ID  | 必要な機能・設計                                                                                                         | 原仕様の参照                              | 現状                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | ------------------------ |
+| F01 | [複数部隊の選択と一括移動](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/13)                             | 旧仕様6.2、今回ユーザー指示               | 合格・マージ済み         |
+| F02 | [敵部隊・拠点を追跡対象にする行軍命令](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/14)                 | 今回ユーザー指示、旧仕様6.2               | PR #32・ユーザー検査待ち |
+| F03 | [川・山・中央島・港と拠点規模を持つ対戦マップ](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/15)         | 旧仕様3.2/3.4/4.1/6.1                     | 未実装・設計対象         |
+| F04 | [橋・索道の建設・奪取・解体と経路更新](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/16)                 | 旧仕様4.2                                 | 未実装・設計対象         |
+| F05 | [中立拠点の守備NPCと守備戦闘・制圧](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/17)                    | 旧仕様3.4/3.6、計算モデル7                | 未実装・設計対象         |
+| F06 | [独立した現地勢力の本拠・部隊生産・拠点侵攻](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/18)           | 旧仕様3.8、計算モデル13                   | 未実装・設計対象         |
+| F07 | [徘徊NPCの採否を確定し出現・侵攻ループを用意](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/19)          | 旧仕様3.1/3.4/4.1と計算モデル13の矛盾     | 未実装・設計対象         |
+| F08 | [6兵種と陸・空・水の移動/戦闘/回復](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/20)                    | 旧仕様3.6、計算モデル6/10                 | 未実装・設計対象         |
+| F09 | [戦力・兵站・情報・工兵の研究ツリーを充填方式で拡張](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/21)   | 旧仕様3.9、ユーザー承認済みの研究充填方式 | 未実装・設計対象         |
+| F10 | [拠点Lv2/Lv3強化・回復・砲座](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/22)                          | 旧仕様3.4/3.12、計算モデル22              | 未実装・設計対象         |
+| F11 | [防御施設の建築・攻撃・視界効果](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/23)                       | 旧仕様3.14、計算モデル24                  | 未実装・設計対象         |
+| F12 | [補給線と接続切断による機能低下](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/24)                       | 旧仕様3.15、計算モデル25                  | 未実装・設計対象         |
+| F13 | [態勢・集結点・退避回復・部隊練度](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/25)                     | 旧仕様3.13/3.18                           | 未実装・設計対象         |
+| F14 | [行軍先の戦闘予測と情報に基づく判断](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/26)                   | 旧仕様3.16/6.2                            | 未実装・設計対象         |
+| F15 | [作戦指令・定型合図のゲームプレイ採否と実装](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/27)           | 旧仕様3.10/3.17、現行の文明/世界観除外    | 未実装・設計対象         |
+| F16 | [首都再建・試合フェーズ・脱落と全要素のバランス再設計](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/28) | 旧仕様3.1/3.5/3.7、G3暫定契約             | 未実装・設計対象         |
+| F17 | [ゲームパラメータのマスタ管理](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/30)                         | 今回のユーザー追加指示                    | 未実装・設計対象         |
 
 既存G4/#5は、ミニマップ、敵詳細、建築/強化/渡河ポップ、研究・部隊・戦況・結果詳報、ガイド、PC/横持ち/タッチ、最終3D表示の読みやすさを全機能に対応させる。合格時に機能のない画面だけを完成扱いしない。
 
