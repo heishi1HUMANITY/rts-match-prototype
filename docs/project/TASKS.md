@@ -18,6 +18,8 @@
 
 ブランチ例: gate/g1-map-movement。前提: M0。主な編集範囲: src/simulation、src/render、src/ui、src/main.ts、必要な設定・テスト・docs/project。
 
+実装前の具体設計は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md)、lunaへの段階別指示は [G1_LUNA_INSTRUCTIONS.md](G1_LUNA_INSTRUCTIONS.md) を参照。設計準備は実装完了を意味しない。
+
 | ID   | 実装内容                                    | 依存           | 技術的な完了条件                                                                                 |
 | ---- | ------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
 | T101 | 最小盤面・進行ルールとAPIを定義             | M0             | 盤面寸法、初期配置、tick、経路、停止/非表示復帰、seedの扱いをDECISIONSへ記録。旧数値の採否を明示 |
