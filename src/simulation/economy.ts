@@ -9,6 +9,7 @@ import type { FactionId, MatchState } from './types';
 export function applyEconomyTick(state: MatchState): MatchState {
   const income = new Map<FactionId, { supply: number; research: number }>();
   for (const faction of state.factions) {
+    if (faction.eliminatedAtTick !== null) continue;
     income.set(faction.id, {
       supply: 0,
       research: BASE_RESEARCH_INCOME_CENTI_PER_TICK,

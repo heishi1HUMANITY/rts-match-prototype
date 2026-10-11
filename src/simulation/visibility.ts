@@ -32,6 +32,11 @@ interface SightSource {
 }
 
 function sightSources(state: MatchState, factionId: FactionId): SightSource[] {
+  if (
+    state.factions.find(({ id }) => id === factionId)?.eliminatedAtTick !== null
+  ) {
+    return [];
+  }
   const sources: SightSource[] = [];
   for (const unit of state.units) {
     if (unit.factionId !== factionId || unit.hp <= 0) continue;

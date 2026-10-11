@@ -39,14 +39,14 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>G2 · 戦略ループ</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>G3 · NPCと決着</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
-        <p>B/Cの自動進軍・勝敗は未実装。視界内では自動交戦します。検査設定は初期配置・資源のみ変更します。</p>
+        <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">部隊をドラッグして移動 · 地面ドラッグでカメラ · 中立拠点のそばに3秒で制圧</div><span class="scenario-badge"></span>
@@ -65,7 +65,8 @@ export function createHud(app: HTMLElement): HudElements {
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
-    </footer>`;
+    </footer>
+    <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>`;
   const find = <T extends Element>(selector: string): T =>
     app.querySelector<T>(selector)!;
   const action = (id: string): HTMLButtonElement =>
@@ -116,6 +117,8 @@ export function setHudPanel(
       );
 }
 function productionReason(view: FactionView, kind: UnitKind): string | null {
+  if (view.ownFaction.eliminatedAtTick !== null) return '脱落 · 観戦中';
+  if (view.phase === 'finished') return '試合は終了しました';
   if (view.phase !== 'running') return '開始・再開後に操作できます';
   const hq = view.bases.find(
     (base) => base.id === `HQ-${view.viewerFactionId}`,
@@ -155,12 +158,13 @@ export function updateHud(
   elements.status.textContent = snapshot.message;
   text('.tick-readout', `TICK ${view.tick} · ${view.phase.toUpperCase()}`);
   for (const id of ['A', 'B', 'C'] as const)
-    text(`[data-ticket="${id}"]`, amount(view.ticketsCenti[id]));
+    text(
+      `[data-ticket="${id}"]`,
+      `${amount(view.ticketsCenti[id])}${view.publicEliminations[id].eliminatedAtTick !== null ? ' · 脱落' : ''}`,
+    );
   text(
     '.scenario-badge',
-    view.scenarioId === 'standard'
-      ? '通常設定 · B/Cは固定'
-      : `検査専用：${view.scenarioId} · B/Cは固定`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
   text(
     '[data-resources]',
@@ -185,13 +189,17 @@ export function updateHud(
     );
   text(
     '[data-income]',
-    `補給収支 ${((income - upkeep) / 10).toFixed(2)}/秒 · 研究 +${(rp / 10).toFixed(1)}/秒`,
+    own.eliminatedAtTick !== null || view.phase === 'finished'
+      ? '収入停止'
+      : `補給収支 ${((income - upkeep) / 10).toFixed(2)}/秒 · 研究 +${(rp / 10).toFixed(1)}/秒`,
   );
   text(
     '[data-research-status]',
-    own.activeResearch
-      ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
-      : `バンク中 · 研究完了 ${own.completedResearchIds.length}/2`,
+    own.eliminatedAtTick !== null
+      ? '脱落 · 研究停止'
+      : own.activeResearch
+        ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
+        : `バンク中 · 研究完了 ${own.completedResearchIds.length}/2`,
   );
   const selected = view.ownUnits.find(
     (unit) => unit.id === snapshot.selectedUnitId,
@@ -208,7 +216,11 @@ export function updateHud(
       ? selected.path.length
         ? '移動中 · ドラッグで行先変更'
         : 'ドラッグで目的地を指定'
-      : 'A部隊をドラッグして移動',
+      : own.eliminatedAtTick !== null
+        ? '脱落 · 探索済み盤面で観戦できます'
+        : view.phase === 'finished'
+          ? '試合終了'
+          : 'A部隊をドラッグして移動',
   );
   const expected = view.ownUnits.map((unit) => unit.id).join('|');
   if (elements.units.dataset.ids !== expected) {
@@ -284,20 +296,24 @@ export function updateHud(
   )!.disabled =
     view.phase !== 'running' ||
     snapshot.contextLost ||
-    own.activeResearch === null;
+    own.activeResearch === null ||
+    own.eliminatedAtTick !== null;
   for (const id of ['firepower-1', 'firepower-2'] as const) {
     const def = RESEARCH_DEFINITIONS[id];
     const done = own.completedResearchIds.includes(id);
     const active = own.activeResearch?.researchId === id;
     const progress = own.researchProgressCenti[id];
-    const reason = done
-      ? '完了 · 攻撃+1'
-      : view.phase !== 'running'
-        ? '開始・再開後に選択できます'
-        : def.prerequisite !== null &&
-            !own.completedResearchIds.includes(def.prerequisite)
-          ? '前提：戦力研究Iが必要です'
-          : null;
+    const reason =
+      own.eliminatedAtTick !== null
+        ? '脱落 · 研究停止'
+        : done
+          ? '完了 · 攻撃+1'
+          : view.phase !== 'running'
+            ? '開始・再開後に選択できます'
+            : def.prerequisite !== null &&
+                !own.completedResearchIds.includes(def.prerequisite)
+              ? '前提：戦力研究Iが必要です'
+              : null;
     const button = elements.root.querySelector<HTMLButtonElement>(
       `[data-research="${id}"]`,
     )!;
@@ -337,4 +353,59 @@ export function updateHud(
       detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/30` : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${BASE_STATS[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${BASE_STATS[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
   }
   text('.base-detail', detail);
+  const dialog =
+    elements.root.querySelector<HTMLDialogElement>('.result-dialog')!;
+  if (view.result !== null) {
+    setHudPanel(elements, null);
+    const result = view.result;
+    const playerStanding = result.standings.find(
+      (standing) => standing.factionId === view.viewerFactionId,
+    )!;
+    const tiedFirst =
+      result.standings.filter((standing) => standing.rank === 1).length > 1;
+    text(
+      '#result-title',
+      result.reason === 'mutual-elimination'
+        ? '引き分け · 試合結果'
+        : playerStanding.rank === 1
+          ? `${tiedFirst ? '同率1位' : '勝利'} · 試合結果`
+          : `敗北 · ${playerStanding.rank}位`,
+    );
+    text(
+      '[data-result-reason]',
+      `${result.reason === 'time-limit' ? '制限時間に到達' : result.reason === 'mutual-elimination' ? '全陣営が脱落 · 引き分け' : '最後の1陣営が生存'} · ${(result.endedAtTick / 10).toFixed(1)}秒`,
+    );
+    const key = JSON.stringify(result);
+    const list =
+      elements.root.querySelector<HTMLOListElement>('.result-standings')!;
+    if (list.dataset.result !== key) {
+      list.dataset.result = key;
+      list.replaceChildren(
+        ...result.standings.map((standing) => {
+          const row = document.createElement('li');
+          const tied =
+            result.standings.filter((entry) => entry.rank === standing.rank)
+              .length > 1;
+          const symbol =
+            standing.factionId === 'A'
+              ? '◆'
+              : standing.factionId === 'B'
+                ? '■'
+                : '⬡';
+          row.className = `legend-${standing.factionId.toLowerCase()}`;
+          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都・全部隊喪失'}）`}`;
+          return row;
+        }),
+      );
+    }
+    if (!dialog.open) {
+      dialog.showModal();
+      dialog
+        .querySelector<HTMLButtonElement>('[data-action="replay"]')!
+        .focus();
+    }
+  } else if (dialog.open) {
+    dialog.close();
+    elements.start.focus();
+  }
 }

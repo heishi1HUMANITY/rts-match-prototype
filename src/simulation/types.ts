@@ -1,10 +1,36 @@
 /** Plain, serializable state. Browser and renderer dependencies belong elsewhere. */
 export type FactionId = 'A' | 'B' | 'C';
-export type Phase = 'ready' | 'running' | 'paused';
-export type ScenarioId = 'standard' | 'g2-capture' | 'g2-combat' | 'g2-economy';
+export type Phase = 'ready' | 'running' | 'paused' | 'finished';
+export type ScenarioId =
+  | 'standard'
+  | 'g2-capture'
+  | 'g2-combat'
+  | 'g2-economy'
+  | 'g3-timeout'
+  | 'g3-elimination'
+  | 'g3-mutual'
+  | 'g3-spectate';
 export type UnitKind = 'assault' | 'scout';
 export type ResearchId = 'firepower-1' | 'firepower-2';
 export type BaseKind = 'hq' | 'outpost';
+export type EliminationReason = 'tickets' | 'forces';
+
+export interface EliminationStatus {
+  readonly eliminatedAtTick: number | null;
+  readonly eliminationReason: EliminationReason | null;
+}
+
+export interface MatchStanding extends EliminationStatus {
+  readonly factionId: FactionId;
+  readonly rank: number;
+  readonly ticketsCenti: number;
+}
+
+export interface MatchResult {
+  readonly reason: 'last-standing' | 'mutual-elimination' | 'time-limit';
+  readonly endedAtTick: number;
+  readonly standings: readonly MatchStanding[];
+}
 
 export interface Cell {
   readonly x: number;
@@ -34,7 +60,7 @@ export interface ActiveResearch {
 }
 
 /** Legacy name retained as an alias for the expanded faction state. */
-export interface FactionState {
+export interface FactionState extends EliminationStatus {
   readonly id: FactionId;
   readonly controller: 'human' | 'bot';
   readonly supplyCenti: number;
@@ -92,16 +118,18 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 4;
+  readonly schemaVersion: 5;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
   readonly elapsedTicks: number;
+  readonly timeLimitTicks: number;
   readonly factions: readonly FactionState[];
   readonly phase: Phase;
   readonly map: GridMap;
   readonly units: readonly UnitState[];
   readonly bases: readonly BaseState[];
   readonly knowledge: readonly FactionKnowledge[];
+  readonly result: MatchResult | null;
 }
 
 export interface OwnUnitView extends UnitState {
@@ -164,7 +192,7 @@ export type BaseView =
   | VisibleBaseView
   | OwnedBaseView;
 
-export interface OwnFactionView {
+export interface OwnFactionView extends EliminationStatus {
   readonly id: FactionId;
   readonly controller: 'human' | 'bot';
   readonly supplyCenti: number;
@@ -182,6 +210,10 @@ export interface FactionView {
   readonly scenarioId: ScenarioId;
   readonly phase: Phase;
   readonly tick: number;
+  readonly timeLimitTicks: number;
+  readonly result: MatchResult | null;
+  /** Public elimination status, without hidden force counts or resources. */
+  readonly publicEliminations: Readonly<Record<FactionId, EliminationStatus>>;
   readonly map: GridMap;
   readonly ticketsCenti: Readonly<Record<FactionId, number>>;
   readonly visible: readonly boolean[];
@@ -224,7 +256,8 @@ export type RejectCode =
   | 'UNIT_LIMIT'
   | 'QUEUE_FULL'
   | 'ALREADY_RESEARCHED'
-  | 'PREREQUISITE_MISSING';
+  | 'PREREQUISITE_MISSING'
+  | 'FACTION_ELIMINATED';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

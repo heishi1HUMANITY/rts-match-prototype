@@ -164,6 +164,7 @@ export function advanceProduction(state: MatchState): MatchState {
   }
   const spawned: UnitState[] = [];
   const factions = next.factions.map((faction) => {
+    if (faction.eliminatedAtTick !== null) return faction;
     const [active, ...waiting] = faction.productionJobs;
     if (active === undefined) return faction;
     if (active.remainingTicks > 1) {

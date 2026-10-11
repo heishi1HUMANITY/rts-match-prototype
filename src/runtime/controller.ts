@@ -1,6 +1,6 @@
 import { applyCommand } from '../simulation/commands';
 import { createMatch } from '../simulation/match';
-import { stepMatch } from '../simulation/step';
+import { advanceMatch } from './advance';
 import { getFactionView } from '../simulation/view';
 import type {
   Cell,
@@ -213,7 +213,7 @@ export class MatchRuntime {
         this.state.phase === 'running' && !this.contextLost,
         () => {
           previousTick = this.state;
-          this.state = stepMatch(this.state);
+          this.state = advanceMatch(this.state);
         },
       );
       this.previousTickState = previousTick;
@@ -327,6 +327,15 @@ export class MatchRuntime {
   }
 
   private phaseMessage(): string {
+    if (this.state.phase === 'finished')
+      return '試合終了 · 結果から再戦できます';
+    if (
+      this.state.factions.find((faction) => faction.id === 'A')
+        ?.eliminatedAtTick !== null
+    )
+      return this.state.phase === 'paused'
+        ? '脱落 · 観戦一時停止中'
+        : '脱落 · 観戦中（カメラ操作・一時停止は可能）';
     return this.state.phase === 'running'
       ? '対戦中'
       : this.state.phase === 'paused'
@@ -341,12 +350,21 @@ export class MatchRuntime {
       )
     )
       this.selectedUnitId = null;
+    if (
+      this.state.phase === 'finished' ||
+      this.state.factions.find((faction) => faction.id === 'A')
+        ?.eliminatedAtTick !== null
+    ) {
+      this.selectedUnitId = null;
+      this.message = this.phaseMessage();
+    }
     this.options.onChange(this.playerSnapshot());
   }
 }
 
 export function rejectMessage(reason: RejectCode): string {
   const messages: Record<RejectCode, string> = {
+    FACTION_ELIMINATED: '脱落しているため部隊・生産・研究を操作できません',
     INVALID_COMMAND: '命令の形式が正しくありません',
     INVALID_ACTOR: '操作できない陣営です',
     INVALID_PHASE: '今はその操作をできません',

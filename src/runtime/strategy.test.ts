@@ -85,12 +85,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'g2-v2',
-      schemaVersion: 4,
+      rulesVersion: 'g3-v1',
+      schemaVersion: 5,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
-      rules: { schemaVersion: 4, rulesVersion: 'g2-v2' },
+      rules: { schemaVersion: 5, rulesVersion: 'g3-v1' },
     });
     runtime.stopLoop();
   });
@@ -147,14 +147,14 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 4 as const,
-      rulesVersion: 'g2-v2' as const,
+      schemaVersion: 5 as const,
+      rulesVersion: 'g3-v1' as const,
     };
     expect(() =>
       replay({ ...input, rulesVersion: 'g1-v1' } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
-      replay({ ...input, schemaVersion: 3 } as unknown as typeof input),
+      replay({ ...input, schemaVersion: 4 } as unknown as typeof input),
     ).toThrow('invalid replay header');
   });
 
@@ -206,4 +206,104 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });
+});
+
+describe('G3 lifecycle integration', () => {
+  it('finishes, rejects gameplay after results, reproduces diagnostics and resets for a new match', () => {
+    const { runtime, advance } = running('g3-timeout');
+    runtime.select('A-01');
+    runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
+    runtime.dispatch({
+      type: 'enqueue-production',
+      baseId: 'HQ-A',
+      unitKind: 'scout',
+    });
+    advance(200);
+    const ended = runtime.snapshot().state;
+    expect(ended.phase).toBe('finished');
+    expect(ended.result?.reason).toBe('time-limit');
+    expect(runtime.playerSnapshot().selectedUnitId).toBeNull();
+    expect(runtime.dispatch({ type: 'resume' }).ok).toBe(false);
+    expect(
+      runtime.dispatch({
+        type: 'move',
+        unitId: 'A-01',
+        target: { x: 20, y: 28 },
+      }).ok,
+    ).toBe(false);
+    advance(20);
+    expect(runtime.snapshot().state).toBe(ended);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.reset(42);
+    expect(runtime.snapshot().state).toMatchObject({
+      phase: 'ready',
+      elapsedTicks: 0,
+      result: null,
+    });
+    expect(runtime.snapshot().history).toEqual([]);
+    expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
+      researchCenti: 0,
+      productionJobs: [],
+      activeResearch: null,
+      eliminatedAtTick: null,
+      completedResearchIds: [],
+    });
+    expect(runtime.playerSnapshot().view.ownUnits).toHaveLength(2);
+    runtime.dispatch({ type: 'start' });
+    advance(1); // first frame after reset establishes a new clock origin
+    advance(200);
+    expect(runtime.snapshot().state.phase).toBe('finished');
+    expect(runtime.snapshot().state.result).toEqual(ended.result);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.stopLoop();
+  });
+
+  it('keeps spectating pause/resume but denies eliminated faction actions without revealing enemies', () => {
+    const { runtime, advance } = running('g3-spectate');
+    advance(1);
+    expect(runtime.playerSnapshot().view.ownFaction.eliminatedAtTick).toBe(0);
+    expect(runtime.playerSnapshot().view.visibleEnemies).toEqual([]);
+    expect(runtime.playerSnapshot().view.visible.every((cell) => !cell)).toBe(
+      true,
+    );
+    expect(
+      runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' }),
+    ).toMatchObject({ ok: false, reason: 'FACTION_ELIMINATED' });
+    expect(runtime.dispatch({ type: 'pause' }).ok).toBe(true);
+    const tick = runtime.snapshot().state.elapsedTicks;
+    advance(10);
+    expect(runtime.snapshot().state.elapsedTicks).toBe(tick);
+    expect(runtime.dispatch({ type: 'resume' }).ok).toBe(true);
+    advance(210);
+    expect(runtime.snapshot().state.phase).toBe('finished');
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.stopLoop();
+  });
+});
+
+describe('G3 zero-tick result diagnostics', () => {
+  for (const scenario of ['g3-elimination', 'g3-mutual'] as const) {
+    it(`replays ${scenario} immediately after start and after rejected result commands`, () => {
+      const { runtime, advance } = running(scenario);
+      expect(runtime.snapshot().state).toMatchObject({
+        phase: 'finished',
+        elapsedTicks: 0,
+      });
+      expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+      advance(10);
+      expect(runtime.snapshot().state.elapsedTicks).toBe(0);
+      expect(
+        runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' }),
+      ).toMatchObject({ ok: false, reason: 'INVALID_PHASE' });
+      expect(() =>
+        createDiagnostic(runtime.snapshot(), {
+          commit: 'test',
+          dirty: false,
+          rulesVersion: 'g3-v1',
+          schemaVersion: 5,
+        }),
+      ).not.toThrow();
+      runtime.stopLoop();
+    });
+  }
 });
