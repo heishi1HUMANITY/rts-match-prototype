@@ -20,3 +20,13 @@ body:
     id: decisions
     attributes:
       label: 未決定事項・依存タスク
+  - type: input
+    id: gate
+    attributes:
+      label: 対象G・内部タスクID
+      description: 例 G1 / T103。通常の内部タスクは対象GのIssueチェックリストで管理
+  - type: textarea
+    id: inspection
+    attributes:
+      label: 検査シナリオ・期待結果
+      description: TASKSの検査ID、seed、操作、画面で確認できる結果

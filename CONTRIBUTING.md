@@ -1,5 +1,9 @@
 # 開発手順
 
+実装とユーザー検査は [WORKFLOW](docs/project/WORKFLOW.md)、分割と完了条件は [TASKS](docs/project/TASKS.md) を参照する。
+Gごとに一つのIssueとPRを使い、内部タスクの技術検証後にまとめてユーザーへ渡す。
+G1〜G4のマージには対象commitに対するユーザーの明示合格を必要とする。文書・CIのみの保守は通常の技術レビューで扱う。
+
 ## 作業開始
 
 1. README / AGENTS と docs/project のスコープ・構成・判断を読む。

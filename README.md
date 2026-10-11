@@ -27,6 +27,8 @@ GitHub CI は Windows / Linux の両方で同じ検査を実行します。公�
 
 ## 最初に読む文書
 
+- [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
+- [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [AGENTS.md](AGENTS.md): エージェントの作業方針
 - [初期スコープ](docs/project/SCOPE.md): 今回作る範囲と未決定事項
 - [構成・設計](docs/project/ARCHITECTURE.md): ゲーム処理と表示の境界

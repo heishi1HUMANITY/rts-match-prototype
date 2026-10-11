@@ -1,0 +1,30 @@
+name: 検査・修正指示
+description: マージ後の指摘や独立した修正。検査中の指摘は対象GのIssueコメントでも可
+title: '[Review] G_ '
+body:
+  - type: input
+    id: target
+    attributes:
+      label: 対象G・検査回・版
+      description: 分かる範囲で可。親エージェントがcommitと紐づける
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: 操作と困ったこと・希望
+      description: 実際の結果と期待、seed/画面サイズが分かれば記載
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: 検査状況
+      options:
+        - 修正が必要
+        - 一部だけ確認した
+        - 検査OK
+  - type: textarea
+    id: remaining
+    attributes:
+      label: 未検査・補足
