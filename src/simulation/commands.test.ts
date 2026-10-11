@@ -86,6 +86,19 @@ describe('shared command validation', () => {
         unitId: 'B-01',
         target: { x: 999, y: 999 },
       }),
+    ).toMatchObject({ ok: false, reason: 'UNIT_NOT_FOUND' });
+    const visibleEnemy = {
+      ...state,
+      units: state.units.map((entry) =>
+        entry.id === 'B-01' ? { ...entry, cell: { x: 8, y: 33 } } : entry,
+      ),
+    };
+    expect(
+      applyCommand(visibleEnemy, 'A', {
+        type: 'move',
+        unitId: 'B-01',
+        target: { x: 999, y: 999 },
+      }),
     ).toMatchObject({ ok: false, reason: 'NOT_OWNER' });
   });
 
@@ -214,7 +227,7 @@ describe('shared command validation', () => {
     expect(firstReplay.results).toEqual([
       'ok',
       'ok',
-      'reject:NOT_OWNER',
+      'reject:UNIT_NOT_FOUND',
       'ok',
       'ok',
     ]);

@@ -1,5 +1,8 @@
 import { isCellBlocked } from './map';
 import { findPath } from './pathfinding';
+import { cancelProduction, enqueueProduction } from './production';
+import { startResearch } from './research';
+import { isUnitVisibleToFaction } from './visibility';
 import type {
   Cell,
   Command,
@@ -11,6 +14,14 @@ import type {
 } from './types';
 
 type UnknownRecord = Record<string, unknown>;
+type ParsedCommand =
+  | Command
+  | {
+      readonly type: 'enqueue-production';
+      readonly baseId: string;
+      readonly unitKind: string;
+    }
+  | { readonly type: 'start-research'; readonly researchId: string | null };
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -31,7 +42,7 @@ function isFactionId(value: unknown): value is FactionId {
   return value === 'A' || value === 'B' || value === 'C';
 }
 
-function parseCommand(input: unknown): Command | null {
+function parseCommand(input: unknown): ParsedCommand | null {
   if (!isRecord(input) || typeof input.type !== 'string') return null;
   if (
     (input.type === 'start' ||
@@ -45,6 +56,32 @@ function parseCommand(input: unknown): Command | null {
     return typeof input.unitId === 'string'
       ? { type: 'stop', unitId: input.unitId }
       : null;
+  }
+  if (
+    input.type === 'enqueue-production' &&
+    hasExactKeys(input, ['type', 'baseId', 'unitKind']) &&
+    typeof input.baseId === 'string' &&
+    typeof input.unitKind === 'string'
+  ) {
+    return {
+      type: 'enqueue-production',
+      baseId: input.baseId,
+      unitKind: input.unitKind,
+    };
+  }
+  if (
+    input.type === 'cancel-production' &&
+    hasExactKeys(input, ['type', 'jobId']) &&
+    typeof input.jobId === 'string'
+  ) {
+    return { type: 'cancel-production', jobId: input.jobId };
+  }
+  if (
+    input.type === 'start-research' &&
+    hasExactKeys(input, ['type', 'researchId']) &&
+    (typeof input.researchId === 'string' || input.researchId === null)
+  ) {
+    return { type: 'start-research', researchId: input.researchId };
   }
   if (
     input.type === 'move' &&
@@ -126,9 +163,25 @@ export function applyCommand(
   }
 
   if (state.phase !== 'running') return reject(state, 'INVALID_PHASE');
+  if (command.type === 'enqueue-production') {
+    return enqueueProduction(state, actor, command.baseId, command.unitKind);
+  }
+  if (command.type === 'cancel-production') {
+    return cancelProduction(state, actor, command.jobId);
+  }
+  if (command.type === 'start-research') {
+    return startResearch(state, actor, command.researchId);
+  }
   const unit = state.units.find(({ id }) => id === command.unitId);
   if (unit === undefined) return reject(state, 'UNIT_NOT_FOUND');
-  if (unit.factionId !== actor) return reject(state, 'NOT_OWNER');
+  if (unit.factionId !== actor) {
+    return reject(
+      state,
+      isUnitVisibleToFaction(state, unit, actor)
+        ? 'NOT_OWNER'
+        : 'UNIT_NOT_FOUND',
+    );
+  }
 
   if (command.type === 'stop') {
     const stoppedPath = unit.edgeProgress === 1 ? unit.path.slice(0, 1) : [];

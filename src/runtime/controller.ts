@@ -1,12 +1,17 @@
 import { applyCommand } from '../simulation/commands';
 import { createMatch } from '../simulation/match';
 import { stepMatch } from '../simulation/step';
+import { getFactionView } from '../simulation/view';
 import type {
+  Cell,
+  FactionView,
   Command,
   CommandResult,
   FactionId,
   MatchState,
   RejectCode,
+  ScenarioId,
+  UnitKind,
 } from '../simulation/types';
 import { FixedStepClock } from './clock';
 
@@ -29,14 +34,23 @@ export interface RuntimeSnapshot {
   readonly message: string;
 }
 export interface RuntimeOptions {
-  readonly onChange: (snapshot: RuntimeSnapshot, previous: MatchState) => void;
+  readonly onChange: (snapshot: PlayerSnapshot) => void;
   readonly onFrame?: (
-    previousTick: MatchState,
-    current: MatchState,
+    previousTick: FactionView,
+    current: FactionView,
     alpha: number,
   ) => void;
   readonly requestFrame?: (callback: FrameRequestCallback) => number;
   readonly cancelFrame?: (handle: number) => void;
+}
+
+/** Normal presentation boundary: no full match state or opponent secrets. */
+export interface PlayerSnapshot {
+  readonly view: FactionView;
+  readonly selectedUnitId: string | null;
+  readonly droppedTimeMs: number;
+  readonly contextLost: boolean;
+  readonly message: string;
 }
 
 function safeCommand(value: unknown): {
@@ -46,6 +60,38 @@ function safeCommand(value: unknown): {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     return { command: null, summary: '不正な命令' };
   const item = value as Record<string, unknown>;
+  if (
+    item.type === 'enqueue-production' &&
+    typeof item.baseId === 'string' &&
+    typeof item.unitKind === 'string'
+  )
+    return {
+      command: {
+        type: 'enqueue-production',
+        baseId: item.baseId,
+        unitKind: item.unitKind as UnitKind,
+      },
+      summary: `生産 ${item.unitKind}`,
+    };
+  if (item.type === 'cancel-production' && typeof item.jobId === 'string')
+    return {
+      command: { type: 'cancel-production', jobId: item.jobId },
+      summary: '生産取消',
+    };
+  if (
+    item.type === 'start-research' &&
+    (typeof item.researchId === 'string' || item.researchId === null)
+  )
+    return {
+      command: {
+        type: 'start-research',
+        researchId: item.researchId as 'firepower-1' | 'firepower-2' | null,
+      },
+      summary:
+        item.researchId === null
+          ? '研究指定解除・バンク'
+          : `研究選択 ${item.researchId}`,
+    };
   if (item.type === 'start' || item.type === 'pause' || item.type === 'resume')
     return { command: { type: item.type }, summary: item.type };
   if (item.type === 'stop' && typeof item.unitId === 'string')
@@ -85,6 +131,7 @@ function safeCommand(value: unknown): {
 }
 
 export class MatchRuntime {
+  private readonly views = new WeakMap<MatchState, FactionView>();
   private state: MatchState;
   private previousTickState: MatchState;
   private history: CommandEntry[] = [];
@@ -100,8 +147,9 @@ export class MatchRuntime {
   constructor(
     private readonly options: RuntimeOptions,
     seed = 42,
+    scenarioId: ScenarioId = 'standard',
   ) {
-    this.state = createMatch(seed);
+    this.state = createMatch(seed, { scenarioId });
     this.previousTickState = this.state;
     this.requestFrame =
       options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
@@ -120,6 +168,40 @@ export class MatchRuntime {
     };
   }
 
+  private viewFor(state: MatchState): FactionView {
+    let view = this.views.get(state);
+    if (view === undefined) {
+      view = getFactionView(state, 'A');
+      this.views.set(state, view);
+    }
+    return view;
+  }
+
+  playerSnapshot(): PlayerSnapshot {
+    return {
+      view: this.viewFor(this.state),
+      selectedUnitId: this.selectedUnitId,
+      droppedTimeMs: this.clock.droppedTimeMs,
+      contextLost: this.contextLost,
+      message: this.message,
+    };
+  }
+
+  previewMove(unitId: string, target: Cell): readonly Cell[] | null {
+    if (this.contextLost) return null;
+    const result = applyCommand(this.state, 'A', {
+      type: 'move',
+      unitId,
+      target,
+    });
+    if (!result.ok) return null;
+    return (
+      result.state.units
+        .find((unit) => unit.id === unitId && unit.factionId === 'A')
+        ?.path.map((cell) => ({ ...cell })) ?? null
+    );
+  }
+
   startLoop(): void {
     if (this.started) return;
     this.started = true;
@@ -135,7 +217,11 @@ export class MatchRuntime {
         },
       );
       this.previousTickState = previousTick;
-      this.options.onFrame?.(previousTick, this.state, result.alpha);
+      this.options.onFrame?.(
+        this.viewFor(previousTick),
+        this.viewFor(this.state),
+        result.alpha,
+      );
       const previous = previousTick;
       if (result.ticks > 0 || result.droppedMs > 0) this.emit(previous);
       this.frame = this.requestFrame(frame);
@@ -187,9 +273,9 @@ export class MatchRuntime {
     return result;
   }
 
-  reset(seed: number): void {
+  reset(seed: number, scenarioId: ScenarioId = this.state.scenarioId): void {
     const previous = this.state;
-    this.state = createMatch(seed);
+    this.state = createMatch(seed, { scenarioId });
     this.previousTickState = this.state;
     this.history = [];
     this.selectedUnitId = null;
@@ -247,8 +333,15 @@ export class MatchRuntime {
         ? '一時停止中'
         : `seed ${this.state.seed} · 開始待ち`;
   }
-  private emit(previous: MatchState): void {
-    this.options.onChange(this.snapshot(), previous);
+  private emit(_previous: MatchState): void {
+    if (
+      this.selectedUnitId !== null &&
+      !this.state.units.some(
+        (unit) => unit.id === this.selectedUnitId && unit.factionId === 'A',
+      )
+    )
+      this.selectedUnitId = null;
+    this.options.onChange(this.playerSnapshot());
   }
 }
 
@@ -262,6 +355,16 @@ export function rejectMessage(reason: RejectCode): string {
     OUT_OF_BOUNDS: '盤面の外です',
     BLOCKED: '障害物があります',
     UNREACHABLE: '経路がありません',
+    BASE_NOT_FOUND: '拠点が見つかりません',
+    JOB_NOT_FOUND: '生産予約が見つかりません',
+    INVALID_UNIT_KIND: '兵種が正しくありません',
+    RESEARCH_NOT_FOUND: '研究が見つかりません',
+    HQ_UNAVAILABLE: '首都が破壊されているため生産できません',
+    INSUFFICIENT_SUPPLY: '補給が不足しています',
+    UNIT_LIMIT: '部隊上限に達しています',
+    QUEUE_FULL: '生産予約は3件までです',
+    ALREADY_RESEARCHED: '完了済みの研究です',
+    PREREQUISITE_MISSING: '先に戦力研究Iを完了してください',
   };
   return messages[reason];
 }

@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/design/UIデザイン方針.md",
-      "bytes": 6040,
-      "sha256": "24c14315324fa969b74e7cd5d14c6e53a81d2eb0aec12ac7241b47eca9399c09"
+      "bytes": 6473,
+      "sha256": "9a47613cb506079ed3a3f1417dd5016f058d4ffe1cd0745c5607c9af8be08f1a"
     },
     {
       "path": "docs/design/direction-03/01-urban-tactical-direction.png",
@@ -2308,18 +2308,18 @@
     },
     {
       "path": "docs/機能仕様書.md",
-      "bytes": 39704,
-      "sha256": "b145905e86aa845611f86422488b625b8dd71e0e55a02eb99a6240701af4bc94"
+      "bytes": 40765,
+      "sha256": "afa521208f0b9a1cb209c123dfde64439ae42fa2a4bbfd5d61609e7f00d626e4"
     },
     {
       "path": "docs/画面とダイアログ一覧.md",
-      "bytes": 35498,
-      "sha256": "015a670373e11c21158c5202eb96a4b14598fc54cf31ebfb6dabd603c6eee00a"
+      "bytes": 36028,
+      "sha256": "a8c192ad5b9a2459af9cf752aa2770de0c00576b28349579c6eb5de1d0ee6212"
     },
     {
       "path": "docs/計算モデル.md",
-      "bytes": 84316,
-      "sha256": "a983ee06671984609336efecffc73117754404a108cab1199d2597c6d9ff40f5"
+      "bytes": 85391,
+      "sha256": "c12586a6f22fb607a3f2ab950895fe2ce7db09f87e179e704e7adef3293da50a"
     },
     {
       "path": "docs/課題修正レポート_2026-10-05.md",

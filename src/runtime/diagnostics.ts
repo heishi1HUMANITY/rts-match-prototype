@@ -8,7 +8,7 @@ import {
 } from '../simulation/config';
 import { createMatch } from '../simulation/match';
 import { stepMatch } from '../simulation/step';
-import type { MatchState } from '../simulation/types';
+import type { MatchState, ScenarioId } from '../simulation/types';
 import type { CommandEntry, RuntimeSnapshot } from './controller';
 
 export interface BuildInfo {
@@ -18,6 +18,9 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
+  readonly schemaVersion: 4;
+  readonly rulesVersion: 'g2-v2';
+  readonly scenarioId: ScenarioId;
   readonly seed: number;
   readonly history: readonly CommandEntry[];
   readonly finalTick: number;
@@ -42,6 +45,8 @@ export function replay(input: ReplayInput): {
   }[];
 } {
   if (
+    input.schemaVersion !== SCHEMA_VERSION ||
+    input.rulesVersion !== 'g2-v2' ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -49,7 +54,7 @@ export function replay(input: ReplayInput): {
     input.finalTick < 0
   )
     throw new Error('invalid replay header');
-  let state = createMatch(input.seed);
+  let state = createMatch(input.seed, { scenarioId: input.scenarioId });
   let previousTick = 0;
   const outcomes: { seq: number; ok: boolean; reason?: string }[] = [];
   for (const entry of input.history) {
@@ -97,6 +102,9 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
+    schemaVersion: 4,
+    rulesVersion: 'g2-v2',
+    scenarioId: snapshot.state.scenarioId,
     seed: snapshot.state.seed,
     history: snapshot.history,
     finalTick: snapshot.state.elapsedTicks,
@@ -122,6 +130,7 @@ export function createDiagnostic(
     },
     seed: snapshot.state.seed,
     phase: snapshot.state.phase,
+    scenarioId: snapshot.state.scenarioId,
     finalTick: snapshot.state.elapsedTicks,
     history: snapshot.history,
     state: snapshot.state,

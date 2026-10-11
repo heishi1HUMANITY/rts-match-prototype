@@ -26,7 +26,7 @@ jobs:
       - run: npm run references:check
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: g1-build-${{ matrix.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          name: match-build-${{ matrix.os }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: dist/
           if-no-files-found: error
           retention-days: 14
