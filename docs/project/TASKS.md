@@ -103,6 +103,10 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 - G4-04: 通常設定で結果から再戦でき、画面サイズ変更やガイド再表示でも操作が崩れない。
 - G4-05: 原本mockとの見た目の差分と、初期対象外の要素を区別して判断できる。
 
+## 最小試作に続くゲームプレイ全体
+
+2026-10-11ユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F16で追跡する。建築・中立NPCを後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
+
 ## 共通の技術検証
 
 各Gでnpm run check、npm run references:check、Windows/Linux CI、実ブラウザ操作を実施する。
