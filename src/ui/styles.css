@@ -489,8 +489,29 @@ summary:focus-visible {
 .unit-strip {
   flex: 1;
 }
+.selection-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  flex: 0 0 180px;
+}
+.selection-controls button {
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 1.2;
+}
+.selection-controls [aria-pressed='true'] {
+  color: #fff;
+  border-color: #245f76;
+  background: #245f76;
+}
+.selection-controls [aria-pressed='true']:hover:not(:disabled) {
+  color: #fff;
+  background: #317b98;
+}
 .g2-shell .selection-summary {
-  width: 210px;
+  width: 150px;
 }
 .g2-shell .unit-list {
   flex: 1;
@@ -664,7 +685,7 @@ select:focus-visible {
     font-size: 10px;
   }
   .g2-shell .selection-summary {
-    width: 190px;
+    width: 135px;
   }
   .g2-shell .status-stack {
     max-width: 150px;
@@ -701,8 +722,11 @@ select:focus-visible {
     width: 125px;
   }
   .g2-shell .selection-summary {
-    width: 120px;
-    min-width: 120px;
+    width: 88px;
+    min-width: 88px;
+  }
+  .selection-controls {
+    flex-basis: 156px;
   }
   .g2-shell .status-stack {
     display: none;

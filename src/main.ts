@@ -15,9 +15,12 @@ const hud = createHud(app);
 let runtime!: MatchRuntime;
 let input!: CanvasInput;
 let activeMovePreview: {
-  readonly unitId: string;
+  readonly unitIds: readonly string[];
   readonly point: Point;
 } | null = null;
+let activeDragUnitId: string | null = null;
+let activeDragUnitIds: string[] | null = null;
+let dragCancelled = false;
 let bootError: string | null = null;
 let lifecycleKey = 'ready:false';
 let board = createBoardView({
@@ -42,12 +45,15 @@ runtime = new MatchRuntime({
         snapshot.view.ownFaction.eliminatedAtTick !== null)
     ) {
       input?.reset();
+      hud.multiSelect = false;
       activeMovePreview = null;
+      activeDragUnitId = null;
+      activeDragUnitIds = null;
       board.clearMovePreview();
     }
     lifecycleKey = nextLifecycleKey;
     updateHud(hud, snapshot);
-    board.setSelection(snapshot.selectedUnitId);
+    board.setSelections(snapshot.selectedUnitIds);
     refreshActiveMovePreview();
   },
   onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
@@ -68,7 +74,11 @@ function isBoardPoint(point: Point): boolean {
   return document.elementFromPoint(point.x, point.y) === board.canvas;
 }
 
-function updateMovePreview(unitId: string, point: Point): void {
+function updateMovePreview(unitIds: readonly string[], point: Point): void {
+  if (dragCancelled) {
+    board.clearMovePreview();
+    return;
+  }
   if (!isBoardPoint(point)) {
     activeMovePreview = null;
     board.clearMovePreview();
@@ -85,26 +95,51 @@ function updateMovePreview(unitId: string, point: Point): void {
     board.clearMovePreview();
     return;
   }
-  board.setMovePreview(unitId, target, runtime.previewMove(unitId, target));
+  board.setGroupMovePreview(runtime.previewGroupMove(unitIds, target), target);
 }
 
 function refreshActiveMovePreview(): void {
   const active = activeMovePreview;
-  if (active !== null) updateMovePreview(active.unitId, active.point);
+  if (active !== null) updateMovePreview(active.unitIds, active.point);
+}
+
+function clearActiveDrag(): void {
+  activeMovePreview = null;
+  activeDragUnitId = null;
+  activeDragUnitIds = null;
+  board.clearMovePreview();
 }
 
 input = new CanvasInput(
   {
     canvas: board.canvas,
     onPointerDown: ({ x, y }): GestureOrigin => {
+      dragCancelled = false;
+      activeMovePreview = null;
+      activeDragUnitId = null;
+      activeDragUnitIds = null;
+      board.clearMovePreview();
       const picked = board.pick(x, y);
       if (picked?.kind === 'unit') {
         const unit = runtime
           .playerSnapshot()
           .view.ownUnits.find((item) => item.id === picked.unitId);
         if (unit?.factionId === 'A') {
-          runtime.select(unit.id);
-          const snapshot = runtime.playerSnapshot();
+          let snapshot = runtime.playerSnapshot();
+          if (hud.multiSelect) {
+            activeDragUnitIds = snapshot.selectedUnitIds.includes(unit.id)
+              ? [...snapshot.selectedUnitIds]
+              : [unit.id];
+          } else {
+            if (!snapshot.selectedUnitIds.includes(unit.id)) {
+              runtime.select(unit.id);
+              snapshot = runtime.playerSnapshot();
+            }
+            activeDragUnitIds = snapshot.selectedUnitIds.includes(unit.id)
+              ? [...snapshot.selectedUnitIds]
+              : [unit.id];
+          }
+          activeDragUnitId = unit.id;
           return {
             kind: 'unit',
             unitId: unit.id,
@@ -133,14 +168,24 @@ input = new CanvasInput(
         : { kind: 'ground' };
     },
     onTap: ({ x, y }) => {
+      if (dragCancelled) return;
       const cell = board.pickGround(x, y);
       if (cell === null) return;
       const snapshot = runtime.playerSnapshot();
-      const selected = snapshot.selectedUnitId;
-      if (selected !== null && snapshot.view.phase === 'running') {
-        runtime.dispatch({ type: 'move', unitId: selected, target: cell });
-      } else if (selected === null)
+      if (
+        snapshot.selectedUnitIds.length > 0 &&
+        snapshot.view.phase === 'running' &&
+        !snapshot.contextLost
+      ) {
+        runtime.groupMove(cell);
+      } else if (snapshot.selectedUnitIds.length === 0)
         runtime.notify('移動する自軍部隊を選択してください。');
+    },
+    onUnitTap: (unitId) => {
+      if (dragCancelled) return;
+      if (hud.multiSelect) runtime.toggleSelection(unitId);
+      activeDragUnitId = null;
+      activeDragUnitIds = null;
     },
     onPan: (from, to) => {
       board.pan(from, to);
@@ -151,12 +196,25 @@ input = new CanvasInput(
       refreshActiveMovePreview();
     },
     onMovePreview: (unitId, point) => {
-      activeMovePreview = { unitId, point };
-      updateMovePreview(unitId, point);
+      if (dragCancelled || activeDragUnitId !== unitId) return;
+      const snapshot = runtime.playerSnapshot();
+      if (
+        !snapshot.selectedUnitIds.includes(unitId) &&
+        snapshot.view.ownUnits.some((unit) => unit.id === unitId)
+      )
+        runtime.select(unitId);
+      const unitIds = activeDragUnitIds ?? [unitId];
+      activeMovePreview = { unitIds: [...unitIds], point };
+      updateMovePreview(unitIds, point);
     },
     onMoveDrop: (unitId, point) => {
+      if (dragCancelled || activeDragUnitId !== unitId) return;
+      const unitIds = [...(activeDragUnitIds ?? [unitId])];
       activeMovePreview = null;
+      activeDragUnitId = null;
+      activeDragUnitIds = null;
       board.clearMovePreview();
+      if (!isBoardPoint(point)) return;
       const target = board.pickGround(point.x, point.y);
       const snapshot = runtime.playerSnapshot();
       if (
@@ -165,10 +223,13 @@ input = new CanvasInput(
         snapshot.contextLost
       )
         return;
-      runtime.dispatch({ type: 'move', unitId, target });
+      runtime.groupMove(target, unitIds);
     },
     onGestureCancel: () => {
+      dragCancelled = true;
       activeMovePreview = null;
+      activeDragUnitId = null;
+      activeDragUnitIds = null;
       board.clearMovePreview();
     },
     onEscape: () => {
@@ -245,7 +306,9 @@ const handleClick = (event: MouseEvent): void => {
   }
   const unitButton = target.closest<HTMLElement>('[data-unit]');
   if (unitButton?.dataset.unit) {
-    runtime.select(unitButton.dataset.unit);
+    if (hud.multiSelect || event.shiftKey)
+      runtime.toggleSelection(unitButton.dataset.unit);
+    else runtime.select(unitButton.dataset.unit);
     return;
   }
   const action =
@@ -257,7 +320,10 @@ const handleClick = (event: MouseEvent): void => {
   else if (action === 'resume') runtime.dispatch({ type: 'resume' });
   else if (action === 'replay') {
     input.reset();
+    hud.multiSelect = false;
     activeMovePreview = null;
+    activeDragUnitId = null;
+    activeDragUnitIds = null;
     board.clearMovePreview();
     setHudPanel(hud, null);
     hud.selectedBaseId = 'HQ-A';
@@ -266,6 +332,8 @@ const handleClick = (event: MouseEvent): void => {
     if (board.available) runtime.dispatch({ type: 'start' });
   } else if (action === 'reset') {
     input.reset();
+    hud.multiSelect = false;
+    clearActiveDrag();
     setHudPanel(hud, null);
     runtime.reset(runtime.playerSnapshot().view.seed);
     board.resetCamera();
@@ -273,16 +341,24 @@ const handleClick = (event: MouseEvent): void => {
     const seed = seedOrExplain();
     if (seed === null) return;
     input.reset();
+    hud.multiSelect = false;
+    clearActiveDrag();
     const scenario = hud.scenario.value;
     if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
     setHudPanel(hud, null);
     runtime.reset(seed, scenario as ScenarioId);
     board.resetCamera();
-  } else if (action === 'stop') {
-    const unitId = runtime.playerSnapshot().selectedUnitId;
-    if (unitId !== null) runtime.dispatch({ type: 'stop', unitId });
+  } else if (action === 'stop' || action === 'group-stop') {
+    runtime.groupStop();
   } else if (action === 'clear') runtime.select(null);
-  else if (action === 'camera') board.resetCamera();
+  else if (action === 'multi-select') {
+    input.cancelGesture();
+    hud.multiSelect = !hud.multiSelect;
+    updateHud(hud, runtime.playerSnapshot());
+  } else if (action === 'select-all') {
+    input.cancelGesture();
+    runtime.selectAll();
+  } else if (action === 'camera') board.resetCamera();
   else if (action === 'download') downloadDiagnostic();
   else if (action === 'bank-research')
     runtime.dispatch({ type: 'start-research', researchId: null });

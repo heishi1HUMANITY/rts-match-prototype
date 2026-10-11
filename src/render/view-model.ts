@@ -1,10 +1,39 @@
 import { CAPTURE_TICKS_REQUIRED } from '../simulation/config';
 import type {
   BaseView,
+  Cell,
   FactionView,
   OwnUnitView,
   VisibleEnemyUnitView,
 } from '../simulation/types';
+
+export interface GroupMovePreview {
+  readonly unitId: string;
+  readonly path: readonly Cell[] | null;
+}
+
+/** Only currently owned, living units may retain selection or preview markers. */
+export function ownUnitIds(
+  view: FactionView,
+  requested: readonly string[],
+): readonly string[] {
+  const own = new Set(view.ownUnits.map(({ id }) => id));
+  return [...new Set(requested)].filter((id) => own.has(id));
+}
+
+/** Copies preview input and drops stale, enemy, or duplicate unit entries. */
+export function ownGroupPreviews(
+  view: FactionView,
+  requested: readonly GroupMovePreview[],
+): readonly GroupMovePreview[] {
+  const own = new Set(view.ownUnits.map(({ id }) => id));
+  const seen = new Set<string>();
+  return requested.flatMap(({ unitId, path }) => {
+    if (!own.has(unitId) || seen.has(unitId)) return [];
+    seen.add(unitId);
+    return [{ unitId, path: path?.map((cell) => ({ ...cell })) ?? null }];
+  });
+}
 
 export interface UnitFrame {
   readonly unit: OwnUnitView | VisibleEnemyUnitView;
