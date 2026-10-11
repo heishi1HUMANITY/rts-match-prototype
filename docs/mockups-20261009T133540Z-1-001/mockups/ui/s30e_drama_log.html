@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S30e ドラマ(バックログ)</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="drama.css">
+<style>
+  .scrim { place-items: stretch; }
+  .log { position: absolute; left: 50%; top: 14px; bottom: 14px; width: 640px; transform: translateX(-50%); z-index: 51; display: flex; flex-direction: column; background: rgba(255,255,255,.97); box-shadow: 0 30px 60px -20px rgba(14,22,30,.5); }
+  .log-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .entries { flex: 1; overflow: hidden; padding: 4px 0; }
+  .e { display: grid; grid-template-columns: 92px 1fr 28px; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--line); align-items: start; }
+  .e .who { font-size: 10.5px; font-weight: 700; border-left: 3px solid var(--sc, var(--ink)); padding-left: 6px; line-height: 1.3; }
+  .e .who small { display: block; font-family: var(--f-mono); font-size: 7.5px; color: var(--dim); font-weight: 400; letter-spacing: .1em; }
+  .e p { font-size: 11px; line-height: 1.6; }
+  .e .vo { width: 24px; height: 24px; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 9px; }
+  .e.sys { background: var(--surface-sunk); }
+  .e.sys p { font-size: 9.5px; color: var(--ink-2); }
+  .e.girl .who { border-color: var(--crayon); color: var(--crayon); }
+  .e.girl p { color: var(--crayon); font-family: "Yomogi", var(--f-body); font-size: 13px; }
+  .e.cur { box-shadow: inset 3px 0 0 var(--ink); background: rgba(14,22,30,.03); }
+  .log-foot { display: flex; gap: 8px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--surface-sunk); }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="ph dr-bg"><span class="ph-k">BACKGROUND</span></div>
+  <div class="ph tinted t-a slot RC"><span class="ph-k">GARCIA</span></div>
+  <div class="scrim"></div>
+  <section class="log">
+    <div class="log-head"><div><div class="eyebrow">TRANSCRIPT · 通信記録</div><b style="font-size:13px">第3話 紫の線が引かれた地図</b></div><div class="spacer" style="flex:1"></div><div class="seg"><span class="on">すべて</span><span>選択のみ</span></div><button class="btn sm light">閉じる ✕</button></div>
+    <div class="entries">
+      <div class="e" style="--sc:#9aa7b2"><div class="who">ホルム<small>IPA</small></div><p>今回の案件は三者。PMC、CORP、そして我々だ。規定どおり、夢の中で決着をつける。</p><button class="vo">▶</button></div>
+      <div class="e" style="--sc:var(--team-a)"><div class="who">ガルシア<small>PMC</small></div><p>規定、ね。その規定に、作戦図へ落書きする奴のことは書いてあるのか。</p><button class="vo">▶</button></div>
+      <div class="e sys"><div class="who">記録<small>SYSTEM</small></div><p>回答 B「黙って地図を回収する」を選択</p><span></span></div>
+      <div class="e girl"><div class="who">───<small>UNKNOWN</small></div><p>このせんから さきは だれも わたらないで</p><button class="vo" style="border-color:var(--crayon);color:var(--crayon)">▶</button></div>
+      <div class="e cur" style="--sc:var(--team-a)"><div class="who">ガルシア<small>PMC</small></div><p>あの地図を描いたのは俺たちじゃない。夢の中に、誰かがもう一人いる。それとも ── あんたたちは最初から知っていたのか、ホルム。</p><button class="vo">▶</button></div>
+    </div>
+    <div class="log-foot"><span class="tiny dim">行をタップでその位置から読み直し(選択肢の前まで)</span><div style="flex:1"></div><button class="btn sm ghost">この場面の最初へ</button></div>
+  </section>
+  <div class="mock-id">S30e DRAMA · LOG · MOCK</div>
+</div>
+</body>
+</html>

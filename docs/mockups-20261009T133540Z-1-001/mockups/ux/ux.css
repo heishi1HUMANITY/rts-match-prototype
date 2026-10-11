@@ -1,0 +1,95 @@
+/* UX プロトタイプ専用: 端末枠、画面遷移、ダイアログ、トースト、画面一覧 */
+html, body { background: #1a2129; }
+#device { position: fixed; left: 50%; top: 50%; width: 900px; height: 420px; transform-origin: 50% 50%; overflow: hidden; background: var(--paper); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+#stage, #dialogs, #toasts { position: absolute; inset: 0; }
+#dialogs { z-index: 100; pointer-events: none; }
+#dialogs > * { pointer-events: auto; }
+#toasts { z-index: 200; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding-top: 52px; }
+
+/* 各画面は端末枠いっぱい(shared.css の 100vw/100vh を上書き) */
+.ux-layer { position: absolute; inset: 0; overflow: hidden; }
+.ux-layer > .screen, #device .screen { width: 100%; height: 100%; }
+button, [data-go], [data-dialog], [data-back] { cursor: pointer; }
+button:active { filter: brightness(.94); }
+
+/* 遷移 */
+.in-slide.dir-fwd { animation: ux-in-r .34s cubic-bezier(.2,.8,.2,1) both; }
+.in-slide.dir-back { animation: ux-in-l .34s cubic-bezier(.2,.8,.2,1) both; }
+.out-slide.dir-fwd { animation: ux-out-l .34s cubic-bezier(.2,.8,.2,1) both; }
+.out-slide.dir-back { animation: ux-out-r .34s cubic-bezier(.2,.8,.2,1) both; }
+.in-fade { animation: ux-fade-in .3s ease both; } .out-fade { animation: ux-fade-out .3s ease both; }
+.in-up { animation: ux-in-up .36s cubic-bezier(.2,.8,.2,1) both; } .out-up { animation: ux-fade-out .3s ease both; }
+.in-dive { animation: ux-dive-in .6s cubic-bezier(.2,.8,.2,1) both; } .out-dive { animation: ux-dive-out .45s ease both; }
+.in-none, .out-none { animation: none; }
+.out-none { display: none; }
+@keyframes ux-in-r { from { transform: translateX(60px); opacity: 0; } }
+@keyframes ux-in-l { from { transform: translateX(-60px); opacity: 0; } }
+@keyframes ux-out-l { to { transform: translateX(-40px); opacity: 0; } }
+@keyframes ux-out-r { to { transform: translateX(40px); opacity: 0; } }
+@keyframes ux-fade-in { from { opacity: 0; } }
+@keyframes ux-fade-out { to { opacity: 0; } }
+@keyframes ux-in-up { from { transform: translateY(30px); opacity: 0; } }
+@keyframes ux-dive-in { 0% { opacity: 0; transform: scale(1.12); filter: blur(8px); } 60% { opacity: 1; filter: blur(0); } }
+@keyframes ux-dive-out { to { opacity: 0; transform: scale(.94); filter: blur(4px) brightness(1.4); } }
+
+/* ダイアログ */
+.ux-dlg { position: absolute; inset: 0; }
+.ux-dlg.ux-pop, .ux-dlg.ux-full { pointer-events: none; }
+.ux-dlg.ux-pop .ux-dlg-body, .ux-dlg.ux-full .ux-dlg-body { pointer-events: auto; }
+.ux-scrim { position: absolute; inset: 0; background: rgba(233, 237, 241, .55); backdrop-filter: blur(5px) grayscale(.4); opacity: 0; transition: opacity .2s; }
+.ux-dlg.is-dark .ux-scrim { background: rgba(10, 16, 22, .62); }
+.ux-dlg.open .ux-scrim { opacity: 1; }
+.ux-modal .ux-dlg-body { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s; }
+.ux-modal.open .ux-dlg-body { transform: translate(-50%, -50%); opacity: 1; }
+.ux-sheet .ux-dlg-body { position: absolute; left: 0; right: 0; bottom: 0; transform: translateY(100%); transition: transform .26s cubic-bezier(.2,.8,.2,1); }
+.ux-sheet.open .ux-dlg-body { transform: none; }
+.ux-pop .ux-dlg-body { position: absolute; opacity: 0; transition: opacity .15s, transform .18s cubic-bezier(.2,.8,.2,1); }
+.ux-pop .ux-dlg-body.anchor-above { transform: translate(-50%, calc(-100% - 6px)) scale(.96); }
+.ux-pop .ux-dlg-body.anchor-below { transform: translate(-50%, 6px) scale(.96); }
+.ux-pop .ux-dlg-body.anchor-right { transform: translate(8px, -50%) scale(.96); }
+.ux-pop .ux-dlg-body.anchor-left { transform: translate(calc(-100% - 8px), -50%) scale(.96); }
+.ux-pop.open .ux-dlg-body { opacity: 1; }
+.ux-pop.open .ux-dlg-body.anchor-above { transform: translate(-50%, calc(-100% - 10px)); }
+.ux-pop.open .ux-dlg-body.anchor-below { transform: translate(-50%, 10px); }
+.ux-pop.open .ux-dlg-body.anchor-right { transform: translate(12px, -50%); }
+.ux-pop.open .ux-dlg-body.anchor-left { transform: translate(calc(-100% - 12px), -50%); }
+.ux-full.ux-dlg .ux-dlg-body { position: absolute; inset: 0; opacity: 0; transition: opacity .2s; }
+.ux-full.ux-dlg.open .ux-dlg-body { opacity: 1; }
+.ux-dlg.closing .ux-dlg-body { opacity: 0 !important; }
+.ux-dlg.closing .ux-scrim { opacity: 0 !important; }
+
+/* ダイアログの中身の定型(モーダル) */
+.dlg { width: 420px; background: var(--surface-solid); box-shadow: 0 30px 60px -20px rgba(14,22,30,.5); position: relative; }
+.dlg-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); }
+.dlg-body { padding: 12px 16px; font-size: 11px; }
+.dlg-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface-sunk); }
+.popcard { min-width: 200px; background: rgba(255,255,255,.97); box-shadow: 0 14px 36px -14px rgba(14,22,30,.5); border: 1px solid var(--line); padding: 10px 12px; }
+
+/* トースト */
+.ux-toast { padding: 6px 14px; background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 700; clip-path: var(--cut-sm); opacity: 0; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
+.ux-toast.open { opacity: 1; transform: none; }
+.ux-toast.ok { background: var(--ok); } .ux-toast.danger { background: var(--danger); } .ux-toast.violet { background: var(--crayon); } .ux-toast.signal { background: var(--signal); color: var(--ink); }
+
+/* 画面一覧(端末の外、右上) */
+#ux-map-btn { position: fixed; right: 10px; top: 10px; z-index: 1000; height: 28px; padding: 0 12px; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; }
+#ux-map { position: fixed; right: 10px; top: 44px; bottom: 10px; width: 240px; z-index: 1000; background: rgba(14,22,30,.94); color: #fff; padding: 10px; overflow: auto; display: none; border: 1px solid rgba(255,255,255,.15); }
+#ux-map.open { display: block; }
+#ux-map .g { margin-bottom: 10px; }
+#ux-map .eyebrow { color: rgba(255,255,255,.5); margin-bottom: 4px; }
+#ux-map button { display: block; width: 100%; text-align: left; padding: 4px 8px; font-size: 11px; color: rgba(255,255,255,.85); border-left: 2px solid transparent; }
+#ux-map button:hover { background: rgba(255,255,255,.08); }
+#ux-map button.on { border-left-color: var(--signal); color: #fff; background: rgba(255,255,255,.06); }
+#ux-map .hint { font-size: 9.5px; color: rgba(255,255,255,.5); line-height: 1.6; margin-bottom: 10px; }
+
+/* 縦持ち(本物の端末で縦にしたとき) */
+#ux-portrait { display: none; }
+@media (orientation: portrait) and (max-width: 700px) {
+  #ux-portrait { display: grid; position: fixed; inset: 0; z-index: 2000; place-items: center; background: #0e161e; color: #fff; text-align: center; font-size: 13px; }
+}
+
+/* プロトタイプ共通の小物 */
+.hot { outline: 1px dashed transparent; }
+.pulse { animation: ux-pulse 1.4s ease-in-out infinite; }
+@keyframes ux-pulse { 50% { box-shadow: 0 0 0 6px rgba(0,180,224,.18); } }
+.ux-hint { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 40; padding: 6px 14px; font-size: 10.5px; font-weight: 700; color: #fff; background: var(--crayon); clip-path: var(--cut-sm); white-space: nowrap; }
+.ux-hint.green { background: var(--ok); } .ux-hint.ink { background: var(--ink); }

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+*Zone.Identifier*
+# Historical captures stay local; see docs/project/REFERENCES.md.
+/docs/video/

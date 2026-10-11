@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>dream4x UX プロトタイプ</title>
+<link rel="stylesheet" href="../ui/shared.css">
+<link rel="stylesheet" href="../ui/hud.css">
+<link rel="stylesheet" href="../ui/drama.css">
+<link rel="stylesheet" href="ux.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></svg>
+<div id="device">
+  <div id="stage"></div>
+  <div id="dialogs"></div>
+  <div id="toasts"></div>
+</div>
+<button id="ux-map-btn">SCREENS</button>
+<nav id="ux-map"><div class="hint">UX プロトタイプ(ゲームとしては動かない)。各画面へ直接移動できる。ESC で最前面のダイアログを閉じる。</div><div class="list"></div></nav>
+<div id="ux-portrait"><div>横持ちにしてください<br><span class="eyebrow" style="color:#8592a0">LANDSCAPE ORIENTATION REQUIRED</span></div></div>
+
+<script src="core.js"></script>
+<script src="data.js"></script>
+<script src="screens/flow.js"></script>
+<script src="screens/match.js"></script>
+<script src="screens/after.js"></script>
+<script src="screens/meta.js"></script>
+<script src="screens/shop.js"></script>
+<script src="screens/drama.js"></script>
+<script>UX.start();</script>
+</body>
+</html>

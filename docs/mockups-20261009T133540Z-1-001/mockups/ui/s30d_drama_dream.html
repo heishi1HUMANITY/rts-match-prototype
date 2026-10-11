@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S30d ドラマ(夢・少女)</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="drama.css">
+<style>
+  .paper { position: absolute; left: 50%; top: 50%; width: 560px; height: 300px; transform: translate(-50%,-52%) rotate(-2deg); z-index: 1;
+    background: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px), rgba(255,255,255,.03);
+    background-size: 24px 24px; border: 1px solid rgba(255,255,255,.12); }
+  .girl { position: absolute; left: 50%; bottom: 0; height: 82%; width: 210px; transform: translateX(-50%); z-index: 2; border-color: rgba(123,44,255,.6) !important; }
+  .girl .ph-k { color: #d9c8ff !important; }
+  .radio-mini { position: absolute; left: 14px; bottom: 14px; width: 250px; z-index: 6; display: flex; gap: 8px; padding: 7px 9px; background: rgba(14,22,30,.85); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.12); }
+  .radio-mini .ph { width: 40px; height: 44px; flex: none; }
+  .radio-mini p { font-size: 9.5px; line-height: 1.5; }
+  .noise { letter-spacing: .3em; color: rgba(255,255,255,.35); }
+  .tap { position: absolute; right: 18px; bottom: 16px; z-index: 6; font-family: var(--f-mono); font-size: 9px; letter-spacing: .2em; color: rgba(217,200,255,.7); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="21"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter></svg>
+<div class="screen dark">
+  <div class="dr-bg dream"></div>
+  <div class="paper"></div>
+  <div class="ph girl"><span class="ph-k">GIRL · CRAYON LINE</span><span class="ph-d">少女 全身(クレヨンの線画)/ 表情は平坦・正面</span></div>
+
+  <div class="scene-tag"><span class="docno" style="background:rgba(14,22,30,.6);color:rgba(255,255,255,.6);border-left-color:var(--crayon)">CHAPTER 03 · ███████</span><span class="realm dream"><i></i>DREAM · 記録外</span></div>
+  <div class="qm dark"><button>LOG</button><button>AUTO</button><button>SKIP</button></div>
+
+  <!-- 少女の言葉: 窓も名札もなく、画面に直接書かれる -->
+  <div class="crayon-text" style="left:96px;top:96px;font-size:24px;transform:rotate(-5deg)">このせんから さきは</div>
+  <div class="crayon-text" style="left:150px;top:140px;font-size:24px;transform:rotate(-3deg)">だれも わたらないで</div>
+  <div class="crayon-text" style="left:610px;top:120px;font-size:30px;transform:rotate(8deg)">×</div>
+  <svg class="crayon-svg" style="left:80px;top:180px;z-index:4" width="740" height="120" viewBox="0 0 740 120"><path d="M6 70 C 120 40, 240 100, 380 60 S 620 30, 734 80" stroke-width="4"/><path d="M590 40 l 40 44 M 630 40 l -40 44" stroke-width="3.4"/></svg>
+  <div class="crayon-text" style="left:560px;top:300px;font-size:15px;transform:rotate(-4deg);opacity:.75">ねえ、きこえてる?</div>
+
+  <div class="radio-mini">
+    <div class="ph tinted t-a"><span class="ph-k" style="font-size:5.5px">BUST</span></div>
+    <div><div class="eyebrow" style="color:var(--signal)">CH-A · 信号微弱</div><p>ガルシア「……応答しろ。地図が<span class="noise">ザ──</span>書き換わ<span class="noise">──</span>」</p></div>
+  </div>
+  <div class="tap">VOICE ▸ · TAP ▼</div>
+  <div class="note" style="right:14px;top:44px;width:210px"><b>MOCK NOTE</b>夢の場面では窓・名札を出さない。少女の言葉は手書き風の文字で画面に直接書き、1文字ずつ描かれる。ガルシアらの声は左下の小さな無線窓に雑音つきで残す。初回から SKIP できる。少女のボイスを付ける場合は、文字が描かれる速さをボイスに合わせる。</div>
+  <div class="mock-id">S30d DRAMA · DREAM · MOCK</div>
+</div>
+</body>
+</html>

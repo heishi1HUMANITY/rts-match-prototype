@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S29 装備庫</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .items { position: absolute; left: 16px; top: 58px; bottom: 14px; right: 262px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .it { position: relative; display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow-sm); border-top: 3px solid var(--crayon); }
+  .it .ph { height: 150px; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .it .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .it .nm { display: flex; justify-content: space-between; align-items: baseline; }
+  .it .nm b { font-size: 14px; }
+  .it .stars { color: var(--gold); font-size: 10px; letter-spacing: -1px; }
+  .it .desc { font-size: 10px; color: var(--ink-2); line-height: 1.6; }
+  .stock { margin-top: auto; }
+  .stock .cells { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin-top: 4px; }
+  .stock .cells i { height: 10px; background: var(--line); }
+  .stock .cells i.on { background: var(--ink); }
+  .stock .cnt { display: flex; justify-content: space-between; align-items: baseline; }
+  .stock .cnt .num { font-size: 20px; }
+  .it.empty { opacity: 0.55; }
+  .it.empty .ph { filter: grayscale(1); }
+  .drop { position: absolute; right: 16px; top: 58px; bottom: 14px; width: 234px; display: flex; flex-direction: column; }
+  .ring { position: relative; width: 120px; height: 120px; margin: 14px auto 6px; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .t { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .ring .t .num { font-size: 30px; line-height: 1; }
+  .kv { display: flex; justify-content: space-between; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 10px; }
+  .kv b { font-family: var(--f-mono); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">ARMORY</span><b>装備庫</b></div>
+    <div class="docno" style="margin-left:6px">使い切りアドオン · 在庫上限 10</div>
+    <div class="spacer"></div>
+    <span class="tag violet">1試合に 2枠まで持ち込み可</span>
+  </header>
+  <main class="items">
+    <article class="it"><div class="ph"><span class="ph-k">ADD-ON ICON</span><span class="ph-d">アドオン図案 1:1</span></div>
+      <div class="body"><div class="nm"><b>緊急空輸</b><span class="stars">★★</span></div><div class="desc">発動: 補給 +250(1回)。序盤の生産を一段早める。</div>
+        <div class="stock"><div class="cnt"><span class="eyebrow">STOCK</span><span><span class="num">7</span><span class="mono dim small"> / 10</span></span></div><div class="cells"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div></div></div></article>
+    <article class="it"><div class="ph"><span class="ph-k">ADD-ON ICON</span><span class="ph-d">アドオン図案 1:1</span></div>
+      <div class="body"><div class="nm"><b>再集結</b><span class="stars">★★</span></div><div class="desc">発動: 全部隊のHPを40%回復(1回)。終盤の押し返しに。</div>
+        <div class="stock"><div class="cnt"><span class="eyebrow">STOCK</span><span><span class="num">3</span><span class="mono dim small"> / 10</span></span></div><div class="cells"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></article>
+    <article class="it empty"><div class="ph"><span class="ph-k">ADD-ON ICON</span><span class="ph-d">アドオン図案 1:1</span></div>
+      <div class="body"><div class="nm"><b>根回し</b><span class="stars">★★★</span></div><div class="desc">発動: 30秒間、指定チームのチケット減少を2倍。代償に自軍補給収入が30秒間半減。</div>
+        <div class="stock"><div class="cnt"><span class="eyebrow">STOCK</span><span><span class="num">0</span><span class="mono dim small"> / 10 · 在庫なし</span></span></div><div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></article>
+  </main>
+  <aside class="panel marks drop">
+    <div class="panel-head"><span class="eyebrow ink">TODAY'S DROP</span><span class="tiny dim mono">04:00 リセット</span></div>
+    <div class="ring">
+      <svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="3"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--crayon)" stroke-width="3" stroke-dasharray="66.8 106.8"/></svg>
+      <div class="t"><div><span class="num">5</span><div class="tiny mono dim">残り / 8</div></div></div>
+    </div>
+    <div class="kv"><span class="dim">パス</span><b>スタンダード</b></div>
+    <div class="kv"><span class="dim">1試合のドロップ</span><b>1 個</b></div>
+    <div class="kv"><span class="dim">貢献ボーナス</span><b style="color:var(--ok)">+1(MVP)</b></div>
+    <div class="kv"><span class="dim">1日の上限</span><b>8 個</b></div>
+  </aside>
+  <div class="mock-id">S29 ARMORY · MOCK</div>
+</div>
+</body>
+</html>

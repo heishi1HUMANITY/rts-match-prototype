@@ -1,0 +1,1 @@
+{"conversation_id":"e3c0ca58-d6c2-42f6-a50e-8317776b206c","status":"SUCCESS","response":"","duration_seconds":11.7993632,"num_turns":1,"usage":{"input_tokens":21850,"output_tokens":1318,"thinking_tokens":1238,"cache_read_tokens":0,"total_tokens":23168},"denied_actions":[{"action":"command","display_name":"RunCommand"}]}

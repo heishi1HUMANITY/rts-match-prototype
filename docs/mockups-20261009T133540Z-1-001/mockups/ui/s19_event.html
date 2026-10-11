@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S19 イベント</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .key { position: absolute; left: 0; top: 44px; bottom: 0; width: 470px; }
+  .key .ph { position: absolute; inset: 0; border: 0; border-right: 1px dashed var(--line-2); }
+  .key .over { position: absolute; left: 20px; right: 20px; bottom: 18px; z-index: 2; padding: 12px 14px; background: rgba(14,22,30,.9); color: #fff; clip-path: var(--cut); }
+  .key .over .display { font-size: 30px; }
+  .key .over .row { display: flex; gap: 16px; margin-top: 8px; }
+  .key .over .row div { border-left: 1px solid rgba(255,255,255,.25); padding-left: 8px; }
+  .key .over .num { font-size: 15px; }
+  .key .badges { position: absolute; left: 20px; top: 16px; z-index: 2; display: flex; gap: 6px; }
+  .side { position: absolute; left: 486px; right: 16px; top: 56px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .rule-row { display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--line); font-size: 10px; }
+  .rule-row:last-child { border-bottom: 0; }
+  .rule-row .k { font-family: var(--f-mono); font-size: 8.5px; color: var(--dim); letter-spacing: 0.1em; padding-top: 1px; }
+  .miles { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); padding: 10px 10px 8px; }
+  .miles::before { content: ""; position: absolute; left: 24px; right: 24px; top: 26px; height: 2px; background: var(--line-2); }
+  .miles::after { content: ""; position: absolute; left: 24px; width: 46%; top: 26px; height: 2px; background: var(--crayon); }
+  .mile { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+  .mile .dot { width: 32px; height: 32px; display: grid; place-items: center; background: var(--surface-solid); border: 1.5px solid var(--line-2); font-family: var(--f-mono); font-size: 8px; font-weight: 700; }
+  .mile.done .dot { border-color: var(--crayon); background: var(--crayon); color: #fff; }
+  .mile span { font-size: 8.5px; line-height: 1.3; }
+  .mile b { font-family: var(--f-mono); font-size: 8.5px; }
+  .actions { margin-top: auto; display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="17"/><feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></svg>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">CASE BOARD</span><b>イベント / 案件</b></div>
+    <div class="tabs" style="margin-left:14px"><span class="tab on">開催中 <span class="count">2</span></span><span class="tab">予告 <span class="count">1</span></span><span class="tab">終了</span></div>
+    <div class="spacer"></div>
+    <div class="wallet"><div class="coin"><i>C</i>12,480</div></div>
+  </header>
+  <section class="key">
+    <div class="ph"><span class="ph-k">EVENT KEY VISUAL</span><span class="ph-d">中央水門 俯瞰図 16:9 / 演出は既存の盤面を流用可</span></div>
+    <div class="badges"><span class="tag solid">CASE NO. 4092-B</span><span class="stamp">緊急</span></div>
+    <div class="over">
+      <div class="eyebrow" style="color:rgba(255,255,255,.55)">LIMITED OPERATION</div>
+      <div class="display">中央水門 争奪案件</div>
+      <div class="row">
+        <div><div class="eyebrow" style="color:rgba(255,255,255,.5)">ENDS IN</div><span class="num">2d 14:22</span></div>
+        <div><div class="eyebrow" style="color:rgba(255,255,255,.5)">YOUR BEST</div><span class="num">#1 × 3</span></div>
+        <div><div class="eyebrow" style="color:rgba(255,255,255,.5)">GLOBAL</div><span class="num">上位 9%</span></div>
+      </div>
+    </div>
+  </section>
+  <svg class="crayon-svg" style="left:300px;top:90px" width="150" height="80" viewBox="0 0 150 80"><path d="M8 60 C 40 10, 90 70, 140 14 l -12 2 m 12 -2 l -2 12" stroke-width="3"/></svg>
+  <main class="side">
+    <section class="panel">
+      <div class="panel-head"><span class="eyebrow ink">TERMS / 参加条件と特別ルール</span></div>
+      <div class="rule-row"><span class="k">ENTRY</span><span>参事官 III 以上 · 3陣営 × 3人</span></div>
+      <div class="rule-row"><span class="k">MAP</span><span>終盤に中央水門が開き、大拠点が出現</span></div>
+      <div class="rule-row"><span class="k">RULE</span><span>使い切りアドオンの持ち込みなし</span></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><span class="eyebrow ink">MILESTONES / 参加報酬</span><span class="tag violet">3 / 5</span></div>
+      <div class="miles">
+        <div class="mile done"><div class="dot">1</div><b>C 500</b><span>1回参加</span></div>
+        <div class="mile done"><div class="dot">3</div><b>スタンプ</b><span>3回参加</span></div>
+        <div class="mile done"><div class="dot">#1</div><b>断章</b><span>水門を制圧</span></div>
+        <div class="mile"><div class="dot">10</div><b>床デザイン</b><span>10回参加</span></div>
+        <div class="mile"><div class="dot">★</div><b>称号</b><span>上位 5%</span></div>
+      </div>
+    </section>
+    <div class="actions">
+      <button class="btn ghost">順位表</button>
+      <button class="cta" style="flex:1;min-width:0;height:48px"><div><div class="cta-main" style="font-size:18px">JOIN CASE</div><div class="cta-sub">この案件で潜行する</div></div><div class="cta-go">→</div></button>
+    </div>
+  </main>
+  <div class="mock-id">S19 EVENT · MOCK</div>
+</div>
+</body>
+</html>

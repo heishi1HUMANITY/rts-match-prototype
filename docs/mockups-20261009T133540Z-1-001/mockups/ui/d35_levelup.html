@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D35 レベルアップ</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .stage { background: radial-gradient(70% 90% at 30% 50%, #1d2a35, #0a1016 75%); }
+  .rays { position: absolute; left: 230px; top: 210px; width: 700px; height: 700px; transform: translate(-50%, -50%); background: repeating-conic-gradient(from 0deg, rgba(255, 106, 26, 0.08) 0 6deg, transparent 6deg 18deg); border-radius: 50%; mask-image: radial-gradient(circle, #000 20%, transparent 60%); }
+  .art { position: absolute; left: 40px; top: 30px; bottom: 0; width: 260px; border-bottom: 0; }
+  .lv { position: absolute; left: 320px; top: 46px; }
+  .lv .row { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+  .lv .old { font-family: var(--f-display); font-weight: 700; font-size: 44px; color: var(--faint); line-height: 1; }
+  .lv .new { font-family: var(--f-display); font-weight: 700; font-size: 96px; line-height: 0.8; letter-spacing: -0.04em; color: #fff; text-shadow: 0 0 30px rgba(255, 106, 26, 0.6); }
+  .lv .arrow { font-family: var(--f-mono); color: var(--team-a); font-size: 20px; }
+  .unlocks { position: absolute; left: 320px; right: 28px; top: 200px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .u { display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); }
+  .u .ph { height: 74px; border: 0; border-bottom: 1px dashed rgba(255,255,255,.18); }
+  .u .lbl { padding: 6px 8px; }
+  .u .lbl b { display: block; font-size: 10.5px; }
+  .u.key { border-color: var(--team-a); box-shadow: 0 0 22px rgba(255, 106, 26, 0.35); }
+  .u.frag { border-color: var(--crayon); }
+  .foot { position: absolute; right: 28px; bottom: 22px; display: flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="29"/><feDisplacementMap in="SourceGraphic" scale="2.6"/></filter></svg>
+<div class="screen dark stage">
+  <div class="rays"></div>
+  <div class="ph tinted t-a art"><span class="ph-k">LEADER</span><span class="ph-d">ガルシア 立ち絵 / 喜びの表情差分</span></div>
+  <div class="lv">
+    <div class="eyebrow">CIVILIZATION LEVEL UP · PMC 民間潜行会社</div>
+    <div class="row"><span class="old">7</span><span class="arrow">→</span><span class="new">8</span></div>
+    <div class="small" style="color:var(--ink-2);margin-top:8px">「悪くない配当だ。次の契約も取ってこい。」</div>
+  </div>
+  <section class="unlocks">
+    <div class="u key"><div class="ph"><span class="ph-k">ADD-ON</span></div><div class="lbl"><span class="eyebrow" style="color:var(--team-a)">PERMANENT</span><b>複合装甲</b><span class="tiny dim">部隊HP +10%</span></div></div>
+    <div class="u frag"><div class="ph"><span class="ph-k">FRAGMENT</span></div><div class="lbl"><span class="eyebrow" style="color:#b48bff">STORY</span><b>断章 04「橋の下」</b><span class="tiny dim">物語で読む</span></div></div>
+    <div class="u"><div class="ph"><span class="ph-k">COLOR</span></div><div class="lbl"><span class="eyebrow">COSTUME</span><b>標準装備 色違い</b><span class="tiny dim">夜間迷彩</span></div></div>
+    <div class="u"><div class="ph"><span class="ph-k">VOICE</span></div><div class="lbl"><span class="eyebrow">VOICE</span><b>ボイス +2</b><span class="tiny dim">撤収 / 再建</span></div></div>
+  </section>
+  <svg class="crayon-svg" style="left:368px;top:50px" width="110" height="110" viewBox="0 0 120 120"><path d="M14 60 C 14 14, 106 10, 108 58 S 30 112, 20 66" stroke-width="2.6"/></svg>
+  <div class="foot"><span class="tiny dim">次の Lv9: 断章 05</span><button class="btn light" style="background:#fff;color:#0e161e">閉じる</button></div>
+  <div class="mock-id">D35 LEVEL UP · MOCK</div>
+</div>
+</body>
+</html>

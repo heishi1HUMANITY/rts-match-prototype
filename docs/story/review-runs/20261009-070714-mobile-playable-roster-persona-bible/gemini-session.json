@@ -1,0 +1,10 @@
+{
+  "provider": "agy",
+  "model": "gemini-3.8-flash-high",
+  "conversation_id": null,
+  "status": "blocked-or-empty-response",
+  "last_successful_turn": null,
+  "last_attempted_turn": 1,
+  "last_output": "gemini-turn-01.json",
+  "last_attempt_conversation_id": "e3c0ca58-d6c2-42f6-a50e-8317776b206c"
+}

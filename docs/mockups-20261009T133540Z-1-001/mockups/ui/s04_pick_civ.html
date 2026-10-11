@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S04 選択 1/2 所属</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  :root { --cc: #ff6a1a; }
+  .teambadge { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; background: var(--tc); color: #fff; font-family: var(--f-mono); font-weight: 700; font-size: 10px; letter-spacing: .12em; clip-path: var(--cut-sm); }
+  .teambadge .sym { background: #fff; }
+  .steps { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: var(--faint); }
+  .steps .on { color: var(--ink); }
+  .steps .n { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid currentColor; font-family: var(--f-mono); font-size: 8.5px; margin-right: 4px; }
+  .steps .on .n { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .steps .line { width: 24px; height: 1px; background: var(--line-2); }
+  .clock { display: flex; align-items: baseline; gap: 6px; }
+  .clock .num { font-size: 24px; line-height: 1; }
+  .clock .bar { width: 90px; align-self: center; }
+  .clock .bar > i { background: var(--warn); }
+
+  /* 文明ごとの背景(ホームと同じ考え方) */
+  .stage { position: absolute; inset: 44px 0 0 0; overflow: hidden;
+    background: var(--hatch), radial-gradient(60% 90% at 42% 70%, color-mix(in srgb, var(--cc) 40%, #fff), transparent 72%), linear-gradient(115deg, #eef1f4, #dfe4e9); }
+  .stage .word { position: absolute; left: 190px; bottom: -40px; font-family: var(--f-display); font-weight: 700; font-size: 220px; line-height: 1; letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--cc) 60%, transparent); }
+
+  .civ-list { position: absolute; left: 12px; top: 56px; bottom: 12px; width: 170px; display: flex; flex-direction: column; gap: 4px; z-index: 3; }
+  .civ { position: relative; flex: 1; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 0 10px 0 12px; background: rgba(255,255,255,.82); border: 1px solid var(--line); text-align: left; backdrop-filter: var(--glass-blur); }
+  .civ::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+  .civ .ph { width: 30px; height: 30px; }
+  .civ .ab { font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; line-height: 1.1; }
+  .civ .nm { font-size: 9px; color: var(--ink-2); white-space: nowrap; }
+  .civ .lv { font-family: var(--f-display); font-weight: 700; font-size: 13px; }
+  .civ .lv small { font-family: var(--f-mono); font-size: 7px; color: var(--dim); margin-right: 2px; }
+  .civ.on { background: var(--ink); color: #fff; border-color: var(--ink); transform: translateX(6px); }
+  .civ.on .nm, .civ.on .lv small { color: rgba(255,255,255,.6); }
+
+  .leader { position: absolute; left: 210px; top: 52px; bottom: 0; width: 330px; z-index: 2; }
+  .leader .ph { position: absolute; inset: 0; border-bottom: 0; background: var(--hatch), linear-gradient(180deg, color-mix(in srgb, var(--cc) 24%, rgba(255,255,255,.75)), rgba(255,255,255,.3)); }
+  .leader .ph::before { content: ""; position: absolute; left: 50%; top: 7%; width: 32%; aspect-ratio: 1; transform: translateX(-50%); border: 1px dashed var(--line-2); border-radius: 50%; }
+  .quote { position: absolute; left: 232px; bottom: 14px; width: 290px; z-index: 3; padding: 7px 10px; background: rgba(14,22,30,.9); color: #fff; font-size: 10px; clip-path: var(--cut-sm); display: flex; gap: 8px; }
+  .quote .w { display: flex; gap: 2px; align-items: center; } .quote .w i { width: 2px; background: var(--signal); }
+
+  .info { position: absolute; right: 14px; top: 56px; bottom: 12px; width: 330px; z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+  .info .head .name { font-family: var(--f-display); font-size: 40px; font-weight: 700; letter-spacing: -0.04em; line-height: .95; }
+  .info .head .jp { font-size: 15px; font-weight: 900; margin-top: 2px; }
+  .info .head .tl { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .info .head .tag.solid { background: var(--cc); border-color: var(--cc); }
+  .coef { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .coef > div { padding: 6px 8px; border-right: 1px solid var(--line); }
+  .coef > div:last-child { border-right: 0; }
+  .coef .v { font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.1; }
+  .order { display: flex; gap: 8px; align-items: center; padding: 7px 10px; }
+  .order .ic { width: 26px; height: 26px; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: var(--f-mono); font-size: 9px; clip-path: var(--cut-sm); flex: none; }
+  .xp { display: flex; gap: 8px; align-items: center; }
+  .actions { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="stage"><div class="word">PMC</div></div>
+  <header class="topbar">
+    <div class="title"><span class="eyebrow">SELECTION 1 / 2</span><b>所属を選ぶ</b></div>
+    <div class="teambadge t-a"><span class="sym diamond"></span>TEAM A</div>
+    <div class="steps"><span class="on"><span class="n">1</span>所属</span><span class="line"></span><span><span class="n">2</span>装備</span></div>
+    <div class="spacer"></div>
+    <div class="clock"><span class="eyebrow">LOCK IN</span><span class="num">0:38</span><div class="bar"><i style="width:84%"></i></div></div>
+  </header>
+
+  <nav class="civ-list">
+    <button class="civ on" style="--c:#ff6a1a"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">PMC</div><div class="nm">民間潜行会社</div></div><div class="lv"><small>LV</small>7</div></button>
+    <button class="civ" style="--c:#3b6cff"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">CORP</div><div class="nm">大企業潜行部門</div></div><div class="lv"><small>LV</small>4</div></button>
+    <button class="civ" style="--c:#2a2a2a"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">SOC</div><div class="nm">秘密結社</div></div><div class="lv"><small>LV</small>2</div></button>
+    <button class="civ" style="--c:#9aa7b2"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">IPA</div><div class="nm">国際機関直属部隊</div></div><div class="lv"><small>LV</small>5</div></button>
+    <button class="civ" style="--c:#12a874"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">FND</div><div class="nm">研究財団</div></div><div class="lv"><small>LV</small>1</div></button>
+    <button class="civ" style="--c:#c99a2e"><div class="ph round"><span class="ph-k" style="font-size:5.5px;padding:0">PT</span></div><div><div class="ab">INT</div><div class="nm">情報機関</div></div><div class="lv"><small>LV</small>3</div></button>
+  </nav>
+
+  <section class="leader"><div class="ph"><span class="ph-k">LEADER STANDING ART · LARGE</span><span class="ph-d">ガルシア 立ち絵(膝上・縦長)/ 選択中の衣装</span></div></section>
+  <div class="quote"><div class="w"><i style="height:5px"></i><i style="height:10px"></i><i style="height:7px"></i><i style="height:12px"></i></div><span>「契約どおりだ。前線、降下した。稼がせてもらう。」</span></div>
+
+  <aside class="info">
+    <div class="head">
+      <div class="eyebrow ink">LEADER · ガルシア</div>
+      <div class="name">Garcia</div>
+      <div class="jp">民間潜行会社</div>
+      <div class="tl"><span class="tag solid">PMC</span><span class="jp-sub">兵站と火力</span></div>
+    </div>
+    <div class="panel coef">
+      <div><div class="eyebrow">ATK</div><div class="v" style="color:var(--ok)">+12%</div></div>
+      <div><div class="eyebrow">PROD</div><div class="v" style="color:var(--ok)">+5%</div></div>
+      <div><div class="eyebrow">UPKEEP</div><div class="v" style="color:var(--danger)">+10%</div></div>
+      <div><div class="eyebrow">VISION</div><div class="v dim">±0</div></div>
+    </div>
+    <div class="panel order"><div class="ic">OP</div><div><div class="eyebrow">LEADER ORDER</div><b style="font-size:11px">砲撃支援</b><span class="tiny dim"> · 指定地点に3回着弾、再使用 4:00</span></div></div>
+    <div class="xp"><span class="eyebrow">CIV LV 7</span><div class="bar" style="flex:1"><i style="width:64%"></i></div><span class="mono tiny dim">次: 衛星照会</span></div>
+    <div class="actions">
+      <button class="btn ghost block" style="height:30px">前回の装備で決定(前方集積 · 複合装甲 · 根回し)</button>
+      <button class="cta" style="min-width:0;height:50px"><div><div class="cta-main" style="font-size:19px">次へ: 装備</div><div class="cta-sub">所属を確定してアドオンを選ぶ</div></div><div class="cta-go">→</div></button>
+    </div>
+  </aside>
+  <div class="mock-id">S04 SELECTION 1/2 · MOCK</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S27 ランキング</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .podium { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 330px; display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 6px; align-items: end; }
+  .pd { position: relative; display: flex; flex-direction: column; }
+  .pd .ph { height: 130px; border-bottom: 0; }
+  .pd .base { background: var(--ink); color: #fff; padding: 8px; clip-path: var(--cut-sm); display: flex; flex-direction: column; }
+  .pd .base .pos { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 0.9; }
+  .pd .base b { font-size: 10.5px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd .base .r { font-family: var(--f-mono); font-size: 9px; color: rgba(255,255,255,.6); }
+  .pd.p1 .ph { height: 170px; }
+  .pd.p1 .base { background: var(--gold); color: var(--ink); min-height: 120px; }
+  .pd.p1 .base .r { color: rgba(14,22,30,.6); }
+  .pd.p2 .base { min-height: 92px; }
+  .pd.p3 .base { min-height: 72px; background: var(--ink-2); }
+  .table { position: absolute; left: 360px; right: 16px; top: 58px; bottom: 14px; display: flex; flex-direction: column; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 40px 26px 1fr 60px 60px 70px; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 10.5px; }
+  .row .n { font-family: var(--f-display); font-weight: 700; font-size: 13px; }
+  .row .v { font-family: var(--f-display); font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+  .row.h { font-family: var(--f-mono); font-size: 8px; letter-spacing: 0.12em; color: var(--dim); padding-top: 8px; padding-bottom: 5px; }
+  .row.h span:nth-child(n+4) { text-align: right; }
+  .row.me { margin-top: auto; background: var(--ink); color: #fff; border: 0; }
+  .row.me .tag { color: #fff; border-color: rgba(255,255,255,.4); }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">LEADERBOARD · SEASON 03</span><b>ランキング</b></div>
+    <div class="spacer"></div>
+    <div class="seg"><span class="on">全体</span><span>フレンド</span><span>文明別</span></div>
+    <div class="seg"><span class="on">TOKYO</span><span>全地域</span></div>
+  </header>
+  <section class="podium">
+    <div class="pd p2"><div class="ph tinted t-b"><span class="ph-k">LEADER</span></div><div class="base"><span class="pos">2</span><b>KAGAMI_07</b><span class="r">2,214 · CORP</span></div></div>
+    <div class="pd p1"><div class="ph tinted t-c"><span class="ph-k">LEADER</span><span class="ph-d">愛用の指導者 3:4</span></div><div class="base"><span class="eyebrow" style="color:rgba(14,22,30,.6)">TOP</span><span class="pos">1</span><b>VEIL_FOLLOWER</b><span class="r">2,387 · SOC</span></div></div>
+    <div class="pd p3"><div class="ph tinted t-a"><span class="ph-k">LEADER</span></div><div class="base"><span class="pos">3</span><b>sora.k</b><span class="r">2,190 · PMC</span></div></div>
+  </section>
+  <section class="panel table">
+    <div class="row h"><span>#</span><span></span><span>OPERATOR</span><span>CIV</span><span>WIN%</span><span>RATING</span></div>
+    <div class="row"><span class="n">4</span><div class="ph round" style="width:22px;height:22px"></div><b>mono_tone</b><span class="tag">IPA</span><span class="v">39%</span><span class="v">2,152</span></div>
+    <div class="row"><span class="n">5</span><div class="ph round" style="width:22px;height:22px"></div><b>BRIDGE-BREAKER</b><span class="tag">PMC</span><span class="v">44%</span><span class="v">2,120</span></div>
+    <div class="row"><span class="n">6</span><div class="ph round" style="width:22px;height:22px"></div><b>ハルカ</b><span class="tag">FND</span><span class="v">36%</span><span class="v">2,098</span></div>
+    <div class="row"><span class="n">7</span><div class="ph round" style="width:22px;height:22px"></div><b>Q_Silence</b><span class="tag">INT</span><span class="v">40%</span><span class="v">2,077</span></div>
+    <div class="row"><span class="n">8</span><div class="ph round" style="width:22px;height:22px"></div><b>owl.night</b><span class="tag">SOC</span><span class="v">35%</span><span class="v">2,051</span></div>
+    <div class="row"><span class="n">9</span><div class="ph round" style="width:22px;height:22px"></div><b>TIDEGATE</b><span class="tag">CORP</span><span class="v">38%</span><span class="v">2,040</span></div>
+    <div class="row me"><span class="n">1,284</span><div class="ph round" style="width:22px;height:22px"></div><b>ONISHI(あなた)</b><span class="tag">PMC</span><span class="v">38%</span><span class="v">1,642</span></div>
+  </section>
+  <div class="mock-id">S27 RANKING · MOCK</div>
+</div>
+</body>
+</html>

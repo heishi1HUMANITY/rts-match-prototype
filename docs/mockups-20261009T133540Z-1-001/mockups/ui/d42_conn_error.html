@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D42 接続エラー</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .under { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  .modal { width: 400px; overflow: hidden; }
+  .modal::before { content: ""; display: block; height: 6px; background: var(--hazard); }
+  .sig { display: flex; align-items: flex-end; gap: 3px; height: 26px; }
+  .sig i { width: 6px; background: var(--line-2); }
+  .sig i.on { background: var(--danger); }
+  .tries { display: flex; gap: 4px; margin-top: 8px; }
+  .tries span { flex: 1; height: 4px; background: var(--danger); }
+  .tries span.off { background: var(--line); }
+  .code { font-family: var(--f-mono); font-size: 9px; color: var(--dim); background: var(--surface-sunk); padding: 6px 8px; margin-top: 8px; border-left: 2px solid var(--line-2); }
+</style>
+</head>
+<body>
+<div class="screen">
+  <iframe class="under" src="s09_home.html" title="ホーム" tabindex="-1"></iframe>
+  <div class="scrim dark-scrim">
+    <div class="modal">
+      <div class="modal-head" style="display:flex;align-items:center;gap:12px">
+        <div class="sig"><i class="on" style="height:6px"></i><i style="height:12px"></i><i style="height:18px"></i><i style="height:24px"></i></div>
+        <div><div class="eyebrow" style="color:var(--danger)">CONNECTION LOST · D42</div><div class="h2">サーバーとの通信が途切れました</div></div>
+      </div>
+      <div class="modal-body">
+        <p class="small" style="color:var(--ink-2)">自動で再接続を試みています。試合中だった場合は AI代行 が部隊を保持しています。</p>
+        <div class="tries"><span></span><span></span><span></span><span class="off"></span><span class="off"></span></div>
+        <div class="tiny dim mono" style="margin-top:4px;display:flex;justify-content:space-between"><span>再試行 3 / 5</span><span>次の試行まで 4s</span></div>
+        <div class="code">ERR_WS_CLOSED 1006 · REGION TOKYO · 10.09 21:42:07</div>
+      </div>
+      <div class="modal-foot"><button class="btn ghost">タイトルへ</button><button class="btn">今すぐ再試行</button></div>
+    </div>
+  </div>
+  <div class="mock-id" style="z-index:60">D42 CONNECTION ERROR · MOCK</div>
+</div>
+</body>
+</html>

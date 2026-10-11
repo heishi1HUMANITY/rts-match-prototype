@@ -1,0 +1,19 @@
+* text=auto eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.glb binary
+*.webm binary
+*.mp4 binary
+# Preserve inherited snapshot bytes across Windows/Linux checkouts.
+docs/** -text
+artwork/** -text
+docs/project/** text eol=lf

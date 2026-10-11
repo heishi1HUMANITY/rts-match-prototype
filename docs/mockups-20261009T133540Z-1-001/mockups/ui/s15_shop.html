@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S15 ショップ</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .cats { position: absolute; left: 16px; top: 58px; width: 110px; display: flex; flex-direction: column; gap: 2px; }
+  .cat { display: flex; justify-content: space-between; align-items: center; height: 34px; padding: 0 10px; font-size: 11px; font-weight: 700; color: var(--dim); border-left: 2px solid transparent; text-align: left; }
+  .cat.on { color: var(--ink); border-left-color: var(--ink); background: var(--surface); }
+  .cat .n { font-family: var(--f-mono); font-size: 8.5px; color: var(--faint); }
+  .feature { position: absolute; left: 140px; top: 58px; bottom: 40px; width: 300px; display: flex; flex-direction: column; overflow: hidden; }
+  .feature .ph { flex: 1; border: 0; }
+  .feature .info { padding: 10px 12px; background: var(--ink); color: #fff; }
+  .feature .info .h2 { font-size: 16px; }
+  .feature .price { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .feature .price .num { font-size: 18px; }
+  .feature .timer { position: absolute; left: 10px; top: 10px; z-index: 2; }
+  .items { position: absolute; left: 452px; right: 16px; top: 58px; bottom: 40px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 8px; }
+  .item { position: relative; display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+  .item .ph { flex: 1; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .item .meta { padding: 5px 8px 6px; }
+  .item .meta b { font-size: 10px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .cost { display: flex; align-items: center; gap: 4px; font-family: var(--f-mono); font-size: 10px; font-weight: 700; margin-top: 2px; }
+  .item .cost i { width: 11px; height: 11px; border-radius: 50%; background: var(--crayon); display: inline-block; }
+  .item .corner { position: absolute; right: 6px; top: 6px; z-index: 2; }
+  .item.owned { opacity: 0.5; }
+  .legal { position: absolute; left: 140px; right: 16px; bottom: 10px; height: 22px; display: flex; align-items: center; gap: 14px; font-size: 9px; color: var(--dim); }
+  .legal a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .legal .cap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .legal .cap .bar { width: 90px; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">PROCUREMENT</span><b>ショップ</b></div>
+    <div class="docno" style="margin-left:6px">調達申請窓口</div>
+    <div class="spacer"></div>
+    <div class="wallet"><div class="coin"><i>C</i>12,480</div><div class="coin c-violet"><i>D</i>360<span class="plus">+</span></div></div>
+  </header>
+  <nav class="cats">
+    <span class="eyebrow ink" style="margin:0 10px 4px">CATEGORY</span>
+    <button class="cat on">指導者 <span class="n">NEW</span></button>
+    <button class="cat">文明 <span class="n">1</span></button>
+    <button class="cat">パス <span class="n">S03</span></button>
+    <button class="cat">見た目 <span class="n">24</span></button>
+    <button class="cat">通貨 <span class="n">D</span></button>
+  </nav>
+
+  <section class="panel marks feature t-d">
+    <span class="tag solid timer">残り 6日 12:40</span>
+    <div class="ph tinted"><span class="ph-k">FEATURED LEADER ART</span><span class="ph-d">指導者 夢の姿 横長 4:3</span></div>
+    <div class="info">
+      <div class="eyebrow" style="color:rgba(255,255,255,.5)">PICK UP · 指導者の見た目</div>
+      <div class="h2">夢の姿 — ガルシア</div>
+      <div class="price"><span class="tiny" style="color:rgba(255,255,255,.6)">★3 提供割合 1.5% · 80回で確定</span><button class="btn sm violet">10回 D 300</button></div>
+    </div>
+  </section>
+
+  <main class="items">
+    <div class="item"><span class="tag violet corner">★★★</span><div class="ph"><span class="ph-k">COSTUME</span><span class="ph-d">衣装 1:1</span></div><div class="meta"><b>現実の制服 — ホルム</b><span class="cost"><i></i>480</span></div></div>
+    <div class="item"><span class="tag corner">文明</span><div class="ph"><span class="ph-k">CIV KEY</span><span class="ph-d">文明紋章 1:1</span></div><div class="meta"><b>情報機関 INT 確定購入</b><span class="cost"><i></i>300 / C 3,000</span></div></div>
+    <div class="item"><span class="tag gold corner">PASS</span><div class="ph"><span class="ph-k">PASS</span><span class="ph-d">シーズン紋 1:1</span></div><div class="meta"><b>バトルパス 上位 S03</b><span class="cost">¥ 980</span></div></div>
+    <div class="item"><div class="ph"><span class="ph-k">BOARD SKIN</span><span class="ph-d">盤面の床 16:9</span></div><div class="meta"><b>床デザイン「青焼き」</b><span class="cost"><i></i>160</span></div></div>
+    <div class="item"><div class="ph"><span class="ph-k">TOKEN SKIN</span><span class="ph-d">部隊プレート 1:1</span></div><div class="meta"><b>プレート「白磁」</b><span class="cost"><i></i>120</span></div></div>
+    <div class="item owned"><span class="tag ok corner">所持</span><div class="ph"><span class="ph-k">STAMP</span><span class="ph-d">合図スタンプ 1:1</span></div><div class="meta"><b>合図「承認」スタンプ</b><span class="cost">—</span></div></div>
+  </main>
+  <footer class="legal">
+    <a>提供割合の表示</a><a>特定商取引法に基づく表記</a><a>資金決済法に基づく表示</a>
+    <span class="cap"><span>未成年の月間上限</span><div class="bar"><i style="width:36%"></i></div><b class="mono" style="color:var(--ink)">¥1,800 / ¥5,000</b></span>
+  </footer>
+  <div class="mock-id" style="bottom:auto;top:48px">S15 SHOP · MOCK</div>
+</div>
+</body>
+</html>

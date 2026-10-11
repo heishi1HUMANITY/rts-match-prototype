@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S10 マッチング</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .modes { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 250px; display: flex; flex-direction: column; gap: 6px; }
+  .mode { position: relative; display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; background: var(--surface); border: 1px solid var(--line); backdrop-filter: var(--glass-blur); text-align: left; }
+  .mode .idx { font-family: var(--f-display); font-weight: 700; font-size: 20px; color: var(--faint); }
+  .mode b { font-size: 12px; display: block; }
+  .mode.on { background: var(--ink); color: #fff; border-color: var(--ink); clip-path: var(--cut-sm); }
+  .mode.on .idx { color: var(--warn); }
+  .mode.on .dim { color: rgba(255, 255, 255, 0.55); }
+  .center { position: absolute; left: 282px; right: 250px; top: 58px; bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .party { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1; }
+  .slot { position: relative; display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); }
+  .slot .ph { flex: 1; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .slot .nm { padding: 6px 8px; }
+  .slot .nm b { font-size: 11px; display: block; }
+  .slot.empty { background: transparent; border: 1px dashed var(--line-2); display: grid; place-items: center; color: var(--dim); text-align: center; }
+  .slot.empty .plus { width: 34px; height: 34px; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 16px; margin: 0 auto 6px; background: var(--surface-solid); }
+  .host { position: absolute; left: 6px; top: 6px; z-index: 2; }
+  .rules { padding: 8px 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .rules > div { border-left: 1px solid var(--line-2); padding-left: 8px; }
+  .rules .v { font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.1; }
+  .queue { position: absolute; right: 16px; top: 58px; bottom: 14px; width: 220px; display: flex; flex-direction: column; }
+  .radar { position: relative; margin: 12px auto 8px; width: 126px; height: 126px; border-radius: 50%; border: 1px solid var(--line-2);
+    background: radial-gradient(circle, transparent 0 30%, var(--line) 30% calc(30% + 1px), transparent calc(30% + 1px) 60%, var(--line) 60% calc(60% + 1px), transparent calc(60% + 1px)),
+      conic-gradient(from 20deg, rgba(0, 180, 224, 0.35), transparent 25%); }
+  .radar::before, .radar::after { content: ""; position: absolute; background: var(--line); }
+  .radar::before { left: 50%; top: 0; bottom: 0; width: 1px; } .radar::after { top: 50%; left: 0; right: 0; height: 1px; }
+  .radar .t { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .radar .t .num { font-size: 26px; line-height: 1; }
+  .blip { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 8px var(--signal); }
+  .q-row { display: flex; justify-content: space-between; padding: 5px 12px; border-top: 1px solid var(--line); font-size: 10px; }
+  .q-row b { font-family: var(--f-mono); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">DEPLOYMENT QUEUE</span><b>マッチング</b></div>
+    <div class="docno" style="margin-left:6px">FORM 4X-10</div>
+    <div class="spacer"></div>
+    <div class="wallet"><div class="coin"><i>C</i>12,480</div><div class="coin c-violet"><i>D</i>360</div></div>
+  </header>
+
+  <nav class="modes">
+    <span class="eyebrow ink" style="margin-bottom:2px">MODE / 案件の種類</span>
+    <button class="mode"><span class="idx">01</span><div><b>カジュアル</b><span class="tiny dim">レート変動なし · 持ち込み自由</span></div><span class="tag">3陣営</span></button>
+    <button class="mode on"><span class="idx">02</span><div><b>ランク戦</b><span class="tiny dim">参事官 II · 使い切り1枠まで</span></div><span class="tag" style="color:#fff;border-color:rgba(255,255,255,.4)">RANKED</span></button>
+    <button class="mode"><span class="idx">03</span><div><b>中央水門 争奪案件</b><span class="tiny dim">期間限定 · 残り 2日</span></div><span class="tag violet">EVENT</span></button>
+    <button class="mode"><span class="idx">04</span><div><b>練習(ボット戦)</b><span class="tiny dim">報酬なし · 時間短縮</span></div><span class="tag">SOLO</span></button>
+  </nav>
+
+  <main class="center">
+    <div style="display:flex;align-items:end;justify-content:space-between">
+      <div><div class="eyebrow">PARTY / 編成</div><div class="h2">パーティ 2 / 3</div></div>
+      <button class="btn sm ghost">招待コード</button>
+    </div>
+    <div class="party">
+      <div class="slot"><span class="tag solid host">HOST</span><div class="ph tinted t-a"><span class="ph-k">LEADER</span><span class="ph-d">指導者 胸像 1:1</span></div><div class="nm"><b>ONISHI</b><span class="tiny dim mono">参事官 II · 1,642</span></div></div>
+      <div class="slot"><div class="ph tinted t-b"><span class="ph-k">LEADER</span><span class="ph-d">指導者 胸像 1:1</span></div><div class="nm"><b>KAGAMI_07</b><span class="tiny mono" style="color:var(--ok)">● 準備完了</span></div></div>
+      <div class="slot empty"><div><div class="plus">＋</div><b style="font-size:10.5px">招待する</b><div class="tiny">フレンド / 最近の味方</div></div></div>
+    </div>
+    <section class="panel rules">
+      <div><div class="eyebrow">TEAMS</div><div class="v">3 × 3</div><span class="tiny dim">空きはボット</span></div>
+      <div><div class="eyebrow">LIMIT</div><div class="v">30:00</div><span class="tiny dim">目標 20分</span></div>
+      <div><div class="eyebrow">CONSUMABLE</div><div class="v">1 枠</div><span class="tiny dim">ランク上位制限</span></div>
+      <div><div class="eyebrow">PICK</div><div class="v">30 s</div><span class="tiny dim">文明とアドオン</span></div>
+    </section>
+  </main>
+
+  <aside class="panel marks queue">
+    <div class="panel-head"><span class="eyebrow ink">SEARCHING</span><span class="tag ok">● LIVE</span></div>
+    <div class="radar">
+      <span class="blip" style="left:28px;top:40px"></span><span class="blip" style="left:84px;top:78px"></span><span class="blip" style="left:66px;top:24px;opacity:.5"></span>
+      <div class="t"><div><div class="num">0:27</div><div class="tiny dim mono">EST 0:42</div></div></div>
+    </div>
+    <div class="q-row"><span class="dim">見つかった潜行士</span><b>6 / 9</b></div>
+    <div class="q-row"><span class="dim">地域</span><b>TOKYO · 24ms</b></div>
+    <div class="q-row"><span class="dim">レート幅</span><b>±120</b></div>
+    <div style="padding:10px 12px;margin-top:auto"><button class="btn block danger">キャンセル</button></div>
+  </aside>
+  <div class="mock-id">S10 MATCHING · MOCK</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S13 文明研究</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .grid { position: absolute; left: 16px; right: 16px; top: 58px; bottom: 14px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .civ { position: relative; display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow-sm); overflow: hidden; text-align: left; }
+  .civ .ph { height: 190px; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .civ .lv { position: absolute; right: 8px; top: 8px; z-index: 2; text-align: right; }
+  .civ .lv .num { font-size: 30px; line-height: 0.9; display: block; }
+  .civ .short { position: absolute; left: 8px; top: 8px; z-index: 2; }
+  .civ .body { padding: 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .civ .body b { font-size: 11.5px; }
+  .civ .bar > i { background: var(--tc); }
+  .civ .next { margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line); font-size: 9px; }
+  .civ .next .k { color: var(--dim); font-family: var(--f-mono); font-size: 8px; letter-spacing: 0.1em; display: block; }
+  .civ.sel { box-shadow: 0 0 0 2px var(--ink), var(--shadow-sm); }
+  .civ .accent-top { height: 4px; z-index: 2; }
+  .c1 { --tc: #ff6a1a; } .c2 { --tc: #10bfe8; } .c3 { --tc: #7b5cff; } .c4 { --tc: #8a98a6; } .c5 { --tc: #12a874; } .c6 { --tc: #e2334f; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">CIVILIZATION RESEARCH</span><b>文明研究</b></div>
+    <div class="spacer"></div>
+    <div class="tabs"><span class="tab on">文明 <span class="count">6</span></span><span class="tab">称号 <span class="count">14</span></span><span class="tab">断章 <span class="count">11/30</span></span></div>
+    <span class="tag">総XP 48,210</span>
+  </header>
+  <main class="grid">
+    <button class="civ c1 sel"><i class="accent-top"></i><span class="tag solid short">PMC</span><div class="lv"><span class="eyebrow">LV</span><span class="num">7</span></div><div class="ph tinted"><span class="ph-k">LEADER</span><span class="ph-d">ガルシア 胸像 3:4</span></div>
+      <div class="body"><b>民間潜行会社</b><span class="tiny dim">兵站と火力 · 42試合</span><div class="bar"><i style="width:64%"></i></div><span class="tiny mono dim">XP 3,840 / 6,000</span><div class="next"><span class="k">NEXT · LV8</span>永続「複合装甲」</div></div></button>
+    <button class="civ c2"><i class="accent-top"></i><span class="tag solid short">CORP</span><div class="lv"><span class="eyebrow">LV</span><span class="num">4</span></div><div class="ph tinted"><span class="ph-k">LEADER</span><span class="ph-d">ミヤシロ 胸像 3:4</span></div>
+      <div class="body"><b>大企業潜行部門</b><span class="tiny dim">生産と経済 · 18試合</span><div class="bar"><i style="width:30%"></i></div><span class="tiny mono dim">XP 1,200 / 4,000</span><div class="next"><span class="k">NEXT · LV5</span>断章 第3話</div></div></button>
+    <button class="civ c3"><i class="accent-top"></i><span class="tag solid short">SOC</span><div class="lv"><span class="eyebrow">LV</span><span class="num">10</span></div><div class="ph tinted"><span class="ph-k">LEADER</span><span class="ph-d">ヴェイル 胸像 3:4</span></div>
+      <div class="body"><b>秘密結社</b><span class="tiny dim">霧と奇襲 · 61試合</span><div class="bar"><i style="width:100%"></i></div><span class="tiny mono dim">MAX</span><div class="next"><span class="k">COMPLETE</span>全開放 <span style="color:var(--gold)">★</span></div></div></button>
+    <button class="civ c4"><i class="accent-top"></i><span class="tag solid short">IPA</span><div class="lv"><span class="eyebrow">LV</span><span class="num">2</span></div><div class="ph tinted"><span class="ph-k">LEADER</span><span class="ph-d">ホルム 胸像 3:4</span></div>
+      <div class="body"><b>国際機関直属部隊</b><span class="tiny dim">防御と規律 · 6試合</span><div class="bar"><i style="width:48%"></i></div><span class="tiny mono dim">XP 960 / 2,000</span><div class="next"><span class="k">NEXT · LV3</span>永続「広域光学」</div></div></button>
+    <button class="civ c5"><i class="accent-top"></i><span class="tag solid short">FND</span><div class="lv"><span class="eyebrow">LV</span><span class="num">1</span></div><div class="ph tinted"><span class="ph-k">LEADER</span><span class="ph-d">セレス 胸像 3:4</span></div>
+      <div class="body"><b>研究財団</b><span class="tiny dim">研究で先行する · 1試合</span><div class="bar"><i style="width:8%"></i></div><span class="tiny mono dim">XP 80 / 1,000</span><div class="next"><span class="k">NEXT · LV2</span>永続「前方集積」</div></div></button>
+    <button class="civ c6" style="opacity:.62"><i class="accent-top"></i><span class="tag short">INT</span><div class="lv"><span class="eyebrow">LV</span><span class="num lock">—</span></div><div class="ph"><span class="ph-k">LOCKED</span><span class="ph-d">クロウ 胸像 3:4(シルエット)</span></div>
+      <div class="body"><b>情報機関</b><span class="tiny dim">偵察と攪乱 · 未所属</span><div class="bar"><i style="width:0"></i></div><span class="tiny mono dim">ショップで確定購入</span><div class="next"><span class="k">UNLOCK</span>C 3,000 / D 300</div></div></button>
+  </main>
+  <div class="mock-id">S13 CIV RESEARCH · MOCK</div>
+</div>
+</body>
+</html>

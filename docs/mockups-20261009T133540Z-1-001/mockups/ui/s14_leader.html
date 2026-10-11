@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S14 指導者</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .roster { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 62px; display: flex; flex-direction: column; gap: 6px; }
+  .roster .ph { height: 50px; flex: none; }
+  .roster .ph.on { box-shadow: 0 0 0 2px var(--ink); border-style: solid; }
+  .roster .ph .ph-k { font-size: 7px; }
+  .stage { position: absolute; left: 92px; top: 44px; bottom: 0; width: 360px; }
+  .stage .ph { position: absolute; left: 30px; right: 30px; top: 12px; bottom: 0; border-bottom: 0; }
+  .stage .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(transparent, rgba(255,255,255,.9)); }
+  .stage .name { position: absolute; left: 0; bottom: 18px; z-index: 2; }
+  .stage .name .display { font-size: 44px; }
+  .stage .equip { position: absolute; right: 18px; top: 22px; z-index: 2; }
+  .side { position: absolute; left: 470px; right: 16px; top: 58px; bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .costumes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; }
+  .cos { display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); }
+  .cos .ph { height: 74px; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .cos .lbl { padding: 4px 6px; font-size: 9.5px; font-weight: 700; line-height: 1.3; }
+  .cos.on { box-shadow: 0 0 0 2px var(--ink); }
+  .cos.lock { opacity: 0.55; }
+  .voice { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 5px 10px; border-bottom: 1px solid var(--line); font-size: 10px; }
+  .voice:last-child { border-bottom: 0; }
+  .voice .play { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 8px; }
+  .voice.playing { background: var(--surface-sunk); }
+  .voice.playing .play { background: var(--signal); }
+  .wave { display: flex; gap: 2px; align-items: center; height: 12px; }
+  .wave i { width: 2px; background: var(--signal); }
+</style>
+</head>
+<body>
+<div class="screen grid-bg t-a">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">LEADER WARDROBE</span><b>指導者 / 衣装</b></div>
+    <div class="spacer"></div>
+    <div class="wallet"><div class="coin"><i>C</i>12,480</div><div class="coin c-violet"><i>D</i>360<span class="plus">+</span></div></div>
+  </header>
+  <nav class="roster">
+    <div class="ph on tinted"><span class="ph-k">PMC</span></div>
+    <div class="ph"><span class="ph-k">CORP</span></div>
+    <div class="ph"><span class="ph-k">SOC</span></div>
+    <div class="ph"><span class="ph-k">IPA</span></div>
+    <div class="ph"><span class="ph-k">FND</span></div>
+    <div class="ph" style="opacity:.5"><span class="ph-k">INT</span></div>
+  </nav>
+  <section class="stage">
+    <div class="ph tinted"><span class="ph-k">LEADER FULL BODY</span><span class="ph-d">ガルシア 全身 2:3 / 選択中の衣装をプレビュー</span></div>
+    <div class="floor"></div>
+    <div class="equip"><span class="tag solid">装備中</span></div>
+    <div class="name"><div class="eyebrow ink">PMC · 民間潜行会社</div><div class="display">Garcia</div><div class="jp-sub">ガルシア / 現場叩き上げの契約指揮官</div></div>
+  </section>
+  <main class="side">
+    <section class="panel">
+      <div class="panel-head"><span class="eyebrow ink">COSTUME / 衣装</span><span class="tag">3 / 6 所持</span></div>
+      <div class="costumes">
+        <div class="cos on"><div class="ph"><span class="ph-k" style="font-size:7px">STD</span></div><div class="lbl">標準装備<div class="tiny dim">初期</div></div></div>
+        <div class="cos"><div class="ph tinted"><span class="ph-k" style="font-size:7px">ALT A</span></div><div class="lbl">夜間降下<div class="tiny dim">Lv5 開放</div></div></div>
+        <div class="cos"><div class="ph tinted t-d"><span class="ph-k" style="font-size:7px">DREAM</span></div><div class="lbl">夢の姿<div class="tiny" style="color:var(--crayon)">★★★ 限定</div></div></div>
+        <div class="cos lock"><div class="ph"><span class="ph-k" style="font-size:7px">LOCK</span></div><div class="lbl">現実の制服<div class="tiny dim">D 480</div></div></div>
+      </div>
+    </section>
+    <section class="panel" style="flex:1">
+      <div class="panel-head"><span class="eyebrow ink">VOICE / ボイス試聴</span><span class="tiny dim">12 / 18</span></div>
+      <div class="voice playing"><span class="play">❚❚</span><span>試合開始「契約どおりだ。前線、降下した。」</span><span class="wave"><i style="height:4px"></i><i style="height:10px"></i><i style="height:7px"></i><i style="height:12px"></i><i style="height:5px"></i></span></div>
+      <div class="voice"><span class="play">▶</span><span>拠点制圧「配当が出たな。」</span><span class="mono tiny dim">0:03</span></div>
+      <div class="voice"><span class="play">▶</span><span>休戦合図「今は撃たない。今は、な。」</span><span class="mono tiny dim">0:04</span></div>
+      <div class="voice" style="color:var(--faint)"><span class="play" style="background:var(--faint)">—</span><span>MVP「…稼ぎすぎたか。」</span><span class="mono tiny">夢の姿で開放</span></div>
+    </section>
+  </main>
+  <div class="mock-id">S14 LEADER · MOCK</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+artwork/
+docs/*
+!docs/project/
+docs/project/reference-manifest.json

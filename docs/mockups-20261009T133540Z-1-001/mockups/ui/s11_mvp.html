@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S11 MVP</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .screen.dark { background: radial-gradient(90% 120% at 30% 40%, #1f2d3a, #0b1218 70%); }
+  .rays { position: absolute; inset: 0; background: repeating-conic-gradient(from 200deg at 28% 60%, rgba(255,106,26,.07) 0 4deg, transparent 4deg 14deg); mask-image: radial-gradient(70% 90% at 28% 60%, #000, transparent 75%); }
+  .stand { position: absolute; left: 30px; top: 0; bottom: 0; width: 360px; border-top: 0; border-bottom: 0; }
+  .huge { position: absolute; right: 18px; top: 8px; font-family: var(--f-display); font-weight: 700; font-size: 150px; letter-spacing: -0.06em; line-height: .8; color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.14); }
+  .stand.ph.tinted { background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 1px, transparent 1px 7px), linear-gradient(180deg, rgba(255,106,26,.35), rgba(255,106,26,.05) 80%); }
+  .info { position: absolute; left: 410px; right: 22px; top: 54px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .name { font-family: var(--f-display); font-weight: 700; font-size: 38px; letter-spacing: -0.02em; line-height: 1; }
+  .quote { font-size: 12.5px; line-height: 1.6; border-left: 2px solid var(--team-a); padding-left: 10px; color: var(--ink-2); }
+  .cats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .cat { padding: 7px 10px; background: rgba(255,255,255,.05); border: 1px solid var(--line); }
+  .cat .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .cat .num { font-size: 20px; line-height: 1; }
+  .cat .bar { margin-top: 5px; background: rgba(255,255,255,.1); }
+  .cat .bar > i { background: var(--team-a); }
+  .cat .best { color: var(--warn); font-family: var(--f-mono); font-size: 8px; letter-spacing: .14em; }
+  .kudos { display: flex; gap: 6px; align-items: center; margin-top: auto; }
+  .kd { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; white-space: nowrap; border: 1px solid var(--line-2); font-size: 10.5px; font-weight: 700; color: var(--ink); }
+  .kd .c { font-family: var(--f-mono); font-size: 9px; color: var(--dim); }
+  .kd.on { background: #fff; color: #0e161e; border-color: #fff; }
+  .kd.on .c { color: #0e161e; }
+  .cta { background: #fff; color: #0e161e; min-width: 0; height: 46px; }
+  .cta .cta-sub { color: rgba(14,22,30,.55); }
+  .cta .cta-go { border-color: rgba(14,22,30,.2); }
+</style>
+</head>
+<body>
+<div class="screen dark">
+  <div class="rays"></div>
+  <div class="ph tinted t-a stand"><span class="ph-k">MVP LEADER · FULL BODY</span><span class="ph-d">MVP 指導者の立ち絵 全身 9:16(勝利ポーズ・衣装反映・ボイス)</span></div>
+  <div class="huge">MVP</div>
+  <section class="info">
+    <div style="display:flex;align-items:center;gap:8px"><span class="tag" style="color:var(--warn);border-color:var(--warn)">MOST VALUABLE PLAYER</span><span class="tag">TEAM A · PMC</span><span class="mono tiny dim">CASE DR-09F9DB4F</span></div>
+    <div><div class="name">ONISHI</div><div class="jp-sub" style="margin-top:4px">指導者 ガルシア · 民間潜行会社</div></div>
+    <p class="quote">「いい仕事だった。報酬は弾む ── 次も俺を呼べ。」</p>
+    <div class="cats">
+      <div class="cat"><div class="top"><span class="small">制圧</span><span class="best">BEST</span></div><div class="top"><span class="num">7</span><span class="mono tiny dim">全体 1位</span></div><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="cat"><div class="top"><span class="small">チケット削り</span><span class="best">BEST</span></div><div class="top"><span class="num">384</span><span class="mono tiny dim">全体 1位</span></div><div class="bar"><i style="width:92%"></i></div></div>
+      <div class="cat"><div class="top"><span class="small">NPC討伐</span></div><div class="top"><span class="num">9</span><span class="mono tiny dim">全体 1位</span></div><div class="bar"><i style="width:70%"></i></div></div>
+      <div class="cat"><div class="top"><span class="small">部隊の昇格</span></div><div class="top"><span class="num">4</span><span class="mono tiny dim">古参 1</span></div><div class="bar"><i style="width:55%"></i></div></div>
+    </div>
+    <div class="kudos">
+      <span class="eyebrow" style="margin-right:2px;white-space:nowrap">KUDOS</span>
+      <button class="kd on">見事な指揮 <span class="c">2</span></button>
+      <button class="kd">好判断 <span class="c">1</span></button>
+      <button class="kd">良い勝負 <span class="c">0</span></button>
+      <button class="cta" style="margin-left:auto"><div><div class="cta-main" style="font-size:16px">戦闘詳報へ</div><div class="cta-sub">報酬を受け取る</div></div><div class="cta-go">→</div></button>
+    </div>
+  </section>
+  <div class="mock-id">S11 MVP · MOCK</div>
+</div>
+</body>
+</html>

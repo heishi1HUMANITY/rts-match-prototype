@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S26 プロフィール</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .card-id { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 248px; display: flex; flex-direction: column; overflow: hidden; }
+  .card-id .ph { height: 160px; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .card-id .who { padding: 10px 12px; }
+  .card-id .who .display { font-size: 26px; }
+  .card-id .acts { margin-top: auto; display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .card-id .acts .btn { flex: 1; }
+  .stats { position: absolute; left: 278px; top: 58px; width: 300px; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .stat { background: var(--surface-solid); padding: 8px 10px; }
+  .stat .num { font-size: 22px; line-height: 1.1; display: block; }
+  .titles { position: absolute; left: 278px; top: 216px; width: 300px; bottom: 14px; }
+  .titles .wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
+  .titles .tt { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--line-2); font-size: 10px; font-weight: 700; background: var(--surface-solid); }
+  .titles .tt i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--ink); }
+  .titles .tt.v i { background: var(--crayon); } .titles .tt.g i { background: var(--gold); }
+  .usage { position: absolute; left: 592px; right: 16px; top: 58px; bottom: 14px; display: flex; flex-direction: column; }
+  .usage svg { width: 128px; height: 128px; margin: 12px auto 6px; display: block; }
+  .u-row { display: grid; grid-template-columns: 10px 34px 1fr auto; gap: 6px; align-items: center; padding: 4px 12px; font-size: 10px; }
+  .u-row i { width: 8px; height: 8px; }
+  .u-row .bar { height: 3px; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">OPERATOR PROFILE</span><b>プロフィール</b></div>
+    <div class="spacer"></div>
+    <span class="tiny dim">試合 DR-09F9DB4F の味方</span>
+  </header>
+  <section class="panel marks card-id">
+    <div class="ph tinted t-b"><span class="ph-k">LEADER BANNER</span><span class="ph-d">愛用の指導者 + 衣装 横長 3:2</span></div>
+    <div class="who">
+      <div class="eyebrow">ID 4X-2B90-11FE</div>
+      <div class="display">KAGAMI_07</div>
+      <div style="display:flex;gap:6px;margin-top:6px;align-items:center"><span class="tag violet">称号「紫の線を越えた」</span></div>
+      <div style="display:flex;gap:6px;margin-top:8px;align-items:center"><span class="tag solid">参事官 I</span><span class="mono small">RATING 1,708</span></div>
+    </div>
+    <div class="acts"><button class="btn sm">称賛する</button><button class="btn sm ghost">通報</button><button class="btn sm ghost">組まない</button></div>
+  </section>
+  <section class="stats">
+    <div class="stat"><span class="eyebrow">MATCHES</span><span class="num">212</span></div>
+    <div class="stat"><span class="eyebrow">#1 RATE</span><span class="num">41%</span></div>
+    <div class="stat"><span class="eyebrow">CAPTURES / 試合</span><span class="num">5.8</span></div>
+    <div class="stat"><span class="eyebrow">PRAISE</span><span class="num">1,204</span></div>
+  </section>
+  <section class="panel titles">
+    <div class="panel-head"><span class="eyebrow ink">TITLES / 称号</span><span class="tiny dim">14</span></div>
+    <div class="wrap">
+      <span class="tt v"><i></i>紫の線を越えた</span><span class="tt g"><i></i>参事官</span><span class="tt"><i></i>渡河の人</span><span class="tt"><i></i>当直明け</span><span class="tt g"><i></i>中央水門 制圧</span><span class="tt"><i></i>古参を三つ</span><span class="tt"><i></i>休戦を守る者</span>
+    </div>
+  </section>
+  <section class="panel usage">
+    <div class="panel-head"><span class="eyebrow ink">CIV USAGE / 使用文明</span><span class="tiny dim">S03</span></div>
+    <svg viewBox="0 0 42 42">
+      <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line)" stroke-width="5"/>
+      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#10bfe8" stroke-width="5" stroke-dasharray="46 54" stroke-dashoffset="25"/>
+      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#ff6a1a" stroke-width="5" stroke-dasharray="22 78" stroke-dashoffset="-21"/>
+      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#7b5cff" stroke-width="5" stroke-dasharray="18 82" stroke-dashoffset="-43"/>
+      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#8a98a6" stroke-width="5" stroke-dasharray="14 86" stroke-dashoffset="-61"/>
+      <text x="21" y="20" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="7">CORP</text>
+      <text x="21" y="26" text-anchor="middle" font-family="JetBrains Mono" font-size="3.4" fill="var(--dim)">46%</text>
+    </svg>
+    <div class="u-row"><i style="background:#10bfe8"></i><b>CORP</b><div class="bar"><i style="width:46%;background:#10bfe8"></i></div><span class="mono tiny">98</span></div>
+    <div class="u-row"><i style="background:#ff6a1a"></i><b>PMC</b><div class="bar"><i style="width:22%;background:#ff6a1a"></i></div><span class="mono tiny">47</span></div>
+    <div class="u-row"><i style="background:#7b5cff"></i><b>SOC</b><div class="bar"><i style="width:18%;background:#7b5cff"></i></div><span class="mono tiny">38</span></div>
+    <div class="u-row"><i style="background:#8a98a6"></i><b>IPA</b><div class="bar"><i style="width:14%;background:#8a98a6"></i></div><span class="mono tiny">29</span></div>
+  </section>
+  <div class="mock-id">S26 PROFILE · MOCK</div>
+</div>
+</body>
+</html>

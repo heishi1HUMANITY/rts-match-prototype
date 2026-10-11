@@ -1,0 +1,340 @@
+/* dream4x UI モック 共通スタイル
+   方針: 「現実の制度」= マットホワイトの管制室 × 公文書 × CAD図面。そこへ少女の紫クレヨンだけが侵入する。
+   基準ビューポートはスマホ横持ち 900×420(CSS px)。ゲームとしては動かない静的モック。
+   画像アセットは使わず、キャラ・模型・アイコン画像の位置は .ph(プレースホルダ)で示す。 */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap");
+
+:root {
+  /* 面 */
+  --paper: #e9edf1;
+  --paper-2: #dfe4e9;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-solid: #ffffff;
+  --surface-sunk: #f3f5f7;
+  --glass-blur: blur(14px) saturate(1.2);
+  /* 文字と線 */
+  --ink: #0e161e;
+  --ink-2: #33404c;
+  --dim: #77838e;
+  --faint: #a9b2ba;
+  --line: rgba(14, 22, 30, 0.1);
+  --line-2: rgba(14, 22, 30, 0.2);
+  --line-ink: rgba(14, 22, 30, 0.85);
+  /* 意味色 */
+  --signal: #00b4e0;      /* 通信・選択 */
+  --ok: #12a874;
+  --warn: #f2a516;
+  --danger: #e2334f;
+  --gold: #c99a2e;        /* 練度・レア */
+  --npc: #6b7a5e;         /* 現地勢力 */
+  --crayon: #7b2cff;      /* 少女の線(世界で唯一のアナログ色) */
+  --crayon-soft: rgba(123, 44, 255, 0.12);
+  /* チーム(色 + 記号の併記が前提) */
+  --team-a: #ff6a1a;   /* 菱形 */
+  --team-b: #10bfe8;   /* 四角 */
+  --team-c: #f0b323;   /* 六角 */
+  --team-d: #9b5cff;   /* 三角 */
+  /* 形 */
+  --cut: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  --cut-sm: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  --cut-r: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  --hazard: repeating-linear-gradient(135deg, var(--ink) 0 5px, var(--warn) 5px 10px);
+  --hatch: repeating-linear-gradient(135deg, rgba(14, 22, 30, 0.07) 0 1px, transparent 1px 7px);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 10px 30px -12px rgba(14, 22, 30, 0.28);
+  --shadow-sm: 0 4px 14px -8px rgba(14, 22, 30, 0.35);
+  /* 書体 */
+  --f-display: "Space Grotesk", "Noto Sans JP", system-ui, sans-serif;
+  --f-body: "Noto Sans JP", "Space Grotesk", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 11px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "palt";
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* ───────────── 画面の土台 ───────────── */
+.screen {
+  position: relative;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 85% 0%, rgba(255, 255, 255, 0.9), transparent 60%),
+    linear-gradient(180deg, #f2f4f6, var(--paper));
+}
+/* 製図の方眼 */
+.grid-bg::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    linear-gradient(rgba(14, 22, 30, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 22, 30, 0.04) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+  mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 85%);
+}
+.dark { /* 夢の戦場・演出用の暗転面 */
+  --surface: rgba(14, 22, 30, 0.72);
+  --surface-solid: #121b24;
+  --surface-sunk: #0b1218;
+  --ink: #eef3f7; --ink-2: #c3ccd4; --dim: #8592a0; --faint: #4f5b67;
+  --line: rgba(255, 255, 255, 0.1); --line-2: rgba(255, 255, 255, 0.2); --line-ink: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+}
+
+/* 上部の共通バー(メニュー系画面) */
+.topbar {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px;
+  display: flex; align-items: center; gap: 14px; padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.55));
+  backdrop-filter: var(--glass-blur);
+  z-index: 10;
+}
+.topbar .back {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid var(--line-2); clip-path: var(--cut-sm); font-size: 14px;
+}
+.topbar .title { display: flex; flex-direction: column; line-height: 1.1; }
+.topbar .title b { font-family: var(--f-display); font-size: 15px; letter-spacing: 0.02em; }
+.topbar .spacer { flex: 1; }
+.content { position: absolute; inset: 44px 0 0 0; padding: 14px 16px; }
+
+/* 通貨・資源の表示 */
+.wallet { display: flex; gap: 6px; }
+.coin {
+  display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 4px;
+  background: var(--surface-solid); border: 1px solid var(--line); border-radius: 12px;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 500;
+}
+.coin i { width: 16px; height: 16px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; color: #fff; font-style: normal; font-size: 8px; font-weight: 700; }
+.coin.c-violet i { background: var(--crayon); }
+.coin.c-gold i { background: var(--gold); }
+.coin .plus { margin-left: 2px; color: var(--dim); }
+
+/* ───────────── 文字 ───────────── */
+.eyebrow {
+  font-family: var(--f-mono); font-size: 8.5px; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim);
+}
+.eyebrow.ink { color: var(--ink); }
+.display { font-family: var(--f-display); font-weight: 600; letter-spacing: -0.02em; line-height: 0.95; }
+.h1 { font-family: var(--f-display); font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.h2 { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+.h3 { font-size: 12px; font-weight: 700; }
+.mono { font-family: var(--f-mono); }
+.num { font-family: var(--f-display); font-variant-numeric: tabular-nums; font-weight: 600; }
+.dim { color: var(--dim); }
+.small { font-size: 9.5px; }
+.tiny { font-size: 8.5px; }
+.jp-sub { font-size: 10px; color: var(--ink-2); letter-spacing: 0.08em; }
+
+/* ───────────── パネル ───────────── */
+.panel {
+  position: relative;
+  background: var(--surface);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+/* 図面のトンボ(四隅の目印) */
+.marks::before, .marks::after {
+  content: ""; position: absolute; width: 8px; height: 8px; pointer-events: none;
+  border-color: var(--line-ink); border-style: solid;
+}
+.marks::before { left: -1px; top: -1px; border-width: 1.5px 0 0 1.5px; }
+.marks::after { right: -1px; bottom: -1px; border-width: 0 1.5px 1.5px 0; }
+.panel.cut { clip-path: var(--cut); border: 0; box-shadow: none; }
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px 6px; border-bottom: 1px solid var(--line);
+}
+.panel-body { padding: 10px; }
+.rule { height: 1px; background: var(--line); margin: 8px 0; }
+.rule-ink { height: 2px; background: var(--ink); }
+.docno { /* 公文書番号 */
+  font-family: var(--f-mono); font-size: 8.5px; letter-spacing: 0.14em; color: var(--dim);
+  padding-left: 8px; border-left: 3px solid var(--ink);
+}
+.stamp { /* 判定の印 */
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 8px; border: 1.5px solid currentColor; color: var(--danger);
+  font-family: var(--f-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.16em;
+  transform: rotate(-4deg); border-radius: 2px;
+}
+
+/* ───────────── ボタン ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 32px; padding: 0 16px;
+  background: var(--ink); color: #fff;
+  font-weight: 700; font-size: 11px; letter-spacing: 0.06em;
+  clip-path: var(--cut-sm);
+}
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); clip-path: none; border-radius: 2px; }
+.btn.light { background: var(--surface-solid); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn.signal { background: var(--signal); color: #fff; }
+.btn.danger { background: var(--danger); }
+.btn.violet { background: var(--crayon); }
+.btn.sm { height: 24px; padding: 0 10px; font-size: 10px; }
+.btn.lg { height: 44px; padding: 0 22px; font-size: 13px; }
+.btn.block { display: flex; width: 100%; }
+.btn .arrow { font-family: var(--f-mono); font-weight: 400; }
+.btn.disabled { opacity: 0.35; }
+/* 主要アクション: 黒地 + 端の警告縞 + 英字の大見出し */
+.cta {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: 58px; padding: 0 14px 0 20px; min-width: 190px;
+  background: var(--ink); color: #fff; clip-path: var(--cut);
+}
+.cta::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--hazard); }
+.cta .cta-main { font-family: var(--f-display); font-size: 22px; font-weight: 700; letter-spacing: 0.02em; line-height: 1; }
+.cta .cta-sub { font-size: 9.5px; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.1em; margin-top: 3px; }
+.cta .cta-go { width: 34px; height: 34px; border: 1px solid rgba(255, 255, 255, 0.3); display: grid; place-items: center; font-size: 16px; }
+.icon-btn {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  background: var(--surface-solid); border: 1px solid var(--line); border-radius: 2px;
+  font-family: var(--f-mono); font-size: 13px; position: relative;
+}
+.badge-dot { position: absolute; right: -3px; top: -3px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--danger); color: #fff; font-size: 8px; font-weight: 700; display: grid; place-items: center; font-family: var(--f-mono); }
+
+/* タブ */
+.tabs { display: flex; gap: 2px; }
+.tab {
+  height: 28px; padding: 0 14px; display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; color: var(--dim);
+  border-bottom: 2px solid transparent;
+}
+.tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+.tab .count { font-family: var(--f-mono); font-size: 9px; color: var(--faint); }
+.seg { display: inline-flex; padding: 2px; background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 3px; }
+.seg > * { height: 22px; padding: 0 10px; display: flex; align-items: center; font-size: 10px; font-weight: 700; color: var(--dim); border-radius: 2px; }
+.seg > .on { background: var(--surface-solid); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* タグ・チップ */
+.tag {
+  display: inline-flex; align-items: center; gap: 4px; height: 17px; padding: 0 6px;
+  font-family: var(--f-mono); font-size: 8.5px; font-weight: 500; letter-spacing: 0.08em;
+  border: 1px solid var(--line-2); border-radius: 2px; color: var(--ink-2); white-space: nowrap;
+}
+.tag.solid { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tag.violet { color: var(--crayon); border-color: currentColor; }
+.tag.ok { color: var(--ok); border-color: currentColor; }
+.tag.danger { color: var(--danger); border-color: currentColor; }
+.tag.gold { color: var(--gold); border-color: currentColor; }
+.tag.npc { color: var(--npc); border-color: currentColor; }
+.lock { color: var(--faint); }
+
+/* バー */
+.bar { position: relative; height: 4px; background: var(--line); overflow: hidden; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
+.bar.thick { height: 8px; }
+.bar.seg-bar > i { background: repeating-linear-gradient(90deg, var(--ink) 0 6px, transparent 6px 8px); }
+.bar.striped > i { background: repeating-linear-gradient(135deg, var(--ink) 0 4px, var(--ink-2) 4px 8px); }
+
+/* ───────────── チーム色と記号 ───────────── */
+.t-a { --tc: var(--team-a); } .t-b { --tc: var(--team-b); } .t-c { --tc: var(--team-c); } .t-d { --tc: var(--team-d); } .t-npc { --tc: var(--npc); }
+.sym { display: inline-block; width: 10px; height: 10px; background: var(--tc, var(--ink)); flex: none; }
+.sym.diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.sym.square { transform: scale(0.82); }
+.sym.hex { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.sym.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.sym.oct { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+
+/* ───────────── プレースホルダ(画像アセットの位置) ───────────── */
+.ph {
+  position: relative; overflow: hidden;
+  background: var(--hatch), linear-gradient(160deg, rgba(255, 255, 255, 0.7), rgba(220, 226, 232, 0.7));
+  border: 1px dashed var(--line-2);
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px;
+  color: var(--dim); text-align: center;
+}
+.ph::after { /* 対角線: 「ここに画像が入る」の製図記号 */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line) calc(50% - 0.5px), var(--line) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--line) calc(50% - 0.5px), var(--line) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+.ph > * { position: relative; z-index: 1; background: rgba(255, 255, 255, 0.85); padding: 1px 6px; }
+.ph .ph-k { font-family: var(--f-mono); font-size: 8.5px; letter-spacing: 0.16em; color: var(--ink-2); font-weight: 700; }
+.ph .ph-d { font-size: 8.5px; color: var(--dim); }
+.ph.round { border-radius: 50%; }
+.ph.round::after { border-radius: 50%; }
+.ph.round > .ph-d { display: none; }
+.dark .ph { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 7px), linear-gradient(160deg, #1d2833, #121b24); border-color: rgba(255, 255, 255, 0.2); }
+.dark .ph > * { background: rgba(14, 22, 30, 0.85); color: var(--ink-2); }
+/* チーム色を帯びたプレースホルダ(指導者の立ち絵など) */
+.ph.tinted { background: var(--hatch), linear-gradient(170deg, color-mix(in srgb, var(--tc, var(--signal)) 22%, #fff), rgba(225, 230, 235, 0.8) 70%); }
+
+/* 盤面(Three.js)の代わりの図 */
+.board-ph {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(rgba(14, 22, 30, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 22, 30, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(14, 22, 30, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 22, 30, 0.03) 1px, transparent 1px),
+    radial-gradient(60% 70% at 55% 55%, #f7f9fb, #dde3e8);
+  background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px, 100% 100%;
+  transform-origin: 50% 0;
+}
+.board-ph .river { position: absolute; background: linear-gradient(90deg, rgba(16, 191, 232, 0.25), rgba(16, 191, 232, 0.4), rgba(16, 191, 232, 0.25)); border: 1px solid rgba(16, 191, 232, 0.45); }
+.board-ph .fog { position: absolute; background: var(--hatch), rgba(244, 241, 234, 0.92); }
+.board-ph .board-tag { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.node { /* 盤面上の拠点 */
+  position: absolute; width: 26px; height: 26px; transform: translate(-50%, -50%);
+  border: 1.5px solid var(--tc, var(--ink-2)); background: rgba(255, 255, 255, 0.85);
+  display: grid; place-items: center;
+}
+.node.big { width: 40px; height: 40px; }
+.node::after { content: ""; position: absolute; inset: 4px; background: var(--tc, var(--faint)); opacity: 0.35; }
+.node-label {
+  position: absolute; transform: translate(-50%, 0); white-space: nowrap;
+  font-size: 8.5px; font-weight: 700; padding: 1px 5px; background: rgba(255, 255, 255, 0.92);
+  border-left: 2px solid var(--tc, var(--ink));
+}
+.token { /* 部隊トークン */
+  position: absolute; width: 18px; height: 18px; transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--tc); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--tc), 0 0 14px var(--tc);
+}
+.token.mine { box-shadow: 0 0 0 1px var(--ink), 0 0 0 4px rgba(255, 255, 255, 0.8), 0 0 16px var(--tc); }
+.path { position: absolute; height: 0; border-top: 1.5px dashed var(--ink); transform-origin: 0 0; }
+
+/* ───────────── 少女のクレヨン(SVG の線をそのまま使う) ───────────── */
+.crayon-svg { position: absolute; pointer-events: none; overflow: visible; }
+.crayon-svg path { fill: none; stroke: var(--crayon); stroke-linecap: round; stroke-linejoin: round; filter: url(#crayon-rough); opacity: 0.88; }
+
+/* ───────────── カード ───────────── */
+.card {
+  position: relative; background: var(--surface-solid); border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+.card.sel { box-shadow: 0 0 0 2px var(--ink), var(--shadow-sm); }
+.card .accent-top { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tc, var(--ink)); }
+.list-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+
+/* ───────────── モーダル ───────────── */
+.scrim { position: absolute; inset: 0; background: rgba(233, 237, 241, 0.6); backdrop-filter: blur(6px) grayscale(0.4); z-index: 50; display: grid; place-items: center; }
+.scrim.dark-scrim { background: rgba(10, 16, 22, 0.62); }
+.modal { width: 420px; max-width: calc(100vw - 32px); background: var(--surface-solid); box-shadow: 0 30px 60px -20px rgba(14, 22, 30, 0.5); position: relative; }
+.modal-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 12px 16px; }
+.modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface-sunk); }
+
+/* ───────────── モック表示用(画面ID) ───────────── */
+.mock-id {
+  position: absolute; right: 6px; bottom: 4px; z-index: 999;
+  font-family: var(--f-mono); font-size: 8px; letter-spacing: 0.12em; color: var(--faint);
+  pointer-events: none;
+}
+
+/* スクロールバー非表示(モックは静止画として見せる) */
+::-webkit-scrollbar { display: none; }

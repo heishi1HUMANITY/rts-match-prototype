@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D アセットビューア</title>
+<link rel="stylesheet" href="../ui/shared.css">
+<style>
+  html, body { overflow: hidden; }
+  body { background: #e9edf1; }
+  #view { position: fixed; inset: 0; }
+  .ui { position: fixed; z-index: 2; }
+  .side { left: 14px; top: 14px; width: 252px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 28px); overflow: auto; }
+  .side h1 { font-family: var(--f-display); font-size: 22px; letter-spacing: -0.02em; line-height: 1; }
+  .kv { display: grid; grid-template-columns: 74px 1fr; gap: 3px 8px; font-size: 10px; }
+  .kv dt { color: var(--dim); } .kv dd { font-family: var(--f-mono); font-size: 10px; }
+  .grp .eyebrow { display: block; margin-bottom: 4px; }
+  .row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .row button { height: 26px; padding: 0 10px; font-size: 10px; font-weight: 700; background: var(--surface-solid); border: 1px solid var(--line-2); }
+  .row button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .team { width: 26px; padding: 0 !important; display: grid; place-items: center; }
+  .team i { width: 11px; height: 11px; display: block; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 10.5px; }
+  .chk input { accent-color: #0e161e; }
+  .bar { height: 4px; } .bar > i { background: var(--warn); transition: width .1s; }
+  .stats { right: 14px; top: 14px; padding: 8px 12px; display: grid; grid-template-columns: repeat(4, auto); gap: 2px 14px; }
+  .stats .v { font-family: var(--f-display); font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .help { right: 14px; bottom: 12px; font-size: 9.5px; color: var(--dim); text-align: right; }
+  .cap { left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 14px; background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 700; clip-path: var(--cut-sm); opacity: 0; transition: opacity .2s; white-space: nowrap; }
+  .cap.on { opacity: 1; }
+  .label3d { position: fixed; z-index: 1; transform: translate(-50%, 0); font-size: 9px; font-weight: 700; padding: 1px 6px; background: rgba(255,255,255,.92); border-left: 2px solid var(--ink); white-space: nowrap; pointer-events: none; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+<script src="common.js"></script>
+<script src="floodgate.js"></script>
+<script src="tank.js"></script>
+<script src="heli.js"></script>
+<script src="plant.js"></script>
+<script src="hub.js"></script>
+<script src="bridge.js"></script>
+<script src="ropeway.js"></script>
+<script src="plate.js"></script>
+<script src="port.js"></script>
+<script src="mine.js"></script>
+<script src="lab.js"></script>
+<script src="factory.js"></script>
+<script src="terrain.js"></script>
+<script src="guard.js"></script>
+<script src="raider.js"></script>
+<script src="boss.js"></script>
+<script src="floor.js"></script>
+<script src="fog.js"></script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<aside class="ui panel marks side">
+  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
+  <div><div class="eyebrow" id="a-kind"></div><h1 id="a-title"></h1><div class="small dim" style="margin-top:3px" id="a-desc"></div></div>
+  <dl class="kv" id="a-info"></dl>
+  <div class="grp"><span class="eyebrow" id="a-act-label">STATE · 状態</span>
+    <div class="row" id="actions"></div>
+    <div class="bar" style="margin-top:6px" id="prog-wrap"><i id="prog" style="width:0%"></i></div>
+  </div>
+  <div class="grp"><span class="eyebrow">OWNER · 所有</span>
+    <div class="row" id="team">
+      <button class="team" data-c="" title="中立"><i style="background:#8f98a3"></i></button>
+      <button class="team on" data-c="#ff6a1a" title="TEAM A"><i style="background:#ff6a1a;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)"></i></button>
+      <button class="team" data-c="#10bfe8" title="TEAM B"><i style="background:#10bfe8;transform:scale(.85)"></i></button>
+      <button class="team" data-c="#f0b323" title="TEAM C"><i style="background:#f0b323;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)"></i></button>
+      <button class="team" data-c="#9b5cff" title="TEAM D"><i style="background:#9b5cff;clip-path:polygon(50% 0,100% 100%,0 100%)"></i></button>
+      <button class="team" data-c="#6b7a5e" title="現地勢力"><i style="background:#6b7a5e"></i></button>
+    </div>
+  </div>
+  <div class="grp"><span class="eyebrow">CAMERA</span>
+    <div class="row" id="cam"><button data-v="game" class="on">ゲーム視点</button><button data-v="quarter">斜め前</button><button data-v="front">正面</button><button data-v="side">側面</button><button data-v="top">真上</button></div>
+  </div>
+  <div class="grp"><span class="eyebrow">DISPLAY</span>
+    <label class="chk"><input type="checkbox" id="edges" checked>輪郭線(図面の線)</label>
+    <label class="chk"><input type="checkbox" id="ring" checked>制圧圏 / ベースプレート</label>
+    <label class="chk"><input type="checkbox" id="scale" checked>大きさの比較(現行の部隊トークン)</label>
+    <label class="chk"><input type="checkbox" id="wire">ワイヤーフレーム</label>
+    <label class="chk"><input type="checkbox" id="bake" checked>部品の焼き込み(描画呼び出しを減らす。外すと元の部品のまま)</label>
+    <label class="chk"><input type="checkbox" id="spin">自動回転</label>
+  </div>
+</aside>
+
+<div class="ui panel stats">
+  <span class="eyebrow">TRIS</span><span class="eyebrow">DRAW</span><span class="eyebrow">MESH</span><span class="eyebrow">MAT</span>
+  <span class="v" id="s-tris">0</span><span class="v" id="s-draw">0</span><span class="v" id="s-mesh">0</span><span class="v" id="s-mat">0</span>
+</div>
+<div class="ui help">ドラッグ: 回転 / 右ドラッグ: 移動 / ホイール: 拡大縮小<br>DRAW は描画呼び出しの概数(モデル単体、床と比較用トークンを除く)</div>
+<div class="ui cap" id="cap">中央水門 開放 — 門扉が上がっています</div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe9edf1);
+const camera = new THREE.PerspectiveCamera(50, 1, 2, 5000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 30; controls.maxDistance = 2400;
+
+// ゲームと同じ照明の考え方: 半球光 + 斜めの平行光(影は落とさない)
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(-300, 600, 200); scene.add(sun);
+// 製図の床
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf2f4f6 }));
+floor.position.y = -0.2; scene.add(floor);
+const g1 = new THREE.GridHelper(2400, 100, 0xd6dce2, 0xe0e5ea); g1.position.y = -0.1; scene.add(g1);
+const g2 = new THREE.GridHelper(2400, 25, 0xc3cbd3, 0xc3cbd3); g2.position.y = -0.05; scene.add(g2);
+
+// 大きさの比較: 現行ゲームの部隊トークン(装甲強襲、表示倍率 2.0)をおおまかに再現
+const token = new THREE.Group();
+const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
+const plate = new THREE.Mesh(new THREE.RingGeometry(32, 38, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: .9, side: THREE.DoubleSide }));
+plate.position.y = 0.5; token.add(plate);
+const tdisc = new THREE.Mesh(new THREE.CircleGeometry(31, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: .22 }));
+tdisc.position.y = 0.4; token.add(tdisc);
+const tbody = new THREE.Mesh(new THREE.BoxGeometry(60, 24, 48), lam(0xff6a1a)); tbody.position.y = 20; token.add(tbody);
+for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(8, 16, 6), lam(0x3b4752)); leg.position.set(sx * 34, 8, sz * 16); leg.rotation.z = sx * 0.4; token.add(leg); }
+const turretT = new THREE.Mesh(new THREE.BoxGeometry(24, 10, 20), lam(0x3b4752)); turretT.position.y = 37; token.add(turretT);
+token.rotation.y = -0.6; scene.add(token);
+const label = document.createElement("div"); label.className = "label3d"; label.textContent = "現行の部隊トークン(装甲強襲)"; document.body.appendChild(label);
+
+// アセット表: 生成、表示倍率、カメラ距離、操作ボタン
+const ASSETS = {
+  floodgate: {
+    kind: "ASSET VIEWER · BASE / LARGE", title: "中央水門", desc: "大拠点の詳細版。終盤に門扉が上がって開放される",
+    info: [["ファイル", "mockups/3d/floodgate.js"], ["大きさ", "制圧圏 r=110 × 表示 3.0(施設は現行の倍)"], ["構成", "Box / Cylinder / Plane のみ"], ["テクスチャ", "Canvas 生成 ×2(警告縞・流れ)"]],
+    scale: 3.0, dist: 1100, target: 60, tokenAt: [420, 0, 260],
+    make: () => DreamAssets.floodgate(THREE, { r: 110 }),
+    actLabel: "STATE · 状態", progress: true,
+    actions: (a) => [["閉", () => a.setState("closed"), () => a.state === "closed"], ["開放 ▶", () => a.setState("opening"), () => a.state === "opening"], ["開", () => a.setState("open"), () => a.state === "open"], ["◀ 閉鎖", () => a.setState("closing"), () => a.state === "closing"]],
+    caption: (a) => a.state === "opening" ? "中央水門 開放 — 門扉が上がっています" : a.state === "closing" ? "中央水門 閉鎖中" : "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  tank: {
+    kind: "ASSET VIEWER · UNIT / ARMOR", title: "装甲強襲(装軌案)v2", desc: "低い車高のレールガン戦車。ステルス艦のような面構成と光る継ぎ目、平たく縦長の角断面の砲身",
+    info: [["ファイル", "mockups/3d/tank.js"], ["大きさ", "全長 約42 × 表示 2.0"], ["構成", "断面の連結(loft)+ Box / Cylinder"], ["履帯", "履板 InstancedMesh(片側 約70枚)"]],
+    scale: 2.0, dist: 290, target: 10, tokenAt: [-175, 0, -60],
+    make: () => DreamAssets.tank(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃(充電→発射)", () => a.fire(), () => a.charging], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false]];
+    },
+    caption: (a) => a.charging ? "レールガン 充電中" : "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  heli: {
+    kind: "ASSET VIEWER · UNIT / AIR", title: "攻撃ヘリ", desc: "装甲強襲 v2 と同じ方向性のステルス攻撃ヘリ。縦列複座、内蔵式の尾部ファン、武装ポッド。高度 20(表示で 40)に浮かぶ",
+    info: [["ファイル", "mockups/3d/heli.js"], ["大きさ", "全長 約44 × 表示 2.0"], ["構成", "断面の連結(loft)+ Box / Cylinder"], ["リング", "ローターの円まで囲む"]],
+    scale: 2.0, dist: 330, target: 36, tokenAt: [-170, 0, -70],
+    make: () => DreamAssets.heli(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [[a.flying ? "着陸" : "離陸", () => a.setFlying(!a.flying), () => false], ["前進", () => a.setForward(!a.forward), () => a.forward], ["ミサイル", () => a.fire(), () => false], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false]];
+    },
+    caption: () => "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  plant: {
+    kind: "ASSET VIEWER · BASE / SMALL-MID", title: "発電所(原子力)", desc: "冷却塔2基、格納容器、タービン建屋、排気筒、変電設備。稼働中は湯気が上がり、格納容器の足元が青く光る",
+    info: [["ファイル", "mockups/3d/plant.js"], ["大きさ", "制圧圏 r=75 × 表示 3.0(施設は現行の倍)"], ["構成", "Lathe(冷却塔)+ Sphere / Box / Cylinder"], ["湯気", "InstancedMesh 1つ(52個)"]],
+    scale: 3.0, dist: 900, target: 60, tokenAt: [330, 0, 200],
+    make: () => DreamAssets.plant(THREE, { r: 75 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"], ["警報", () => a.setState("alarm"), () => a.state === "alarm"]],
+    caption: (a) => a.state === "alarm" ? "発電所 警報 — 炉心の出力が上がっています" : "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  hub: {
+    kind: "ASSET VIEWER · BASE / MID", title: "物流ハブ", desc: "中規模拠点。台座の大半がコンテナヤードで、門型クレーン2基がそれぞれのブロックでコンテナを積み替え続ける。右の帯に空コンテナ置き場と管制棟",
+    info: [["ファイル", "mockups/3d/hub.js"], ["大きさ", "制圧圏 r=75 × 表示 3.0(施設は現行の倍)"], ["構成", "Box / Cylinder / Extrude + 断面の連結"], ["コンテナ", "積んである分は色ごとに結合、動くのは6個"]],
+    scale: 3.0, dist: 680, target: 50, tokenAt: [250, 0, 190],
+    make: () => DreamAssets.hub(THREE, { r: 75 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  bridge: {
+    kind: "ASSET VIEWER · CROSSING / BRIDGE", title: "橋", desc: "渡河点。等級が上がるほど広い川を渡れる(I 桁橋 160 / II トラス橋 240 / III 斜張橋 320 まで。川の幅 I 1セル / II 2セル / III 3セル の両岸の陸セルの間)。建設中は両岸から床版が伸び、破壊されると中央が落ちる",
+    info: [["ファイル", "mockups/3d/bridge.js"], ["大きさ", "長さ = 端点間(等級ごとの上限まで)"], ["断面", "幅・高さは現行の 2 倍(施設は部隊より大きく)"], ["区間", "長さに比例(約 18 ごと)"]],
+    scale: 1, dist: 560, target: 30, tokenAt: [230, 0, 190],
+    make: () => DreamAssets.bridge(THREE, { cls: 1 }),
+    actLabel: "CLASS / LENGTH / STATE", progress: true,
+    actions: (a) => [["I", () => a.setClass(1), () => a.cls === 1], ["II", () => a.setClass(2), () => a.cls === 2], ["III", () => a.setClass(3), () => a.cls === 3],
+      ["長さ −", () => a.setLength(a.len - 30), () => false], ["長さ " + Math.round(a.len), () => {}, () => false], ["長さ +", () => a.setLength(a.len + 30), () => false],
+      ["完成", () => a.setState("built"), () => a.state === "built"], ["建設 ▶", () => a.setState("building"), () => a.state === "building"], ["破壊", () => a.setState("destroyed"), () => a.state === "destroyed"]],
+    caption: (a) => a.state === "building" ? "橋 建設中 — 両岸から床版を架けています" : a.state === "destroyed" ? "橋 破壊 — 通行できません" : "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  ropeway: {
+    kind: "ASSET VIEWER · CROSSING / ROPEWAY", title: "索道", desc: "山塊をまたいで部隊を運ぶ重量物用の索道。I は単線で大型の搬器1台が行き来、II は複線で2台がすれ違う。搬器の荷台に部隊1体(仮)が載る",
+    info: [["ファイル", "mockups/3d/ropeway.js"], ["大きさ", "駅の中心どうし I 520 / II 600"], ["搬器", "荷台 104 × 60(部隊1体)"], ["山", "確認用の四角錐(現行の山と同じ色)"]],
+    scale: 1, dist: 900, target: 50, tokenAt: [330, 0, 260],
+    make: () => DreamAssets.ropeway(THREE, { cls: 1 }),
+    actLabel: "CLASS / STATE · 等級と状態", progress: true,
+    actions: (a) => [["I 単線", () => a.setClass(1), () => a.cls === 1], ["II 複線", () => a.setClass(2), () => a.cls === 2],
+      ["完成", () => a.setState("built"), () => a.state === "built"], ["建設 ▶", () => a.setState("building"), () => a.state === "building"], ["破壊", () => a.setState("destroyed"), () => a.state === "destroyed"]],
+    caption: (a) => a.state === "building" ? "索道 建設中 — 支柱を立て、ケーブルを張っています" : a.state === "destroyed" ? "索道 破壊 — 通行できません" : "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  plate: {
+    kind: "ASSET VIEWER · UNIT / BASE PLATE", title: "ベースプレート(クレヨン)", desc: "全部隊の足元。地面にクレヨンで描いたような輪とシンボル(SF の模型との落差を見せる)。線は3枚の描き分けで震える。部隊の種類は描かない(載せているのは装甲強襲 v2)",
+    info: [["ファイル", "mockups/3d/plate.js"], ["大きさ", "輪の半径 = 部隊に合わせる"], ["構成", "層ごとの板(輪・状態・シンボル・練度)+ 耐久の弧。層は起動時に 1 回描いて全部隊で共有、色は材質で染める"], ["震え", "層ごとに 3 枚(透明度だけの RG テクスチャ)"]],
+    scale: 1, dist: 230, target: 10, tokenAt: [-150, 0, -40],
+    make: () => { const u = DreamAssets.tank(THREE); return DreamAssets.plate(THREE, { r: u.plateRadius * 2, unit: u }); },
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["通常", () => a.setState("idle"), () => a.state === "idle"], ["選択", () => a.setState("selected"), () => a.state === "selected"], ["交戦", () => a.setState("engaged"), () => a.state === "engaged"], ["損傷", () => a.setState("damaged"), () => a.state === "damaged"],
+      ["練度 " + ("∨".repeat(a.rank) || "0"), () => a.setRank((a.rank + 1) % 4), () => false], ["部隊 " + (a.unit.group.visible ? "表示" : "なし"), () => { a.unit.group.visible = !a.unit.group.visible; }, () => false]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  port: {
+    kind: "ASSET VIEWER · BASE / SMALL", title: "港", desc: "小拠点のバリエーション。岸壁の旋回クレーンが荷の山と係留した貨物船のあいだで荷を積み下ろす。突堤の先に灯台、陸側に倉庫・事務所・油槽",
+    info: [["ファイル", "mockups/3d/port.js"], ["大きさ", "制圧圏 r=60 × 表示 3.0(施設は現行の倍)"], ["水面", "前(+z)。確認用"], ["構成", "Box / Cylinder / Extrude + 断面の連結"]],
+    scale: 3.0, dist: 560, target: 40, tokenAt: [230, 0, 190],
+    make: () => DreamAssets.port(THREE, { r: 60 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  mine: {
+    kind: "ASSET VIEWER · BASE / SMALL", title: "鉱山", desc: "小拠点のバリエーション。段々の露天掘りの穴、立坑の櫓(滑車が回り、かごが上下)、選鉱場へ鉱石を運ぶ斜めのコンベヤ、サイロと鉱石の山",
+    info: [["ファイル", "mockups/3d/mine.js"], ["大きさ", "制圧圏 r=60 × 表示 3.0(施設は現行の倍)"], ["穴", "穴あきの押し出し(台座とテラス2段)"], ["鉱石", "InstancedMesh 1つ(18個)"]],
+    scale: 3.0, dist: 560, target: 40, tokenAt: [230, 0, 190],
+    make: () => DreamAssets.mine(THREE, { r: 60 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  lab: {
+    kind: "ASSET VIEWER · BASE / MID", title: "研究所", desc: "中規模拠点のバリエーション。半分埋めた円形の加速器(光の粒がチーム色の尾を引いて回る)と入射棟・検出器棟、円形レールを走る2本の塔で支える巨大パラボラ(停止すると鏡を真上へ向ける)、研究棟、変電設備",
+    info: [["ファイル", "mockups/3d/lab.js"], ["大きさ", "制圧圏 r=75 × 表示 3.0(施設は現行の倍)"], ["鏡", "直径42。回転放物面(Lathe)+ 裏の骨組み"], ["光の粒", "球1つ + 尾の InstancedMesh(10)"]],
+    scale: 3.0, dist: 680, target: 40, tokenAt: [250, 0, 190],
+    make: () => DreamAssets.lab(THREE, { r: 75 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  factory: {
+    kind: "ASSET VIEWER · BASE / MID", title: "工場", desc: "中規模拠点のバリエーション。のこぎり屋根の生産棟(組み立ては屋内)と閉じたシャッターの搬出口、ボイラー棟と煙突(煙)、貯蔵タンクと配管ラック、事務棟、鋼材置き場",
+    info: [["ファイル", "mockups/3d/factory.js"], ["大きさ", "制圧圏 r=75 × 表示 3.0(施設は現行の倍)"], ["動き", "煙と照明だけ(出荷の動きは入れない)"], ["煙", "InstancedMesh 1つ(40個)"]],
+    scale: 3.0, dist: 680, target: 40, tokenAt: [250, 0, 190],
+    make: () => DreamAssets.factory(THREE, { r: 75 }),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["稼働", () => a.setState("run"), () => a.state === "run"], ["停止", () => a.setState("stop"), () => a.state === "stop"]],
+    caption: () => "",
+    ringParts: (a) => [a.parts.ring, a.parts.disc],
+  },
+  terrain: {
+    kind: "ASSET VIEWER · TERRAIN", title: "地形(川・山)", desc: "地形はデータ(等級つきの川の折れ線・山の稜線)で渡し、ゲームと同じ 80 四方のセルを経て作る。川は等級で幅・深さ・岸が変わる(I 小川 / II 護岸の川 / III 堤防のある大河)。山は等高線模型(I / II)",
+    info: [["ファイル", "mockups/3d/terrain.js"], ["盤面", "20 × 14 セル(1600 × 1120)"], ["川", "I 1列・浅い・土の岸 / II 2列・護岸 / III 3列・深い・堤防"], ["水面", "中央水門・港と共通の水"]],
+    scale: 1, dist: 1800, target: 20, tokenAt: [-300, 18, -40],
+    make: () => DreamAssets.terrain(THREE, { layout: "confluence" }),
+    actLabel: "LAYOUT · 配置", progress: false,
+    actions: (a) => [["合流", () => a.setLayout("confluence"), () => a.layoutName === "confluence"], ["等級の比較", () => a.setLayout("compare"), () => a.layoutName === "compare"], ["ランダム ▶", () => a.randomize(), () => a.layoutName === "random"]],
+    caption: (a) => { const i = a.info(); return `川 I ${i.river[0]} / II ${i.river[1]} / III ${i.river[2]} セル・山 I ${i.mountain[0]} / II ${i.mountain[1]} セル`; },
+    ringParts: () => [],
+  },
+  guard: {
+    kind: "ASSET VIEWER · NPC / GUARD", title: "守備NPC", desc: "中立の拠点を守る機械。等級で武装と車両を変える: S 軽機関銃 + 後付けの計算機ユニット(土のうの銃座 / ハンビーの銃塔)、M CIWS(八角の台座)/ 機動戦闘車の砲塔(レドームなし)、L 対空砲塔(装甲の台座 / 履帯)。照準は光らない電子光学センサーの窓(暗いガラス)。チーム色は使わない",
+    info: [["ファイル", "mockups/3d/guard.js"], ["大きさ", "部隊と同じ表示倍率 2.0 × 全体 S 1.6(車両 1.15)/ M 1.3 / L 1.3"], ["交戦", "目標へ向く。M は銃身の束が回り、L は左右交互に撃つ"], ["移動型", "巡回(楕円)。交戦・撃破で止まる"]],
+    scale: 2.0, dist: 380, target: 18, tokenAt: [-170, 0, -110],
+    make: () => DreamAssets.guard(THREE, { size: "M" }),
+    actLabel: "SIZE / TYPE / STATE", progress: false,
+    actions: (a) => [["S 小拠点", () => a.setSize("S"), () => a.size === "S"], ["M 中規模", () => a.setSize("M"), () => a.size === "M"], ["L 大拠点", () => a.setSize("L"), () => a.size === "L"],
+      ["固定", () => a.setMobile(false), () => !a.mobile], ["移動", () => a.setMobile(true), () => a.mobile],
+      ["待機", () => a.setState("idle"), () => a.state === "idle"], ["交戦", () => a.setState("engaged"), () => a.state === "engaged"], ["撃破", () => a.setState("destroyed"), () => a.state === "destroyed"]],
+    caption: (a) => a.state === "destroyed" ? "守備NPC 撃破 — 拠点を制圧できます" : "",
+    ringParts: () => [],
+  },
+  raider: {
+    kind: "ASSET VIEWER · NPC / RAIDER", title: "徘徊NPC(現地勢力)", desc: "民間の車両に大径のオフロードタイヤを履かせ、無理やり武装した一団。成長段階で車両が変わる: 1 角ばった電動ピックアップ / 2 白い電動SUV(屋根にロケット)+ ピックアップ / 3 観光バス(屋根に銃座とロケット)+ SUV + ピックアップ2台",
+    info: [["ファイル", "mockups/3d/raider.js"], ["大きさ", "部隊と同じ表示倍率 2.0"], ["隊列", "楕円の道筋を先頭に続いて進む"], ["交戦", "止まって撃つ。ロケットは4発ずつの斉射"]],
+    scale: 2.0, dist: 560, target: 12, tokenAt: [-60, 0, -40],
+    make: () => DreamAssets.raider(THREE, { stage: 1 }),
+    actLabel: "STAGE / STATE", progress: false,
+    actions: (a) => [["段階1", () => a.setStage(1), () => a.stage === 1], ["段階2", () => a.setStage(2), () => a.stage === 2], ["段階3", () => a.setStage(3), () => a.stage === 3],
+      ["移動", () => a.setState("move"), () => a.state === "move"], ["交戦", () => a.setState("engaged"), () => a.state === "engaged"], ["撃破", () => a.setState("destroyed"), () => a.state === "destroyed"]],
+    caption: (a) => a.state === "destroyed" ? "徘徊NPC 撃破 — 補給と研究の報酬" : "",
+    ringParts: () => [],
+  },
+  boss: {
+    kind: "ASSET VIEWER · NPC / BOSS", title: "大拠点の守備(ボス)", desc: "中央水門を守る、艦の兵器を陸に据えた要塞砲塔。東側の艦載兵器を下敷きに: 角ばった連装主砲(AK-130 風)、6 本銃身 × 上下 2 門の近接防御 2 基(AK-630M-2 風)、垂直発射のミサイル区画、射撃管制(箱形の覆いのレーダーと電子光学照準器)。中立なのでチーム色は使わない",
+    info: [["ファイル", "mockups/3d/boss.js"], ["大きさ", "表示倍率 3.2(部隊の 1.6 倍。台座の差し渡し 約 58 → 186)"], ["交戦", "主砲は左右交互、近接防御は銃身が回って連射、ミサイルは 5 秒ごと"], ["損傷", "左の近接防御が止まり、煙"]],
+    scale: 3.2, dist: 640, target: 36, tokenAt: [-190, 0, 140],
+    make: () => DreamAssets.boss(THREE),
+    actLabel: "STATE · 状態", progress: false,
+    actions: (a) => [["待機", () => a.setState("idle"), () => a.state === "idle"], ["交戦", () => a.setState("engaged"), () => a.state === "engaged"], ["損傷", () => a.setState("damaged"), () => a.state === "damaged"], ["撃破", () => a.setState("destroyed"), () => a.state === "destroyed"]],
+    caption: (a) => a.state === "destroyed" ? "大拠点の守備 撃破 — 中央水門を制圧できます" : "",
+    ringParts: () => [],
+  },
+  floor: {
+    kind: "ASSET VIEWER · TERRAIN / FLOOR", title: "床タイル", desc: "盤面の陸に貼る幾何学のタイル(白・明灰・スレート)。案件のテーマで柄を変える: 港湾(コンクリート板、通路線、コンテナ区画)/ 都市(舗石、道路の帯、広場)/ 鉱区(三角の敷き板、砂利、縞鋼板)",
+    info: [["ファイル", "mockups/3d/floor.js"], ["盤面", "16 × 12 セル(1280 × 960)"], ["作り方", "Canvas 1 枚(1 セル 128 px)→ 板 1 枚"], ["描画呼び出し", "盤面全体で 1(台を除く)"]],
+    scale: 1, dist: 1500, target: 10, tokenAt: [-380, 3, 300],
+    make: () => DreamAssets.floor(THREE, { theme: "port" }),
+    actLabel: "THEME / GRID", progress: false,
+    actions: (a) => [["港湾", () => a.setTheme("port"), () => a.theme === "port"], ["都市", () => a.setTheme("city"), () => a.theme === "city"], ["鉱区", () => a.setTheme("mine"), () => a.theme === "mine"],
+      ["セルの格子", () => a.setGrid(!a.gridOn), () => a.gridOn]],
+    caption: () => "",
+    ringParts: () => [],
+  },
+  fog: {
+    kind: "ASSET VIEWER · TERRAIN / FOG", title: "霧(探索状態)", desc: "現行は紙の平面を探索状態で透かす方式で、背の高い模型が突き抜ける。新方式(マスク)は模型の側で霧を判定し、未探索は高さに関係なく描かない、探索済みは紙の色に寄せた記憶の姿、境目は破いた紙と鉛筆の線。クレヨンは、模型はあるがクレヨンで塗りつぶされて見えない表現",
+    info: [["ファイル", "mockups/3d/fog.js"], ["盤面", "地形 20 × 14 セル + 発電所・研究所・守備NPC(表示倍率 2)"], ["視界", "自陣の発電所(300)と斥候(240)"], ["新方式", "全材質に共通の処理を足す(世界の xz で探索グリッドを引く)"]],
+    scale: 1, dist: 1900, target: 20, tokenAt: [-700, 18, 420],
+    make: () => DreamAssets.fog(THREE, { mode: "mask" }),
+    actLabel: "MODE · 方式", progress: false,
+    actions: (a) => [["新方式(マスク)", () => a.setMode("mask"), () => a.mode === "mask"], ["クレヨン(塗りつぶし)", () => a.setMode("crayon"), () => a.mode === "crayon"], ["現行(平面)", () => a.setMode("plane"), () => a.mode === "plane"], ["探索をやり直す", () => a.reset(), () => false]],
+    caption: () => "",
+    ringParts: () => [],
+  },
+};
+let cur = null, curKey = null, teamColor = "#ff6a1a";
+const $ = (id) => document.getElementById(id);
+function load(key) {
+  if (cur) scene.remove(cur.group);
+  const A = ASSETS[key]; curKey = key;
+  cur = A.make(); cur.group.scale.setScalar(A.scale); scene.add(cur.group);
+  cur.setTeam(teamColor);
+  token.position.set(...A.tokenAt);
+  $("a-kind").textContent = A.kind; $("a-title").textContent = A.title; $("a-desc").textContent = A.desc;
+  $("a-info").innerHTML = A.info.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("a-act-label").textContent = A.actLabel; $("prog-wrap").style.display = A.progress ? "" : "none";
+  for (const b of $("assets").children) b.classList.toggle("on", b.dataset.a === key);
+  drawActions(); applyToggles(); VIEWS[currentView]();
+  history.replaceState(null, "", "?asset=" + key);
+}
+function drawActions() {
+  const acts = ASSETS[curKey].actions(cur);
+  $("actions").innerHTML = acts.map(([l], i) => `<button data-i="${i}">${l}</button>`).join("");
+}
+$("actions").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ASSETS[curKey].actions(cur)[b.dataset.i][1](); drawActions(); applyToggles(); });
+$("assets").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) load(b.dataset.a); });
+
+// カメラのプリセット。ゲーム視点は camera3d.ts と同じ仰角 55°・方位 0.32
+let currentView = "game";
+const VIEWS = {
+  game: () => { const A = ASSETS[curKey], d = A.dist, el = 55 * Math.PI / 180, az = 0.32; camera.position.set(Math.sin(az) * Math.cos(el) * d, Math.sin(el) * d, Math.cos(az) * Math.cos(el) * d); controls.target.set(0, A.target * 0.4, 0); },
+  quarter: () => { const A = ASSETS[curKey]; camera.position.set(A.dist * 0.4, A.dist * 0.22, A.dist * 0.34); controls.target.set(0, A.target * 0.8, A.dist * 0.04); },
+  front: () => { const A = ASSETS[curKey]; camera.position.set(0, A.target * 1.8, A.dist * 0.75); controls.target.set(0, A.target, 0); },
+  side: () => { const A = ASSETS[curKey]; camera.position.set(A.dist * 0.72, A.target * 1.8, A.dist * 0.1); controls.target.set(0, A.target, 0); },
+  top: () => { const A = ASSETS[curKey]; camera.position.set(0, A.dist * 1.3, 0.01); controls.target.set(0, 0, 0); },
+};
+const pick = (rowId, btn) => { for (const b of $(rowId).children) b.classList.toggle("on", b === btn); };
+$("team").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; teamColor = b.dataset.c || null; cur.setTeam(teamColor); pick("team", b); });
+$("cam").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; currentView = b.dataset.v; VIEWS[currentView](); pick("cam", b); });
+function applyToggles() {
+  cur.group.traverse((o) => { if ((o.isLineSegments && o.parent?.isMesh) || o.userData.edges) o.visible = $("edges").checked; if (o.isMesh && o.material && "wireframe" in o.material) o.material.wireframe = $("wire").checked; });
+  for (const p of ASSETS[curKey].ringParts(cur)) p.visible = $("ring").checked;
+  token.visible = $("scale").checked; controls.autoRotate = $("spin").checked;
+}
+for (const id of ["edges", "ring", "scale", "wire", "spin"]) $(id).addEventListener("change", applyToggles);
+$("bake").addEventListener("change", () => { DreamAssets.util.noBake = !$("bake").checked; load(curKey); });   // 作り直して比べる
+
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+load(new URLSearchParams(location.search).get("asset") in ASSETS ? new URLSearchParams(location.search).get("asset") : "tank");
+
+const clock = new THREE.Clock();
+const v = new THREE.Vector3();
+let statT = 0, uiT = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  cur.update(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  if ((uiT -= dt) <= 0) {   // 状態の表示を同期(動作ボタンの点灯、進捗、字幕)
+    uiT = 0.1;
+    const acts = ASSETS[curKey].actions(cur);
+    [...$("actions").children].forEach((b, i) => b.classList.toggle("on", !!acts[i]?.[2]()));
+    if (cur.progress !== undefined) $("prog").style.width = cur.progress * 100 + "%";
+    const cap = ASSETS[curKey].caption(cur); $("cap").textContent = cap; $("cap").classList.toggle("on", !!cap);
+  }
+  v.set(token.position.x, 62, token.position.z).project(camera);
+  label.style.display = token.visible && v.z < 1 ? "" : "none";
+  label.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; label.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px";
+  if ((statT -= dt) <= 0) {
+    statT = 0.5;
+    const st = cur.stats();
+    $("s-tris").textContent = st.tris.toLocaleString(); $("s-draw").textContent = st.draws; $("s-mesh").textContent = st.meshes; $("s-mat").textContent = st.materials;
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+window.__asset = () => cur; window.__load = load; window.__views = VIEWS; window.__camera = camera; window.__controls = controls;
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+name: 不具合
+description: 再現可能な不具合の報告
+title: '[Bug] '
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順・期待結果・実際の結果
+      description: seed、操作順、ブラウザ、画面サイズを含める
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: ログ・スクリーンショット
+      description: 秘密情報は含めない

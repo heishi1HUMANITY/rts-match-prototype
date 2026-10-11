@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D33 購入の確認</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .under { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  .modal { width: 480px; display: grid; grid-template-columns: 150px 1fr; }
+  .modal .ph { border: 0; border-right: 1px dashed var(--line-2); }
+  .modal .main { display: flex; flex-direction: column; }
+  .sum { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 16px; font-size: 10.5px; }
+  .sum .v { font-family: var(--f-mono); text-align: right; }
+  .sum .total { font-weight: 700; padding-top: 6px; border-top: 1px solid var(--line); }
+  .sum .total.v { font-size: 13px; }
+  .cap { margin: 0 16px; padding: 7px 10px; background: var(--surface-sunk); border-left: 3px solid var(--warn); font-size: 9.5px; color: var(--ink-2); }
+  .cap .bar { margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <iframe class="under" src="s15_shop.html" title="ショップ" tabindex="-1"></iframe>
+  <div class="scrim">
+    <div class="modal marks">
+      <div class="ph tinted t-d"><span class="ph-k">ITEM ART</span><span class="ph-d">購入対象 3:4</span></div>
+      <div class="main">
+        <div class="modal-head"><div class="eyebrow">CONFIRM PURCHASE · D33</div><div class="h2">10回 調達申請 — 夢の姿 ガルシア</div></div>
+        <div class="sum">
+          <span class="dim">内容</span><span class="v">指導者の見た目 ×10</span>
+          <span class="dim">★3 提供割合</span><span class="v">1.5%(80回で確定)</span>
+          <span class="dim">所持</span><span class="v">D 360</span>
+          <span class="total">支払い</span><span class="total v" style="color:var(--crayon)">D 300 → 残り D 60</span>
+        </div>
+        <div class="cap">未成年の月間上限 ¥1,800 / ¥5,000 — この購入は上限に影響しません(有償 D を使用しない)<div class="bar"><i style="width:36%;background:var(--warn)"></i></div></div>
+        <div style="padding:6px 16px 0" class="tiny"><a style="text-decoration:underline;color:var(--ink)">提供割合の詳細</a></div>
+        <div class="modal-foot" style="margin-top:10px"><button class="btn ghost">キャンセル</button><button class="btn violet">購入する</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="mock-id" style="z-index:60">D33 PURCHASE · MOCK</div>
+</div>
+</body>
+</html>

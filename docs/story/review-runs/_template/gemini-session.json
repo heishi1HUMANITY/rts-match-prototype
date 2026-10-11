@@ -1,0 +1,9 @@
+{
+  "provider": "agy",
+  "model": "gemini-3.8-flash-high",
+  "conversation_id": null,
+  "status": "not-started",
+  "last_successful_turn": null,
+  "last_attempted_turn": null,
+  "last_output": null
+}

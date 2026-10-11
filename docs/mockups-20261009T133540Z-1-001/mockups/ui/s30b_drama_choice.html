@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S30b ドラマ(選択肢)</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="drama.css">
+<style>
+  .veil { position: absolute; inset: 0; z-index: 3; background: rgba(233,237,241,.45); backdrop-filter: blur(2px); }
+  .choices { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: 430px; z-index: 6; display: flex; flex-direction: column; gap: 6px; }
+  .choices .hd { display: flex; justify-content: space-between; align-items: end; margin-bottom: 2px; }
+  .opt { position: relative; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; height: 44px; padding: 0 14px 0 0; background: rgba(255,255,255,.96); border: 1px solid var(--line-2); box-shadow: var(--shadow-sm); text-align: left; }
+  .opt .k { height: 100%; display: grid; place-items: center; background: var(--surface-sunk); border-right: 1px solid var(--line); font-family: var(--f-mono); font-weight: 700; font-size: 11px; }
+  .opt b { font-size: 12.5px; letter-spacing: .03em; }
+  .opt .eff { font-family: var(--f-mono); font-size: 8px; color: var(--dim); letter-spacing: .08em; }
+  .opt.focus { box-shadow: 0 0 0 2px var(--ink), var(--shadow-sm); }
+  .opt.focus .k { background: var(--ink); color: #fff; }
+  .opt.read { opacity: .6; }
+  .opt.girl b { text-decoration: line-through; text-decoration-color: var(--crayon); text-decoration-thickness: 2px; color: var(--dim); }
+  .timer { height: 3px; background: var(--line); position: relative; }
+  .timer i { position: absolute; left: 0; top: 0; bottom: 0; width: 64%; background: var(--ink); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="11"/><feDisplacementMap in="SourceGraphic" scale="2.6"/></filter></svg>
+<div class="screen">
+  <div class="ph dr-bg"><span class="ph-k">BACKGROUND · REAL</span><span class="ph-d">背景 16:9 / 国際機関 管制室</span></div>
+  <div class="ph tinted slot L idle" style="--tc:#9aa7b2"><span class="face"></span><span class="expr">HOLM · 沈黙</span><span class="ph-k">HOLM</span></div>
+  <div class="ph tinted t-a slot RC idle"><span class="face"></span><span class="expr">GARCIA · 待つ</span><span class="ph-k">GARCIA</span></div>
+  <div class="veil"></div>
+
+  <div class="scene-tag"><span class="docno">CHAPTER 03 · SCENE 2 / 6</span><span class="realm"><i></i>REALITY</span></div>
+  <div class="qm"><button>LOG</button><button class="on">AUTO 停止</button><button>HIDE</button></div>
+
+  <section class="choices">
+    <div class="hd"><span class="eyebrow ink">RESPONSE FORM · 回答を選択</span><span class="tiny dim">返答だけが変わる · 本筋は合流</span></div>
+    <div class="timer"><i></i></div>
+    <button class="opt focus"><span class="k">A</span><b>ホルムを問い詰める</b><span class="eff">→ 場面2a</span></button>
+    <button class="opt read"><span class="k">B</span><b>黙って地図を回収する</b><span class="eff">選択済み</span></button>
+    <button class="opt girl"><span class="k">C</span><b>線のことは報告しない</b><span class="eff">→ 夢の挿話</span></button>
+  </section>
+  <svg class="crayon-svg" style="left:300px;top:186px;z-index:7" width="300" height="56" viewBox="0 0 300 56"><path d="M8 30 C 70 18, 150 40, 292 24" stroke-width="2.6"/></svg>
+  <div class="crayon-text" style="left:520px;top:208px;font-size:15px;transform:rotate(-6deg);z-index:7">いわないで</div>
+
+  <section class="msg marks" style="height:84px;--sc:#9aa7b2">
+    <div class="plate"><b>ホルム</b><span>IPA · 機関</span></div>
+    <p style="font-size:13px">……規定上、答えられることはない。君がどう報告するかは、君が決めることだ。</p>
+  </section>
+  <div class="note" style="left:14px;bottom:110px;width:200px"><b>MOCK NOTE</b>選択肢は2〜3個。既に選んだものは薄く。時間制限は演出用のみ(切れたら A)。選んだ結果は直後の返答が変わるだけで、どれを選んでも次の場面で本筋に合流する(マルチエンドにしない)。少女の介入で選択肢が線で消されることがある。</div>
+  <div class="mock-id">S30b DRAMA · CHOICE · MOCK</div>
+</div>
+</body>
+</html>

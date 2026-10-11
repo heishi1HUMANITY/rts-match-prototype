@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S30c ドラマ(無線ブリーフィング)</title>
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="drama.css">
+<style>
+  .board-ph { filter: saturate(.7); }
+  .dim-layer { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(233,237,241,.2), rgba(233,237,241,.55)); z-index: 1; }
+  .callers { position: absolute; left: 14px; top: 64px; z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+  .caller { display: grid; grid-template-columns: 54px 1fr; gap: 8px; width: 196px; padding: 6px; background: var(--surface); backdrop-filter: var(--glass-blur); border: 1px solid var(--line); }
+  .caller .ph { height: 60px; }
+  .caller .nm { font-size: 10.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .caller .st { font-family: var(--f-mono); font-size: 8px; letter-spacing: .12em; color: var(--dim); margin-top: 2px; }
+  .caller .wave { display: flex; gap: 2px; align-items: end; height: 12px; margin-top: 8px; }
+  .caller .wave i { width: 2px; background: var(--faint); }
+  .caller.talk { box-shadow: 0 0 0 1.5px var(--signal), var(--shadow-sm); background: rgba(255,255,255,.95); }
+  .caller.talk .st { color: var(--signal); }
+  .caller.talk .wave i { background: var(--signal); }
+  .caller.off { opacity: .55; }
+  .mark { position: absolute; z-index: 3; transform: translate(-50%,-50%); }
+  .mark.ring { width: 46px; height: 46px; border: 2px solid var(--danger); border-radius: 50%; box-shadow: 0 0 0 8px rgba(226,51,79,.12); }
+  .mark.lbl { font-size: 9px; font-weight: 700; background: var(--ink); color: #fff; padding: 2px 7px; white-space: nowrap; transform: translate(-50%, 0); }
+  .arrow { position: absolute; z-index: 3; height: 0; border-top: 2px dashed var(--team-a); transform-origin: 0 0; }
+  .brief { position: absolute; right: 14px; top: 64px; width: 200px; z-index: 5; padding: 8px 10px; }
+  .brief li { list-style: none; display: flex; gap: 6px; font-size: 9.5px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .brief li span { font-family: var(--f-mono); font-size: 8.5px; color: var(--dim); width: 14px; }
+  .brief li.now { font-weight: 700; } .brief li.now span { color: var(--signal); }
+  .msg { left: calc(50% + 105px); width: 640px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="board-ph">
+    <div class="river" style="left:-40px;right:-40px;top:240px;height:26px;transform:rotate(-8deg)"></div>
+    <div class="node t-a" style="left:360px;top:300px"></div>
+    <div class="node big" style="left:560px;top:190px;border-style:dashed"></div>
+    <div class="node t-b" style="left:720px;top:290px"></div>
+  </div>
+  <div class="dim-layer"></div>
+  <div class="arrow" style="left:372px;top:290px;width:180px;transform:rotate(-31deg)"></div>
+  <div class="mark ring" style="left:560px;top:190px"></div>
+  <div class="mark lbl" style="left:560px;top:218px">中央水門 · 終盤に開放</div>
+
+  <div class="scene-tag"><span class="docno">CASE NO. 4092-B · BRIEFING</span><span class="realm" style="background:var(--signal);color:var(--ink)"><i style="background:var(--ink)"></i>RADIO · 作戦前通信</span></div>
+  <div class="qm"><button>LOG</button><button>AUTO</button><button>SKIP</button></div>
+
+  <section class="callers">
+    <div class="caller talk"><div class="ph tinted t-a"><span class="ph-k" style="font-size:6px">BUST</span></div><div><div class="nm">ガルシア <span class="tag" style="height:14px">PMC</span></div><div class="st">● TRANSMITTING</div><div class="wave"><i style="height:4px"></i><i style="height:10px"></i><i style="height:7px"></i><i style="height:12px"></i><i style="height:5px"></i><i style="height:9px"></i></div></div></div>
+    <div class="caller"><div class="ph tinted" style="--tc:#9aa7b2"><span class="ph-k" style="font-size:6px">BUST</span></div><div><div class="nm">ホルム <span class="tag" style="height:14px">IPA</span></div><div class="st">STANDBY</div><div class="wave"><i style="height:3px"></i><i style="height:3px"></i><i style="height:3px"></i></div></div></div>
+    <div class="caller off"><div class="ph tinted t-c"><span class="ph-k" style="font-size:6px">BUST</span></div><div><div class="nm">クロウ <span class="tag" style="height:14px">INT</span></div><div class="st">NO SIGNAL</div></div></div>
+  </section>
+
+  <aside class="panel marks brief">
+    <div class="eyebrow ink" style="margin-bottom:4px">BRIEFING · 要点</div>
+    <ul>
+      <li><span>01</span>川の北岸から開始</li>
+      <li class="now"><span>02</span>橋 II を先に確保する</li>
+      <li><span>03</span>終盤、中央水門が開く</li>
+      <li><span>04</span>IPA とは休戦の余地あり</li>
+    </ul>
+  </aside>
+
+  <section class="msg marks radio-win">
+    <div class="plate"><b>ガルシア</b><span>CH-A · 作戦前通信</span></div>
+    <span class="voice">▶ VOICE · RADIO FX</span>
+    <p>川を渡れるのは二か所だけだ。橋を取った方が、水門の開く時間に間に合う。<br>── ホルム、そっちの部隊とは今回も殴り合いか?</p>
+    <span class="next">▼</span>
+  </section>
+  <div class="mock-id">S30c DRAMA · RADIO BRIEFING · MOCK</div>
+</div>
+</body>
+</html>

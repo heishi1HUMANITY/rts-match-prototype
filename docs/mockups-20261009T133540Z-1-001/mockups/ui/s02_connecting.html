@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S02 再接続中</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .box { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; padding: 20px 22px 16px; }
+  .big { font-family: var(--f-display); font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin-top: 12px; display: flex; align-items: center; gap: 12px; }
+  .ring { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--signal); border-right-color: var(--signal); }
+  .steps { margin-top: 14px; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line); }
+  .steps div { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 10.5px; }
+  .steps .k { font-family: var(--f-mono); font-size: 9px; color: var(--dim); width: 22px; }
+  .steps .s { margin-left: auto; font-family: var(--f-mono); font-size: 9px; }
+  .steps .done .s { color: var(--ok); }
+  .steps .now .s { color: var(--signal); }
+  .steps .wait { color: var(--faint); }
+  .foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .scan { position: absolute; left: 0; right: 0; top: 46%; height: 1px; background: linear-gradient(90deg, transparent, var(--signal), transparent); opacity: .6; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <div class="scan"></div>
+  <section class="panel marks box">
+    <div style="display:flex;justify-content:space-between"><span class="docno">FORM 4X-02 · 回線照合</span><span class="tag">ATTEMPT 3</span></div>
+    <div class="big"><span class="ring"></span>CONNECTING</div>
+    <div class="jp-sub" style="margin-top:6px">再接続中… サーバーに接続しています</div>
+    <div class="steps">
+      <div class="done"><span class="k">01</span>コールサイン照会 <b class="mono" style="font-size:10px">ONISHI</b><span class="s">OK</span></div>
+      <div class="now"><span class="k">02</span>夢域サーバー TOKYO-01 へ接続<span class="s">再試行 2.0s</span></div>
+      <div class="wait"><span class="k">03</span>状態の同期(ロビー / 試合へ復帰)<span class="s">—</span></div>
+    </div>
+    <div class="foot">
+      <span class="tiny dim">指数バックオフ 0.5〜8秒で自動再試行</span>
+      <button class="btn sm ghost">別の名前で入る</button>
+    </div>
+  </section>
+  <div class="mock-id">S02 CONNECTING · MOCK</div>
+</div>
+</body>
+</html>

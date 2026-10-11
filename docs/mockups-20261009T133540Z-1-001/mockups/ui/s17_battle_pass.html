@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S17 バトルパス</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .summary { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 196px; display: flex; flex-direction: column; }
+  .summary .lvl { padding: 10px 12px; }
+  .summary .lvl .num { font-size: 56px; line-height: 0.85; display: block; letter-spacing: -0.04em; }
+  .summary .ph { flex: 1; margin: 4px 12px 0; }
+  .summary .buy { margin-top: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .track { position: absolute; left: 226px; right: 0; top: 58px; bottom: 14px; overflow: hidden; }
+  .lanes { position: absolute; left: 48px; top: 0; bottom: 0; display: grid; grid-template-rows: 1fr 30px 1fr; gap: 6px; }
+  .lane { display: flex; gap: 6px; }
+  .lane-lbl { position: absolute; left: 0; width: 42px; display: flex; flex-direction: column; justify-content: center; align-items: center; writing-mode: vertical-rl; font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.2em; font-weight: 700; }
+  .lane-lbl.free { top: 0; height: calc(50% - 18px); color: var(--dim); border-right: 1px solid var(--line-2); }
+  .lane-lbl.prem { bottom: 0; height: calc(50% - 18px); color: #fff; background: var(--ink); clip-path: var(--cut-sm); }
+  .rw { position: relative; width: 92px; flex: none; display: flex; flex-direction: column; background: var(--surface-solid); border: 1px solid var(--line); }
+  .rw .ph { flex: 1; border: 0; border-bottom: 1px dashed var(--line-2); }
+  .rw .ph .ph-k { font-size: 7px; }
+  .rw .lbl { padding: 4px 6px; font-size: 9px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rw.got { opacity: 0.45; }
+  .rw.got::after { content: "✓"; position: absolute; right: 5px; top: 3px; font-size: 11px; font-weight: 700; color: var(--ok); }
+  .rw.claim { box-shadow: 0 0 0 2px var(--ink); }
+  .rw.claim::after { content: "受取"; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 8.5px; font-weight: 700; padding: 1px 8px; }
+  .rw.prem { border-top: 2px solid var(--gold); }
+  .rw.prem.locked .ph { opacity: 0.6; }
+  .rw.prem.locked::after { content: "LOCK"; position: absolute; right: 4px; top: 4px; font-family: var(--f-mono); font-size: 7px; letter-spacing: .1em; color: var(--dim); background: var(--surface-solid); padding: 0 3px; border: 1px solid var(--line-2); }
+  .rail { position: relative; display: flex; gap: 6px; align-items: center; }
+  .rail::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--line-2); }
+  .rail .prog { position: absolute; left: 0; top: 50%; height: 2px; width: 420px; background: var(--ink); }
+  .tier { position: relative; width: 92px; flex: none; display: grid; place-items: center; }
+  .tier span { width: 26px; height: 22px; display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 11px; background: var(--surface-solid); border: 1px solid var(--line-2); }
+  .tier.done span { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tier.cur span { background: var(--warn); border-color: var(--ink); width: 34px; }
+  .fade { position: absolute; right: 0; top: 0; bottom: 0; width: 60px; background: linear-gradient(90deg, transparent, var(--paper)); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">SEASON 03 · 渡河</span><b>バトルパス</b></div>
+    <div class="spacer"></div>
+    <span class="tag">残り 23日</span>
+    <button class="btn sm light">すべて受け取る</button>
+  </header>
+  <aside class="panel marks summary">
+    <div class="lvl"><div class="eyebrow">PASS LEVEL</div><span class="num">14</span>
+      <div class="tiny mono dim" style="display:flex;justify-content:space-between;margin-top:6px"><span>PXP 620</span><span>/ 1,000</span></div>
+      <div class="bar" style="margin-top:3px"><i style="width:62%"></i></div>
+    </div>
+    <div class="ph"><span class="ph-k">SEASON ART</span><span class="ph-d">シーズン紋 横長</span></div>
+    <div class="buy">
+      <div class="tiny dim">上位にすると 1〜14 段の報酬も即時受け取り</div>
+      <button class="btn block" style="background:var(--gold)">上位パス ¥980</button>
+      <button class="btn block light sm">段を購入 D 150</button>
+    </div>
+  </aside>
+  <section class="track">
+    <div class="lane-lbl free">FREE</div>
+    <div class="lane-lbl prem">PREMIUM</div>
+    <div class="lanes">
+      <div class="lane">
+        <div class="rw got"><div class="ph"><span class="ph-k">C 200</span></div><div class="lbl">通貨 C 200</div></div>
+        <div class="rw got"><div class="ph"><span class="ph-k">STAMP</span></div><div class="lbl">合図「了解」</div></div>
+        <div class="rw got"><div class="ph"><span class="ph-k">DROP</span></div><div class="lbl">緊急空輸 ×1</div></div>
+        <div class="rw claim"><div class="ph"><span class="ph-k">TITLE</span></div><div class="lbl">称号「渡河の人」</div></div>
+        <div class="rw"><div class="ph"><span class="ph-k">C 300</span></div><div class="lbl">通貨 C 300</div></div>
+        <div class="rw"><div class="ph"><span class="ph-k">DROP</span></div><div class="lbl">再集結 ×1</div></div>
+        <div class="rw"><div class="ph"><span class="ph-k">FRAG</span></div><div class="lbl">断章「橋脚」</div></div>
+      </div>
+      <div class="rail"><i class="prog"></i>
+        <div class="tier done"><span>11</span></div><div class="tier done"><span>12</span></div><div class="tier done"><span>13</span></div><div class="tier cur"><span>14</span></div><div class="tier"><span>15</span></div><div class="tier"><span>16</span></div><div class="tier"><span>17</span></div>
+      </div>
+      <div class="lane">
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">D 50</span></div><div class="lbl">通貨 D 50</div></div>
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">TOKEN</span></div><div class="lbl">プレート「渡河」</div></div>
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">VOICE</span></div><div class="lbl">ボイス ヴェイル</div></div>
+        <div class="rw prem locked"><div class="ph tinted t-d"><span class="ph-k">COSTUME</span></div><div class="lbl" style="color:var(--crayon)">衣装 夢の姿 ★3</div></div>
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">BOARD</span></div><div class="lbl">床「青焼き」</div></div>
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">D 50</span></div><div class="lbl">通貨 D 50</div></div>
+        <div class="rw prem locked"><div class="ph"><span class="ph-k">EMOTE</span></div><div class="lbl">首都の演出</div></div>
+      </div>
+    </div>
+    <div class="fade"></div>
+  </section>
+  <div class="mock-id">S17 BATTLE PASS · MOCK</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S09c ホーム(SOC 表示時)</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* 文明ごとの背景: 表示中の指導者の所属で全面を差し替える(--cc = 文明色) */
+  .home-bg { position: absolute; inset: 0; overflow: hidden; }
+  .home-bg .bg-art {
+    position: absolute; inset: 0;
+    background:
+      var(--hatch),
+      radial-gradient(70% 90% at 28% 60%, color-mix(in srgb, var(--cc) 42%, #fff), transparent 72%),
+      linear-gradient(115deg, color-mix(in srgb, var(--cc) 14%, #eef1f4) 0%, #e9edf1 55%, #dfe4e9 100%);
+  }
+  .bg-label { position: absolute; z-index: 5; right: 16px; top: 300px; width: 352px; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-top: 6px; border-top: 1px dashed var(--line-2); }
+  .bg-label .ph-k { font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .16em; font-weight: 700; color: var(--ink-2); background: rgba(255,255,255,.8); padding: 1px 6px; width: fit-content; }
+  .bg-label .ph-d { font-size: 8.5px; color: var(--dim); background: rgba(255,255,255,.8); padding: 1px 6px; width: fit-content; }
+  .home-bg .civ-word { /* 背景に敷く文明略称の大文字 */
+    position: absolute; left: 30px; bottom: -34px; font-family: var(--f-display); font-weight: 700; font-size: 230px; line-height: 1;
+    letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--cc) 55%, transparent); opacity: .6;
+  }
+  .home-bg .fade { position: absolute; right: 0; top: 0; bottom: 0; width: 46%; background: linear-gradient(90deg, transparent, rgba(240,243,246,.92) 32%); }
+  .topbar.clear { background: linear-gradient(180deg, rgba(255,255,255,.7), transparent); border-bottom: 0; backdrop-filter: none; }
+
+  /* 指導者(大) */
+  .leader { position: absolute; left: 70px; top: 18px; bottom: 0; width: 380px; z-index: 2; }
+  .leader .ph { position: absolute; inset: 0; border-bottom: 0; background: var(--hatch), linear-gradient(180deg, color-mix(in srgb, var(--cc) 26%, rgba(255,255,255,.7)), rgba(255,255,255,.35)); }
+  .leader .ph::before { content: ""; position: absolute; left: 50%; top: 8%; width: 30%; aspect-ratio: 1; transform: translateX(-50%); border: 1px dashed var(--line-2); border-radius: 50%; z-index: 0; }
+  .plate { position: absolute; left: 56px; bottom: 72px; z-index: 3; }
+  .plate .name { font-family: var(--f-display); font-size: 52px; font-weight: 700; letter-spacing: -0.04em; line-height: .9; }
+  .plate .sub { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+  .plate .sub .tag.solid { background: var(--cc); border-color: var(--cc); }
+  .radio {
+    position: absolute; left: 56px; bottom: 14px; width: 360px; z-index: 3;
+    display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px;
+    background: rgba(14, 22, 30, 0.9); color: #fff; clip-path: var(--cut-sm);
+  }
+  .radio .wave { display: flex; gap: 2px; align-items: center; height: 14px; margin-top: 1px; }
+  .radio .wave i { width: 2px; background: var(--signal); }
+  .radio p { font-size: 10.5px; line-height: 1.5; }
+  .radio .voice { margin-left: auto; font-family: var(--f-mono); font-size: 8px; color: rgba(255,255,255,.5); white-space: nowrap; }
+
+  /* 表示する文明(=背景)の切替 */
+  .civ-rail { position: absolute; left: 12px; top: 58px; z-index: 4; display: flex; flex-direction: column; gap: 4px; }
+  .civ-rail .eyebrow { writing-mode: vertical-rl; margin: 0 auto 2px; font-size: 7.5px; }
+  .civ-rail button { width: 34px; height: 34px; display: grid; place-items: center; font-family: var(--f-mono); font-size: 8px; font-weight: 700; background: rgba(255,255,255,.75); border: 1px solid var(--line); position: relative; }
+  .civ-rail button::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--c); }
+  .civ-rail button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* 右列 */
+  .side { position: absolute; right: 16px; top: 54px; bottom: 14px; width: 352px; z-index: 4; display: flex; flex-direction: column; gap: 8px; }
+  .case { display: grid; grid-template-columns: 96px 1fr; overflow: hidden; }
+  .case .ph { border: 0; border-right: 1px dashed var(--line-2); }
+  .case-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .case-body .ttl { font-size: 13.5px; font-weight: 900; }
+  .case-body .row { display: flex; gap: 8px; align-items: center; }
+  .mini { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mini .panel { padding: 7px 10px; min-width: 0; }
+  .mini .t { font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .nav-item { height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: var(--surface); border: 1px solid var(--line); backdrop-filter: var(--glass-blur); position: relative; }
+  .nav-item .ic { width: 18px; height: 18px; border: 1.5px solid var(--ink); display: grid; place-items: center; font-family: var(--f-mono); font-size: 8.5px; font-weight: 700; }
+  .nav-item span { font-size: 8.5px; font-weight: 700; white-space: nowrap; }
+  .nav-item .badge-dot { right: 3px; top: 3px; }
+  .deploy { display: flex; gap: 8px; margin-top: auto; }
+  .mode-chip { display: flex; flex-direction: column; justify-content: center; padding: 0 12px; border: 1px solid var(--line-2); background: var(--surface-solid); }
+  .deploy .cta { flex: 1; }
+</style>
+</head>
+<body data-civ="soc">
+<svg width="0" height="0" style="position:absolute"><filter id="crayon-rough"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.4"/></filter></svg>
+<div class="screen">
+  <div class="home-bg">
+    <div class="bg-art"></div>
+    <div class="civ-word" data-f="short">PMC</div>
+    <div class="fade"></div>
+  </div>
+
+  <header class="topbar clear">
+    <div class="title"><span class="eyebrow">DREAM OPERATIONS</span><b>DREAM 4X</b></div>
+    <div class="spacer"></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:3px 10px 3px 3px;border:1px solid var(--line);background:var(--surface-solid);border-radius:16px">
+      <div class="ph round" style="width:24px;height:24px"><span class="ph-k" style="font-size:6px;padding:0">PF</span></div>
+      <div style="line-height:1.1"><b style="font-size:10.5px">ONISHI</b><div class="tiny dim mono">LV 23 · 参事官 II</div></div>
+    </div>
+    <div class="wallet">
+      <div class="coin"><i>C</i>12,480<span class="plus">+</span></div>
+      <div class="coin c-violet"><i>D</i>360<span class="plus">+</span></div>
+    </div>
+    <button class="icon-btn">✉<span class="badge-dot">3</span></button>
+    <button class="icon-btn">⚙</button>
+  </header>
+
+  <nav class="civ-rail">
+    <span class="eyebrow">LEADER</span>
+    <button data-civ="pmc" style="--c:#ff6a1a">PMC</button>
+    <button data-civ="corp" style="--c:#3b6cff">CORP</button>
+    <button data-civ="soc" style="--c:#2a2a2a">SOC</button>
+    <button data-civ="ipa" style="--c:#9aa7b2">IPA</button>
+    <button data-civ="fnd" style="--c:#12a874">FND</button>
+    <button data-civ="int" style="--c:#c99a2e">INT</button>
+  </nav>
+
+  <section class="leader">
+    <div class="ph"><span class="ph-k">LEADER STANDING ART · LARGE</span><span class="ph-d" data-f="artDesc">指導者 立ち絵(膝上〜全身・縦長)/ 衣装で差し替え</span></div>
+  </section>
+  <div class="plate">
+    <div class="eyebrow ink">ASSIGNED LEADER</div>
+    <div class="name" data-f="en">Garcia</div>
+    <div class="sub"><span class="tag solid" data-f="short">PMC</span><span class="jp-sub" data-f="sub">民間潜行会社 · ガルシア · Lv.7</span></div>
+  </div>
+  <div class="radio">
+    <div class="wave"><i style="height:6px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:14px"></i><i style="height:5px"></i></div>
+    <p data-f="line">契約どおりだ。次の案件は川沿いの発電所、橋を押さえた方が勝つ。</p>
+    <span class="voice">VOICE ▸</span>
+  </div>
+
+  <svg class="crayon-svg" style="left:400px;top:70px" width="90" height="90" viewBox="0 0 90 90"><path d="M8 18 C 30 26, 52 8, 72 34 S 60 80, 30 76" stroke-width="3"/><path d="M62 68 l12 12 M74 68 l-12 12" stroke-width="3"/></svg>
+
+  <div class="bg-label"><span class="ph-k" data-f="bgKey">HOME BG · PMC</span><span class="ph-d" data-f="bgDesc">文明ごとの背景 16:9 全面</span></div>
+  <main class="side">
+    <article class="panel marks case">
+      <div class="ph"><span class="ph-k" style="font-size:7px">CASE ART</span></div>
+      <div class="case-body">
+        <div class="row"><span class="docno">CASE NO. 4092-B</span><span class="tag violet">期間限定</span></div>
+        <div class="ttl">中央水門 争奪案件</div>
+        <div class="tiny dim">終盤に中央水門が開く特殊マップ。制圧で断章「水の底」</div>
+        <div class="row"><span class="num" style="font-size:13px">2<span class="tiny">d</span> 14<span class="tiny">h</span></span><div class="bar" style="flex:1"><i style="width:60%"></i></div><span class="mono tiny dim">3/5</span></div>
+      </div>
+    </article>
+    <div class="mini">
+      <div class="panel"><div class="eyebrow ink" style="display:flex;justify-content:space-between">BULLETIN<span class="tag danger" style="height:14px">NEW 3</span></div><div class="t" style="margin-top:3px">中央水門 争奪案件を開始</div><div class="t dim">S3 パス 追加段を公開</div></div>
+      <div class="panel"><div class="eyebrow ink">SEASON 03</div><div style="display:flex;align-items:baseline;gap:6px;margin-top:2px"><b style="font-size:13px">参事官 II</b><span class="mono tiny" style="color:var(--ok)">▲18</span></div><div class="bar" style="margin-top:4px"><i style="width:72%"></i></div><div class="tiny dim" style="margin-top:2px">RATING 1,642 · 次の段まで 58</div></div>
+    </div>
+    <nav class="nav">
+      <a class="nav-item"><div class="ic">R</div><span>文明研究</span><span class="badge-dot">!</span></a>
+      <a class="nav-item"><div class="ic">L</div><span>指導者</span></a>
+      <a class="nav-item"><div class="ic">A</div><span>装備庫</span></a>
+      <a class="nav-item"><div class="ic">P</div><span>パス</span><span class="badge-dot">2</span></a>
+      <a class="nav-item"><div class="ic">S</div><span>ショップ</span></a>
+      <a class="nav-item"><div class="ic">N</div><span>物語</span></a>
+    </nav>
+    <div class="deploy">
+      <div class="mode-chip"><span class="eyebrow">MODE</span><b style="font-size:11px">ランク戦</b><span class="tiny dim">3陣営 · 30分</span></div>
+      <button class="cta" style="min-width:0"><div><div class="cta-main">DEPLOY</div><div class="cta-sub">潜行開始 · 推定 0:42</div></div><div class="cta-go">→</div></button>
+    </div>
+  </main>
+  <div class="mock-id">S09 HOME · SOC · MOCK</div>
+</div>
+<script>
+// 表示する指導者(=文明)で名前・色・背景の説明を差し替える。body の data-civ(または ?civ=)が初期値、左のレールで切り替える
+const CIVS = {
+  pmc:  { c: "#ff6a1a", short: "PMC",  en: "Garcia",    sub: "民間潜行会社 · ガルシア · Lv.7",   bg: "前線キャンプ: コンテナ、仮設照明、ヘリパッド",         line: "契約どおりだ。次の案件は川沿いの発電所、橋を押さえた方が勝つ。" },
+  corp: { c: "#3b6cff", short: "CORP", en: "Miyashiro", sub: "大企業潜行部門 · ミヤシロ · Lv.4", bg: "本社の無人工場: 白い生産ラインとガラスの会議室",       line: "本社に報告は後だ。今期の目標は拠点3つ、生産ラインを先に立てる。" },
+  soc:  { c: "#2a2a2a", short: "SOC",  en: "Veil",      sub: "秘密結社 · ヴェイル · Lv.2",       bg: "霧の地下回廊: 打ちっぱなしの柱と低い照明",             line: "夢が開いた。静かに、深く潜る。霧の中なら、誰もこちらを数えられない。" },
+  ipa:  { c: "#9aa7b2", short: "IPA",  en: "Holm",      sub: "国際機関直属部隊 · ホルム · Lv.5", bg: "国際機関の管制室: マットホワイトの壁と大型スクリーン", line: "規定どおりに進める。全部隊、整列。案件番号を確認してから出る。" },
+  fnd:  { c: "#12a874", short: "FND",  en: "Ceres",     sub: "研究財団 · セレス · Lv.1",         bg: "観測ドーム: 計測機器と白い実験台",                     line: "観測開始。データは嘘をつかない。次の試合で仮説を確かめましょう。" },
+  int:  { c: "#c99a2e", short: "INT",  en: "Crow",      sub: "情報機関 · クロウ · Lv.3",         bg: "分析室: モニターの壁と地図を貼ったボード",             line: "相手の所属を先に暴く。情報が戦場を決める。照会の準備はできている。" },
+};
+function setCiv(id) {
+  const d = CIVS[id];
+  document.body.dataset.civ = id;
+  document.documentElement.style.setProperty("--cc", d.c);
+  for (const el of document.querySelectorAll("[data-f]")) {
+    const f = el.dataset.f;
+    if (f === "bgKey") el.textContent = "HOME BG · " + d.short;
+    else if (f === "bgDesc") el.textContent = "文明ごとの背景 16:9 全面 / " + d.bg;
+    else if (f === "artDesc") el.textContent = d.en + " 立ち絵(膝上〜全身・縦長)/ 衣装で差し替え";
+    else if (d[f]) el.textContent = d[f];
+  }
+  for (const b of document.querySelectorAll(".civ-rail button")) b.classList.toggle("on", b.dataset.civ === id);
+}
+for (const b of document.querySelectorAll(".civ-rail button")) b.addEventListener("click", () => setCiv(b.dataset.civ));
+setCiv(new URLSearchParams(location.search).get("civ") || document.body.dataset.civ);
+</script>
+</body>
+</html>

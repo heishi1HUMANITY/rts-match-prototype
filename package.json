@@ -1,0 +1,29 @@
+{
+  "name": "rts-match-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser single-player 1v1v1 strategy match prototype",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <13"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
+    "references:check": "node scripts/check-references.mjs"
+  },
+  "devDependencies": {
+    "prettier": "3.8.5",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Yomogi&display=swap");
+/* ドラマパート(S30 系)の共通部品。shared.css と併せて読み込む
+   立ち位置は 5 点(L / LC / C / RC / R)、話者以外は暗くする。
+   メッセージ窓は 3 種: 現実(白い公文書)/ 無線(黒い通信窓)/ 夢(窓なし・クレヨン文字) */
+
+.dr-bg { position: absolute; inset: 0; border: 0; }
+.dr-bg.dream { background: radial-gradient(80% 90% at 50% 40%, #2a1d44, #0d0a16 75%); }
+
+/* 立ち位置: 画面幅に対する中心位置。立ち絵は膝上・縦長(高さ 96%) */
+.slot { position: absolute; bottom: 0; height: 96%; width: 250px; transform: translateX(-50%); border-bottom: 0; transition: filter .2s; z-index: 1; }
+.slot.L { left: 18%; } .slot.LC { left: 34%; } .slot.C { left: 50%; } .slot.RC { left: 66%; } .slot.R { left: 82%; }
+.slot.far { height: 80%; width: 200px; z-index: 0; }
+.slot.idle { filter: saturate(.35); opacity: .62; }
+.slot .face { position: absolute; left: 50%; top: 23%; width: 34%; aspect-ratio: 1; transform: translateX(-50%); border: 1px dashed var(--line-2); border-radius: 50%; z-index: 1; background: transparent !important; padding: 0 !important; }
+.slot .expr { position: absolute; left: 50%; top: 16%; transform: translateX(-50%); z-index: 2; font-family: var(--f-mono); font-size: 7.5px; letter-spacing: .14em; padding: 1px 6px; background: var(--ink) !important; color: #fff !important; white-space: nowrap; }
+
+/* 場面の札(左上): 章・場所・現実/夢 */
+.scene-tag { position: absolute; left: 14px; top: 12px; z-index: 6; display: flex; flex-direction: column; gap: 3px; }
+.scene-tag .docno { background: rgba(255, 255, 255, .88); padding: 3px 8px; }
+.realm { display: inline-flex; align-items: center; gap: 6px; width: fit-content; height: 18px; padding: 0 8px; font-family: var(--f-mono); font-size: 8px; letter-spacing: .16em; font-weight: 700; background: var(--ink); color: #fff; }
+.realm i { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.realm.dream { background: var(--crayon); }
+
+/* クイックメニュー(右上) */
+.qm { position: absolute; right: 12px; top: 10px; z-index: 6; display: flex; gap: 3px; }
+.qm button { height: 24px; padding: 0 9px; font-family: var(--f-mono); font-size: 8.5px; font-weight: 700; letter-spacing: .1em; background: rgba(255, 255, 255, .82); border: 1px solid var(--line); backdrop-filter: var(--glass-blur); }
+.qm button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.dark .qm button, .qm.dark button { background: rgba(14, 22, 30, .6); color: rgba(255, 255, 255, .8); border-color: rgba(255, 255, 255, .15); }
+
+/* メッセージ窓: 現実(公文書) */
+.msg { position: absolute; left: 50%; bottom: 14px; width: 760px; max-width: calc(100vw - 28px); transform: translateX(-50%); height: 112px; z-index: 5;
+  background: rgba(255, 255, 255, .95); backdrop-filter: var(--glass-blur); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 20px 24px 12px; }
+.msg .plate { position: absolute; left: 16px; top: -13px; display: flex; align-items: stretch; }
+.msg .plate b { background: var(--ink); color: #fff; padding: 4px 16px 4px 12px; font-size: 12.5px; letter-spacing: .04em; clip-path: var(--cut-r); border-left: 3px solid var(--sc, var(--ink)); }
+.msg .plate span { align-self: flex-end; margin-left: 8px; font-family: var(--f-mono); font-size: 8px; letter-spacing: .16em; color: var(--dim); background: rgba(255,255,255,.9); padding: 0 4px; }
+.msg p { font-size: 14px; line-height: 1.8; letter-spacing: .04em; }
+.msg .next { position: absolute; right: 16px; bottom: 10px; font-family: var(--f-mono); font-size: 10px; animation: blink 1s steps(2) infinite; }
+.msg .voice { position: absolute; right: 16px; top: 8px; font-family: var(--f-mono); font-size: 8px; color: var(--dim); letter-spacing: .12em; }
+@keyframes blink { 50% { opacity: 0; } }
+.redact { display: inline-block; background: var(--ink); color: transparent; padding: 0 2px; transform: rotate(-1deg); line-height: 1.2; }
+
+/* メッセージ窓: 無線(黒い通信窓) */
+.radio-win { background: rgba(14, 22, 30, .94); color: #fff; border: 0; border-right: 3px solid var(--signal); }
+.radio-win .plate b { background: var(--signal); color: var(--ink); }
+.radio-win .plate span { background: transparent; color: rgba(255, 255, 255, .5); }
+.radio-win .voice { color: var(--signal); }
+
+/* 夢: 窓を出さず、少女の言葉をクレヨンの手書き風で画面に直接置く */
+.crayon-text { position: absolute; z-index: 5; color: var(--crayon); font-family: "Yomogi", "Noto Sans JP", sans-serif; font-weight: 600; letter-spacing: .12em; filter: url(#crayon-rough); }
+
+/* 注記(モック専用) */
+.note { position: absolute; z-index: 30; padding: 6px 8px; border: 1px dashed var(--crayon); background: rgba(255, 255, 255, .94); font-size: 8.5px; line-height: 1.5; color: #33404c; }
+.note b { color: var(--crayon); font-family: var(--f-mono); font-size: 8px; letter-spacing: .14em; display: block; }

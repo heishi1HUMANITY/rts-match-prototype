@@ -1,0 +1,22 @@
+name: 開発タスク
+description: 初期スコープに沿った実装・調査
+title: '[Task] '
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 目的と完了条件
+      description: プレイヤーが何をできれば完了か、検証方法も記載
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象・対象外・参照仕様
+      description: docs/project の仕様、UI mock、編集範囲
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 未決定事項・依存タスク

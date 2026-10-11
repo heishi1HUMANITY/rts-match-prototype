@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S12 ランク</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .hero { position: absolute; left: 16px; top: 58px; width: 270px; bottom: 14px; display: flex; flex-direction: column; }
+  .hero .ph { height: 130px; margin: 10px; }
+  .hero .tier { padding: 0 12px; }
+  .hero .tier .h1 { font-size: 34px; }
+  .hero .rating { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+  .hero .rating .num { font-size: 22px; }
+  .chart { position: absolute; left: 298px; right: 16px; top: 58px; height: 208px; }
+  .chart svg { position: absolute; left: 10px; right: 10px; top: 44px; width: calc(100% - 20px); height: 150px; }
+  .ladder { position: absolute; left: 298px; right: 16px; bottom: 14px; height: 130px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .step { position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; background: var(--surface-solid); border: 1px solid var(--line); }
+  .step .bar-v { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--line); }
+  .step.done .bar-v { background: var(--ink); }
+  .step.cur { box-shadow: 0 0 0 2px var(--ink); }
+  .step.cur .bar-v { background: linear-gradient(90deg, var(--ink) 72%, var(--line) 72%); }
+  .step .ph { position: absolute; left: 8px; top: 12px; width: 46px; height: 46px; }
+  .step b { font-size: 11px; }
+  .step .rw { margin-top: 3px; font-size: 8.5px; color: var(--dim); }
+  .step.lock { opacity: 0.5; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">SEASON 03 · 渡河</span><b>ランク / レート</b></div>
+    <div class="spacer"></div>
+    <div class="seg"><span class="on">ランク戦</span><span>ランキング →</span></div>
+    <span class="tag">残り 23日 04:12</span>
+  </header>
+
+  <section class="panel marks hero">
+    <div class="ph"><span class="ph-k">RANK EMBLEM</span><span class="ph-d">ランク紋章 1:1(段階で差し替え)</span></div>
+    <div class="tier">
+      <div class="eyebrow">CURRENT RANK</div>
+      <div class="h1">参事官 II</div>
+      <div class="rating"><span class="num">1,642</span><span class="mono small" style="color:var(--ok)">▲ 18 前回</span></div>
+      <div class="bar" style="margin-top:8px"><i style="width:72%"></i></div>
+      <div class="tiny dim" style="display:flex;justify-content:space-between;margin-top:3px"><span>参事官 I まで 58</span><span>上位 18.4%</span></div>
+      <div class="rule"></div>
+      <div class="small" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+        <div><div class="eyebrow">MATCH</div><b class="num">84</b></div>
+        <div><div class="eyebrow">#1 RATE</div><b class="num">38%</b></div>
+        <div><div class="eyebrow">PEAK</div><b class="num">1,701</b></div>
+      </div>
+      <p class="tiny dim" style="margin-top:8px">参事官以上は使い切りアドオンの持ち込みが1枠に制限されます。</p>
+    </div>
+  </section>
+
+  <section class="panel chart">
+    <div class="panel-head"><span class="eyebrow ink">RATING HISTORY / 直近30試合</span><div class="seg"><span>7日</span><span class="on">30試合</span><span>シーズン</span></div></div>
+    <svg viewBox="0 0 560 140" preserveAspectRatio="none">
+      <g stroke="rgba(14,22,30,.08)" stroke-width="1"><line x1="0" y1="20" x2="560" y2="20"/><line x1="0" y1="60" x2="560" y2="60"/><line x1="0" y1="100" x2="560" y2="100"/></g>
+      <line x1="0" y1="44" x2="560" y2="44" stroke="var(--ink)" stroke-dasharray="3 4" stroke-width="1"/>
+      <text x="4" y="40" font-family="JetBrains Mono" font-size="8" fill="var(--dim)">参事官 II · 1,600</text>
+      <path d="M0 118 L20 110 L40 112 L60 96 L80 100 L100 88 L120 92 L140 80 L160 84 L180 70 L200 76 L220 66 L240 72 L260 58 L280 62 L300 50 L320 56 L340 44 L360 52 L380 40 L400 46 L420 34 L440 42 L460 30 L480 36 L500 26 L520 32 L540 22 L560 20 L560 140 L0 140Z" fill="rgba(14,22,30,.06)"/>
+      <path d="M0 118 L20 110 L40 112 L60 96 L80 100 L100 88 L120 92 L140 80 L160 84 L180 70 L200 76 L220 66 L240 72 L260 58 L280 62 L300 50 L320 56 L340 44 L360 52 L380 40 L400 46 L420 34 L440 42 L460 30 L480 36 L500 26 L520 32 L540 22 L560 20" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <circle cx="560" cy="20" r="4" fill="var(--ink)"/><circle cx="560" cy="20" r="9" fill="none" stroke="var(--ink)" stroke-opacity=".25"/>
+    </svg>
+  </section>
+
+  <section class="ladder">
+    <div class="step done"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>書記</b><span class="rw">衣装の色違い</span></div>
+    <div class="step done"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>主事</b><span class="rw">称号「現場主義」</span></div>
+    <div class="step done"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>調査官</b><span class="rw">C 2,000</span></div>
+    <div class="step cur"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>参事官</b><span class="rw">断章「議事録」</span></div>
+    <div class="step lock"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>審議官</b><span class="rw">盤面の床デザイン</span></div>
+    <div class="step lock"><i class="bar-v"></i><div class="ph"><span class="ph-k" style="font-size:6px">EMB</span></div><b>調停官</b><span class="rw">称号 + 紫の印</span></div>
+  </section>
+  <div class="mock-id">S12 RANK · MOCK</div>
+</div>
+</body>
+</html>

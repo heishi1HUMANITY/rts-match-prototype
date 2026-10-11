@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>S21 戦績</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .list { position: absolute; left: 16px; top: 58px; bottom: 14px; width: 300px; display: flex; flex-direction: column; overflow: hidden; }
+  .m { position: relative; display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 7px 10px 7px 12px; border-bottom: 1px solid var(--line); }
+  .m::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tc); }
+  .m .pl { font-family: var(--f-display); font-weight: 700; font-size: 20px; line-height: 1; }
+  .m .pl.first { color: var(--ink); } .m .pl.other { color: var(--faint); }
+  .m b { font-size: 10.5px; display: block; }
+  .m .r { text-align: right; font-family: var(--f-mono); font-size: 9px; }
+  .m.on { background: var(--surface-solid); box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .detail { position: absolute; left: 330px; right: 16px; top: 58px; bottom: 14px; display: flex; flex-direction: column; }
+  .dhead { display: flex; align-items: flex-end; gap: 14px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .dhead .big { font-family: var(--f-display); font-size: 44px; font-weight: 700; line-height: 0.85; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th { text-align: right; font-family: var(--f-mono); font-weight: 500; font-size: 8px; letter-spacing: 0.12em; color: var(--dim); padding: 6px 8px 4px; border-bottom: 1px solid var(--line-2); }
+  th:nth-child(-n+2) { text-align: left; }
+  td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); font-family: var(--f-display); font-variant-numeric: tabular-nums; font-weight: 500; }
+  td:nth-child(-n+2) { text-align: left; font-family: var(--f-body); }
+  tr.me td { background: rgba(255, 106, 26, 0.07); font-weight: 700; }
+  .tm { display: inline-flex; align-items: center; gap: 5px; }
+  .foot { margin-top: auto; display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .chart { position: relative; flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .chart svg { flex: 1; width: 100%; }
+</style>
+</head>
+<body>
+<div class="screen grid-bg">
+  <header class="topbar">
+    <button class="back">←</button>
+    <div class="title"><span class="eyebrow">SERVICE RECORD</span><b>戦績</b></div>
+    <div class="spacer"></div>
+    <div class="seg"><span class="on">すべて</span><span>ランク</span><span>カジュアル</span><span>案件</span></div>
+  </header>
+  <section class="panel list">
+    <div class="panel-head"><span class="eyebrow ink">RECENT 20</span><span class="tiny dim mono">1位 38% · 平均 1.9位</span></div>
+    <div class="m t-a on"><span class="pl first">#1</span><div><b>PMC · ランク戦</b><span class="tiny dim">10.09 21:14 · 22:41 · 時間切れ</span></div><span class="r" style="color:var(--ok)">+18</span></div>
+    <div class="m t-b"><span class="pl other">#2</span><div><b>CORP · ランク戦</b><span class="tiny dim">10.09 20:31 · 25:02</span></div><span class="r" style="color:var(--ok)">+4</span></div>
+    <div class="m t-a"><span class="pl other">#3</span><div><b>PMC · 中央水門</b><span class="tiny dim">10.08 23:10 · 30:00</span></div><span class="r" style="color:var(--danger)">−12</span></div>
+    <div class="m t-c"><span class="pl first">#1</span><div><b>SOC · カジュアル</b><span class="tiny dim">10.08 22:02 · 脱落決着</span></div><span class="r dim">—</span></div>
+    <div class="m t-a"><span class="pl other">#2</span><div><b>PMC · ランク戦</b><span class="tiny dim">10.07 19:44 · 21:30</span></div><span class="r" style="color:var(--ok)">+6</span></div>
+    <div class="m t-b"><span class="pl other">#3</span><div><b>CORP · ランク戦</b><span class="tiny dim">10.07 19:01 · 18:12</span></div><span class="r" style="color:var(--danger)">−15</span></div>
+  </section>
+  <main class="panel marks detail">
+    <div class="dhead">
+      <div class="big">#1</div>
+      <div><div class="eyebrow">AFTER ACTION REPORT · DR-09F9DB4F</div><div class="h2">TEAM A / 民間潜行会社 — 時間切れ勝利</div></div>
+      <span class="tag gold" style="margin-left:auto">MVP</span>
+    </div>
+    <table>
+      <tr><th>#</th><th>TEAM</th><th>TICKET</th><th>制圧</th><th>撃破</th><th>損失</th><th>昇格</th></tr>
+      <tr class="me t-a"><td>1</td><td><span class="tm"><span class="sym diamond"></span>A · ONISHI / PMC</span></td><td>412</td><td>7</td><td>14</td><td>5</td><td>3</td></tr>
+      <tr class="t-b"><td>2</td><td><span class="tm"><span class="sym square"></span>B · KAGAMI_07 / CORP</span></td><td>288</td><td>5</td><td>9</td><td>8</td><td>1</td></tr>
+      <tr class="t-c"><td>3</td><td><span class="tm"><span class="sym hex"></span>C · BOT-3 / SOC</span></td><td>96</td><td>2</td><td>6</td><td>13</td><td>0</td></tr>
+    </table>
+    <div class="chart">
+      <div class="eyebrow" style="display:flex;justify-content:space-between"><span>TICKET TIMELINE</span><span>0:00 — 22:41</span></div>
+      <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+        <line x1="0" y1="30" x2="300" y2="30" stroke="var(--line)"/><line x1="200" y1="0" x2="200" y2="60" stroke="var(--crayon)" stroke-dasharray="2 3"/>
+        <polyline points="0,4 40,6 80,10 120,12 160,18 200,22 240,26 300,30" fill="none" stroke="var(--team-a)" stroke-width="1.6"/>
+        <polyline points="0,4 40,8 80,12 120,18 160,24 200,30 240,36 300,40" fill="none" stroke="var(--team-b)" stroke-width="1.6"/>
+        <polyline points="0,4 40,10 80,18 120,26 160,34 200,44 240,50 300,54" fill="none" stroke="var(--team-c)" stroke-width="1.6"/>
+      </svg>
+      <span class="tiny" style="position:absolute;left:calc(66% + 14px);top:20px;color:var(--crayon)">中央水門 開放</span>
+    </div>
+    <div class="foot">
+      <span class="tiny dim">昇格 3 · 古参で生存 1 · レート 1,624 → 1,642</span>
+      <span style="flex:1"></span>
+      <button class="btn sm ghost">詳報</button>
+      <button class="btn sm">▶ リプレイ</button>
+    </div>
+  </main>
+  <div class="mock-id">S21 HISTORY · MOCK</div>
+</div>
+</body>
+</html>
