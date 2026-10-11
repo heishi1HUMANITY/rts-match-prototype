@@ -40,6 +40,7 @@ GitHub CI は Windows / Linux の両方で同じ検査を実行し、commit SHA�
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md) / [lunaへの実装指示](docs/project/G1_LUNA_INSTRUCTIONS.md): 盤面・移動・入力・検査の契約
+- [G2の先行設計案](docs/project/preparation/G2_DESIGN.md): G1検査待ちに進める調査・設計。実装開始前に合格版との照合が必要
 - [AGENTS.md](AGENTS.md): エージェントの作業方針
 - [初期スコープ](docs/project/SCOPE.md): 今回作る範囲と未決定事項
 - [構成・設計](docs/project/ARCHITECTURE.md): ゲーム処理と表示の境界
