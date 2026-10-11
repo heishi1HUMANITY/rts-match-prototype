@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.local-qa/
 package-lock.json
 artwork/
 docs/*

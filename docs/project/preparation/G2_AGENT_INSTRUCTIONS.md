@@ -53,6 +53,8 @@
 > board.sync等をFactionView契約へ変更し、霧・基地・HP/制圧表示を追加。現viewにない敵はDOM/mesh/pick/補間から即除去。新規発見位置を隠れた過去位置から補間しない。schema/rules/scenarioを含む履歴リプレイを追加。全state診断を通常viewの取得経路から分ける。
 >
 > 完了条件: 漏洩テストV05/V06、同seed/scenario/command列のリプレイ、pause/reset/visibility/context lossの既存挙動が維持される。型検査とproduction build成功。
+>
+> runtimeは `previewMove(unitId,target)` の純粋照会を公開し、自軍の仮経路・可否・公開可能な拒否理由だけを返す。mainへ全stateを渡さず、照会で命令履歴・状態・資源を変更しない。tick/カメラ更新時の再評価を維持する。通常onChange/onFrameはFactionViewだけ、全state取得は明示診断とテスト用へ分離する。
 
 ## E: 生産・研究・拠点HUDと検査（T205）
 

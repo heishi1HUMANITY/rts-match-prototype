@@ -28,7 +28,7 @@ describe('MatchRuntime diagnostic history', () => {
       unitId: 'B-01',
       target: { x: 20, y: 20 },
     });
-    expect(runtime.snapshot().history.at(-1)?.reason).toBe('NOT_OWNER');
+    expect(runtime.snapshot().history.at(-1)?.reason).toBe('UNIT_NOT_FOUND');
     expect(runtime.snapshot().state).toBe(before);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
   });
@@ -41,8 +41,8 @@ describe('MatchRuntime diagnostic history', () => {
       onChange: () => undefined,
       onFrame: (previous, current, alpha) => {
         frames.push({
-          previous: previous.elapsedTicks,
-          current: current.elapsedTicks,
+          previous: previous.tick,
+          current: current.tick,
           alpha,
         });
       },

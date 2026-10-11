@@ -1,16 +1,25 @@
 import * as THREE from 'three';
+import { baseLabel, getUnitFrames, placeUnitLabel } from './view-model';
 import { ISOLATED_CELL, MAP_HEIGHT, MAP_WIDTH } from '../simulation/config';
 import { isCellBlocked } from '../simulation/map';
-import type { Cell, GridMap, MatchState, UnitState } from '../simulation/types';
+import type {
+  Cell,
+  GridMap,
+  FactionView,
+  UnitState,
+  OwnUnitView,
+  VisibleEnemyUnitView,
+} from '../simulation/types';
 
 export type BoardPick =
   | { readonly kind: 'unit'; readonly unitId: string }
-  | { readonly kind: 'ground'; readonly cell: Cell };
+  | { readonly kind: 'ground'; readonly cell: Cell }
+  | { readonly kind: 'base'; readonly baseId: string };
 
 export interface BoardView {
   readonly canvas: HTMLCanvasElement;
   readonly available: boolean;
-  sync(previous: MatchState, current: MatchState, alpha: number): void;
+  sync(previous: FactionView, current: FactionView, alpha: number): void;
   setSelection(unitId: string | null): void;
   pick(clientX: number, clientY: number): BoardPick | null;
   /** Ground-only picking, even when a unit marker is under the pointer. */
@@ -55,7 +64,6 @@ interface UnitObjects {
   readonly selection: THREE.Mesh;
   readonly label: HTMLDivElement;
   readonly glyph: HTMLSpanElement;
-  readonly screenOffsetY: number;
 }
 
 function createShape(
@@ -306,6 +314,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         new THREE.MeshStandardMaterial({
           color: FACTIONS[faction].color,
           roughness: 0.65,
+          transparent: true,
           side: THREE.DoubleSide,
         }),
       ),
@@ -325,7 +334,11 @@ export function createBoardView(options: BoardViewOptions): BoardView {
 
   const ringGeometry = ownGeometry(new THREE.TorusGeometry(0.43, 0.035, 8, 40));
   const selectionMaterial = ownMaterial(
-    new THREE.MeshBasicMaterial({ color: 0x181c20, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({
+      color: 0x181c20,
+      side: THREE.DoubleSide,
+      transparent: true,
+    }),
   );
   const destinationMaterial = ownMaterial(
     new THREE.MeshBasicMaterial({
@@ -373,6 +386,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     movePreviewGeometry,
     movePreviewMaterial,
   );
+  movePreviewLine.renderOrder = 4;
   movePreviewLine.name = 'move-preview-route';
   movePreviewLine.frustumCulled = false;
   movePreviewLine.visible = false;
@@ -381,25 +395,16 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     ringGeometry,
     movePreviewValidMaterial,
   );
+  movePreviewTarget.renderOrder = 4;
   movePreviewTarget.name = 'move-preview-target';
   movePreviewTarget.rotation.x = -Math.PI / 2;
   movePreviewTarget.position.y = 0.085;
   movePreviewTarget.visible = false;
   scene.add(movePreviewTarget);
 
-  const labelsPerFaction: Record<keyof typeof FACTIONS, number> = {
-    A: 0,
-    B: 0,
-    C: 0,
-  };
-  for (const unit of [
-    { id: 'A-01', factionId: 'A' },
-    { id: 'A-02', factionId: 'A' },
-    { id: 'B-01', factionId: 'B' },
-    { id: 'B-02', factionId: 'B' },
-    { id: 'C-01', factionId: 'C' },
-    { id: 'C-02', factionId: 'C' },
-  ] as const) {
+  const createUnitObjects = (
+    unit: OwnUnitView | VisibleEnemyUnitView,
+  ): UnitObjects => {
     const faction = unit.factionId;
     const marker = new THREE.Mesh(
       markerGeometry.get(faction)!,
@@ -445,8 +450,8 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     label.dataset.unitId = unit.id;
     Object.assign(label.style, {
       position: 'absolute',
-      width: '18px',
-      height: '18px',
+      width: '44px',
+      height: '44px',
       display: 'grid',
       placeItems: 'center',
       boxSizing: 'border-box',
@@ -461,20 +466,25 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     });
     const glyph = document.createElement('span');
     glyph.textContent = FACTIONS[faction].symbol;
+    glyph.style.whiteSpace = 'pre-line';
+    glyph.style.textAlign = 'center';
+    glyph.style.font = '700 10px/1.3 system-ui,sans-serif';
     glyph.setAttribute('aria-hidden', 'true');
     label.append(glyph);
     labelLayer.append(label);
-    const indexWithinFaction = labelsPerFaction[faction]++;
-    unitObjects.set(unit.id, {
+    const objects: UnitObjects = {
       marker,
       route,
       destination,
       selection,
       label,
       glyph,
-      screenOffsetY: indexWithinFaction === 0 ? -8 : 8,
-    });
-  }
+    };
+    for (const object of [marker, route, selection, destination])
+      object.renderOrder = 3;
+    unitObjects.set(unit.id, objects);
+    return objects;
+  };
 
   const inspectionLabel = document.createElement('div');
   inspectionLabel.className = 'rts-inspection-label';
@@ -497,7 +507,13 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   let mapMesh: THREE.InstancedMesh | null = null;
   let renderedMap: GridMap | null = null;
   const installMap = (map: GridMap): void => {
-    if (renderedMap === map) return;
+    if (
+      renderedMap !== null &&
+      renderedMap.width === map.width &&
+      renderedMap.height === map.height &&
+      renderedMap.blocked.every((value, index) => value === map.blocked[index])
+    )
+      return;
     if (mapMesh !== null) {
       scene.remove(mapMesh);
       mapMesh.geometry.dispose();
@@ -516,6 +532,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         resources.materials.delete(mapMesh.material);
       }
     }
+    mapMesh = null;
     renderedMap = map;
     let count = 0;
     for (const blocked of map.blocked) if (blocked) count += 1;
@@ -541,7 +558,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   };
 
   let selectedUnitId: string | null = null;
-  let lastCurrent: MatchState | null = null;
+  let lastCurrent: FactionView | null = null;
   let lastAlpha = 0;
   let contextLost = false;
   let disposed = false;
@@ -557,12 +574,18 @@ export function createBoardView(options: BoardViewOptions): BoardView {
 
   const refreshMovePreview = (): void => {
     const request = movePreviewRequest;
-    if (contextLost || disposed || lastCurrent === null || request === null) {
+    if (
+      contextLost ||
+      disposed ||
+      lastCurrent === null ||
+      lastCurrent.phase !== 'running' ||
+      request === null
+    ) {
       movePreviewLine.visible = false;
       movePreviewTarget.visible = false;
       return;
     }
-    const unit = lastCurrent.units.find(
+    const unit = lastCurrent.ownUnits.find(
       (candidate) => candidate.id === request.unitId,
     );
     if (unit === undefined) {
@@ -635,50 +658,179 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       scratchVector.z < -1 || scratchVector.z > 1 ? 'none' : 'grid';
   };
 
+  const baseObjects = new Map<
+    string,
+    {
+      marker: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+      label: HTMLDivElement;
+    }
+  >();
+  const baseGeometry = ownGeometry(
+    new THREE.CylinderGeometry(0.7, 0.7, 0.25, 6),
+  );
+  const syncBases = (view: FactionView): void => {
+    const ids = new Set(view.bases.map((base) => base.id));
+    for (const [id, objects] of baseObjects) {
+      if (ids.has(id)) continue;
+      scene.remove(objects.marker);
+      objects.marker.material.dispose();
+      resources.materials.delete(objects.marker.material);
+      objects.label.remove();
+      baseObjects.delete(id);
+    }
+    for (const base of view.bases) {
+      let objects = baseObjects.get(base.id);
+      if (objects === undefined) {
+        const material = ownMaterial(
+          new THREE.MeshBasicMaterial({ color: 0x8c9296 }),
+        );
+        const marker = new THREE.Mesh(baseGeometry, material);
+        marker.userData.baseId = base.id;
+        marker.renderOrder = 2;
+        const label = document.createElement('div');
+        label.className = 'rts-base-label';
+        Object.assign(label.style, {
+          position: 'absolute',
+          padding: '3px 5px',
+          border: '1px solid #535e66',
+          borderRadius: '3px',
+          color: '#20252b',
+          background: 'rgba(255,255,255,.94)',
+          font: '600 10px/1.3 system-ui,sans-serif',
+          whiteSpace: 'nowrap',
+          transform: 'translate(-50%, -100%)',
+          pointerEvents: 'none',
+        });
+        labelLayer.append(label);
+        scene.add(marker);
+        objects = { marker, label };
+        baseObjects.set(base.id, objects);
+      }
+      const owner = base.visibility === 'unknown' ? null : base.owner;
+      objects.marker.material.color.setHex(
+        owner === null ? 0x8c9296 : FACTIONS[owner].color,
+      );
+      objects.marker.material.transparent = true;
+      objects.marker.material.opacity =
+        base.visibility === 'remembered'
+          ? 0.5
+          : base.visibility === 'unknown'
+            ? 0.3
+            : 1;
+      objects.marker.position.copy(cellPosition(base.cell, 0.15));
+      objects.marker.scale.setScalar(base.kind === 'hq' ? 1.3 : 1);
+      objects.label.textContent = baseLabel(base);
+      objects.label.dataset.visibility = base.visibility;
+      objects.label.style.borderStyle =
+        base.visibility === 'remembered' ? 'dashed' : 'solid';
+      updateLabelPosition(objects.label, cellPosition(base.cell, 0.3), -18);
+    }
+  };
+  const fogGeometry = ownGeometry(new THREE.PlaneGeometry(1, 1));
+  fogGeometry.rotateX(-Math.PI / 2);
+  const fogMaterial = ownMaterial(
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0.76,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  const fogMesh = new THREE.InstancedMesh(
+    fogGeometry,
+    fogMaterial,
+    MAX_ROUTE_CELLS,
+  );
+  fogMesh.name = 'visibility-fog';
+  fogMesh.renderOrder = 1;
+  fogMesh.frustumCulled = false;
+  scene.add(fogMesh);
+  let fogSignature = '';
+  const syncFog = (view: FactionView): void => {
+    const signature = view.visible
+      .map((visible, index) =>
+        visible ? '2' : view.explored[index] ? '1' : '0',
+      )
+      .join('');
+    if (signature === fogSignature) return;
+    fogSignature = signature;
+    const matrix = new THREE.Matrix4();
+    const color = new THREE.Color();
+    for (let index = 0; index < MAX_ROUTE_CELLS; index += 1) {
+      matrix.makeScale(
+        view.visible[index] ? 0 : 1,
+        1,
+        view.visible[index] ? 0 : 1,
+      );
+      matrix.setPosition(
+        (index % MAP_WIDTH) + 0.5,
+        0.6,
+        Math.floor(index / MAP_WIDTH) + 0.5,
+      );
+      fogMesh.setMatrixAt(index, matrix);
+      fogMesh.setColorAt(
+        index,
+        color.setHex(view.explored[index] ? 0x8c99a2 : 0x17232d),
+      );
+    }
+    fogMesh.instanceMatrix.needsUpdate = true;
+    if (fogMesh.instanceColor !== null)
+      fogMesh.instanceColor.needsUpdate = true;
+  };
+
   const sync = (
-    previous: MatchState,
-    current: MatchState,
+    previous: FactionView,
+    current: FactionView,
     alpha: number,
   ): void => {
     if (disposed) return;
     lastCurrent = current;
     lastAlpha = Math.max(0, Math.min(1, alpha));
     installMap(current.map);
-    const interpolateTick =
-      current.seed === previous.seed &&
-      current.phase === 'running' &&
-      current.elapsedTicks === previous.elapsedTicks + 1;
-    const previousUnits = new Map(
-      previous.units.map((unit) => [unit.id, unit]),
-    );
-
-    for (const unit of current.units) {
-      const objects = unitObjects.get(unit.id);
-      if (objects === undefined) continue;
-      const currentPosition = discreteUnitPosition(unit);
-      const previousUnit = previousUnits.get(unit.id);
-      if (interpolateTick && previousUnit !== undefined) {
-        currentPosition.lerp(discreteUnitPosition(previousUnit), 1 - lastAlpha);
-      }
+    const frames = getUnitFrames(previous, current, lastAlpha);
+    const present = new Set(frames.map(({ unit }) => unit.id));
+    for (const [id, objects] of unitObjects) {
+      if (present.has(id)) continue;
+      scene.remove(
+        objects.marker,
+        objects.route,
+        objects.selection,
+        objects.destination,
+      );
+      objects.route.geometry.dispose();
+      resources.geometries.delete(objects.route.geometry);
+      objects.label.remove();
+      unitRaycastTargets.splice(unitRaycastTargets.indexOf(objects.marker), 1);
+      unitObjects.delete(id);
+    }
+    const occupiedLabels: { x: number; y: number }[] = [];
+    for (const { unit, x, z } of frames) {
+      const objects = unitObjects.get(unit.id) ?? createUnitObjects(unit);
+      const currentPosition = new THREE.Vector3(x, 0.17, z);
+      const path = unit.control === 'own' ? unit.path : [];
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${unit.kind === 'scout' ? '偵' : '突'}\n${unit.hp}/${unit.maxHp}`;
+      objects.label.title = `${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
         currentPosition.x,
         0.045,
         currentPosition.z,
       );
-      objects.selection.visible = selectedUnitId === unit.id;
+      objects.selection.visible =
+        unit.control === 'own' && selectedUnitId === unit.id;
 
       const positionAttribute = objects.route.geometry.getAttribute(
         'position',
       ) as THREE.BufferAttribute;
       const routeArray = positionAttribute.array as Float32Array;
       let routeCount = 0;
-      if (unit.path.length > 0) {
+      if (path.length > 0) {
         routeArray[routeCount * 3] = currentPosition.x;
         routeArray[routeCount * 3 + 1] = 0.075;
         routeArray[routeCount * 3 + 2] = currentPosition.z;
         routeCount += 1;
-        for (const cell of unit.path) {
+        for (const cell of path) {
           routeArray[routeCount * 3] = cell.x + 0.5;
           routeArray[routeCount * 3 + 1] = 0.075;
           routeArray[routeCount * 3 + 2] = cell.y + 0.5;
@@ -690,7 +842,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.route.geometry.computeBoundingSphere();
       objects.route.visible = routeCount > 1;
 
-      const destinationCell = unit.path[unit.path.length - 1];
+      const destinationCell = path[path.length - 1];
       objects.destination.visible = destinationCell !== undefined;
       if (destinationCell !== undefined) {
         objects.destination.position.set(
@@ -699,12 +851,34 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           destinationCell.y + 0.5,
         );
       }
-      updateLabelPosition(
-        objects.label,
-        currentPosition,
-        objects.screenOffsetY,
+      updateLabelPosition(objects.label, currentPosition);
+      const bounds = canvas.getBoundingClientRect();
+      const anchorX = parseFloat(objects.label.style.left);
+      const anchorY = parseFloat(objects.label.style.top);
+      if (
+        anchorX < 0 ||
+        anchorX > bounds.width ||
+        anchorY < 0 ||
+        anchorY > bounds.height
+      ) {
+        objects.label.style.display = 'none';
+        continue;
+      }
+      const label = placeUnitLabel(
+        {
+          x: parseFloat(objects.label.style.left),
+          y: parseFloat(objects.label.style.top),
+        },
+        occupiedLabels,
+        bounds.width,
+        bounds.height,
       );
+      objects.label.style.left = `${label.x}px`;
+      objects.label.style.top = `${label.y}px`;
+      occupiedLabels.push(label);
     }
+    syncBases(current);
+    syncFog(current);
     refreshMovePreview();
     updateLabelPosition(inspectionLabel, cellPosition(ISOLATED_CELL, 0.03), -3);
     if (!contextLost) renderer.render(scene, camera);
@@ -765,14 +939,18 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     sync,
     setSelection(unitId) {
       selectedUnitId =
-        unitId !== null && unitObjects.has(unitId) ? unitId : null;
+        unitId !== null &&
+        lastCurrent?.ownUnits.some((unit) => unit.id === unitId)
+          ? unitId
+          : null;
       for (const [id, objects] of unitObjects) {
         objects.selection.visible = selectedUnitId === id;
       }
       if (!contextLost) renderer.render(scene, camera);
     },
     pick(clientX, clientY) {
-      if (contextLost || !rayFromClient(clientX, clientY)) return null;
+      if (disposed || contextLost || !rayFromClient(clientX, clientY))
+        return null;
       const rect = canvas.getBoundingClientRect();
       const localX = clientX - rect.left;
       const localY = clientY - rect.top;
@@ -804,6 +982,26 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         const unitId = unitHit.object.userData.unitId;
         if (typeof unitId === 'string') return { kind: 'unit', unitId };
       }
+      for (const [baseId, objects] of baseObjects) {
+        const bounds = objects.label.getBoundingClientRect();
+        if (
+          bounds.width > 0 &&
+          clientX >= bounds.left &&
+          clientX <= bounds.right &&
+          clientY >= bounds.top &&
+          clientY <= bounds.bottom
+        )
+          return { kind: 'base', baseId };
+      }
+      const baseHit = raycaster.intersectObjects(
+        [...baseObjects.values()].map((objects) => objects.marker),
+        false,
+      )[0];
+      if (baseHit !== undefined)
+        return {
+          kind: 'base',
+          baseId: baseHit.object.userData.baseId as string,
+        };
       const groundHit = raycaster.intersectObject(ground, false)[0];
       if (groundHit === undefined) return null;
       const x = Math.floor(groundHit.point.x);
@@ -812,6 +1010,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       return { kind: 'ground', cell: { x, y } };
     },
     pickGround(clientX, clientY) {
+      if (disposed || contextLost) return null;
       const point = groundPointAt(clientX, clientY);
       if (point === null) return null;
       const x = Math.floor(point.x);
@@ -822,7 +1021,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     setMovePreview(unitId, target, path) {
       movePreviewRequest = { unitId, target, path };
       refreshMovePreview();
-      renderer.render(scene, camera);
+      if (!contextLost && !disposed) renderer.render(scene, camera);
     },
     clearMovePreview() {
       movePreviewRequest = null;
@@ -870,6 +1069,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         scene.remove(mapMesh);
         mapMesh.dispose();
       }
+      fogMesh.dispose();
       for (const geometry of resources.geometries) geometry.dispose();
       for (const material of resources.materials) material.dispose();
       scene.clear();

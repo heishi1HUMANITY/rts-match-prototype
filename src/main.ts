@@ -1,10 +1,11 @@
 import { createBoardView } from './render/board';
 import { createDiagnostic } from './runtime/diagnostics';
 import { MatchRuntime } from './runtime/controller';
-import { applyCommand } from './simulation/commands';
+import { SCENARIO_IDS } from './simulation/config';
+import type { ScenarioId } from './simulation/types';
 import type { GestureOrigin, Point } from './ui/input';
 import { CanvasInput } from './ui/input';
-import { createHud, updateHud } from './ui/hud';
+import { createHud, setHudPanel, updateHud } from './ui/hud';
 import './ui/styles.css';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -38,7 +39,7 @@ runtime = new MatchRuntime({
   },
   onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
 });
-updateHud(hud, runtime.snapshot());
+updateHud(hud, runtime.playerSnapshot());
 if (bootError !== null) runtime.notify(bootError);
 if (!board.available) hud.start.disabled = true;
 
@@ -61,27 +62,17 @@ function updateMovePreview(unitId: string, point: Point): void {
     return;
   }
   const target = board.pickGround(point.x, point.y);
-  const snapshot = runtime.snapshot();
+  const snapshot = runtime.playerSnapshot();
   if (
     target === null ||
-    snapshot.state.phase !== 'running' ||
+    snapshot.view.phase !== 'running' ||
     snapshot.contextLost
   ) {
     activeMovePreview = null;
     board.clearMovePreview();
     return;
   }
-  const result = applyCommand(snapshot.state, 'A', {
-    type: 'move',
-    unitId,
-    target,
-  });
-  const previewUnit = result.state.units.find((unit) => unit.id === unitId);
-  board.setMovePreview(
-    unitId,
-    target,
-    result.ok ? (previewUnit?.path ?? []) : null,
-  );
+  board.setMovePreview(unitId, target, runtime.previewMove(unitId, target));
 }
 
 function refreshActiveMovePreview(): void {
@@ -96,25 +87,33 @@ input = new CanvasInput(
       const picked = board.pick(x, y);
       if (picked?.kind === 'unit') {
         const unit = runtime
-          .snapshot()
-          .state.units.find((item) => item.id === picked.unitId);
+          .playerSnapshot()
+          .view.ownUnits.find((item) => item.id === picked.unitId);
         if (unit?.factionId === 'A') {
           runtime.select(unit.id);
-          const snapshot = runtime.snapshot();
+          const snapshot = runtime.playerSnapshot();
           return {
             kind: 'unit',
             unitId: unit.id,
-            movable:
-              snapshot.state.phase === 'running' && !snapshot.contextLost,
+            movable: snapshot.view.phase === 'running' && !snapshot.contextLost,
           };
         }
-        if (unit !== undefined) {
+        if (
+          runtime
+            .playerSnapshot()
+            .view.visibleEnemies.some((enemy) => enemy.id === picked.unitId)
+        ) {
           runtime.select(null);
           runtime.notify(
             '敵陣営は操作できません。自軍の部隊を選択してください。',
           );
           return { kind: 'enemy' };
         }
+      }
+      if (picked?.kind === 'base') {
+        setHudPanel(hud, 'base', picked.baseId);
+        updateHud(hud, runtime.playerSnapshot());
+        return { kind: 'none' };
       }
       return board.pickGround(x, y) === null
         ? { kind: 'none' }
@@ -123,9 +122,9 @@ input = new CanvasInput(
     onTap: ({ x, y }) => {
       const cell = board.pickGround(x, y);
       if (cell === null) return;
-      const snapshot = runtime.snapshot();
+      const snapshot = runtime.playerSnapshot();
       const selected = snapshot.selectedUnitId;
-      if (selected !== null && snapshot.state.phase === 'running') {
+      if (selected !== null && snapshot.view.phase === 'running') {
         runtime.dispatch({ type: 'move', unitId: selected, target: cell });
       } else if (selected === null)
         runtime.notify('移動する自軍部隊を選択してください。');
@@ -146,10 +145,10 @@ input = new CanvasInput(
       activeMovePreview = null;
       board.clearMovePreview();
       const target = board.pickGround(point.x, point.y);
-      const snapshot = runtime.snapshot();
+      const snapshot = runtime.playerSnapshot();
       if (
         target === null ||
-        snapshot.state.phase !== 'running' ||
+        snapshot.view.phase !== 'running' ||
         snapshot.contextLost
       )
         return;
@@ -159,7 +158,10 @@ input = new CanvasInput(
       activeMovePreview = null;
       board.clearMovePreview();
     },
-    onEscape: () => runtime.select(null),
+    onEscape: () => {
+      setHudPanel(hud, null);
+      runtime.select(null);
+    },
   },
   hud.root,
 );
@@ -194,7 +196,7 @@ function downloadDiagnostic(): void {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `g1-seed-${runtime.snapshot().state.seed}-tick-${runtime.snapshot().state.elapsedTicks}.json`;
+    anchor.download = `g2-${runtime.playerSnapshot().view.scenarioId}-seed-${runtime.playerSnapshot().view.seed}-tick-${runtime.playerSnapshot().view.tick}.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (error) {
@@ -207,6 +209,27 @@ function downloadDiagnostic(): void {
 const handleClick = (event: MouseEvent): void => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
+  const clickedButton = target.closest<HTMLButtonElement>('button');
+  if (clickedButton?.disabled) return;
+  const produce = clickedButton?.dataset.produce;
+  const research = clickedButton?.dataset.research;
+  const cancelJob = clickedButton?.dataset.cancelJob;
+  if (produce !== undefined) {
+    runtime.dispatch({
+      type: 'enqueue-production',
+      baseId: `HQ-${runtime.playerSnapshot().view.viewerFactionId}`,
+      unitKind: produce,
+    });
+    return;
+  }
+  if (research !== undefined) {
+    runtime.dispatch({ type: 'start-research', researchId: research });
+    return;
+  }
+  if (cancelJob !== undefined) {
+    runtime.dispatch({ type: 'cancel-production', jobId: cancelJob });
+    return;
+  }
   const unitButton = target.closest<HTMLElement>('[data-unit]');
   if (unitButton?.dataset.unit) {
     runtime.select(unitButton.dataset.unit);
@@ -221,22 +244,47 @@ const handleClick = (event: MouseEvent): void => {
   else if (action === 'resume') runtime.dispatch({ type: 'resume' });
   else if (action === 'reset') {
     input.reset();
-    runtime.reset(runtime.snapshot().state.seed);
+    setHudPanel(hud, null);
+    runtime.reset(runtime.playerSnapshot().view.seed);
     board.resetCamera();
   } else if (action === 'apply-seed') {
     const seed = seedOrExplain();
     if (seed === null) return;
     input.reset();
-    runtime.reset(seed);
+    const scenario = hud.scenario.value;
+    if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
+    setHudPanel(hud, null);
+    runtime.reset(seed, scenario as ScenarioId);
     board.resetCamera();
   } else if (action === 'stop') {
-    const unitId = runtime.snapshot().selectedUnitId;
+    const unitId = runtime.playerSnapshot().selectedUnitId;
     if (unitId !== null) runtime.dispatch({ type: 'stop', unitId });
   } else if (action === 'clear') runtime.select(null);
   else if (action === 'camera') board.resetCamera();
   else if (action === 'download') downloadDiagnostic();
+  else if (action === 'close-panel') setHudPanel(hud, null);
+  else if (
+    action === 'production' ||
+    action === 'research' ||
+    action === 'bases'
+  ) {
+    input.cancelGesture();
+    const panel = action === 'bases' ? 'base' : action;
+    setHudPanel(hud, hud.panel === panel ? null : panel);
+    updateHud(hud, runtime.playerSnapshot());
+  }
 };
 hud.root.addEventListener('click', handleClick);
+const handleBaseChange = (event: Event): void => {
+  if (
+    event.target instanceof HTMLSelectElement &&
+    event.target.matches('[data-base-select]')
+  ) {
+    hud.selectedBaseId = event.target.value;
+    updateHud(hud, runtime.playerSnapshot());
+  }
+};
+hud.root.addEventListener('change', handleBaseChange);
 
 const handleVisibility = (): void => {
   if (document.hidden) {
@@ -256,6 +304,7 @@ const handlePageHide = (event: PageTransitionEvent): void => {
   runtime.stopLoop();
   if (event.persisted) return;
   hud.root.removeEventListener('click', handleClick);
+  hud.root.removeEventListener('change', handleBaseChange);
   document.removeEventListener('visibilitychange', handleVisibility);
   window.removeEventListener('pageshow', handlePageShow);
   window.removeEventListener('pagehide', handlePageHide);
