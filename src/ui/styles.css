@@ -719,3 +719,63 @@ select:focus-visible {
     transition: none;
   }
 }
+
+.result-dialog {
+  width: min(580px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  color: var(--ink, #17202b);
+  background: var(--panel, #fafafa);
+  border: 1px solid #c7cdd3;
+  border-radius: 14px;
+  box-shadow: 0 20px 80px #0005;
+}
+.result-dialog::backdrop {
+  background: #18202b99;
+}
+.result-dialog h1 {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+.result-dialog p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.result-standings {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.result-standings li {
+  padding: 12px 0;
+  border-top: 1px solid #d9dde2;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.result-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.result-actions button {
+  min-height: 44px;
+}
+@media (max-height: 500px) {
+  .result-dialog {
+    padding: 14px 20px;
+  }
+  .result-dialog h1 {
+    font-size: 20px;
+  }
+  .result-dialog p {
+    margin: 6px 0;
+  }
+  .result-standings {
+    margin: 8px 0;
+  }
+  .result-standings li {
+    padding: 6px 0;
+    font-size: 12px;
+  }
+}

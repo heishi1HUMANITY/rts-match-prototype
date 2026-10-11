@@ -4,9 +4,14 @@ import { createMap, isCellBlocked } from './map';
 import { createMatch } from './match';
 
 describe('initial match contract', () => {
-  it('creates schema-v3 ready state with three factions, typed units, and bases', () => {
+  it('creates schema-v5 ready state with three factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(4);
+    expect(match.schemaVersion).toBe(5);
+    expect(match.timeLimitTicks).toBe(3000);
+    expect(match.result).toBeNull();
+    expect(
+      match.factions.every(({ eliminatedAtTick }) => eliminatedAtTick === null),
+    ).toBe(true);
     expect(match.scenarioId).toBe('standard');
     expect(match.factions.map(({ id }) => id)).toEqual(['A', 'B', 'C']);
     expect(
@@ -121,23 +126,29 @@ describe('initial match contract', () => {
     },
   );
 
-  it.each(['standard', 'g2-capture', 'g2-combat', 'g2-economy'] as const)(
-    'reproduces scenario fixture %s',
-    (scenarioId) => {
-      const match = createMatch(42, { scenarioId });
-      expect(createMatch(42, { scenarioId })).toEqual(match);
-      expect(match.scenarioId).toBe(scenarioId);
-      expect(JSON.parse(JSON.stringify(match))).toEqual(match);
-      expect(
-        match.units.every(({ cell }) => !isCellBlocked(match.map, cell)),
-      ).toBe(true);
-      expect(
-        match.factions.every(
-          (faction, index) => faction !== match.factions[(index + 1) % 3],
-        ),
-      ).toBe(true);
-    },
-  );
+  it.each([
+    'standard',
+    'g2-capture',
+    'g2-combat',
+    'g2-economy',
+    'g3-timeout',
+    'g3-elimination',
+    'g3-mutual',
+    'g3-spectate',
+  ] as const)('reproduces scenario fixture %s', (scenarioId) => {
+    const match = createMatch(42, { scenarioId });
+    expect(createMatch(42, { scenarioId })).toEqual(match);
+    expect(match.scenarioId).toBe(scenarioId);
+    expect(JSON.parse(JSON.stringify(match))).toEqual(match);
+    expect(
+      match.units.every(({ cell }) => !isCellBlocked(match.map, cell)),
+    ).toBe(true);
+    expect(
+      match.factions.every(
+        (faction, index) => faction !== match.factions[(index + 1) % 3],
+      ),
+    ).toBe(true);
+  });
 
   it('applies only the specified fixture differences', () => {
     const standard = createMatch(42);

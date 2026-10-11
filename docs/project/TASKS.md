@@ -65,6 +65,8 @@ G1検査待ちの先行準備は [G2設計案](preparation/G2_DESIGN.md)、[段�
 
 ## G3 / M3: NPC2陣営との試合が最後まで成立する
 
+具体契約は [G3_DESIGN.md](preparation/G3_DESIGN.md)、画面検査手順は [G3_SCENARIOS.md](inspection/G3_SCENARIOS.md) を参照。
+
 ブランチ例: gate/g3-npc-match。前提: G2合格・マージ。主な編集範囲: src/ai、src/simulation、src/ui、src/render、テスト・docs/project。
 
 | ID   | 実装内容                           | 依存       | 技術的な完了条件                                                                                  |
