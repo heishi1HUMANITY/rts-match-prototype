@@ -140,6 +140,7 @@ describe('faction visibility and view isolation', () => {
               ...faction,
               supplyCenti: 999,
               researchCenti: 100,
+              researchProgressCenti: { 'firepower-1': 42, 'firepower-2': 12 },
               productionJobs: [
                 {
                   id: 'hidden',
@@ -151,11 +152,7 @@ describe('faction visibility and view isolation', () => {
                   remainingTicks: 2,
                 },
               ],
-              activeResearch: {
-                researchId: 'firepower-1',
-                costCenti: 6000,
-                remainingTicks: 3,
-              },
+              activeResearch: { researchId: 'firepower-1' },
             }
           : faction,
       ),

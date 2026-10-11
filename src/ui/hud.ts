@@ -1,6 +1,7 @@
 import type { PlayerSnapshot } from '../runtime/controller';
 import {
   BASE_STATS,
+  BASE_RESEARCH_INCOME_CENTI_PER_TICK,
   RESEARCH_DEFINITIONS,
   UNIT_STATS,
 } from '../simulation/config';
@@ -55,9 +56,9 @@ export function createHud(app: HTMLElement): HudElements {
           <div class="action-card"><button data-produce="scout">偵察を生産</button><small>補給60 · 6秒 · HP60 · 視界8</small><span data-production-reason="scout"></span></div>
           <h3>生産キュー</h3><div class="production-queue"></div>
         </section>
-        <section data-panel="research" hidden><p>効果はこの試合だけ。研究中も試合は進みます。</p>
-          <div class="action-card"><button data-research="firepower-1">戦力研究 I</button><small>研究60 · 10秒 · 全部隊の攻撃 +1</small><progress data-research-progress="firepower-1" max="100" value="0"></progress><span data-research-reason="firepower-1"></span></div>
-          <div class="action-card"><button data-research="firepower-2">戦力研究 II</button><small>研究90 · 15秒 · さらに攻撃 +1 · 前提 I</small><progress data-research-progress="firepower-2" max="100" value="0"></progress><span data-research-reason="firepower-2"></span></div>
+        <section data-panel="research" hidden><button data-action="bank-research">指定解除・バンクする</button><p>選択中の研究にポイントを充填。必要量で完了。指定しない間はバンクします。切替・解除でも充填済みポイントは残ります。</p>
+          <div class="action-card"><button data-research="firepower-1">戦力研究 I</button><small>必要60ポイント · 全部隊の攻撃 +1</small><progress data-research-progress="firepower-1" max="100" value="0"></progress><span data-research-reason="firepower-1"></span></div>
+          <div class="action-card"><button data-research="firepower-2">戦力研究 II</button><small>必要90ポイント · さらに攻撃 +1 · 前提 I</small><progress data-research-progress="firepower-2" max="100" value="0"></progress><span data-research-reason="firepower-2"></span></div>
         </section>
         <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p>中立拠点は半径1に自軍だけが3秒いると制圧。敵所有なら先にHPを0にします。</p><button data-action="production">生産を開く</button></section>
       </aside>
@@ -163,7 +164,7 @@ export function updateHud(
   );
   text(
     '[data-resources]',
-    `補給 ${amount(own.supplyCenti)} / 研究 ${amount(own.researchCenti)}`,
+    `補給 ${amount(own.supplyCenti)} / 研究バンク ${(own.researchCenti / 100).toFixed(1)}`,
   );
   const bases = view.bases.filter(
     (base) => base.visibility === 'owned' && base.hp > 0,
@@ -172,10 +173,12 @@ export function updateHud(
       (n, base) => n + BASE_STATS[base.kind].supplyIncomeCentiPerTick,
       0,
     ),
-    rp = bases.reduce(
-      (n, base) => n + BASE_STATS[base.kind].researchIncomeCentiPerTick,
-      0,
-    ),
+    rp =
+      BASE_RESEARCH_INCOME_CENTI_PER_TICK +
+      bases.reduce(
+        (n, base) => n + BASE_STATS[base.kind].researchIncomeCentiPerTick,
+        0,
+      ),
     upkeep = view.ownUnits.reduce(
       (n, unit) => n + UNIT_STATS[unit.kind].upkeepCenti,
       0,
@@ -187,8 +190,8 @@ export function updateHud(
   text(
     '[data-research-status]',
     own.activeResearch
-      ? `${researchName(own.activeResearch.researchId)} 残り${seconds(own.activeResearch.remainingTicks)}`
-      : `研究完了 ${own.completedResearchIds.length}/2`,
+      ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
+      : `バンク中 · 研究完了 ${own.completedResearchIds.length}/2`,
   );
   const selected = view.ownUnits.find(
     (unit) => unit.id === snapshot.selectedUnitId,
@@ -276,35 +279,41 @@ export function updateHud(
     row.querySelector('button')!.disabled =
       view.phase !== 'running' || snapshot.contextLost;
   }
+  elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="bank-research"]',
+  )!.disabled =
+    view.phase !== 'running' ||
+    snapshot.contextLost ||
+    own.activeResearch === null;
   for (const id of ['firepower-1', 'firepower-2'] as const) {
-    const def = RESEARCH_DEFINITIONS[id],
-      done = own.completedResearchIds.includes(id),
-      active = own.activeResearch?.researchId === id;
+    const def = RESEARCH_DEFINITIONS[id];
+    const done = own.completedResearchIds.includes(id);
+    const active = own.activeResearch?.researchId === id;
+    const progress = own.researchProgressCenti[id];
     const reason = done
       ? '完了 · 攻撃+1'
-      : active
-        ? `研究中 · 残り${seconds(own.activeResearch!.remainingTicks)}`
-        : view.phase !== 'running'
-          ? '開始・再開後に操作できます'
-          : own.activeResearch !== null
-            ? '別の研究が進行中です'
-            : def.prerequisite !== null &&
-                !own.completedResearchIds.includes(def.prerequisite)
-              ? '前提：戦力研究Iが必要です'
-              : own.researchCenti < def.costCenti
-                ? '研究ポイントが不足しています'
-                : null;
-    elements.root.querySelector<HTMLButtonElement>(
+      : view.phase !== 'running'
+        ? '開始・再開後に選択できます'
+        : def.prerequisite !== null &&
+            !own.completedResearchIds.includes(def.prerequisite)
+          ? '前提：戦力研究Iが必要です'
+          : null;
+    const button = elements.root.querySelector<HTMLButtonElement>(
       `[data-research="${id}"]`,
-    )!.disabled = reason !== null || snapshot.contextLost;
-    text(`[data-research-reason="${id}"]`, reason ?? '研究できます');
-    elements.root.querySelector<HTMLProgressElement>(
+    )!;
+    button.disabled = reason !== null || snapshot.contextLost;
+    button.setAttribute('aria-pressed', String(active));
+    button.textContent = `${researchName(id)}${done ? ' · 完了' : active ? ' · 選択中' : 'を選択'}`;
+    text(
+      `[data-research-reason="${id}"]`,
+      reason ??
+        `${active ? '充填中' : progress > 0 ? '進捗保持' : '選択可能'} · ${(progress / 100).toFixed(1)} / ${def.costCenti / 100}pt`,
+    );
+    const bar = elements.root.querySelector<HTMLProgressElement>(
       `[data-research-progress="${id}"]`,
-    )!.value = done
-      ? 100
-      : active
-        ? 100 * (1 - own.activeResearch!.remainingTicks / def.durationTicks)
-        : 0;
+    )!;
+    bar.value = (100 * progress) / def.costCenti;
+    bar.setAttribute('aria-label', `${researchName(id)}の充填率`);
   }
   const selector =
     elements.root.querySelector<HTMLSelectElement>('[data-base-select]')!;

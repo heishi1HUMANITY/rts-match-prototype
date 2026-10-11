@@ -138,6 +138,7 @@ export function getFactionView(
       controller: faction.controller,
       supplyCenti: faction.supplyCenti,
       researchCenti: faction.researchCenti,
+      researchProgressCenti: { ...faction.researchProgressCenti },
       ticketsCenti: faction.ticketsCenti,
       productionJobs: faction.productionJobs.map((job) => ({ ...job })),
       activeResearch: faction.activeResearch

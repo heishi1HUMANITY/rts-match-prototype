@@ -7,7 +7,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 export const MAP_WIDTH = 40;
 export const MAP_HEIGHT = 40;
 export const BLOCKED_CELL_PERCENT = 10;
@@ -17,6 +17,7 @@ export const TICK_DURATION_MS = 100;
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;
 export const INITIAL_TICKETS_CENTI = 100_000;
+export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 2;
 export const UNIT_LIMIT = 6;
 /** Active job plus two queued jobs. */
 export const PRODUCTION_QUEUE_LIMIT = 3;
@@ -61,7 +62,6 @@ export const UNIT_STATS: Readonly<
 
 export interface ResearchDefinition {
   readonly costCenti: number;
-  readonly durationTicks: number;
   readonly prerequisite: ResearchId | null;
   readonly damageBonus: number;
 }
@@ -71,13 +71,11 @@ export const RESEARCH_DEFINITIONS: Readonly<
 > = {
   'firepower-1': {
     costCenti: 6_000,
-    durationTicks: 100,
     prerequisite: null,
     damageBonus: 1,
   },
   'firepower-2': {
     costCenti: 9_000,
-    durationTicks: 150,
     prerequisite: 'firepower-1',
     damageBonus: 1,
   },

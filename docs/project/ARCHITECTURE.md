@@ -16,20 +16,20 @@ ui / render / ai → simulation。simulation は他の層をimportしない。
 - ui: 開始、HUD、研究、生産、結果、ガイド。入力をcommandへ変換。
 - assets: 安定キーのmanifest。artwork原本と配信ファイルを分離。
 
-G1の移動を維持し、G2の状態・視界・戦略ループ契約は [G2_DESIGN.md](preparation/G2_DESIGN.md) と [DECISIONS.md](DECISIONS.md) のD025以降を参照する。createMatch(seed,{scenarioId})はschemaVersion=3のready状態、seed付き盤面、3陣営・首都・中立拠点と陣営別知識を生成する。
+G1の移動を維持し、G2の状態・視界・戦略ループ契約は [G2_DESIGN.md](preparation/G2_DESIGN.md) と [DECISIONS.md](DECISIONS.md) のD025以降を参照する。createMatch(seed,{scenarioId})はschemaVersion=4のready状態、seed付き盤面、3陣営・首都・中立拠点と陣営別知識を生成する。
 
 simulationの共通commandと固定tickをruntimeが進め、通常のonChange/onFrameは自軍FactionViewだけをHUD/renderへ渡す。経路プレビューはruntime.previewMoveの純粋照会、全MatchState取得は明示された開発用診断とテストの経路に限定する。NPC方針と勝敗はG3で追加する。
 
 ## 進行と再現性
 
 ゲーム時間は整数tickで表し、ブラウザの描画頻度に合わせてルールを変更しない。
-100ms/tickを採用し、G2の研究・移動・同時交戦・制圧・経済・生産・チケット・視界の順を固定する。
+100ms/tickを採用し、G2の移動・同時交戦・制圧・経済/研究充填・生産・チケット・視界の順を固定する。
 乱数はseedを注入し、壁時計とMath.randomをルールから排除する。
 バックグラウンド時は停止し、復帰後の明示再開を要求する。最大catch-upは5tick/500ms。
 同じseedとcommand列から同じ結果を得られることを検証する。
 
 保存・リプレイは初期必須ではないが、状態はJSON化可能に保つ。
-現在のMatchStateはschemaVersion=3、rules g2-v1。v1/v2からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioを要求する。以後スキーマを変更するときも互換性の扱いを明示する。
+現在のMatchStateはschemaVersion=4、rules g2-v2。v1/v2/v3からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioを要求する。以後スキーマを変更するときも互換性の扱いを明示する。
 
 ## 入力とカメラ
 

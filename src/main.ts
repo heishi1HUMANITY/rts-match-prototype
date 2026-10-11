@@ -262,6 +262,8 @@ const handleClick = (event: MouseEvent): void => {
   } else if (action === 'clear') runtime.select(null);
   else if (action === 'camera') board.resetCamera();
   else if (action === 'download') downloadDiagnostic();
+  else if (action === 'bank-research')
+    runtime.dispatch({ type: 'start-research', researchId: null });
   else if (action === 'close-panel') setHudPanel(hud, null);
   else if (
     action === 'production' ||

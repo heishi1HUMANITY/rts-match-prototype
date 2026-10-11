@@ -85,12 +85,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'g2-v1',
-      schemaVersion: 3,
+      rulesVersion: 'g2-v2',
+      schemaVersion: 4,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
-      rules: { schemaVersion: 3, rulesVersion: 'g2-v1' },
+      rules: { schemaVersion: 4, rulesVersion: 'g2-v2' },
     });
     runtime.stopLoop();
   });
@@ -131,6 +131,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       researchCenti: 15000,
       productionJobs: [],
       activeResearch: null,
+      researchProgressCenti: { 'firepower-1': 0, 'firepower-2': 0 },
       completedResearchIds: [],
     });
     expect(runtime.playerSnapshot().selectedUnitId).toBeNull();
@@ -146,14 +147,14 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 3 as const,
-      rulesVersion: 'g2-v1' as const,
+      schemaVersion: 4 as const,
+      rulesVersion: 'g2-v2' as const,
     };
     expect(() =>
       replay({ ...input, rulesVersion: 'g1-v1' } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
-      replay({ ...input, schemaVersion: 2 } as unknown as typeof input),
+      replay({ ...input, schemaVersion: 3 } as unknown as typeof input),
     ).toThrow('invalid replay header');
   });
 
@@ -169,6 +170,39 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(runtime.snapshot().history.at(-1)?.reason).toBe(
       'RESEARCH_NOT_FOUND',
     );
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.stopLoop();
+  });
+
+  it('replays research selection, bank mode and retained progress without point loss', () => {
+    const { runtime, advance } = running('standard');
+    runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
+    advance(50);
+    expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 100 },
+      activeResearch: { researchId: 'firepower-1' },
+    });
+    runtime.dispatch({ type: 'start-research', researchId: null });
+    advance(50);
+    expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
+      researchCenti: 100,
+      researchProgressCenti: { 'firepower-1': 100 },
+      activeResearch: null,
+    });
+    runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
+    runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
+    expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 200 },
+    });
+    runtime.dispatch({ type: 'pause' });
+    advance(10);
+    expect(
+      runtime.playerSnapshot().view.ownFaction.researchProgressCenti[
+        'firepower-1'
+      ],
+    ).toBe(200);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });

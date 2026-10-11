@@ -24,8 +24,8 @@ export function stepUnit(unit: UnitState): UnitState {
 }
 
 /**
- * Advances one deterministic G2 tick in design order: research, movement,
- * simultaneous combat, capture, economy, production, tickets, then visibility.
+ * Advances one deterministic G2 tick: movement, simultaneous combat, capture,
+ * economy and research fill, production, tickets, then final visibility.
  */
 export function stepMatch(state: MatchState): MatchState {
   if (state.phase !== 'running') return state;
@@ -33,11 +33,11 @@ export function stepMatch(state: MatchState): MatchState {
     ...state,
     elapsedTicks: state.elapsedTicks + 1,
   };
-  next = advanceResearch(next);
   next = { ...next, units: next.units.map(stepUnit) };
   next = resolveCombat(next);
   next = advanceCapture(next);
   next = applyEconomyTick(next);
+  next = advanceResearch(next);
   next = advanceProduction(next);
   next = applyTicketTick(next);
   return { ...next, knowledge: updateFactionKnowledge(next) };

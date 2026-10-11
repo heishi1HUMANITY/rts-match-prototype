@@ -1,11 +1,18 @@
-import { BASE_STATS, UNIT_STATS } from './config';
+import {
+  BASE_RESEARCH_INCOME_CENTI_PER_TICK,
+  BASE_STATS,
+  UNIT_STATS,
+} from './config';
 import type { FactionId, MatchState } from './types';
 
 /** Applies income from surviving owned bases and upkeep for surviving units. */
 export function applyEconomyTick(state: MatchState): MatchState {
   const income = new Map<FactionId, { supply: number; research: number }>();
   for (const faction of state.factions) {
-    income.set(faction.id, { supply: 0, research: 0 });
+    income.set(faction.id, {
+      supply: 0,
+      research: BASE_RESEARCH_INCOME_CENTI_PER_TICK,
+    });
   }
   for (const base of state.bases) {
     if (base.owner === null || base.hp <= 0) continue;

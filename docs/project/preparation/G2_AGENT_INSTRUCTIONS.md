@@ -28,7 +28,7 @@
 
 > 編集範囲: simulation/types.ts/config.ts/match.ts、追加visibility.ts/view.ts、関連テスト。追加命令の型だけは親と先に合わせる。既存のmap/pathfinding/移動ルールを黙って変更しない。
 >
-> schema3と資源/HP/拠点/キュー/研究/knowledgeの状態、通常配置、列挙scenario初期化、2倍整数位置、全陣営の視界・探索・拠点記憶、getFactionViewを作る。敵DTOを元stateのspread/Omitで作らない。自軍以外のjob存在/研究/経路/資源を出さない。
+> schema4と資源/HP/拠点/キュー/研究/knowledgeの状態、通常配置、列挙scenario初期化、2倍整数位置、全陣営の視界・探索・拠点記憶、getFactionViewを作る。敵DTOを元stateのspread/Omitで作らない。自軍以外のjob存在/研究/経路/資源を出さない。
 >
 > 完了条件: 行列V01〜V07/P01/P02が通る。全陣営tick0で視界を持ち、JSON round trip/resetで状態が独立する。親へFactionViewの実型を返す。
 
@@ -36,7 +36,7 @@
 
 > 編集範囲: simulation/economy.ts/production.ts/research.ts、commands.ts、関連テスト。types.ts/config.tsの公開型変更は親が確認する。step.tsはまだ統合担当だけが編集する。
 >
-> 整数資源、予約時支払い、枠の確保、直列生産、取消全額返金、単調増加ID、首都破壊時キュー取消、2段研究と完了効果を実装する。pure helperは明示した入力stateだけを読み、UIへ通知しない。
+> 整数資源、予約時支払い、枠の確保、直列生産、取消全額返金、単調増加ID、首都破壊時キュー取消、選択研究へのポイント充填/未指定バンク/進捗保持と2段完了効果を実装する。pure helperは明示した入力stateだけを読み、UIへ通知しない。
 >
 > 完了条件: E01〜E08/R01〜R05。連続注文は受理件数分だけ支払い、同じ取消で二度返金しない。資源・枠・待ち/実行中・首都状態の境界をテスト。親へtick統合用helperと前提を返す。
 
@@ -44,7 +44,7 @@
 
 > 編集範囲: simulation/combat.ts/capture.ts/tickets.ts/step.ts、必要な命令の観測拒否、関連テスト。A/B後に開始する。同じsnapshotから対象選択・ダメージ一括・破壊/損失一度だけ・制圧・収入・生産・最終視界を設計8章順で接続する。
 >
-> 完了条件: C01〜C07/T01〜T04/I01〜I04。部隊・拠点配列を並べ替えてもIDで比較した結果が一致し、相互致死や3陣営競合で走査順の優位がない。同tick首都破壊と生産完了で部隊が出ない。研究完了tickの攻撃効果を確認する。
+> 完了条件: C01〜C07/T01〜T04/I01〜I04。部隊・拠点配列を並べ替えてもIDで比較した結果が一致し、相互致死や3陣営競合で走査順の優位がない。同tick首都破壊と生産完了で部隊が出ない。収入充填で研究完了した次tickから攻撃効果が変わることを確認する。
 
 ## D: FactionViewへの描画・runtime移行
 

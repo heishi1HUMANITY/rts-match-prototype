@@ -44,7 +44,7 @@ describe('G2 integer economy', () => {
     let state = runningMatch();
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
     expect(faction(state).supplyCenti).toBe(20_320);
-    expect(faction(state).researchCenti).toBe(0);
+    expect(faction(state).researchCenti).toBe(20);
 
     const outpost = state.bases.find(({ id }) => id === 'OUT-03');
     if (outpost === undefined) throw new Error('missing outpost');
@@ -56,7 +56,7 @@ describe('G2 integer economy', () => {
     };
     const next = applyEconomyTick(owned);
     expect(faction(next).supplyCenti).toBe(20_372);
-    expect(faction(next).researchCenti).toBe(10);
+    expect(faction(next).researchCenti).toBe(32);
     expect(faction(owned).supplyCenti).toBe(20_320);
   });
 
@@ -264,7 +264,6 @@ describe('G2 production commands and tick helpers', () => {
     for (const malformed of [
       { type: 'enqueue-production', baseId: 'HQ-A', unitKind: 1 },
       { type: 'cancel-production', jobId: 'A-J01', extra: true },
-      { type: 'start-research', researchId: null },
     ]) {
       expect(applyCommand(state, 'A', malformed)).toEqual({
         ok: false,
@@ -272,6 +271,9 @@ describe('G2 production commands and tick helpers', () => {
         reason: 'INVALID_COMMAND',
       });
     }
+    expect(
+      applyCommand(state, 'A', { type: 'start-research', researchId: null }),
+    ).toEqual({ ok: true, state });
     expect(
       applyCommand(state, 'A', {
         type: 'enqueue-production',
@@ -380,49 +382,32 @@ describe('G2 production commands and tick helpers', () => {
 });
 
 describe('G2 research', () => {
-  it('checks prerequisite, exact payment, busy and duplicate without double spending', () => {
-    let state = withFaction(runningMatch(), { researchCenti: 5_999 });
-    expect(
-      applyCommand(state, 'A', {
-        type: 'start-research',
-        researchId: 'firepower-2',
-      }),
-    ).toEqual({
-      ok: false,
-      state,
-      reason: 'PREREQUISITE_MISSING',
-    });
-    expect(
-      applyCommand(state, 'A', {
-        type: 'start-research',
-        researchId: 'firepower-1',
-      }),
-    ).toEqual({
-      ok: false,
-      state,
-      reason: 'INSUFFICIENT_RESEARCH',
-    });
-    state = withFaction(state, { researchCenti: 6_000 });
+  it('completes at exactly the required amount without leaving bank or active work', () => {
+    let state = withFaction(runningMatch(), { researchCenti: 6_000 });
     state = accepted(state, {
       type: 'start-research',
       researchId: 'firepower-1',
     });
-    expect(faction(state).researchCenti).toBe(0);
-    expect(faction(state).activeResearch?.remainingTicks).toBe(100);
-    expect(
-      applyCommand(state, 'A', {
-        type: 'start-research',
-        researchId: 'firepower-1',
-      }),
-    ).toEqual({
-      ok: false,
-      state,
-      reason: 'RESEARCH_BUSY',
+    expect(faction(state)).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 6_000 },
+      activeResearch: null,
+      completedResearchIds: ['firepower-1'],
     });
-    for (let tick = 0; tick < 99; tick += 1) state = advanceResearch(state);
-    expect(faction(state).activeResearch?.remainingTicks).toBe(1);
-    state = advanceResearch(state);
-    expect(faction(state).completedResearchIds).toEqual(['firepower-1']);
+  });
+
+  it('fills exactly to a selected cost, banks excess, and completes immediately', () => {
+    let state = withFaction(runningMatch(), { researchCenti: 7_000 });
+    state = accepted(state, {
+      type: 'start-research',
+      researchId: 'firepower-1',
+    });
+    expect(faction(state)).toMatchObject({
+      researchCenti: 1_000,
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 0 },
+      activeResearch: null,
+      completedResearchIds: ['firepower-1'],
+    });
     expect(firepowerBonus(faction(state))).toBe(1);
     expect(
       applyCommand(state, 'A', {
@@ -434,30 +419,118 @@ describe('G2 research', () => {
       state,
       reason: 'ALREADY_RESEARCHED',
     });
-    state = withFaction(state, { researchCenti: 9_000 });
-    state = accepted(state, {
-      type: 'start-research',
-      researchId: 'firepower-2',
-    });
-    expect(faction(state).researchCenti).toBe(0);
-    for (let tick = 0; tick < 150; tick += 1) state = advanceResearch(state);
-    expect(firepowerBonus(faction(state))).toBe(2);
   });
 
-  it('keeps paid research active when the HQ is destroyed', () => {
-    let state = withFaction(runningMatch(), { researchCenti: 6_000 });
+  it('allows selection without enough bank and preserves partial progress when banking/reselecting', () => {
+    let state = withFaction(runningMatch(), { researchCenti: 2_000 });
     state = accepted(state, {
       type: 'start-research',
       researchId: 'firepower-1',
     });
-    const destroyed = {
+    expect(faction(state)).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 2_000 },
+      activeResearch: { researchId: 'firepower-1' },
+    });
+    const sameSelection = applyCommand(state, 'A', {
+      type: 'start-research',
+      researchId: 'firepower-1',
+    });
+    expect(sameSelection).toEqual({ ok: true, state });
+    expect(sameSelection.state).toBe(state);
+    state = accepted(state, { type: 'start-research', researchId: null });
+    state = withFaction(state, { researchCenti: 400 });
+    state = accepted(state, {
+      type: 'start-research',
+      researchId: 'firepower-1',
+    });
+    expect(faction(state)).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 2_400 },
+      activeResearch: { researchId: 'firepower-1' },
+    });
+  });
+
+  it('retains each research progress record and rejects prerequisite selection without mutation', () => {
+    let state = withFaction(runningMatch(), { researchCenti: 1_000 });
+    const rejected = applyCommand(state, 'A', {
+      type: 'start-research',
+      researchId: 'firepower-2',
+    });
+    expect(rejected).toEqual({
+      ok: false,
+      state,
+      reason: 'PREREQUISITE_MISSING',
+    });
+    state = withFaction(state, {
+      researchCenti: 0,
+      completedResearchIds: ['firepower-1'],
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_000 },
+    });
+    state = accepted(state, {
+      type: 'start-research',
+      researchId: 'firepower-2',
+    });
+    expect(faction(state)).toMatchObject({
+      researchProgressCenti: { 'firepower-2': 8_000 },
+      activeResearch: { researchId: 'firepower-2' },
+    });
+    state = accepted(state, { type: 'start-research', researchId: null });
+    state = applyEconomyTick(state);
+    expect(faction(state).researchCenti).toBe(2);
+    state = accepted(state, {
+      type: 'start-research',
+      researchId: 'firepower-2',
+    });
+    expect(faction(state)).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_002 },
+      activeResearch: { researchId: 'firepower-2' },
+    });
+    state = accepted(state, { type: 'start-research', researchId: null });
+    expect(faction(state)).toMatchObject({
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_002 },
+      activeResearch: null,
+    });
+  });
+
+  it('banks all-faction base income, including after HQ destruction, when unselected', () => {
+    let state = withFaction(runningMatch(), {
+      researchCenti: 0,
+      activeResearch: null,
+    });
+    state = {
       ...state,
       bases: state.bases.map((base) =>
         base.id === 'HQ-A' ? { ...base, hp: 0 } : base,
       ),
     };
-    const next = advanceResearch(destroyed);
-    expect(faction(next).activeResearch?.remainingTicks).toBe(99);
-    expect(faction(next).researchCenti).toBe(0);
+    for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
+    expect(faction(state).researchCenti).toBe(20);
+    expect(faction(state).researchProgressCenti).toEqual({
+      'firepower-1': 0,
+      'firepower-2': 0,
+    });
+    for (const id of ['A', 'B', 'C'] as const) {
+      const current = state.factions.find((entry) => entry.id === id)!;
+      expect(current.researchCenti).toBe(20);
+    }
+  });
+
+  it('uses the income from this tick to finish after combat, so its bonus starts next tick', () => {
+    let state = withFaction(runningMatch(), {
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 5_998, 'firepower-2': 0 },
+      activeResearch: { researchId: 'firepower-1' },
+    });
+    for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
+    state = advanceResearch(state);
+    expect(faction(state)).toMatchObject({
+      researchCenti: 18,
+      researchProgressCenti: { 'firepower-1': 6_000 },
+      activeResearch: null,
+      completedResearchIds: ['firepower-1'],
+    });
+    expect(firepowerBonus(faction(state))).toBe(1);
   });
 });

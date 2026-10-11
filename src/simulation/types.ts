@@ -31,8 +31,6 @@ export interface ProductionJob {
 
 export interface ActiveResearch {
   readonly researchId: ResearchId;
-  readonly costCenti: number;
-  readonly remainingTicks: number;
 }
 
 /** Legacy name retained as an alias for the expanded faction state. */
@@ -41,6 +39,7 @@ export interface FactionState {
   readonly controller: 'human' | 'bot';
   readonly supplyCenti: number;
   readonly researchCenti: number;
+  readonly researchProgressCenti: Readonly<Record<ResearchId, number>>;
   readonly ticketsCenti: number;
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
@@ -93,7 +92,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
   readonly elapsedTicks: number;
@@ -170,6 +169,7 @@ export interface OwnFactionView {
   readonly controller: 'human' | 'bot';
   readonly supplyCenti: number;
   readonly researchCenti: number;
+  readonly researchProgressCenti: Readonly<Record<ResearchId, number>>;
   readonly ticketsCenti: number;
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
@@ -204,7 +204,7 @@ export type Command =
       readonly unitKind: UnitKind;
     }
   | { readonly type: 'cancel-production'; readonly jobId: string }
-  | { readonly type: 'start-research'; readonly researchId: ResearchId };
+  | { readonly type: 'start-research'; readonly researchId: ResearchId | null };
 
 export type RejectCode =
   | 'INVALID_COMMAND'
@@ -221,10 +221,8 @@ export type RejectCode =
   | 'RESEARCH_NOT_FOUND'
   | 'HQ_UNAVAILABLE'
   | 'INSUFFICIENT_SUPPLY'
-  | 'INSUFFICIENT_RESEARCH'
   | 'UNIT_LIMIT'
   | 'QUEUE_FULL'
-  | 'RESEARCH_BUSY'
   | 'ALREADY_RESEARCHED'
   | 'PREREQUISITE_MISSING';
 

@@ -60,6 +60,10 @@ function freshFactions(): FactionState[] {
     controller: id === 'A' ? 'human' : 'bot',
     supplyCenti: INITIAL_SUPPLY_CENTI,
     researchCenti: INITIAL_RESEARCH_CENTI,
+    researchProgressCenti: {
+      'firepower-1': 0,
+      'firepower-2': 0,
+    },
     ticketsCenti: INITIAL_TICKETS_CENTI,
     productionJobs: [],
     activeResearch: null,

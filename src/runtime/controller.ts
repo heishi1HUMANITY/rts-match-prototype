@@ -78,13 +78,19 @@ function safeCommand(value: unknown): {
       command: { type: 'cancel-production', jobId: item.jobId },
       summary: '生産取消',
     };
-  if (item.type === 'start-research' && typeof item.researchId === 'string')
+  if (
+    item.type === 'start-research' &&
+    (typeof item.researchId === 'string' || item.researchId === null)
+  )
     return {
       command: {
         type: 'start-research',
-        researchId: item.researchId as 'firepower-1' | 'firepower-2',
+        researchId: item.researchId as 'firepower-1' | 'firepower-2' | null,
       },
-      summary: `研究 ${item.researchId}`,
+      summary:
+        item.researchId === null
+          ? '研究指定解除・バンク'
+          : `研究選択 ${item.researchId}`,
     };
   if (item.type === 'start' || item.type === 'pause' || item.type === 'resume')
     return { command: { type: item.type }, summary: item.type };
@@ -355,10 +361,8 @@ export function rejectMessage(reason: RejectCode): string {
     RESEARCH_NOT_FOUND: '研究が見つかりません',
     HQ_UNAVAILABLE: '首都が破壊されているため生産できません',
     INSUFFICIENT_SUPPLY: '補給が不足しています',
-    INSUFFICIENT_RESEARCH: '研究ポイントが不足しています',
     UNIT_LIMIT: '部隊上限に達しています',
     QUEUE_FULL: '生産予約は3件までです',
-    RESEARCH_BUSY: '別の研究が進行中です',
     ALREADY_RESEARCHED: '完了済みの研究です',
     PREREQUISITE_MISSING: '先に戦力研究Iを完了してください',
   };

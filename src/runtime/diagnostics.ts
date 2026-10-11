@@ -18,8 +18,8 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 3;
-  readonly rulesVersion: 'g2-v1';
+  readonly schemaVersion: 4;
+  readonly rulesVersion: 'g2-v2';
   readonly scenarioId: ScenarioId;
   readonly seed: number;
   readonly history: readonly CommandEntry[];
@@ -46,7 +46,7 @@ export function replay(input: ReplayInput): {
 } {
   if (
     input.schemaVersion !== SCHEMA_VERSION ||
-    input.rulesVersion !== 'g2-v1' ||
+    input.rulesVersion !== 'g2-v2' ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -102,8 +102,8 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
-    schemaVersion: 3,
-    rulesVersion: 'g2-v1',
+    schemaVersion: 4,
+    rulesVersion: 'g2-v2',
     scenarioId: snapshot.state.scenarioId,
     seed: snapshot.state.seed,
     history: snapshot.history,

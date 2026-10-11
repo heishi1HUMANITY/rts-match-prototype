@@ -1,5 +1,6 @@
 import { RESEARCH_DEFINITIONS } from './config';
 import type {
+  ActiveResearch,
   CommandResult,
   FactionId,
   FactionState,
@@ -11,24 +12,64 @@ function isResearchId(value: string): value is ResearchId {
   return Object.prototype.hasOwnProperty.call(RESEARCH_DEFINITIONS, value);
 }
 
-/** Validates and pays for exactly one non-cancellable research project. */
+function fillSelectedResearch(
+  faction: FactionState,
+  selection: ActiveResearch | null,
+): FactionState {
+  if (selection === null) return { ...faction, activeResearch: null };
+  const { researchId } = selection;
+  const definition = RESEARCH_DEFINITIONS[researchId];
+  const progress = faction.researchProgressCenti[researchId];
+  const required = Math.max(0, definition.costCenti - progress);
+  const consumed = Math.min(faction.researchCenti, required);
+  const nextProgress = progress + consumed;
+  const researchProgressCenti = {
+    ...faction.researchProgressCenti,
+    [researchId]: nextProgress,
+  };
+  const completed = nextProgress >= definition.costCenti;
+  return {
+    ...faction,
+    researchCenti: faction.researchCenti - consumed,
+    researchProgressCenti,
+    activeResearch: completed ? null : selection,
+    completedResearchIds:
+      completed && !faction.completedResearchIds.includes(researchId)
+        ? [...faction.completedResearchIds, researchId]
+        : faction.completedResearchIds,
+  };
+}
+
+/** Selects or banks research; available bank is applied immediately to a selection. */
 export function startResearch(
   state: MatchState,
   actor: FactionId,
-  researchId: string,
+  requestedResearchId: string | null,
 ): CommandResult {
-  if (!isResearchId(researchId)) {
+  const faction = state.factions.find(({ id }) => id === actor);
+  if (faction === undefined)
+    return { ok: false, state, reason: 'INVALID_ACTOR' };
+  if (requestedResearchId === null) {
+    if (faction.activeResearch === null) return { ok: true, state };
+    return {
+      ok: true,
+      state: {
+        ...state,
+        factions: state.factions.map((entry) =>
+          entry === faction ? { ...entry, activeResearch: null } : entry,
+        ),
+      },
+    };
+  }
+  if (!isResearchId(requestedResearchId)) {
     return { ok: false, state, reason: 'RESEARCH_NOT_FOUND' };
   }
-  const faction = state.factions.find(({ id }) => id === actor);
-  if (faction === undefined) {
-    return { ok: false, state, reason: 'INVALID_ACTOR' };
-  }
+  const researchId = requestedResearchId;
   if (faction.completedResearchIds.includes(researchId)) {
     return { ok: false, state, reason: 'ALREADY_RESEARCHED' };
   }
-  if (faction.activeResearch !== null) {
-    return { ok: false, state, reason: 'RESEARCH_BUSY' };
+  if (faction.activeResearch?.researchId === researchId) {
+    return { ok: true, state };
   }
   const definition = RESEARCH_DEFINITIONS[researchId];
   if (
@@ -37,56 +78,30 @@ export function startResearch(
   ) {
     return { ok: false, state, reason: 'PREREQUISITE_MISSING' };
   }
-  if (faction.researchCenti < definition.costCenti) {
-    return { ok: false, state, reason: 'INSUFFICIENT_RESEARCH' };
-  }
+  const selection: ActiveResearch = { researchId };
+  const updatedFaction = fillSelectedResearch(faction, selection);
   return {
     ok: true,
     state: {
       ...state,
       factions: state.factions.map((entry) =>
-        entry === faction
-          ? {
-              ...entry,
-              researchCenti: entry.researchCenti - definition.costCenti,
-              activeResearch: {
-                researchId,
-                costCenti: definition.costCenti,
-                remainingTicks: definition.durationTicks,
-              },
-            }
-          : entry,
+        entry === faction ? updatedFaction : entry,
       ),
     },
   };
 }
 
-/** Called first in each running tick, before combat computes damage. */
+/** Applies banked tick income to selected research after combat/capture/economy. */
 export function advanceResearch(state: MatchState): MatchState {
-  return {
-    ...state,
-    factions: state.factions.map((faction) => {
-      const active = faction.activeResearch;
-      if (active === null) return faction;
-      if (active.remainingTicks > 1) {
-        return {
-          ...faction,
-          activeResearch: {
-            ...active,
-            remainingTicks: active.remainingTicks - 1,
-          },
-        };
-      }
-      return {
-        ...faction,
-        activeResearch: null,
-        completedResearchIds: [
-          ...faction.completedResearchIds,
-          active.researchId,
-        ],
-      };
-    }),
-  };
+  let changed = false;
+  const factions = state.factions.map((faction) => {
+    const active = faction.activeResearch;
+    if (active === null) return faction;
+    const updated = fillSelectedResearch(faction, active);
+    if (updated !== faction) changed = true;
+    return updated;
+  });
+  return changed ? { ...state, factions } : state;
 }
 
 export function firepowerBonus(faction: FactionState): number {

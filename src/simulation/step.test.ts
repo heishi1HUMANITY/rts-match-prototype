@@ -43,7 +43,7 @@ describe('G2 fixed-tick integration', () => {
     });
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
       supplyCenti: 20_980,
-      researchCenti: 10,
+      researchCenti: 70,
     });
   });
 
@@ -91,7 +91,7 @@ describe('G2 fixed-tick integration', () => {
     expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(98);
   });
 
-  it('applies a research project completing this tick to this tick combat', () => {
+  it('completes research after combat and applies its bonus starting next tick', () => {
     let state = running(createMatch(42));
     const a = {
       ...state.units.find(({ id }) => id === 'A-01')!,
@@ -105,11 +105,9 @@ describe('G2 fixed-tick integration', () => {
     };
     state = onlyUnits(state, [a, b]);
     state = setFaction(state, 'A', {
-      activeResearch: {
-        researchId: 'firepower-1',
-        costCenti: 6_000,
-        remainingTicks: 1,
-      },
+      activeResearch: { researchId: 'firepower-1' },
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 5_998, 'firepower-2': 0 },
       completedResearchIds: [],
     });
     state = stepMatch(state);
@@ -117,7 +115,9 @@ describe('G2 fixed-tick integration', () => {
       activeResearch: null,
       completedResearchIds: ['firepower-1'],
     });
-    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(2);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(3);
+    state = stepMatch(state);
+    expect(state.units.some(({ id }) => id === 'B-01')).toBe(false);
   });
 
   it('does not let a unit produced at tick end attack until the next tick', () => {

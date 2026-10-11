@@ -6,7 +6,7 @@ import { createMatch } from './match';
 describe('initial match contract', () => {
   it('creates schema-v3 ready state with three factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(3);
+    expect(match.schemaVersion).toBe(4);
     expect(match.scenarioId).toBe('standard');
     expect(match.factions.map(({ id }) => id)).toEqual(['A', 'B', 'C']);
     expect(
@@ -58,6 +58,34 @@ describe('initial match contract', () => {
       expect(createMatch(seed)).toEqual(match);
       expect(JSON.parse(JSON.stringify(match))).toEqual(match);
     }
+  });
+
+  it('serializes research bank/progress and starts a new match without carrying them over', () => {
+    const initial = createMatch(42);
+    const state = {
+      ...initial,
+      factions: initial.factions.map((faction) =>
+        faction.id === 'A'
+          ? {
+              ...faction,
+              researchCenti: 123,
+              researchProgressCenti: {
+                'firepower-1': 5_000,
+                'firepower-2': 7_000,
+              },
+              activeResearch: { researchId: 'firepower-1' as const },
+            }
+          : faction,
+      ),
+    };
+    expect(JSON.parse(JSON.stringify(state))).toEqual(state);
+    const reset = createMatch(42);
+    expect(reset.factions.find(({ id }) => id === 'A')).toMatchObject({
+      researchCenti: 0,
+      researchProgressCenti: { 'firepower-1': 0, 'firepower-2': 0 },
+      activeResearch: null,
+      completedResearchIds: [],
+    });
   });
 
   it('does not share mutable match structures across matches', () => {

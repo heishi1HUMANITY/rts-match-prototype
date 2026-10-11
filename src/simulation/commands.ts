@@ -21,7 +21,7 @@ type ParsedCommand =
       readonly baseId: string;
       readonly unitKind: string;
     }
-  | { readonly type: 'start-research'; readonly researchId: string };
+  | { readonly type: 'start-research'; readonly researchId: string | null };
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -79,7 +79,7 @@ function parseCommand(input: unknown): ParsedCommand | null {
   if (
     input.type === 'start-research' &&
     hasExactKeys(input, ['type', 'researchId']) &&
-    typeof input.researchId === 'string'
+    (typeof input.researchId === 'string' || input.researchId === null)
   ) {
     return { type: 'start-research', researchId: input.researchId };
   }
