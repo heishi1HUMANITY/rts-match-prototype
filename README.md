@@ -1,5 +1,7 @@
 # RTS Match Prototype
 
+エージェントへの依頼は **「#30を進めて」** のようにIssue番号だけで開始できます。[共通の作業手順](docs/project/ISSUE_AGENT_RUNBOOK.md)、[各Issueの実装ガイド](docs/project/ISSUE_IMPLEMENTATION_GUIDE.md)、[前回の引き継ぎ](docs/project/AGENT_HANDOFF.md) を入口に、設計・実装・検証・PR作成と画面確認の準備まで進めます。動作確認後は「#30 OK、マージして」、修正は「#30の修正。困ったふるまい」を伝えてください。
+
 ブラウザの対戦本編を新規に作るプロジェクト。目標は **プレイヤー1人＋NPC2人の 1v1v1** を、世界観の知識なしで開始・操作・終了・再戦できること。
 
 G1・G2と、NPC/決着/再戦のG3はmainへマージ済みです。必要なゲームプレイ全体は [網羅表](docs/project/GAMEPLAY_COVERAGE.md) / [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) で追跡します。建築・中立NPC・兵種/研究などを含み、最小試作だけで全体完成とはしません。複数部隊一括移動→対象追跡→マスタ管理の順に基盤を整えます。
@@ -63,7 +65,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 | 場所           | 役割                                 |
 | -------------- | ------------------------------------ |
 | src/simulation | ブラウザ非依存の状態・ゲームルール   |
-| src/ai         | NPCの意思決定（未実装）              |
+| src/ai         | 陣営別viewからNPCの共通commandを生成 |
 | src/render     | Three.js 盤面・カメラ・選択表示      |
 | src/runtime    | 固定tick時計・履歴・診断             |
 | src/ui         | DOMの画面・HUD                       |
