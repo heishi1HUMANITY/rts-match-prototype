@@ -8,7 +8,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 11 as const;
+export const SCHEMA_VERSION = 12 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -194,4 +194,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f02-pursuit',
   'f04-crossing',
   'f05-neutral-defense',
+  'f06-local-faction',
 ];

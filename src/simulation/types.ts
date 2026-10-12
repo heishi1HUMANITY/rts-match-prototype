@@ -2,6 +2,9 @@ import type { RulesMaster } from './rules';
 
 /** Plain, serializable state. Browser and renderer dependencies belong elsewhere. */
 export type FactionId = 'A' | 'B' | 'C';
+/** Combat ownership includes local PvE forces without adding a ranked faction. */
+export type CombatantId = FactionId | 'local';
+export type BaseOwnerId = CombatantId;
 export type Phase = 'ready' | 'running' | 'paused' | 'finished';
 export type ScenarioId =
   | 'standard'
@@ -14,7 +17,8 @@ export type ScenarioId =
   | 'g3-spectate'
   | 'f02-pursuit'
   | 'f04-crossing'
-  | 'f05-neutral-defense';
+  | 'f05-neutral-defense'
+  | 'f06-local-faction';
 export type UnitKind = 'assault' | 'scout';
 export type CrossingTierId =
   | 'bridge-1'
@@ -168,10 +172,12 @@ export type Faction = FactionState;
 
 export interface UnitState {
   readonly id: string;
-  readonly factionId: FactionId;
+  readonly factionId: CombatantId;
   readonly kind: UnitKind;
   readonly hp: number;
   readonly maxHp: number;
+  /** Percent multiplier in hundredths, present only on local-faction units. */
+  readonly growthCenti?: number;
   readonly cell: Cell;
   /** Excludes cell and begins with the next cell to reach. */
   readonly path: readonly Cell[];
@@ -199,13 +205,15 @@ export interface BaseState {
   readonly id: string;
   readonly kind: BaseKind;
   readonly cell: Cell;
-  readonly owner: FactionId | null;
+  readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly maxHp: number;
-  readonly captureCandidate: FactionId | null;
+  readonly captureCandidate: CombatantId | null;
   readonly captureTicks: number;
   /** Neutral garrison; it is not a faction and never participates in standings. */
   readonly defender: NeutralDefenderState | null;
+  /** True after a local-faction base is destroyed and while it awaits recapture. */
+  readonly conqueredFromLocal?: boolean;
   /** Immutable original owner for HQs; null for neutral outposts. */
   readonly homeFactionId: FactionId | null;
 }
@@ -219,7 +227,7 @@ export interface NeutralDefenderState {
 
 export interface BaseMemory {
   readonly baseId: string;
-  readonly owner: FactionId | null;
+  readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly seenTick: number;
   readonly selfReportedLost: boolean;
@@ -228,7 +236,7 @@ export interface BaseMemory {
 }
 
 export interface FactionKnowledge {
-  readonly factionId: FactionId;
+  readonly factionId: CombatantId;
   /** Row-major maps. */
   readonly visible: readonly boolean[];
   readonly explored: readonly boolean[];
@@ -237,7 +245,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 11;
+  readonly schemaVersion: 12;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -248,6 +256,7 @@ export interface MatchState {
   readonly map: GridMap;
   readonly units: readonly UnitState[];
   readonly bases: readonly BaseState[];
+  readonly localFaction: LocalFactionState;
   readonly crossings: readonly CrossingState[];
   readonly knowledge: readonly FactionKnowledge[];
   readonly result: MatchResult | null;
@@ -261,7 +270,7 @@ export interface OwnUnitView extends UnitState {
 export interface VisibleEnemyUnitView {
   readonly control: 'enemy';
   readonly id: string;
-  readonly factionId: FactionId;
+  readonly factionId: CombatantId;
   readonly kind: UnitKind;
   readonly positionX1024: number;
   readonly positionY1024: number;
@@ -283,7 +292,7 @@ export interface RememberedBaseView {
   readonly id: string;
   readonly kind: BaseKind;
   readonly cell: Cell;
-  readonly owner: FactionId | null;
+  readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly seenTick: number;
   readonly selfReportedLost: boolean;
@@ -296,10 +305,10 @@ export interface VisibleBaseView {
   readonly id: string;
   readonly kind: BaseKind;
   readonly cell: Cell;
-  readonly owner: FactionId | null;
+  readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly maxHp: number;
-  readonly captureCandidate: FactionId | null;
+  readonly captureCandidate: CombatantId | null;
   readonly captureTicks: number;
   readonly defenderHp: number | null;
   readonly defenderMaxHp: number | null;
@@ -310,7 +319,7 @@ export interface OwnedBaseView extends Omit<
   'visibility' | 'owner'
 > {
   readonly visibility: 'owned';
-  readonly owner: FactionId;
+  readonly owner: BaseOwnerId;
 }
 
 export type BaseView =
@@ -350,7 +359,40 @@ export interface FactionView {
   readonly ownUnits: readonly OwnUnitView[];
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
   readonly bases: readonly BaseView[];
+  readonly localFaction: LocalFactionView;
   readonly crossings: readonly CrossingView[];
+}
+
+export interface LocalFactionState {
+  readonly active: boolean;
+  readonly defeated: boolean;
+  readonly appearedAtTick: number | null;
+  readonly nextSpawnTick: number | null;
+  readonly rosterIndex: number;
+  readonly stronghold: {
+    readonly id: string;
+    readonly cell: Cell;
+    readonly hp: number;
+    readonly maxHp: number;
+  };
+  readonly supplyCenti: number;
+  readonly conqueredBaseIds: readonly string[];
+  readonly rewardedBaseIds: readonly string[];
+}
+
+/** Public summary excludes hidden units, exact production timing, and resources. */
+export interface LocalFactionView {
+  readonly active: boolean;
+  readonly defeated: boolean;
+  readonly stronghold: {
+    readonly visibility: 'hidden' | 'visible' | 'destroyed';
+    readonly id: string;
+    readonly cell: Cell | null;
+    readonly hp: number | null;
+    readonly maxHp: number | null;
+  };
+  readonly visibleUnitCount: number;
+  readonly publicBaseCount: number;
 }
 
 export type Command =

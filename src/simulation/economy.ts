@@ -1,8 +1,8 @@
-import type { FactionId, MatchState } from './types';
+import type { CombatantId, MatchState } from './types';
 
 /** Applies income from surviving owned bases and upkeep for surviving units. */
 export function applyEconomyTick(state: MatchState): MatchState {
-  const income = new Map<FactionId, { supply: number; research: number }>();
+  const income = new Map<CombatantId, { supply: number; research: number }>();
   for (const faction of state.factions) {
     if (faction.eliminatedAtTick !== null) continue;
     income.set(faction.id, {
@@ -10,6 +10,8 @@ export function applyEconomyTick(state: MatchState): MatchState {
       research: state.rules.research.baseIncomeCentiPerTick,
     });
   }
+  if (state.localFaction.active && !state.localFaction.defeated)
+    income.set('local', { supply: 0, research: 0 });
   for (const base of state.bases) {
     if (base.owner === null || base.hp <= 0) continue;
     const entry = income.get(base.owner);
@@ -25,8 +27,19 @@ export function applyEconomyTick(state: MatchState): MatchState {
       entry.supply -= state.rules.units[unit.kind].upkeepCentiPerTick;
   }
 
+  const localDelta = income.get('local');
   return {
     ...state,
+    localFaction:
+      localDelta === undefined
+        ? state.localFaction
+        : {
+            ...state.localFaction,
+            supplyCenti: Math.max(
+              0,
+              state.localFaction.supplyCenti + localDelta.supply,
+            ),
+          },
     factions: state.factions.map((faction) => {
       const delta = income.get(faction.id);
       if (delta === undefined) return faction;

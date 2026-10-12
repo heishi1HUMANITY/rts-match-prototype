@@ -12,6 +12,7 @@ import { isCellBlocked } from '../simulation/map';
 import { terrainAt } from '../simulation/map';
 import type {
   Cell,
+  CombatantId,
   GridMap,
   FactionView,
   UnitState,
@@ -64,6 +65,7 @@ const FACTIONS = {
   A: { color: 0xe47a2f, symbol: '◆', marker: 'diamond' },
   B: { color: 0x2d9fc5, symbol: '■', marker: 'square' },
   C: { color: 0xd8ad24, symbol: '⬡', marker: 'hexagon' },
+  local: { color: 0x66747c, symbol: '●', marker: 'circle' },
 } as const;
 const CAMERA_OFFSET = new THREE.Vector3(0, 32, 28);
 const MIN_ZOOM = 0.7;
@@ -80,10 +82,12 @@ interface UnitObjects {
 }
 
 function createShape(
-  kind: 'diamond' | 'square' | 'hexagon',
+  kind: 'diamond' | 'square' | 'hexagon' | 'circle',
 ): THREE.BufferGeometry {
   const shape = new THREE.Shape();
-  if (kind === 'diamond') {
+  if (kind === 'circle') {
+    shape.absarc(0, 0, 0.38, 0, Math.PI * 2, false);
+  } else if (kind === 'diamond') {
     shape.moveTo(0, 0.48);
     shape.lineTo(0.36, 0);
     shape.lineTo(0, -0.48);
@@ -312,16 +316,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   });
   container.append(labelLayer);
 
-  const markerGeometry = new Map<keyof typeof FACTIONS, THREE.BufferGeometry>();
-  const markerMaterial = new Map<
-    keyof typeof FACTIONS,
-    THREE.MeshStandardMaterial
-  >();
-  const routeMaterial = new Map<
-    keyof typeof FACTIONS,
-    THREE.LineBasicMaterial
-  >();
-  for (const faction of Object.keys(FACTIONS) as (keyof typeof FACTIONS)[]) {
+  const markerGeometry = new Map<CombatantId, THREE.BufferGeometry>();
+  const markerMaterial = new Map<CombatantId, THREE.MeshStandardMaterial>();
+  const routeMaterial = new Map<CombatantId, THREE.LineBasicMaterial>();
+  for (const faction of Object.keys(FACTIONS) as CombatantId[]) {
     markerGeometry.set(
       faction,
       ownGeometry(createShape(FACTIONS[faction].marker)),
@@ -827,9 +825,8 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         baseObjects.set(base.id, objects);
       }
       const owner = base.visibility === 'unknown' ? null : base.owner;
-      objects.marker.material.color.setHex(
-        owner === null ? 0x8c9296 : FACTIONS[owner].color,
-      );
+      const ownerColor = owner === null ? 0x8c9296 : FACTIONS[owner].color;
+      objects.marker.material.color.setHex(ownerColor);
       objects.marker.material.transparent = true;
       objects.marker.material.opacity =
         base.visibility === 'remembered'
@@ -851,6 +848,8 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         base,
         view.rules.capture.requiredTicks,
       );
+      objects.label.style.borderColor = `#${ownerColor.toString(16).padStart(6, '0')}`;
+      objects.label.style.color = owner === 'local' ? '#4d5a61' : '#20252b';
       objects.label.dataset.visibility = base.visibility;
       objects.label.style.borderStyle =
         base.visibility === 'remembered' ? 'dashed' : 'solid';
@@ -963,8 +962,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const currentPosition = new THREE.Vector3(x, 0.17, z);
       const path = unit.control === 'own' ? unit.path : [];
       const march = unit.control === 'own' ? unit.marchOrder : null;
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${unit.kind === 'scout' ? '偵' : '突'}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
-      objects.label.title = `${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
+      const localUnit = unit.factionId === 'local';
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${unit.kind === 'scout' ? '偵' : '突'}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
+      objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
         currentPosition.x,

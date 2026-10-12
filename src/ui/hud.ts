@@ -1,6 +1,11 @@
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
-import type { FactionView, ResearchId, UnitKind } from '../simulation/types';
+import type {
+  BaseOwnerId,
+  FactionView,
+  ResearchId,
+  UnitKind,
+} from '../simulation/types';
 import { crossingResearchComplete } from '../simulation/crossings';
 
 export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
@@ -34,6 +39,8 @@ const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
       : kind === 'large'
         ? '大拠点'
         : '小拠点';
+const baseOwnerName = (owner: BaseOwnerId | null): string =>
+  owner === 'local' ? '● 現地勢力' : (owner ?? '中立');
 const researchName = (id: ResearchId): string =>
   ({
     'firepower-1': '戦力研究 I',
@@ -53,14 +60,14 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F05 · 中立守備</small></div></div>
-      <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F06 · 現地勢力</small></div></div>
+      <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span><span data-local-status aria-live="polite" style="max-width:230px;color:#59636c;font:600 9px/1.2 system-ui,sans-serif;white-space:normal"></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
-        <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
+        <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
@@ -207,9 +214,29 @@ export function updateHud(
       `[data-ticket="${id}"]`,
       `${amount(view.ticketsCenti[id])}${view.publicEliminations[id].eliminatedAtTick !== null ? ' · 脱落' : ''}`,
     );
+  const localStatus = elements.root.querySelector<HTMLElement>(
+    '[data-local-status]',
+  )!;
+  localStatus.hidden =
+    view.scenarioId !== 'standard' && view.scenarioId !== 'f06-local-faction';
+  if (!localStatus.hidden) {
+    const local = view.localFaction;
+    const activity = local.defeated
+      ? '活動停止'
+      : local.active
+        ? '活動中'
+        : '未出現';
+    const stronghold =
+      local.stronghold.visibility === 'hidden'
+        ? '本拠 未確認'
+        : local.stronghold.visibility === 'destroyed'
+          ? '本拠 撃破'
+          : `本拠 HP${local.stronghold.hp ?? '?'}/${local.stronghold.maxHp ?? '?'}`;
+    localStatus.textContent = `● 現地勢力 ${activity} · 可視部隊${local.visibleUnitCount} · 占領拠点${local.publicBaseCount} · ${stronghold}`;
+  }
   text(
     '.scenario-badge',
-    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId === 'f06-local-faction' ? '現地勢力' : view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
   for (const kind of ['assault', 'scout'] as const) {
     const stats = view.rules.units[kind];
@@ -571,9 +598,9 @@ export function updateHud(
     if (base.visibility === 'unknown')
       detail = `${location}\n未観測：所有・HPは不明`;
     else if (base.visibility === 'remembered')
-      detail = `${location}\n最終観測 TICK ${base.seenTick}：${base.owner ?? '中立'} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
+      detail = `${location}\n最終観測 TICK ${base.seenTick}：${baseOwnerName(base.owner)} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
     else
-      detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
+      detail = `${location}\n所有：${baseOwnerName(base.owner)} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
   }
   text('.base-detail', detail);
   const dialog =
@@ -696,13 +723,15 @@ function drawMiniMap(
       context.fillStyle =
         base.visibility === 'unknown'
           ? '#70777b'
-          : base.owner === 'A'
-            ? '#e47a2f'
-            : base.owner === 'B'
-              ? '#2d9fc5'
-              : base.owner === 'C'
-                ? '#d8ad24'
-                : '#70777b';
+          : base.owner === 'local'
+            ? '#66747c'
+            : base.owner === 'A'
+              ? '#e47a2f'
+              : base.owner === 'B'
+                ? '#2d9fc5'
+                : base.owner === 'C'
+                  ? '#d8ad24'
+                  : '#70777b';
       context.beginPath();
       context.arc(
         (base.cell.x + 0.5) * cellWidth,
@@ -719,6 +748,7 @@ function drawMiniMap(
     }
     context.fillStyle = '#a71818';
     for (const enemy of view.visibleEnemies) {
+      context.fillStyle = enemy.factionId === 'local' ? '#66747c' : '#a71818';
       context.fillRect(
         (enemy.positionX1024 / 1024) * cellWidth,
         (enemy.positionY1024 / 1024) * cellHeight,

@@ -100,6 +100,12 @@ export function getUnitFrames(
 }
 
 export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
+  if (base.id === 'LOCAL-HQ') {
+    if (base.visibility === 'unknown') return '● 現地勢力 本拠 · 未観測';
+    if (base.visibility === 'remembered')
+      return `● 現地勢力 本拠 · HP${base.hp} · T${base.seenTick}の観測`;
+    return `● 現地勢力 本拠 · ${base.hp === 0 ? '撃破' : `HP${base.hp}/${base.maxHp}`}`;
+  }
   const kind =
     base.kind === 'hq'
       ? '首都'
@@ -109,14 +115,19 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
           ? '大拠点'
           : '小拠点';
   if (base.visibility === 'unknown') return `${kind} · 未観測`;
+  const ownerName =
+    base.owner === 'local'
+      ? '● 現地勢力'
+      : base.owner === null
+        ? '中立'
+        : base.owner;
   if (base.visibility === 'remembered') {
     const defender =
       base.defenderMaxHp > 0
         ? ` · 守備${base.defenderHp}/${base.defenderMaxHp}`
         : '';
-    return `${kind} · ${base.owner ?? '中立'} HP${base.hp}${defender} · T${base.seenTick}の観測${base.selfReportedLost ? '・喪失報告' : ''}`;
+    return `${kind} · ${ownerName} HP${base.hp}${defender} · T${base.seenTick}の観測${base.selfReportedLost ? '・喪失報告' : ''}`;
   }
-  const owner = base.owner ?? '中立';
   const capture =
     base.captureCandidate === null
       ? ''
@@ -125,7 +136,7 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
     base.defenderMaxHp === null
       ? ''
       : ` · ${base.defenderHp === 0 ? '守備撃破' : `守備 ${base.defenderHp}/${base.defenderMaxHp}`}`;
-  return `${kind} · ${owner} HP${base.hp}/${base.maxHp}${defender}${capture}`;
+  return `${kind} · ${ownerName} HP${base.hp}/${base.maxHp}${defender}${capture}`;
 }
 
 /** Keeps stacked production spawns selectable with a 44px target inside the playfield. */

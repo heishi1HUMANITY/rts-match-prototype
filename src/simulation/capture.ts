@@ -1,4 +1,4 @@
-import type { FactionId, MatchState } from './types';
+import type { CombatantId, MatchState } from './types';
 import { unitCapabilities } from './unit-capabilities';
 
 function isWithinCaptureRadius(
@@ -42,13 +42,15 @@ function currentUnitPosition(unit: MatchState['units'][number]): {
 
 /** Advances neutral outpost control after combat using surviving units only. */
 export function advanceCapture(state: MatchState): MatchState {
+  let localFaction = state.localFaction;
+  let factions = state.factions;
   const bases = state.bases.map((base) => {
     if (base.kind === 'hq' || base.owner !== null) {
       if (base.captureCandidate === null && base.captureTicks === 0)
         return base;
       return { ...base, captureCandidate: null, captureTicks: 0 };
     }
-    const present = new Set<FactionId>();
+    const present = new Set<CombatantId>();
     for (const unit of state.units) {
       if (unit.hp <= 0 || !unitCapabilities(unit.kind).canCaptureBase) continue;
       const position = currentUnitPosition(unit);
@@ -128,6 +130,35 @@ export function advanceCapture(state: MatchState): MatchState {
         ? eligibleBase.captureTicks + 1
         : 1;
     if (captureTicks >= state.rules.capture.requiredTicks) {
+      if (candidate === 'local') {
+        localFaction = {
+          ...localFaction,
+          conqueredBaseIds: localFaction.conqueredBaseIds.includes(base.id)
+            ? localFaction.conqueredBaseIds
+            : [...localFaction.conqueredBaseIds, base.id],
+        };
+      } else if (
+        base.conqueredFromLocal &&
+        !localFaction.rewardedBaseIds.includes(base.id)
+      ) {
+        factions = factions.map((faction) =>
+          faction.id === candidate
+            ? {
+                ...faction,
+                supplyCenti:
+                  faction.supplyCenti +
+                  state.rules.localFaction.captureRewardSupplyCenti,
+                researchCenti:
+                  faction.researchCenti +
+                  state.rules.localFaction.captureRewardResearchCenti,
+              }
+            : faction,
+        );
+        localFaction = {
+          ...localFaction,
+          rewardedBaseIds: [...localFaction.rewardedBaseIds, base.id],
+        };
+      }
       return {
         ...eligibleBase,
         owner: candidate,
@@ -135,10 +166,16 @@ export function advanceCapture(state: MatchState): MatchState {
         captureCandidate: null,
         captureTicks: 0,
         defender: null,
+        conqueredFromLocal: false,
       };
     }
     return { ...eligibleBase, captureCandidate: candidate, captureTicks };
   });
-  if (bases.every((base, index) => base === state.bases[index])) return state;
-  return { ...state, bases };
+  if (
+    bases.every((base, index) => base === state.bases[index]) &&
+    localFaction === state.localFaction &&
+    factions === state.factions
+  )
+    return state;
+  return { ...state, bases, localFaction, factions };
 }

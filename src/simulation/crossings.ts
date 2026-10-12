@@ -1,6 +1,7 @@
 import type { RulesMaster } from './rules';
 import type {
   ActiveCrossing,
+  CombatantId,
   Cell,
   CrossingSite,
   CrossingState,
@@ -63,8 +64,10 @@ export function activeCrossings(state: MatchState): readonly ActiveCrossing[] {
 /** Routes only through crossings the faction owns or has observed. */
 export function knownActiveCrossings(
   state: MatchState,
-  factionId: FactionId,
+  factionId: CombatantId,
 ): readonly ActiveCrossing[] {
+  // Local forces are not bridge owners, but may use any completed route.
+  if (factionId === 'local') return activeCrossings(state);
   const knowledge = state.knowledge.find(
     (entry) => entry.factionId === factionId,
   );

@@ -66,6 +66,7 @@ export function validateRules(input: unknown): ValidationResult {
     'capture',
     'tickets',
     'npc',
+    'localFaction',
   ] as const;
   exactKeys(input, rootKeys, 'rules', issues);
   const walk = (value: unknown, defaults: unknown, path: string): unknown => {
@@ -181,6 +182,39 @@ export function validateRules(input: unknown): ValidationResult {
       key: 'rules.limits.unitsPerFaction',
       message: '開始時の2部隊以上にしてください',
     });
+  if (rules.localFaction.initialUnits > rules.localFaction.maxUnits)
+    issues.push({
+      key: 'rules.localFaction.initialUnits',
+      message: '初期部隊数は現地勢力の部隊上限以下にしてください',
+    });
+  if (rules.localFaction.maxUnits > 64)
+    issues.push({
+      key: 'rules.localFaction.maxUnits',
+      message: '現地勢力の部隊上限は64以下にしてください',
+    });
+  if (rules.localFaction.appearanceTick > rules.match.timeLimitTicks)
+    issues.push({
+      key: 'rules.localFaction.appearanceTick',
+      message: '現地勢力の出現tickは試合時間内にしてください',
+    });
+  const growthAtMatchEnd =
+    10_000 +
+    Math.ceil(rules.match.timeLimitTicks / 600) *
+      rules.localFaction.growthPercentPerMinute *
+      100;
+  for (const kind of ['assault', 'scout'] as const) {
+    const grownHp = (rules.units[kind].maxHp * growthAtMatchEnd) / 10_000;
+    const grownDamage =
+      (rules.units[kind].baseDamage * growthAtMatchEnd) / 10_000;
+    if (
+      !Number.isSafeInteger(Math.round(grownHp)) ||
+      !Number.isSafeInteger(Math.round(grownDamage))
+    )
+      issues.push({
+        key: 'rules.localFaction.growthPercentPerMinute',
+        message: '試合終了時の部隊成長値が安全な整数範囲を超えます',
+      });
+  }
   const product =
     rules.match.timeLimitTicks *
     (rules.research.baseIncomeCentiPerTick +
@@ -212,7 +246,8 @@ export function validateEnvelope(
     !('rules' in input) ||
     (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
       input.masterSchemaVersion !== 3 &&
-      input.masterSchemaVersion !== 4)
+      input.masterSchemaVersion !== 4 &&
+      input.masterSchemaVersion !== 5)
   )
     return {
       ok: false,
@@ -235,7 +270,6 @@ export function validateEnvelope(
           },
         ],
       };
-    // Preserve schema 3 settings and add F05's rules with current defaults.
     candidateRules = { ...input.rules, defenses: DEFAULT_RULES.defenses };
   } else if (input.masterSchemaVersion === 4) {
     if (
@@ -252,7 +286,6 @@ export function validateEnvelope(
           },
         ],
       };
-    // Preserve schema 4 settings and enable the prior respawn behavior.
     candidateRules = {
       ...input.rules,
       defenses: {
@@ -260,6 +293,18 @@ export function validateEnvelope(
         respawnEnabled: DEFAULT_RULES.defenses.respawnEnabled,
       },
     };
+  }
+  if (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION) {
+    if (!isRecord(candidateRules))
+      return {
+        ok: false,
+        issues: [{ key: 'rules', message: '設定形式を認識できません' }],
+      };
+    if (!Object.hasOwn(candidateRules, 'localFaction'))
+      candidateRules = {
+        ...candidateRules,
+        localFaction: DEFAULT_RULES.localFaction,
+      };
   }
   const result = validateRules(candidateRules);
   return result.ok
