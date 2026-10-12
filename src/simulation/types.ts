@@ -20,7 +20,8 @@ export type ScenarioId =
   | 'f05-neutral-defense'
   | 'f06-local-faction'
   | 'f08-unit-domains'
-  | 'f10-base-upgrades';
+  | 'f10-base-upgrades'
+  | 'f19-capture';
 export type UnitKind =
   | 'assault'
   | 'scout'

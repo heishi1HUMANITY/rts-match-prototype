@@ -36,6 +36,11 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  restoredHpPercent: {
+    label: '制圧後の拠点HP率',
+    unit: '%',
+    help: '1〜100の整数。制圧後のLv1最大HPに対する割合を切り捨て、最低1HPにします。保存後の新しい試合に適用します。',
+  },
   respawnEnabled: {
     label: '守備NPCの復活',
     unit: '',

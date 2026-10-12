@@ -24,8 +24,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 11 as const;
-export const RULES_VERSION = 'cp0-npc-v1' as const;
+export const MASTER_SCHEMA_VERSION = 12 as const;
+export const RULES_VERSION = 'f19-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -143,6 +143,7 @@ export interface RulesMaster {
   readonly capture: {
     readonly requiredTicks: number;
     readonly radius: number;
+    readonly restoredHpPercent: number;
   };
   readonly tickets: {
     readonly updateIntervalTicks: number;
@@ -395,7 +396,11 @@ export const DEFAULT_RULES: RulesMaster = {
     unitsPerFaction: UNIT_LIMIT,
     productionQueue: PRODUCTION_QUEUE_LIMIT,
   },
-  capture: { requiredTicks: CAPTURE_TICKS_REQUIRED, radius: CAPTURE_RADIUS },
+  capture: {
+    requiredTicks: CAPTURE_TICKS_REQUIRED,
+    radius: CAPTURE_RADIUS,
+    restoredHpPercent: 30,
+  },
   tickets: {
     updateIntervalTicks: 10,
     penaltyPerWeightCenti: 10,
