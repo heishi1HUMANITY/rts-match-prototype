@@ -29,7 +29,7 @@ simulationの共通commandと固定tickをruntimeが進め、通常のonChange/o
 同じseedとcommand列から同じ結果を得られることを検証する。
 
 保存・リプレイは初期必須ではないが、状態はJSON化可能に保つ。
-現在のMatchStateはschemaVersion=11、rules f05-v2。schema1〜v10からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioと検証済みRulesMaster content IDを要求する。マスタschemaは5。schema3/4の保存マスタは既存値を維持して新しい守備復活設定を有効にする。マスタの編集・保存は進行中MatchStateへ影響せず、リプレイは診断JSONの完全snapshotを注入する。以後スキーマを変更するときも互換性の扱いを明示する。
+現在のMatchStateはschemaVersion=13、rules f09-v1。schema1〜v12からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioと検証済みRulesMaster content IDを要求する。マスタschemaは7。保存master schema 3〜6は明示migrationで既定値を加え、現行validatorへ通す。マスタの編集・保存は進行中MatchStateへ影響せず、リプレイは診断JSONの完全snapshotを注入する。以後スキーマを変更するときも互換性の扱いを明示する。
 
 ## 入力とカメラ
 

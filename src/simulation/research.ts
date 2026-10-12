@@ -8,6 +8,7 @@ import type {
 } from './types';
 import { DEFAULT_RULES } from './rules';
 import type { RulesMaster } from './rules';
+import type { ResearchEffectId, CrossingTierId } from './types';
 
 function isResearchId(state: MatchState, value: string): value is ResearchId {
   return Object.prototype.hasOwnProperty.call(
@@ -23,8 +24,8 @@ function fillSelectedResearch(
 ): FactionState {
   if (selection === null) return { ...faction, activeResearch: null };
   const { researchId } = selection;
-  const definition = state.rules.research.definitions[researchId];
-  const progress = faction.researchProgressCenti[researchId];
+  const definition = state.rules.research.definitions[researchId]!;
+  const progress = faction.researchProgressCenti[researchId] ?? 0;
   const required = Math.max(0, definition.costCenti - progress);
   const consumed = Math.min(faction.researchCenti, required);
   const nextProgress = progress + consumed;
@@ -76,13 +77,20 @@ export function startResearch(
   if (faction.activeResearch?.researchId === researchId) {
     return { ok: true, state };
   }
-  const definition = state.rules.research.definitions[researchId];
+  const definition = state.rules.research.definitions[researchId]!;
   if (
-    definition.prerequisite !== null &&
-    !faction.completedResearchIds.includes(definition.prerequisite)
+    !definition.prerequisites.every((id) =>
+      faction.completedResearchIds.includes(id),
+    )
   ) {
     return { ok: false, state, reason: 'PREREQUISITE_MISSING' };
   }
+  if (
+    definition.exclusiveWith.some((id) =>
+      faction.completedResearchIds.includes(id),
+    )
+  )
+    return { ok: false, state, reason: 'RESEARCH_EXCLUDED' };
   const selection: ActiveResearch = { researchId };
   const updatedFaction = fillSelectedResearch(state, faction, selection);
   return {
@@ -114,8 +122,31 @@ export function firepowerBonus(
   faction: FactionState,
   rules: RulesMaster = DEFAULT_RULES,
 ): number {
-  return faction.completedResearchIds.reduce(
-    (sum, id) => sum + rules.research.definitions[id].damageBonus,
-    0,
-  );
+  return researchEffectValue(faction, rules, 'damage-bonus');
+}
+
+/** Sums only registered effects on this faction's completed research. */
+export function researchEffectValue(
+  faction: Pick<FactionState, 'completedResearchIds'>,
+  rules: RulesMaster,
+  effectId: ResearchEffectId,
+  crossingTier?: CrossingTierId,
+): number {
+  return faction.completedResearchIds.reduce((sum, id) => {
+    const definition = rules.research.definitions[id];
+    if (!definition) return sum;
+    return (
+      sum +
+      definition.effects.reduce(
+        (total, effect) =>
+          total +
+          (effect.id === effectId &&
+          (effectId !== 'crossing-unlock' ||
+            effect.crossingTier === crossingTier)
+            ? effect.value
+            : 0),
+        0,
+      )
+    );
+  }, 0);
 }

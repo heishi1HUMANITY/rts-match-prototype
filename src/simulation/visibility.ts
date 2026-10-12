@@ -1,4 +1,5 @@
 import { MAP_HEIGHT, MAP_WIDTH } from './config';
+import { researchEffectValue } from './research';
 import type {
   BaseState,
   CombatantId,
@@ -57,12 +58,19 @@ function sightSources(
     return [];
   }
   const sources: SightSource[] = [];
+  const ownerFaction =
+    factionId === 'local'
+      ? undefined
+      : state.factions.find(({ id }) => id === factionId);
+  const visionBonus = ownerFaction
+    ? researchEffectValue(ownerFaction, state.rules, 'vision-bonus')
+    : 0;
   for (const unit of state.units) {
     if (unit.factionId !== factionId || unit.hp <= 0) continue;
     sources.push({
       x: unitPositionX1024(unit),
       y: unitPositionY1024(unit),
-      radius: state.rules.units[unit.kind].vision,
+      radius: state.rules.units[unit.kind].vision + visionBonus,
     });
   }
   for (const base of state.bases) {
@@ -70,7 +78,7 @@ function sightSources(
     sources.push({
       x: POSITION_SCALE * base.cell.x + POSITION_SCALE / 2,
       y: POSITION_SCALE * base.cell.y + POSITION_SCALE / 2,
-      radius: state.rules.bases[base.kind].vision,
+      radius: state.rules.bases[base.kind].vision + visionBonus,
     });
   }
   for (const crossing of state.crossings) {
@@ -83,7 +91,7 @@ function sightSources(
     sources.push({
       x: POSITION_SCALE * center.x + POSITION_SCALE / 2,
       y: POSITION_SCALE * center.y + POSITION_SCALE / 2,
-      radius: state.rules.crossings[site.tier].vision,
+      radius: state.rules.crossings[site.tier].vision + visionBonus,
     });
   }
   return sources;

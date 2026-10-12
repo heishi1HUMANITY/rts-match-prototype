@@ -26,13 +26,24 @@ export type CrossingTierId =
   | 'bridge-3'
   | 'ropeway-1'
   | 'ropeway-2';
-export type ResearchId =
-  | 'firepower-1'
-  | 'firepower-2'
-  | 'bridge-2'
-  | 'bridge-3'
-  | 'ropeway-1'
-  | 'ropeway-2';
+/** Research IDs are stable master keys; validity comes from the match RulesMaster. */
+export type ResearchId = string;
+export type ResearchDomain =
+  | 'power'
+  | 'logistics'
+  | 'information'
+  | 'engineering';
+export type ResearchEffectId =
+  | 'damage-bonus'
+  | 'vision-bonus'
+  | 'supply-income-bonus'
+  | 'upkeep-reduction'
+  | 'crossing-unlock';
+export interface ResearchEffect {
+  readonly id: ResearchEffectId;
+  readonly value: number;
+  readonly crossingTier?: CrossingTierId;
+}
 export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
 export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
 export type MovementDomain = 'land' | 'air' | 'water';
@@ -245,7 +256,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 12;
+  readonly schemaVersion: 13;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -443,6 +454,7 @@ export type RejectCode =
   | 'QUEUE_FULL'
   | 'ALREADY_RESEARCHED'
   | 'PREREQUISITE_MISSING'
+  | 'RESEARCH_EXCLUDED'
   | 'FACTION_ELIMINATED'
   | 'TARGET_NOT_FOUND'
   | 'INVALID_TARGET'

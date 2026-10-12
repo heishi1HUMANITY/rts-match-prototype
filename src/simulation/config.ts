@@ -1,14 +1,15 @@
 import type {
   BaseKind,
   Cell,
-  CrossingTierId,
   FactionId,
+  ResearchDomain,
+  ResearchEffect,
   ResearchId,
   ScenarioId,
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 12 as const;
+export const SCHEMA_VERSION = 13 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -64,50 +65,96 @@ export const UNIT_STATS: Readonly<
 };
 
 export interface ResearchDefinition {
+  readonly domain: ResearchDomain;
+  readonly stage: number;
   readonly costCenti: number;
-  readonly prerequisite: ResearchId | null;
-  readonly damageBonus: number;
-  readonly unlocksCrossing: CrossingTierId | null;
+  readonly prerequisites: readonly ResearchId[];
+  readonly exclusiveWith: readonly ResearchId[];
+  readonly effects: readonly ResearchEffect[];
 }
 
 export const RESEARCH_DEFINITIONS: Readonly<
-  Record<ResearchId, ResearchDefinition>
+  Record<string, ResearchDefinition>
 > = {
   'firepower-1': {
+    domain: 'power',
+    stage: 1,
     costCenti: 6_000,
-    prerequisite: null,
-    damageBonus: 1,
-    unlocksCrossing: null,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'damage-bonus', value: 1 }],
   },
   'firepower-2': {
+    domain: 'power',
+    stage: 2,
     costCenti: 9_000,
-    prerequisite: 'firepower-1',
-    damageBonus: 1,
-    unlocksCrossing: null,
+    prerequisites: ['firepower-1'],
+    exclusiveWith: [],
+    effects: [{ id: 'damage-bonus', value: 1 }],
   },
   'bridge-2': {
+    domain: 'engineering',
+    stage: 1,
     costCenti: 5_000,
-    prerequisite: 'firepower-1',
-    damageBonus: 0,
-    unlocksCrossing: 'bridge-2',
+    prerequisites: ['firepower-1'],
+    exclusiveWith: [],
+    effects: [{ id: 'crossing-unlock', value: 0, crossingTier: 'bridge-2' }],
   },
   'bridge-3': {
+    domain: 'engineering',
+    stage: 2,
     costCenti: 7_000,
-    prerequisite: 'bridge-2',
-    damageBonus: 0,
-    unlocksCrossing: 'bridge-3',
+    prerequisites: ['bridge-2'],
+    exclusiveWith: [],
+    effects: [{ id: 'crossing-unlock', value: 0, crossingTier: 'bridge-3' }],
   },
   'ropeway-1': {
+    domain: 'engineering',
+    stage: 1,
     costCenti: 4_000,
-    prerequisite: null,
-    damageBonus: 0,
-    unlocksCrossing: 'ropeway-1',
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'crossing-unlock', value: 0, crossingTier: 'ropeway-1' }],
   },
   'ropeway-2': {
+    domain: 'engineering',
+    stage: 2,
     costCenti: 6_000,
-    prerequisite: 'ropeway-1',
-    damageBonus: 0,
-    unlocksCrossing: 'ropeway-2',
+    prerequisites: ['ropeway-1'],
+    exclusiveWith: [],
+    effects: [{ id: 'crossing-unlock', value: 0, crossingTier: 'ropeway-2' }],
+  },
+  'supply-lines-1': {
+    domain: 'logistics',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: ['maintenance-1'],
+    effects: [{ id: 'supply-income-bonus', value: 1 }],
+  },
+  'maintenance-1': {
+    domain: 'logistics',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: ['supply-lines-1'],
+    effects: [{ id: 'upkeep-reduction', value: 1 }],
+  },
+  'survey-1': {
+    domain: 'information',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'vision-bonus', value: 1 }],
+  },
+  'survey-2': {
+    domain: 'information',
+    stage: 2,
+    costCenti: 8_000,
+    prerequisites: ['survey-1'],
+    exclusiveWith: [],
+    effects: [{ id: 'vision-bonus', value: 1 }],
   },
 };
 

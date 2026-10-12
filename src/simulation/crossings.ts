@@ -29,7 +29,11 @@ export function crossingResearchComplete(
 ): boolean {
   if (tier === 'bridge-1') return true;
   const unlock = Object.entries(rules.research.definitions).find(
-    ([, definition]) => definition.unlocksCrossing === tier,
+    ([, definition]) =>
+      definition.effects.some(
+        (effect) =>
+          effect.id === 'crossing-unlock' && effect.crossingTier === tier,
+      ),
   )?.[0];
   return (
     unlock !== undefined &&

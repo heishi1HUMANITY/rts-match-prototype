@@ -185,8 +185,8 @@ describe('advanceMatch NPC orchestration', () => {
           observed[factionId].researched ||=
             faction.activeResearch !== null ||
             faction.completedResearchIds.length > 0 ||
-            faction.researchProgressCenti['firepower-1'] > 0 ||
-            faction.researchProgressCenti['firepower-2'] > 0;
+            (faction.researchProgressCenti['firepower-1'] ?? 0) > 0 ||
+            (faction.researchProgressCenti['firepower-2'] ?? 0) > 0;
         }
         captured ||= state.bases.some(
           (base) =>
