@@ -63,7 +63,7 @@ describe('F03 rules validation', () => {
     ).toBe(false);
     expect(
       validateEnvelope({
-        masterSchemaVersion: 2,
+        masterSchemaVersion: 3,
         revision: 0,
         rules: DEFAULT_RULES,
         extra: true,

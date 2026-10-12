@@ -11,6 +11,7 @@ import type {
   GridMap,
   MovementDomain,
   TerrainKind,
+  UnitKind,
 } from './types';
 
 const indexOf = (x: number, y: number): number => y * MAP_WIDTH + x;
@@ -140,17 +141,17 @@ function crossingSites() {
   return [
     {
       id: 'CROSS-RING-N',
-      kind: 'bridge' as const,
-      bankA: { x: 20, y: 11 },
-      bankB: { x: 20, y: 14 },
+      tier: 'bridge-1' as const,
+      bankA: { x: 19, y: 11 },
+      bankB: { x: 19, y: 14 },
       cells: [
-        { x: 20, y: 12 },
-        { x: 20, y: 13 },
+        { x: 19, y: 12 },
+        { x: 19, y: 13 },
       ],
     },
     {
       id: 'CROSS-RING-SE',
-      kind: 'bridge' as const,
+      tier: 'bridge-1' as const,
       bankA: { x: 28, y: 20 },
       bankB: { x: 25, y: 20 },
       cells: [
@@ -160,20 +161,75 @@ function crossingSites() {
     },
     {
       id: 'CROSS-RING-SW',
-      kind: 'bridge' as const,
-      bankA: { x: 12, y: 20 },
-      bankB: { x: 15, y: 20 },
+      tier: 'bridge-1' as const,
+      bankA: { x: 11, y: 20 },
+      bankB: { x: 14, y: 20 },
       cells: [
+        { x: 12, y: 20 },
         { x: 13, y: 20 },
-        { x: 14, y: 20 },
       ],
     },
     {
       id: 'CROSS-MTN-E',
-      kind: 'ropeway' as const,
-      bankA: { x: 24, y: 26 },
-      bankB: { x: 26, y: 26 },
-      cells: [{ x: 25, y: 26 }],
+      tier: 'ropeway-1' as const,
+      bankA: { x: 22, y: 27 },
+      bankB: { x: 24, y: 27 },
+      cells: [{ x: 23, y: 27 }],
+    },
+    {
+      id: 'CROSS-MTN-OUT',
+      tier: 'ropeway-2' as const,
+      bankA: { x: 20, y: 4 },
+      bankB: { x: 20, y: 2 },
+      cells: [{ x: 20, y: 3 }],
+    },
+    {
+      id: 'CROSS-BORDER-000-B2',
+      tier: 'bridge-2' as const,
+      bankA: { x: 29, y: 18 },
+      bankB: { x: 29, y: 21 },
+      cells: [
+        { x: 29, y: 19 },
+        { x: 29, y: 20 },
+      ],
+    },
+    {
+      id: 'CROSS-BORDER-000-B3',
+      tier: 'bridge-3' as const,
+      bankA: { x: 33, y: 18 },
+      bankB: { x: 33, y: 21 },
+      cells: [
+        { x: 33, y: 19 },
+        { x: 33, y: 20 },
+      ],
+    },
+    {
+      id: 'CROSS-BORDER-120-B2',
+      tier: 'bridge-2' as const,
+      bankA: { x: 16, y: 27 },
+      bankB: { x: 14, y: 27 },
+      cells: [{ x: 15, y: 27 }],
+    },
+    {
+      id: 'CROSS-BORDER-120-B3',
+      tier: 'bridge-3' as const,
+      bankA: { x: 14, y: 30 },
+      bankB: { x: 12, y: 30 },
+      cells: [{ x: 13, y: 30 }],
+    },
+    {
+      id: 'CROSS-BORDER-240-B2',
+      tier: 'bridge-2' as const,
+      bankA: { x: 16, y: 12 },
+      bankB: { x: 14, y: 12 },
+      cells: [{ x: 15, y: 12 }],
+    },
+    {
+      id: 'CROSS-BORDER-240-B3',
+      tier: 'bridge-3' as const,
+      bankA: { x: 14, y: 8 },
+      bankB: { x: 12, y: 8 },
+      cells: [{ x: 13, y: 8 }],
     },
   ];
 }
@@ -195,6 +251,19 @@ export function createMap(seed: number): GridMap {
   for (const { cell } of BASE_CELLS) {
     terrain[indexOf(cell.x, cell.y)] = 'land';
     levels[indexOf(cell.x, cell.y)] = 0;
+  }
+  for (const crossing of plannedCrossings) {
+    for (const bank of [crossing.bankA, crossing.bankB]) {
+      terrain[indexOf(bank.x, bank.y)] = 'land';
+      levels[indexOf(bank.x, bank.y)] = 0;
+    }
+    const terrainKind = crossing.tier.startsWith('bridge')
+      ? 'river'
+      : 'mountain';
+    for (const cell of crossing.cells) {
+      terrain[indexOf(cell.x, cell.y)] = terrainKind;
+      levels[indexOf(cell.x, cell.y)] = 1;
+    }
   }
   const blocked = terrain.map((kind) => !isLandTerrain(kind));
   const protectedCells = new Set<string>();
@@ -301,6 +370,7 @@ export function canTraverse(
     readonly domain?: MovementDomain;
     readonly factionId?: string;
     readonly crossings?: readonly ActiveCrossing[];
+    readonly unitKind?: UnitKind;
   } = {},
 ): boolean {
   if (
@@ -317,14 +387,15 @@ export function canTraverse(
   const kind = terrainAt(map, cell);
   const domain = options.domain ?? 'land';
   if (domain === 'air') return true;
+  if (domain === 'water') return kind === 'river';
   const crossing = options.crossings?.find(
     (entry) =>
-      entry.complete &&
       entry.owner === options.factionId &&
+      (options.unitKind === undefined ||
+        entry.allowedUnitKinds.includes(options.unitKind)) &&
       entry.cells.some(({ x, y }) => x === cell.x && y === cell.y),
   );
   if (crossing) return true;
-  if (domain === 'water') return kind === 'river';
   return isLandTerrain(kind ?? undefined) && !map.blocked[index];
 }
 

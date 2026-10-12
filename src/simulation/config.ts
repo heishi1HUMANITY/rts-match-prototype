@@ -1,13 +1,14 @@
 import type {
   BaseKind,
   Cell,
+  CrossingTierId,
   FactionId,
   ResearchId,
   ScenarioId,
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 8 as const;
+export const SCHEMA_VERSION = 9 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -66,6 +67,7 @@ export interface ResearchDefinition {
   readonly costCenti: number;
   readonly prerequisite: ResearchId | null;
   readonly damageBonus: number;
+  readonly unlocksCrossing: CrossingTierId | null;
 }
 
 export const RESEARCH_DEFINITIONS: Readonly<
@@ -75,11 +77,37 @@ export const RESEARCH_DEFINITIONS: Readonly<
     costCenti: 6_000,
     prerequisite: null,
     damageBonus: 1,
+    unlocksCrossing: null,
   },
   'firepower-2': {
     costCenti: 9_000,
     prerequisite: 'firepower-1',
     damageBonus: 1,
+    unlocksCrossing: null,
+  },
+  'bridge-2': {
+    costCenti: 5_000,
+    prerequisite: 'firepower-1',
+    damageBonus: 0,
+    unlocksCrossing: 'bridge-2',
+  },
+  'bridge-3': {
+    costCenti: 7_000,
+    prerequisite: 'bridge-2',
+    damageBonus: 0,
+    unlocksCrossing: 'bridge-3',
+  },
+  'ropeway-1': {
+    costCenti: 4_000,
+    prerequisite: null,
+    damageBonus: 0,
+    unlocksCrossing: 'ropeway-1',
+  },
+  'ropeway-2': {
+    costCenti: 6_000,
+    prerequisite: 'ropeway-1',
+    damageBonus: 0,
+    unlocksCrossing: 'ropeway-2',
   },
 };
 
@@ -164,4 +192,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'g3-mutual',
   'g3-spectate',
   'f02-pursuit',
+  'f04-crossing',
 ];

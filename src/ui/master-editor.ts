@@ -84,6 +84,21 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'damage/tick',
     help: '研究完了時に部隊の攻撃へ加算します。',
   },
+  unlocksCrossing: {
+    label: '渡河設備解放',
+    unit: '機能ID',
+    help: 'F04で実装済みの橋・索道の級だけを解放します。',
+  },
+  dismantleTicks: {
+    label: '解体時間',
+    unit: 'tick (0.1秒)',
+    help: '所有設備の解体に必要な時間です。',
+  },
+  regenerationPerTick: {
+    label: '耐久回復',
+    unit: 'HP/tick',
+    help: '最後の被弾から1秒経過後の回復量です。',
+  },
   prerequisite: {
     label: '前提研究',
     unit: '研究ID',
@@ -206,6 +221,7 @@ function fieldsFor(rules: RulesMaster): {
     bases: '拠点',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',
+    crossings: '渡河設備',
     match: '試合',
     limits: '上限',
     capture: '制圧',
@@ -308,9 +324,11 @@ export function createMasterEditor(
       name.textContent = fieldLabel(field.path);
       const detail = document.createElement('small');
       detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${String(getPath(DEFAULT_RULES, field.path))}`;
-      const input = field.path.endsWith('.prerequisite')
-        ? document.createElement('select')
-        : document.createElement('input');
+      const input =
+        field.path.endsWith('.prerequisite') ||
+        field.path.endsWith('.unlocksCrossing')
+          ? document.createElement('select')
+          : document.createElement('input');
       input.dataset.masterPath = field.path;
       if (input instanceof HTMLInputElement) {
         input.type = 'number';
@@ -318,8 +336,9 @@ export function createMasterEditor(
         input.value = String(field.value);
         input.inputMode = 'numeric';
       } else {
-        input.innerHTML =
-          '<option value="">前提なし</option><option value="firepower-1">戦力研究 I</option><option value="firepower-2">戦力研究 II</option>';
+        input.innerHTML = field.path.endsWith('.unlocksCrossing')
+          ? '<option value="">なし</option><option value="bridge-2">橋 II</option><option value="bridge-3">橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>'
+          : '<option value="">前提なし</option><option value="firepower-1">戦力研究 I</option><option value="firepower-2">戦力研究 II</option><option value="bridge-2">架橋 II</option><option value="bridge-3">架橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>';
         input.value = field.value === null ? '' : String(field.value);
       }
       const fieldError = document.createElement('small');
@@ -454,7 +473,7 @@ export function createMasterEditor(
       if (!valid.ok) return;
       const json = JSON.stringify(
         {
-          masterSchemaVersion: 2,
+          masterSchemaVersion: 3,
           revision: savedEnvelope.revision,
           rules: valid.rules,
         },

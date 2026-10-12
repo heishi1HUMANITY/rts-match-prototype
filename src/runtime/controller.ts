@@ -12,6 +12,7 @@ import type {
   MarchTarget,
   RejectCode,
   ScenarioId,
+  ResearchId,
   UnitKind,
 } from '../simulation/types';
 import { FixedStepClock } from './clock';
@@ -97,12 +98,25 @@ function safeCommand(value: unknown): {
     return {
       command: {
         type: 'start-research',
-        researchId: item.researchId as 'firepower-1' | 'firepower-2' | null,
+        researchId: item.researchId as ResearchId | null,
       },
       summary:
         item.researchId === null
           ? '研究指定解除・バンク'
           : `研究選択 ${item.researchId}`,
+    };
+  if (
+    (item.type === 'build-crossing' || item.type === 'dismantle-crossing') &&
+    typeof item.siteId === 'string' &&
+    typeof item.unitId === 'string'
+  )
+    return {
+      command: {
+        type: item.type,
+        siteId: item.siteId.slice(0, 64),
+        unitId: item.unitId.slice(0, 64),
+      },
+      summary: `${item.type === 'build-crossing' ? '渡河設備建設' : '渡河設備解体'} ${item.siteId.slice(0, 64)}`,
     };
   if (item.type === 'start' || item.type === 'pause' || item.type === 'resume')
     return { command: { type: item.type }, summary: item.type };
@@ -558,6 +572,13 @@ export function rejectMessage(reason: RejectCode): string {
     QUEUE_FULL: '生産キューの上限に達しています',
     ALREADY_RESEARCHED: '完了済みの研究です',
     PREREQUISITE_MISSING: '必要な前提研究が完了していません',
+    CROSSING_NOT_FOUND: '渡河予定地が見つかりません',
+    CROSSING_TAKEN: 'すでに他陣営が所有しています',
+    CROSSING_BUSY: '他陣営が建設中か、別の作業中です',
+    CROSSING_NOT_OWNED: '自陣が所有する渡河設備ではありません',
+    CROSSING_NOT_ADJACENT: '端点に隣接する部隊が必要です',
+    CROSSING_UNIT_RESTRICTED: 'この部隊では建設できません',
+    CROSSING_RESEARCH_REQUIRED: '必要な工兵研究が完了していません',
   };
   return messages[reason];
 }

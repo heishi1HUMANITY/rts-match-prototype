@@ -1,4 +1,9 @@
-import { isCellBlocked } from './map';
+import { canTraverse } from './map';
+import {
+  knownActiveCrossings,
+  beginCrossingBuild,
+  beginCrossingDismantle,
+} from './crossings';
 import { resolveMatchOutcome } from './outcome';
 import { findPath } from './pathfinding';
 import { cancelProduction, enqueueProduction } from './production';
@@ -34,7 +39,17 @@ type ParsedCommand =
       readonly unitId: string;
       readonly target: MarchTarget;
     }
-  | { readonly type: 'start-research'; readonly researchId: string | null };
+  | { readonly type: 'start-research'; readonly researchId: string | null }
+  | {
+      readonly type: 'build-crossing';
+      readonly siteId: string;
+      readonly unitId: string;
+    }
+  | {
+      readonly type: 'dismantle-crossing';
+      readonly siteId: string;
+      readonly unitId: string;
+    };
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -95,6 +110,14 @@ function parseCommand(input: unknown): ParsedCommand | null {
     (typeof input.researchId === 'string' || input.researchId === null)
   ) {
     return { type: 'start-research', researchId: input.researchId };
+  }
+  if (
+    (input.type === 'build-crossing' || input.type === 'dismantle-crossing') &&
+    hasExactKeys(input, ['type', 'siteId', 'unitId']) &&
+    typeof input.siteId === 'string' &&
+    typeof input.unitId === 'string'
+  ) {
+    return { type: input.type, siteId: input.siteId, unitId: input.unitId };
   }
   if (
     input.type === 'move' &&
@@ -217,6 +240,18 @@ export function applyCommand(
   if (command.type === 'start-research') {
     return startResearch(state, actor, command.researchId);
   }
+  if (
+    command.type === 'build-crossing' ||
+    command.type === 'dismantle-crossing'
+  ) {
+    const result =
+      command.type === 'build-crossing'
+        ? beginCrossingBuild(state, actor, command.siteId, command.unitId)
+        : beginCrossingDismantle(state, actor, command.siteId, command.unitId);
+    return result.ok
+      ? succeed(result.state)
+      : reject(state, result.reason as RejectCode);
+  }
   const unit = state.units.find(({ id }) => id === command.unitId);
   if (unit === undefined) return reject(state, 'UNIT_NOT_FOUND');
   if (unit.factionId !== actor) {
@@ -232,6 +267,7 @@ export function applyCommand(
     const stoppedPath = unit.edgeProgress > 0 ? unit.path.slice(0, 1) : [];
     if (
       (unit.marchOrder === undefined || unit.marchOrder === null) &&
+      (unit.moveTarget === undefined || unit.moveTarget === null) &&
       stoppedPath.length === unit.path.length &&
       stoppedPath.every((cell, index) => cell === unit.path[index])
     ) {
@@ -242,6 +278,7 @@ export function applyCommand(
         ...unit,
         path: stoppedPath,
         marchOrder: null,
+        moveTarget: null,
       }),
     );
   }
@@ -293,7 +330,15 @@ export function applyCommand(
   ) {
     return reject(state, 'OUT_OF_BOUNDS');
   }
-  if (isCellBlocked(state.map, target)) return reject(state, 'BLOCKED');
+  if (
+    !canTraverse(state.map, target, {
+      factionId: unit.factionId,
+      domain: 'land',
+      crossings: knownActiveCrossings(state, unit.factionId),
+      unitKind: unit.kind,
+    })
+  )
+    return reject(state, 'BLOCKED');
   if (isCurrentDestination(unit, target)) {
     if (unit.marchOrder === undefined || unit.marchOrder === null)
       return succeed(state);
@@ -305,6 +350,9 @@ export function applyCommand(
   const route = findPath(state.map, origin, target, {
     factionId: unit.factionId,
     domain: 'land',
+    crossings: knownActiveCrossings(state, unit.factionId),
+    unitKind: unit.kind,
+    allowBlockedStart: true,
   });
   if (route === null) return reject(state, 'UNREACHABLE');
 
@@ -315,6 +363,7 @@ export function applyCommand(
       path,
       edgeProgress: unit.edgeProgress,
       marchOrder: null,
+      moveTarget: { ...target },
     }),
   );
 }

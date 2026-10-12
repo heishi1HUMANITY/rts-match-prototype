@@ -138,7 +138,14 @@ describe('G2 fixed-tick integration', () => {
     state = setFaction(state, 'A', {
       activeResearch: { researchId: 'firepower-1' },
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 5_998, 'firepower-2': 0 },
+      researchProgressCenti: {
+        'firepower-1': 5_998,
+        'firepower-2': 0,
+        'bridge-2': 0,
+        'bridge-3': 0,
+        'ropeway-1': 0,
+        'ropeway-2': 0,
+      },
       completedResearchIds: [],
     });
     state = stepMatch(state);

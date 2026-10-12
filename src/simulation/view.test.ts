@@ -169,7 +169,14 @@ describe('faction visibility and view isolation', () => {
               ...faction,
               supplyCenti: 999,
               researchCenti: 100,
-              researchProgressCenti: { 'firepower-1': 42, 'firepower-2': 12 },
+              researchProgressCenti: {
+                'firepower-1': 42,
+                'firepower-2': 12,
+                'bridge-2': 0,
+                'bridge-3': 0,
+                'ropeway-1': 0,
+                'ropeway-2': 0,
+              },
               productionJobs: [
                 {
                   id: 'hidden',

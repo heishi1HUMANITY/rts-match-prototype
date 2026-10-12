@@ -2,6 +2,7 @@ import { MAP_WIDTH } from './config';
 import {
   getUnitPositionX1024,
   getUnitPositionY1024,
+  isCellVisibleToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
 import type {
@@ -10,6 +11,7 @@ import type {
   FactionKnowledge,
   FactionView,
   MatchState,
+  CrossingView,
 } from './types';
 
 function copyKnowledgeMap(knowledge: FactionKnowledge): {
@@ -77,6 +79,68 @@ function baseViews(
   });
 }
 
+function crossingViews(
+  state: MatchState,
+  factionId: FactionId,
+  knowledge: FactionKnowledge,
+): CrossingView[] {
+  const memories = new Map(
+    knowledge.crossingMemory.map((memory) => [memory.siteId, memory]),
+  );
+  return (state.map.crossingSites ?? []).map((site): CrossingView => {
+    const crossing = state.crossings.find(({ siteId }) => siteId === site.id);
+    if (!crossing)
+      return {
+        visibility: 'unknown',
+        site: { ...site },
+        owner: null,
+        hp: null,
+        maxHp: null,
+        job: null,
+      };
+    const visible = [...site.cells, site.bankA, site.bankB].some((cell) =>
+      isCellVisibleToFaction(state, cell, factionId),
+    );
+    if (crossing.owner === factionId)
+      return {
+        visibility: 'owned',
+        site: { ...site },
+        owner: crossing.owner,
+        hp: crossing.hp,
+        maxHp: crossing.maxHp,
+        job: crossing.job ? { ...crossing.job } : null,
+      };
+    if (visible)
+      return {
+        visibility: 'visible',
+        site: { ...site },
+        owner: crossing.owner,
+        hp: crossing.hp,
+        maxHp: crossing.maxHp,
+        job: crossing.job ? { ...crossing.job } : null,
+      };
+    const memory = memories.get(site.id);
+    if (memory)
+      return {
+        visibility: 'remembered',
+        site: { ...site },
+        owner: memory.owner,
+        hp: memory.hp,
+        maxHp: memory.maxHp,
+        job: memory.job ? { ...memory.job } : null,
+        seenTick: memory.seenTick,
+      };
+    return {
+      visibility: 'unknown',
+      site: { ...site },
+      owner: null,
+      hp: null,
+      maxHp: null,
+      job: null,
+    };
+  });
+}
+
 /** Produces a detached, information-limited snapshot for one faction. */
 export function getFactionView(
   state: MatchState,
@@ -109,6 +173,7 @@ export function getFactionView(
             lastKnownCell: { ...unit.marchOrder.lastKnownCell },
           }
         : null,
+      moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
     }));
   const visibleEnemies = state.units
     .filter(
@@ -222,5 +287,6 @@ export function getFactionView(
     ownUnits,
     visibleEnemies,
     bases: baseViews(state, factionId, knowledge),
+    crossings: crossingViews(state, factionId, knowledge),
   };
 }

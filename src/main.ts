@@ -369,6 +369,26 @@ const handleClick = (event: MouseEvent): void => {
   if (!(target instanceof HTMLElement)) return;
   const clickedButton = target.closest<HTMLButtonElement>('button');
   if (clickedButton?.disabled) return;
+  const buildCrossing = clickedButton?.dataset.crossingBuild;
+  const dismantleCrossing = clickedButton?.dataset.crossingDismantle;
+  if (buildCrossing !== undefined || dismantleCrossing !== undefined) {
+    const view = runtime.playerSnapshot();
+    const selected = view.view.ownUnits.filter((unit) =>
+      view.selectedUnitIds.includes(unit.id),
+    );
+    const unit =
+      buildCrossing !== undefined
+        ? selected.find(({ kind }) => kind === 'assault')
+        : selected[0];
+    if (unit)
+      runtime.dispatch({
+        type:
+          buildCrossing !== undefined ? 'build-crossing' : 'dismantle-crossing',
+        siteId: buildCrossing ?? dismantleCrossing!,
+        unitId: unit.id,
+      });
+    return;
+  }
   const produce = clickedButton?.dataset.produce;
   const research = clickedButton?.dataset.research;
   const cancelJob = clickedButton?.dataset.cancelJob;
@@ -461,7 +481,8 @@ const handleClick = (event: MouseEvent): void => {
   else if (
     action === 'production' ||
     action === 'research' ||
-    action === 'bases'
+    action === 'bases' ||
+    action === 'crossings'
   ) {
     input.cancelGesture();
     const panel = action === 'bases' ? 'base' : action;

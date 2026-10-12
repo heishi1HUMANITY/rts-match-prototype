@@ -66,6 +66,19 @@ function sightSources(state: MatchState, factionId: FactionId): SightSource[] {
       radius: state.rules.bases[base.kind].vision,
     });
   }
+  for (const crossing of state.crossings) {
+    if (crossing.owner !== factionId || crossing.hp <= 0) continue;
+    const site = state.map.crossingSites?.find(
+      ({ id }) => id === crossing.siteId,
+    );
+    if (!site) continue;
+    const center = site.cells[Math.floor(site.cells.length / 2)] ?? site.bankA;
+    sources.push({
+      x: POSITION_SCALE * center.x + POSITION_SCALE / 2,
+      y: POSITION_SCALE * center.y + POSITION_SCALE / 2,
+      radius: state.rules.crossings[site.tier].vision,
+    });
+  }
   return sources;
 }
 
@@ -150,6 +163,9 @@ function createKnowledge(
   const oldMemory = new Map(
     previous?.baseMemory.map((memory) => [memory.baseId, memory]) ?? [],
   );
+  const oldCrossingMemory = new Map(
+    previous?.crossingMemory.map((memory) => [memory.siteId, memory]) ?? [],
+  );
   const baseMemory = state.bases
     .map((base) => {
       const index = base.cell.y * MAP_WIDTH + base.cell.x;
@@ -164,7 +180,22 @@ function createKnowledge(
       return old ?? null;
     })
     .filter((memory): memory is NonNullable<typeof memory> => memory !== null);
-  return { factionId, visible, explored, baseMemory };
+  const crossingMemory = state.crossings
+    .map((crossing) => {
+      const site = state.map.crossingSites?.find(
+        ({ id }) => id === crossing.siteId,
+      );
+      if (!site) return null;
+      const isVisible =
+        site.cells.some((cell) => visible[cell.y * MAP_WIDTH + cell.x]) ||
+        visible[site.bankA.y * MAP_WIDTH + site.bankA.x] ||
+        visible[site.bankB.y * MAP_WIDTH + site.bankB.x];
+      if (crossing.owner === factionId || isVisible)
+        return { ...crossing, seenTick: state.elapsedTicks };
+      return oldCrossingMemory.get(crossing.siteId) ?? null;
+    })
+    .filter((memory): memory is NonNullable<typeof memory> => memory !== null);
+  return { factionId, visible, explored, baseMemory, crossingMemory };
 }
 
 /** Recomputes every faction's current mask and durable exploration/base memory. */

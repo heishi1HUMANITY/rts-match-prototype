@@ -93,15 +93,55 @@ describe('seeded terrain map generation', () => {
     expect(
       findPath(map, crossing.bankA, crossing.bankB, {
         factionId: 'A',
-        crossings: [{ ...crossing, owner: 'A', complete: true }],
+        crossings: [
+          { ...crossing, owner: 'A', allowedUnitKinds: ['assault', 'scout'] },
+        ],
       }),
     ).not.toBeNull();
     expect(
       findPath(map, crossing.bankA, crossing.bankB, {
         factionId: 'B',
-        crossings: [{ ...crossing, owner: 'A', complete: true }],
+        crossings: [
+          { ...crossing, owner: 'A', allowedUnitKinds: ['assault', 'scout'] },
+        ],
       }),
     ).toBeNull();
+  });
+
+  it('places every crossing anchor between traversable banks and enforces ropeway unit access', () => {
+    const map = createMap(42);
+    for (const site of map.crossingSites!) {
+      expect(terrainAt(map, site.bankA)).toBe('land');
+      expect(terrainAt(map, site.bankB)).toBe('land');
+      const crossingTerrain = site.tier.startsWith('bridge')
+        ? 'river'
+        : 'mountain';
+      for (const cell of site.cells)
+        expect(terrainAt(map, cell)).toBe(crossingTerrain);
+
+      const rights = {
+        owner: 'A' as const,
+        allowedUnitKinds: site.tier.startsWith('bridge')
+          ? (['assault', 'scout'] as const)
+          : (['scout'] as const),
+      };
+      expect(
+        findPath(map, site.bankA, site.bankB, {
+          factionId: 'A',
+          crossings: [{ ...site, ...rights }],
+          unitKind: 'scout',
+        }),
+      ).not.toBeNull();
+      if (site.tier.startsWith('ropeway'))
+        for (const cell of site.cells)
+          expect(
+            canTraverse(map, cell, {
+              factionId: 'A',
+              crossings: [{ ...site, ...rights }],
+              unitKind: 'assault',
+            }),
+          ).toBe(false);
+    }
   });
 
   it('rejects invalid seeds', () => {
