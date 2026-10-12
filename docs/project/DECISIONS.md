@@ -80,3 +80,4 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 - D039: Issue #30のF17を実装する。編集対象は現行に存在する兵種、拠点、研究、試合開始値、上限、制圧、チケット、NPC判断の数値に限定し、マップ形状・配置・実行tick・未実装機能の設定は公開しない。`RulesMaster` は厳密validatorを通したJSON可能な値とし、各MatchStateへ複製して固定する。F02の途中位置を可変tickに対応する1/1024セル整数へ一般化する。既定値は変更しない。
 - D040: マスタschemaはv1。保存先は同一originのlocalStorage、携帯手段は完全envelope JSON。編集draft・保存値・MatchState.rulesを区別し、保存は試合中の値を変更しない。管理画面を開くと進行中試合を停止し、閉じても自動再開しない。新規開始/設定リセットは保存値、同じ設定での再戦は直前のactive snapshotを使う。
 - D041: F17で状態schema/rulesを`schema7 / f17-v1`へ更新し、古い診断の暗黙読込みをしない。診断にはmaster schema、完全な適用RulesMaster、キー順を正規化したFNV-1a 64-bit content IDを保存する。replayはsnapshot検証とID一致を必須とし、現在のlocalStorageを見ない。内容IDは誤った設定の取り違え検出用であり、暗号署名や改ざん証明ではない。
+- D042: ユーザー修正依頼により、兵種/研究IDの追加がF17 v1に含まれるか後続Issueと照合。新兵種（攻撃ヘリ等）の定義・移動・生産・戦闘はF08 / Issue #20、研究ID・実装済み効果の定義と接続はF09 / Issue #21の予定と確認したため、F17の現行PRには型追加を混ぜない。未実装効果を自由記述/任意コードで登録する仕組みはF09の受入条件外で、各効果の実装Issueと併せて扱う。
