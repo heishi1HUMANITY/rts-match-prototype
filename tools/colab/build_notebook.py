@@ -94,9 +94,12 @@ code((ROOT / "tools/colab/runtime.py").read_text(encoding="utf-8"))
 code("# Qwenだけで実装・レビュー・検査準備を進める共通指示\nQWEN_WORKFLOW_INSTRUCTIONS = " + repr((ROOT / "docs/project/QWEN_AGENT_WORKFLOW.md").read_text(encoding="utf-8")))
 code('''
 # @title 4. Node / Qwen Code / CUDA実行プログラム
-install_node(CACHE, RUNTIME)
-run(["npm", "install", "--global", f"@qwen-code/qwen-code@{QWEN_CODE_VERSION}"])
-SERVER_BINARY, LLAMA_COMMIT = build_server(CACHE, RUNTIME, LLAMA_REF)
+with progress_stage("Nodeの取得・検証・展開"):
+    install_node(CACHE, RUNTIME)
+with progress_stage("Qwen Codeのインストール"):
+    run(["npm", "install", "--global", f"@qwen-code/qwen-code@{QWEN_CODE_VERSION}"])
+with progress_stage("CUDA実行プログラムの復元/初回ビルド"):
+    SERVER_BINARY, LLAMA_COMMIT = build_server(CACHE, RUNTIME, LLAMA_REF)
 print("llama.cpp revision:", LLAMA_COMMIT)
 run(["qwen", "--version"])
 ''')

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import fnmatch
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -21,9 +22,53 @@ CHECKPOINT_LOCK = threading.Lock()
 
 
 def run(args, cwd=None, env=None, capture=False):
-    return subprocess.run(args, cwd=cwd, env=env, check=True, text=True,
-                          stdout=subprocess.PIPE if capture else None,
-                          stderr=subprocess.PIPE if capture else None).stdout
+    if capture:
+        return subprocess.run(args, cwd=cwd, env=env, check=True, text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    # Inherited OS stdout is not reliably forwarded to a Colab cell's output.
+    process = subprocess.Popen(args, cwd=cwd, env=env, text=True, bufsize=1,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        for line in process.stdout:
+            print(line, end="", flush=True)
+        code = process.wait()
+        if code:
+            raise subprocess.CalledProcessError(code, args)
+    finally:
+        process.stdout.close()
+        if process.poll() is None:
+            if os.name == "nt":
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill(); process.wait()
+            else:
+                stop_owned_process(process)
+
+
+@contextmanager
+def progress_stage(label, interval=30):
+    """Display elapsed time even during a quiet download or compiler step."""
+    started = time.monotonic()
+    done = threading.Event()
+    print(f"開始: {label}", flush=True)
+    def heartbeat():
+        while not done.wait(interval):
+            elapsed = int(time.monotonic() - started)
+            print(f"{label}: {elapsed // 60}分{elapsed % 60:02d}秒経過（処理/応答待ち。完了率ではありません）", flush=True)
+    worker = threading.Thread(target=heartbeat, daemon=True)
+    worker.start()
+    try:
+        yield
+    except BaseException:
+        print(f"中断/失敗: {label}", flush=True)
+        raise
+    else:
+        print(f"完了: {label} ({int(time.monotonic() - started)}秒)", flush=True)
+    finally:
+        done.set()
+        worker.join(timeout=1)
 
 
 def read_json(path):

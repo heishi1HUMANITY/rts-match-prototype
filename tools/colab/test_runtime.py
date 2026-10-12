@@ -1,9 +1,11 @@
 """Run with python -m unittest discover -s tools/colab -p test_*.py."""
 import hashlib
+from contextlib import redirect_stdout
 import io
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +16,32 @@ import runtime
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_child_output_is_forwarded_to_notebook_and_failures_are_not_hidden(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            runtime.run([sys.executable, "-c", "import sys; print('build-out', flush=True); print('build-error', file=sys.stderr, flush=True)"])
+        self.assertIn("build-out", output.getvalue())
+        self.assertIn("build-error", output.getvalue())
+        captured = io.StringIO()
+        with redirect_stdout(captured):
+            self.assertEqual(runtime.run([sys.executable, "-c", "print('private-output')"], capture=True).strip(), "private-output")
+        self.assertEqual(captured.getvalue(), "")
+        with redirect_stdout(io.StringIO()), self.assertRaises(subprocess.CalledProcessError):
+            runtime.run([sys.executable, "-c", "raise SystemExit(7)"])
+
+    def test_progress_stage_marks_success_and_interruption_accurately(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            with runtime.progress_stage("test-stage"):
+                pass
+            with self.assertRaises(KeyboardInterrupt):
+                with runtime.progress_stage("interrupted-stage"):
+                    raise KeyboardInterrupt()
+        self.assertIn("開始: test-stage", output.getvalue())
+        self.assertIn("完了: test-stage", output.getvalue())
+        self.assertIn("中断/失敗: interrupted-stage", output.getvalue())
+        self.assertNotIn("完了: interrupted-stage", output.getvalue())
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
