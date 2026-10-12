@@ -113,7 +113,7 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## 共通の技術検証
 
-F01/#13の実装は `feature/f01-group-movement` で進める。複数選択、一括移動/停止、部隊ごとの経路と拒否表示を用意し、[F01画面確認手順](inspection/F01_SCENARIOS.md)に沿って確認する。F02/#14の追跡とF17/#30のマスタ管理は後続とする。
+F01/#13はユーザー合格・PR #31マージ済み。複数選択、一括移動/停止、部隊ごとの経路と拒否表示を用意し、[F01画面確認手順](inspection/F01_SCENARIOS.md)に沿って確認する。F02/#14は `feature/f02-target-march` で対象追跡を実装し、[F02画面確認手順](inspection/F02_SCENARIOS.md)で検査する。次はF17/#30のマスタ管理とする。
 
 各Gでnpm run check、npm run references:check、Windows/Linux CI、実ブラウザ操作を実施する。
 ルール変更には意味のある再現テストを追加し、900×420とPCの結果と検査対象commitを残す。

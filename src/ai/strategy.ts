@@ -10,6 +10,7 @@ import type {
   Command,
   FactionId,
   FactionView,
+  MarchTarget,
   OwnedBaseView,
   OwnUnitView,
   ResearchId,
@@ -141,7 +142,7 @@ function isNearFriendlyPosition(
 function enemyDefenseGoal(
   view: FactionView,
   unit: OwnUnitView,
-): Cell | null | undefined {
+): { readonly target: MarchTarget; readonly cell: Cell } | null | undefined {
   const enemy = view.visibleEnemies
     .filter((entry) => entry.factionId !== view.viewerFactionId)
     .filter((entry) => isNearFriendlyPosition(view, entry, unit))
@@ -168,7 +169,7 @@ function enemyDefenseGoal(
   const dx = ownX2 - enemy.enemy.positionX2;
   const dy = ownY2 - enemy.enemy.positionY2;
   if (dx * dx + dy * dy <= (2 * stats.range) ** 2) return null;
-  return enemy.cell;
+  return { target: { kind: 'unit', id: enemy.enemy.id }, cell: enemy.cell };
 }
 
 function hasStrategicRoute(
@@ -202,26 +203,65 @@ function unitMoveCommand(
 
   const proposedDefense = enemyDefenseGoal(view, unit);
   const defense =
-    proposedDefense && findPath(view.map, currentCell(unit), proposedDefense)
-      ? proposedDefense
-      : undefined;
+    proposedDefense === null
+      ? null
+      : proposedDefense &&
+          findPath(view.map, currentCell(unit), proposedDefense.cell)
+        ? proposedDefense
+        : undefined;
   if (defense === null) return undefined;
-  // A nearby visible threat takes priority, otherwise retain an already-issued
-  // strategic order until it completes to avoid repeatedly replacing a route.
-  if (!defense && hasStrategicRoute(unit, strategicTargets)) return undefined;
+  const order = unit.marchOrder;
+  if (
+    order &&
+    order.status !== 'arrived' &&
+    order.status !== 'blocked' &&
+    (!defense ||
+      (order.target.kind === defense.target.kind &&
+        order.target.id === defense.target.id))
+  ) {
+    // Keep a searching target until arrival, unless a new visible threat appears.
+    return undefined;
+  }
+  if (!defense && !order && hasStrategicRoute(unit, strategicTargets))
+    return undefined;
+  const baseGoal =
+    defense === undefined
+      ? nearestReachableGoal(view, unit, strategicTargets)
+      : undefined;
   const goal =
-    defense ?? nearestReachableGoal(view, unit, strategicTargets)?.cell;
+    defense ??
+    (baseGoal
+      ? {
+          target: { kind: 'base' as const, id: baseGoal.id },
+          cell: baseGoal.cell,
+        }
+      : undefined);
   if (!goal) return undefined;
+  if (
+    order &&
+    order.status !== 'arrived' &&
+    order.target.kind === goal.target.kind &&
+    order.target.id === goal.target.id
+  )
+    return undefined;
 
   const current = currentCell(unit);
   const currentEndpoint = endpoint(unit);
-  if (currentEndpoint?.x === goal.x && currentEndpoint.y === goal.y) {
+  if (
+    !defense &&
+    currentEndpoint?.x === goal.cell.x &&
+    currentEndpoint.y === goal.cell.y
+  ) {
     return undefined;
   }
-  if (current.x === goal.x && current.y === goal.y && unit.edgeProgress === 0) {
+  if (
+    current.x === goal.cell.x &&
+    current.y === goal.cell.y &&
+    unit.edgeProgress === 0
+  ) {
     return undefined;
   }
-  return { type: 'move', unitId: unit.id, target: goal };
+  return { type: 'march', unitId: unit.id, target: goal.target };
 }
 
 /**

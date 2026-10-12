@@ -8,7 +8,7 @@
 - このPC: `D:/git/rts-match-prototype`。環境のcwd `D:/git/rts` は旧資料のフォルダの場合がある。remoteで照合する。
 - G1/PR #8、G2/PR #10、G3/PR #11、F01/PR #31はマージ済み。
 - F01合格版: `2e448347a4b958e799aeddc426bd7ad7ad4943e1`。ユーザーはUXの細部を後続検討として合格。main merge: `81fdfc1799170240c37c821243b2783ea8766f43`。
-- **F02/#14/PR #32はユーザー検査待ちで未マージ**。ブランチ `feature/f02-target-march`、head `3f94b6c045781aac31c6444b1a4c582b6988b2e8`。この文書整備をF02合格と扱わない。
+- **F02/#14/PR #32は2026-10-12にユーザーよりマージ指示あり**。ブランチ `feature/f02-target-march`、head `3f94b6c045781aac31c6444b1a4c582b6988b2e8`。ユーザーの「現状出してるものはマージして」をF02-r01の合格・マージ許可として記録。実際のマージ状態はGitHubで確認する。
 - F02は21テストファイル・185テストとWindows/Linux CI成功。CI run `38183938883`。schema6/rules f02-v1。F02前のmainはschema5/rules g3-v1。現在の版を実コード/build-infoで必ず再確認する。
 
 ## 続きの入口

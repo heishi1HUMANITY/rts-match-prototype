@@ -45,7 +45,80 @@ describe('stateless faction-view NPC policy', () => {
       baseId: 'HQ-B',
       unitKind: 'assault',
     });
-    expect(commands.some(({ type }) => type === 'move')).toBe(true);
+    expect(commands.some(({ type }) => type === 'march')).toBe(true);
+    expect(commands).toContainEqual({
+      type: 'march',
+      unitId: 'B-01',
+      target: { kind: 'base', id: expect.any(String) },
+    });
+  });
+
+  it('tracks a visible threat and keeps the same order while it is searching', () => {
+    const view = getFactionView(running(createMatch(42)), 'B');
+    const enemy = {
+      control: 'enemy' as const,
+      id: 'A-01',
+      factionId: 'A' as const,
+      kind: 'assault' as const,
+      positionX2: 57,
+      positionY2: 67,
+      hp: 100,
+      maxHp: 100,
+    };
+    const threatened = { ...view, visibleEnemies: [enemy] };
+    expect(decideBotCommands(threatened)).toContainEqual({
+      type: 'march',
+      unitId: 'B-01',
+      target: { kind: 'unit', id: 'A-01' },
+    });
+    const pending = {
+      ...threatened,
+      ownUnits: threatened.ownUnits.map((unit) =>
+        unit.id === 'B-01'
+          ? {
+              ...unit,
+              marchOrder: {
+                target: { kind: 'unit' as const, id: enemy.id },
+                lastKnownCell: { x: 28, y: 33 },
+                lastSeenTick: 0,
+                status: 'tracking' as const,
+              },
+            }
+          : unit,
+      ),
+    };
+    expect(
+      decideBotCommands(pending).some(
+        (command) => command.type === 'march' && command.unitId === 'B-01',
+      ),
+    ).toBe(false);
+    const searching = {
+      ...pending,
+      visibleEnemies: [],
+      ownUnits: pending.ownUnits.map((unit) =>
+        unit.id === 'B-01' && unit.marchOrder
+          ? {
+              ...unit,
+              marchOrder: { ...unit.marchOrder, status: 'searching' as const },
+            }
+          : unit,
+      ),
+    };
+    expect(
+      decideBotCommands(searching).some(
+        (command) => command.type === 'march' && command.unitId === 'B-01',
+      ),
+    ).toBe(false);
+    expect(
+      decideBotCommands({
+        ...searching,
+        visibleEnemies: [{ ...enemy, id: 'A-02' }],
+      }),
+    ).toContainEqual({
+      type: 'march',
+      unitId: 'B-01',
+      target: { kind: 'unit', id: 'A-02' },
+    });
   });
 
   it('respects supply, queue, unit, elimination, and phase constraints', () => {

@@ -3,13 +3,20 @@ import { resolveMatchOutcome } from './outcome';
 import { findPath } from './pathfinding';
 import { cancelProduction, enqueueProduction } from './production';
 import { startResearch } from './research';
-import { isUnitVisibleToFaction } from './visibility';
+import {
+  getUnitPositionX2,
+  getUnitPositionY2,
+  isCellVisibleToFaction,
+  isUnitVisibleToFaction,
+} from './visibility';
+import { advanceMarchOrder } from './march';
 import type {
   Cell,
   Command,
   CommandResult,
   FactionId,
   MatchState,
+  MarchTarget,
   RejectCode,
   UnitState,
 } from './types';
@@ -21,6 +28,11 @@ type ParsedCommand =
       readonly type: 'enqueue-production';
       readonly baseId: string;
       readonly unitKind: string;
+    }
+  | {
+      readonly type: 'march';
+      readonly unitId: string;
+      readonly target: MarchTarget;
     }
   | { readonly type: 'start-research'; readonly researchId: string | null };
 
@@ -103,7 +115,29 @@ function parseCommand(input: unknown): ParsedCommand | null {
       target: { x: input.target.x, y: input.target.y },
     };
   }
+  if (
+    input.type === 'march' &&
+    hasExactKeys(input, ['type', 'unitId', 'target']) &&
+    typeof input.unitId === 'string' &&
+    isMarchTarget(input.target)
+  ) {
+    return {
+      type: 'march',
+      unitId: input.unitId,
+      target: { kind: input.target.kind, id: input.target.id },
+    };
+  }
   return null;
+}
+
+function isMarchTarget(value: unknown): value is MarchTarget {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['kind', 'id']) &&
+    (value.kind === 'unit' || value.kind === 'base') &&
+    typeof value.id === 'string' &&
+    value.id.length > 0
+  );
 }
 
 function reject(state: MatchState, reason: RejectCode): CommandResult {
@@ -197,12 +231,57 @@ export function applyCommand(
   if (command.type === 'stop') {
     const stoppedPath = unit.edgeProgress === 1 ? unit.path.slice(0, 1) : [];
     if (
+      (unit.marchOrder === undefined || unit.marchOrder === null) &&
       stoppedPath.length === unit.path.length &&
       stoppedPath.every((cell, index) => cell === unit.path[index])
     ) {
       return succeed(state);
     }
-    return succeed(copyWithUnit(state, unit, { ...unit, path: stoppedPath }));
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...unit,
+        path: stoppedPath,
+        marchOrder: null,
+      }),
+    );
+  }
+
+  if (command.type === 'march') {
+    let lastKnownCell: Cell;
+    let lastSeenTick = state.elapsedTicks;
+    let initialStatus: 'tracking' | 'searching' = 'tracking';
+    if (command.target.kind === 'base') {
+      const base = state.bases.find(({ id }) => id === command.target.id);
+      if (base === undefined) return reject(state, 'TARGET_NOT_FOUND');
+      lastKnownCell = base.cell;
+      if (!isCellVisibleToFaction(state, base.cell, actor)) {
+        const memory = state.knowledge
+          .find(({ factionId }) => factionId === actor)
+          ?.baseMemory.find(({ baseId }) => baseId === base.id);
+        lastSeenTick = memory?.seenTick ?? -1;
+        initialStatus = 'searching';
+      }
+    } else {
+      const target = state.units.find(({ id }) => id === command.target.id);
+      if (target === undefined) return reject(state, 'TARGET_NOT_FOUND');
+      if (target.factionId === actor) return reject(state, 'INVALID_TARGET');
+      if (!isUnitVisibleToFaction(state, target, actor))
+        return reject(state, 'TARGET_NOT_FOUND');
+      lastKnownCell = {
+        x: Math.floor(getUnitPositionX2(target) / 2),
+        y: Math.floor(getUnitPositionY2(target) / 2),
+      };
+    }
+    const march = advanceMarchOrder(
+      state,
+      unit,
+      command.target,
+      lastKnownCell,
+      lastSeenTick,
+      initialStatus,
+    );
+    if (march === null) return reject(state, 'UNREACHABLE');
+    return succeed(copyWithUnit(state, unit, march));
   }
 
   const target = command.target;
@@ -215,7 +294,11 @@ export function applyCommand(
     return reject(state, 'OUT_OF_BOUNDS');
   }
   if (isCellBlocked(state.map, target)) return reject(state, 'BLOCKED');
-  if (isCurrentDestination(unit, target)) return succeed(state);
+  if (isCurrentDestination(unit, target)) {
+    if (unit.marchOrder === undefined || unit.marchOrder === null)
+      return succeed(state);
+    return succeed(copyWithUnit(state, unit, { ...unit, marchOrder: null }));
+  }
 
   const currentEdge = unit.edgeProgress === 1 ? unit.path[0] : undefined;
   const origin = currentEdge ?? unit.cell;
@@ -228,6 +311,7 @@ export function applyCommand(
       ...unit,
       path,
       edgeProgress: unit.edgeProgress,
+      marchOrder: null,
     }),
   );
 }

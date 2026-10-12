@@ -36,6 +36,43 @@ function running(scenario: ScenarioId) {
 }
 
 describe('G2 presentation and diagnostic boundaries', () => {
+  it('replays pursuit after movement, pause, stop and reset through the live runtime', () => {
+    const { runtime, advance } = running('f02-pursuit');
+    runtime.selectAll();
+    expect(runtime.groupMarch({ kind: 'unit', id: 'B-01' }).accepted).toEqual([
+      'A-01',
+      'A-02',
+    ]);
+    advance(25);
+    expect(runtime.snapshot().state.elapsedTicks).toBe(25);
+    expect(
+      runtime.playerSnapshot().view.ownUnits.find((unit) => unit.id === 'A-01')
+        ?.marchOrder?.lastSeenTick,
+    ).toBeGreaterThan(0);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.dispatch({ type: 'pause' });
+    const paused = runtime.snapshot().state;
+    advance(10);
+    expect(runtime.snapshot().state).toBe(paused);
+    expect(runtime.groupStop().accepted).toEqual([]);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.dispatch({ type: 'resume' });
+    runtime.groupStop();
+    advance(4);
+    expect(
+      runtime.playerSnapshot().view.ownUnits.every((unit) => !unit.marchOrder),
+    ).toBe(true);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.reset(42);
+    expect(runtime.snapshot().history).toEqual([]);
+    expect(runtime.snapshot().selectedUnitIds).toEqual([]);
+    expect(
+      runtime.playerSnapshot().view.ownUnits.every((unit) => !unit.marchOrder),
+    ).toBe(true);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.stopLoop();
+  });
+
   it('presents only the faction view, with a pure drag preview', () => {
     const { runtime } = running('standard');
     const before = runtime.snapshot();
@@ -85,12 +122,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'g3-v1',
-      schemaVersion: 5,
+      rulesVersion: 'f02-v1',
+      schemaVersion: 6,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
-      rules: { schemaVersion: 5, rulesVersion: 'g3-v1' },
+      rules: { schemaVersion: 6, rulesVersion: 'f02-v1' },
     });
     runtime.stopLoop();
   });
@@ -141,17 +178,20 @@ describe('G2 presentation and diagnostic boundaries', () => {
     runtime.stopLoop();
   });
 
-  it('rejects mismatched rule/schema headers instead of reading G1 state as G2', () => {
+  it('rejects previous and mismatched rule/schema headers', () => {
     const input = {
       seed: 42,
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 5 as const,
-      rulesVersion: 'g3-v1' as const,
+      schemaVersion: 6 as const,
+      rulesVersion: 'f02-v1' as const,
     };
     expect(() =>
       replay({ ...input, rulesVersion: 'g1-v1' } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({ ...input, rulesVersion: 'g3-v1' } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 4 } as unknown as typeof input),
@@ -299,8 +339,8 @@ describe('G3 zero-tick result diagnostics', () => {
         createDiagnostic(runtime.snapshot(), {
           commit: 'test',
           dirty: false,
-          rulesVersion: 'g3-v1',
-          schemaVersion: 5,
+          rulesVersion: 'f02-v1',
+          schemaVersion: 6,
         }),
       ).not.toThrow();
       runtime.stopLoop();

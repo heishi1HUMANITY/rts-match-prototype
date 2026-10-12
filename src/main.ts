@@ -6,6 +6,7 @@ import type { ScenarioId } from './simulation/types';
 import type { GestureOrigin, Point } from './ui/input';
 import { CanvasInput } from './ui/input';
 import { createHud, setHudPanel, updateHud } from './ui/hud';
+import { resolveMarchTarget } from './ui/march-target';
 import './ui/styles.css';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -49,7 +50,7 @@ runtime = new MatchRuntime({
       activeMovePreview = null;
       activeDragUnitId = null;
       activeDragUnitIds = null;
-      board.clearMovePreview();
+      clearMoveFeedback();
     }
     lifecycleKey = nextLifecycleKey;
     updateHud(hud, snapshot);
@@ -76,26 +77,41 @@ function isBoardPoint(point: Point): boolean {
 
 function updateMovePreview(unitIds: readonly string[], point: Point): void {
   if (dragCancelled) {
-    board.clearMovePreview();
+    clearMoveFeedback();
     return;
   }
   if (!isBoardPoint(point)) {
     activeMovePreview = null;
-    board.clearMovePreview();
+    clearMoveFeedback();
     return;
   }
-  const target = board.pickGround(point.x, point.y);
   const snapshot = runtime.playerSnapshot();
+  const march = resolveMarchTarget(snapshot.view, board.pick(point.x, point.y));
+  const target = march?.cell ?? board.pickGround(point.x, point.y);
   if (
     target === null ||
     snapshot.view.phase !== 'running' ||
     snapshot.contextLost
   ) {
     activeMovePreview = null;
-    board.clearMovePreview();
+    clearMoveFeedback();
     return;
   }
-  board.setGroupMovePreview(runtime.previewGroupMove(unitIds, target), target);
+  hud.root.querySelector<HTMLElement>('.board-hint')!.textContent = march
+    ? `${march.label} · 離すと選択部隊へ指示`
+    : '地面へ移動 · 離すと追跡を解除して移動';
+  board.setGroupMovePreview(
+    march
+      ? runtime.previewGroupMarch(unitIds, march.target)
+      : runtime.previewGroupMove(unitIds, target),
+    target,
+  );
+}
+
+function clearMoveFeedback(): void {
+  board.clearMovePreview();
+  hud.root.querySelector<HTMLElement>('.board-hint')!.textContent =
+    '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ';
 }
 
 function refreshActiveMovePreview(): void {
@@ -107,7 +123,7 @@ function clearActiveDrag(): void {
   activeMovePreview = null;
   activeDragUnitId = null;
   activeDragUnitIds = null;
-  board.clearMovePreview();
+  clearMoveFeedback();
 }
 
 input = new CanvasInput(
@@ -118,7 +134,7 @@ input = new CanvasInput(
       activeMovePreview = null;
       activeDragUnitId = null;
       activeDragUnitIds = null;
-      board.clearMovePreview();
+      clearMoveFeedback();
       const picked = board.pick(x, y);
       if (picked?.kind === 'unit') {
         const unit = runtime
@@ -213,24 +229,29 @@ input = new CanvasInput(
       activeMovePreview = null;
       activeDragUnitId = null;
       activeDragUnitIds = null;
-      board.clearMovePreview();
+      clearMoveFeedback();
       if (!isBoardPoint(point)) return;
-      const target = board.pickGround(point.x, point.y);
       const snapshot = runtime.playerSnapshot();
+      const march = resolveMarchTarget(
+        snapshot.view,
+        board.pick(point.x, point.y),
+      );
+      const target = march?.cell ?? board.pickGround(point.x, point.y);
       if (
         target === null ||
         snapshot.view.phase !== 'running' ||
         snapshot.contextLost
       )
         return;
-      runtime.groupMove(target, unitIds);
+      if (march) runtime.groupMarch(march.target, unitIds);
+      else runtime.groupMove(target, unitIds);
     },
     onGestureCancel: () => {
       dragCancelled = true;
       activeMovePreview = null;
       activeDragUnitId = null;
       activeDragUnitIds = null;
-      board.clearMovePreview();
+      clearMoveFeedback();
     },
     onEscape: () => {
       setHudPanel(hud, null);
@@ -270,7 +291,7 @@ function downloadDiagnostic(): void {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `g3-${runtime.playerSnapshot().view.scenarioId}-seed-${runtime.playerSnapshot().view.seed}-tick-${runtime.playerSnapshot().view.tick}.json`;
+    anchor.download = `f02-${runtime.playerSnapshot().view.scenarioId}-seed-${runtime.playerSnapshot().view.seed}-tick-${runtime.playerSnapshot().view.tick}.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (error) {
@@ -324,7 +345,7 @@ const handleClick = (event: MouseEvent): void => {
     activeMovePreview = null;
     activeDragUnitId = null;
     activeDragUnitIds = null;
-    board.clearMovePreview();
+    clearMoveFeedback();
     setHudPanel(hud, null);
     hud.selectedBaseId = 'HQ-A';
     runtime.reset(runtime.playerSnapshot().view.seed);

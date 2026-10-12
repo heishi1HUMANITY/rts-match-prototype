@@ -100,6 +100,13 @@ export function getFactionView(
       cell: { ...unit.cell },
       path: unit.path.map((cell) => ({ ...cell })),
       edgeProgress: unit.edgeProgress,
+      marchOrder: unit.marchOrder
+        ? {
+            ...unit.marchOrder,
+            target: { ...unit.marchOrder.target },
+            lastKnownCell: { ...unit.marchOrder.lastKnownCell },
+          }
+        : null,
     }));
   const visibleEnemies = state.units
     .filter(

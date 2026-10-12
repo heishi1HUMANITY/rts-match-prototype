@@ -189,6 +189,7 @@ export function advanceProduction(state: MatchState): MatchState {
       cell: { x: base.cell.x, y: base.cell.y },
       path: [],
       edgeProgress: 0,
+      marchOrder: null,
     });
     return {
       ...faction,

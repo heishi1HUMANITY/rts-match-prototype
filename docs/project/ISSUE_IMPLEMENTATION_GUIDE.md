@@ -62,7 +62,7 @@ F01 #13、F02 #14、F17 #30は以下の専用入口を使い、本書で重複�
 
 ## #14 / F02 対象への行軍・追跡
 
-[PR #32](https://github.com/heishi1HUMANITY/rts-match-prototype/pull/32)の状態とheadを確認する。記載時は未合格・未マージ。[F02設計](https://github.com/heishi1HUMANITY/rts-match-prototype/blob/feature/f02-target-march/docs/project/preparation/F02_DESIGN.md)と同ブランチの検査手順を使う。mainにファイルがないだけで重複実装しない。既存PRを再現して画面確認へ渡し、修正依頼があれば同じPRで直す。依存機能の合格済み実装とは数えない。
+[PR #32](https://github.com/heishi1HUMANITY/rts-match-prototype/pull/32)の状態とheadを確認する。2026-10-12にユーザーからF02-r01のマージ指示あり。[F02設計](preparation/F02_DESIGN.md)と[検査手順](inspection/F02_SCENARIOS.md)を使う。合格検査版は`3f94b6c045781aac31c6444b1a4c582b6988b2e8`。実際のマージを確認して依存機能として扱い、重複実装しない。修正指示は合格版に関連付けて対応する。
 
 <a id="issue-30"></a>
 

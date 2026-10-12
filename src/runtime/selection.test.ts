@@ -12,6 +12,86 @@ function runtimeFor(scenarioId?: 'g2-combat' | 'g3-mutual' | 'g3-spectate') {
 }
 
 describe('runtime group selection and orders', () => {
+  it('previews and batches base marches without mutating or losing replay history', () => {
+    const runtime = runtimeFor();
+    runtime.dispatch({ type: 'start' });
+    const target = { kind: 'base' as const, id: 'OUT-03' };
+    const before = runtime.snapshot();
+    const preview = runtime.previewGroupMarch(
+      ['B-01', 'A-02', 'A-01', 'A-01'],
+      target,
+    );
+    expect(preview.map(({ unitId }) => unitId)).toEqual([
+      'A-01',
+      'A-02',
+      'B-01',
+    ]);
+    expect(preview.filter(({ path }) => path !== null)).toHaveLength(2);
+    expect(preview.find(({ unitId }) => unitId === 'B-01')).toMatchObject({
+      path: null,
+      reason: 'UNIT_NOT_FOUND',
+    });
+    expect(runtime.snapshot().state).toBe(before.state);
+    expect(runtime.snapshot().history).toBe(before.history);
+
+    const batch = runtime.groupMarch(target, ['B-01', 'A-02', 'A-01']);
+    expect(batch).toEqual({
+      accepted: ['A-01', 'A-02'],
+      rejected: [{ unitId: 'B-01', reason: 'UNIT_NOT_FOUND' }],
+    });
+    expect(runtime.snapshot().message).toContain('2部隊に追跡/進軍指示');
+    expect(
+      runtime
+        .snapshot()
+        .history.slice(1)
+        .map(({ command }) => command),
+    ).toEqual([
+      { type: 'march', unitId: 'A-01', target },
+      { type: 'march', unitId: 'A-02', target },
+      { type: 'march', unitId: 'B-01', target },
+    ]);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+  });
+
+  it('records visible-unit pursuit targets exactly and rejects hidden enemy targets', () => {
+    const pursuit = new MatchRuntime(
+      { onChange: () => undefined },
+      42,
+      'f02-pursuit',
+    );
+    pursuit.dispatch({ type: 'start' });
+    const target = { kind: 'unit' as const, id: 'B-01' };
+    expect(pursuit.previewGroupMarch(['A-01'], target)[0]).toMatchObject({
+      unitId: 'A-01',
+      reason: null,
+    });
+    expect(pursuit.groupMarch(target, ['A-01']).accepted).toEqual(['A-01']);
+    expect(pursuit.snapshot().history.at(-1)?.command).toEqual({
+      type: 'march',
+      unitId: 'A-01',
+      target,
+    });
+    expect(() => assertReplayMatches(pursuit.snapshot())).not.toThrow();
+
+    const hidden = runtimeFor();
+    hidden.dispatch({ type: 'start' });
+    expect(hidden.previewGroupMarch(['A-01'], target)[0]).toMatchObject({
+      path: null,
+      reason: 'TARGET_NOT_FOUND',
+    });
+    expect(
+      hidden.dispatch({ type: 'march', unitId: 'A-01', target }),
+    ).toMatchObject({
+      ok: false,
+      reason: 'TARGET_NOT_FOUND',
+    });
+    expect(hidden.snapshot().history.at(-1)?.command).toEqual({
+      type: 'march',
+      unitId: 'A-01',
+      target,
+    });
+    expect(() => assertReplayMatches(hidden.snapshot())).not.toThrow();
+  });
   it('preserves single selection compatibility and exposes detached ordered IDs', () => {
     const runtime = runtimeFor();
     runtime.select('A-01');

@@ -1,4 +1,5 @@
 import type { PlayerSnapshot } from '../runtime/controller';
+import { marchOrderLabel } from './march-target';
 import {
   BASE_STATS,
   BASE_RESEARCH_INCOME_CENTI_PER_TICK,
@@ -40,17 +41,17 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F01 · 集団移動</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F02 · 対象への進軍</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
-    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">部隊をドラッグで移動 · 複数選択でまとめて移動 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
+    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
           <div class="action-card"><button data-produce="assault">強襲を生産</button><small>補給120 · 12秒 · HP100 · 射程2</small><span data-production-reason="assault"></span></div>
@@ -184,7 +185,7 @@ export function updateHud(
     );
   text(
     '.scenario-badge',
-    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
   text(
     '[data-resources]',
@@ -248,6 +249,12 @@ export function updateHud(
     selectionInstruction = elements.multiSelect
       ? '複数選択中 · 自軍をタップで追加、すべて選択も可'
       : '自軍をドラッグで移動 · 複数選択も可';
+  const orderLabels = selectedUnits.map(marchOrderLabel).filter(Boolean);
+  if (view.phase === 'running' && orderLabels.length > 0)
+    selectionInstruction =
+      selectedUnits.length === 1
+        ? orderLabels[0]!
+        : `進軍指定 ${orderLabels.length}/${selectedUnits.length}部隊 · ドラッグで変更`;
   text('.selection-instruction', selectionInstruction);
   const expected = view.ownUnits.map((unit) => unit.id).join('|');
   if (elements.units.dataset.ids !== expected) {
@@ -274,7 +281,13 @@ export function updateHud(
     node.classList.toggle('selected', selected);
     node.setAttribute('aria-pressed', String(selected));
     node.querySelector('small')!.textContent =
-      `${kindName(unit.kind)} ${unit.hp}/${unit.maxHp}`;
+      `${kindName(unit.kind)} ${unit.hp}/${unit.maxHp}${unit.marchOrder ? ' →' : ''}`;
+    const orderLabel = marchOrderLabel(unit);
+    node.title = orderLabel;
+    node.setAttribute(
+      'aria-label',
+      `${unit.id} ${kindName(unit.kind)} HP${unit.hp}/${unit.maxHp}${orderLabel ? ` ${orderLabel}` : ''}`,
+    );
   }
   text(
     '.panel-live',

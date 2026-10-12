@@ -15,6 +15,35 @@ const withState = (
 ): MatchState => ({ ...state, ...change });
 
 describe('faction visibility and view isolation', () => {
+  it('copies own march orders and never exposes enemy orders', () => {
+    const initial = createMatch(42, { scenarioId: 'f02-pursuit' });
+    const state: MatchState = {
+      ...initial,
+      units: initial.units.map((unit) => ({
+        ...unit,
+        marchOrder: {
+          target: {
+            kind: 'unit',
+            id: unit.factionId === 'A' ? 'B-01' : 'A-01',
+          },
+          lastKnownCell: { x: 20, y: 20 },
+          lastSeenTick: 0,
+          status: 'tracking',
+        },
+      })),
+    };
+    const view = getFactionView(state, 'A');
+    const source = state.units.find((unit) => unit.id === 'A-01')!.marchOrder!;
+    const order = view.ownUnits.find((unit) => unit.id === 'A-01')!.marchOrder!;
+    expect(order).toEqual(source);
+    expect(order).not.toBe(source);
+    expect(order.target).not.toBe(source.target);
+    expect(order.lastKnownCell).not.toBe(source.lastKnownCell);
+    expect(view.visibleEnemies.length).toBeGreaterThan(0);
+    for (const enemy of view.visibleEnemies)
+      expect(enemy).not.toHaveProperty('marchOrder');
+  });
+
   it('initializes all faction masks and exploration at tick zero with inclusive doubled-radius boundaries', () => {
     const match = createMatch(42);
     expect(match.knowledge.map((entry) => entry.visible.length)).toEqual([
