@@ -6,7 +6,11 @@ import {
   advanceProduction,
   cancelAllProductionForDestroyedHq,
 } from './production';
-import { advanceResearch, firepowerBonus } from './research';
+import {
+  advanceResearch,
+  firepowerBonus,
+  researchEffectValue,
+} from './research';
 import type { FactionState, MatchState } from './types';
 
 function runningMatch(): MatchState {
@@ -521,11 +525,44 @@ describe('G2 research', () => {
       'bridge-3': 0,
       'ropeway-1': 0,
       'ropeway-2': 0,
+      'supply-lines-1': 0,
+      'maintenance-1': 0,
+      'survey-1': 0,
+      'survey-2': 0,
     });
     for (const id of ['A', 'B', 'C'] as const) {
       const current = state.factions.find((entry) => entry.id === id)!;
       expect(current.researchCenti).toBe(120);
     }
+  });
+
+  it('applies completed logistics effects to base income and per-unit upkeep', () => {
+    const baseline = runningMatch();
+    const expectedWithoutTech = applyEconomyTick(baseline);
+    let state = withFaction(baseline, {
+      completedResearchIds: ['supply-lines-1', 'maintenance-1'],
+    });
+    state = applyEconomyTick(state);
+    // Two owned bases each add 1 centi/tick; two units each save 1 centi/tick.
+    expect(
+      faction(state).supplyCenti - faction(expectedWithoutTech).supplyCenti,
+    ).toBe(4);
+    expect(
+      researchEffectValue(faction(state), state.rules, 'upkeep-reduction'),
+    ).toBe(1);
+  });
+
+  it('rejects selecting a research excluded by a completed peer without mutating state', () => {
+    const state = withFaction(runningMatch(), {
+      completedResearchIds: ['maintenance-1'],
+      researchCenti: 1_000,
+    });
+    expect(
+      applyCommand(state, 'A', {
+        type: 'start-research',
+        researchId: 'supply-lines-1',
+      }),
+    ).toEqual({ ok: false, state, reason: 'RESEARCH_EXCLUDED' });
   });
 
   it('uses the income from this tick to finish after combat, so its bonus starts next tick', () => {

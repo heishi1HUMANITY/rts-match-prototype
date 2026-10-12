@@ -306,7 +306,34 @@ function fieldsFor(rules: RulesMaster): {
   };
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((child, index) => visit(child, `${path}.${index}`, group));
+      return;
+    }
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      const key = path.split('.').at(-1)!;
+      if (
+        [
+          'domain',
+          'stage',
+          'prerequisites',
+          'exclusiveWith',
+          'id',
+          'crossingTier',
+        ].includes(key)
+      )
+        return;
+      const unlockValue = path.match(
+        /^research\.definitions\.([^.]+)\.effects\.(\d+)\.value$/,
+      );
+      if (
+        unlockValue &&
+        getPath(
+          rules,
+          `research.definitions.${unlockValue[1]}.effects.${unlockValue[2]}.id`,
+        ) === 'crossing-unlock'
+      )
+        return;
       result.push({ group, path, value });
       return;
     }
@@ -332,9 +359,29 @@ function fieldLabel(path: string): string {
     large: '大拠点',
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
+    'supply-lines-1': '兵站・供給路 I',
+    'maintenance-1': '兵站・維持 I',
+    'survey-1': '情報・測量 I',
+    'survey-2': '情報・測量 II',
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
+  const effectMatch = path.match(
+    /^research\.definitions\.([^.]+)\.effects\.(\d+)\.value$/,
+  );
+  if (effectMatch) {
+    const researchId = effectMatch[1]!;
+    const def = DEFAULT_RULES.research.definitions[researchId];
+    const effect = def?.effects[Number(effectMatch[2])];
+    const effectNames: Record<string, string> = {
+      'damage-bonus': '攻撃上昇',
+      'vision-bonus': '視界上昇',
+      'supply-income-bonus': '拠点補給収入',
+      'upkeep-reduction': '維持費減額',
+      'crossing-unlock': '渡河解放（数値なし）',
+    };
+    return `${ids[researchId] ?? researchId} · ${effectNames[effect?.id ?? ''] ?? '効果値'}`;
+  }
   return `${ids[parent ?? ''] ? `${ids[parent!]} · ` : ''}${base}`;
 }
 

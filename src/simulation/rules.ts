@@ -18,8 +18,8 @@ import {
 } from './config';
 import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 6 as const;
-export const RULES_VERSION = 'f06-v1' as const;
+export const MASTER_SCHEMA_VERSION = 7 as const;
+export const RULES_VERSION = 'f09-v1' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -72,17 +72,7 @@ export interface RulesMaster {
   };
   readonly research: {
     readonly baseIncomeCentiPerTick: number;
-    readonly definitions: Readonly<
-      Record<
-        ResearchId,
-        {
-          readonly costCenti: number;
-          readonly prerequisite: ResearchId | null;
-          readonly damageBonus: number;
-          readonly unlocksCrossing: CrossingTierId | null;
-        }
-      >
-    >;
+    readonly definitions: Readonly<Record<ResearchId, ResearchDefinition>>;
   };
   readonly crossings: Readonly<
     Record<

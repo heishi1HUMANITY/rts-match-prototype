@@ -1,5 +1,7 @@
 import { DEFAULT_RULES, MASTER_SCHEMA_VERSION } from './rules';
 import type { MasterEnvelope, RulesMaster } from './rules';
+import type { ResearchDefinition } from './config';
+import type { CrossingTierId, ResearchEffect } from './types';
 
 export interface ValidationIssue {
   readonly key: string;
@@ -70,6 +72,83 @@ export function validateRules(input: unknown): ValidationResult {
   ] as const;
   exactKeys(input, rootKeys, 'rules', issues);
   const walk = (value: unknown, defaults: unknown, path: string): unknown => {
+    if (Array.isArray(defaults)) {
+      if (!Array.isArray(value)) {
+        issues.push({ key: path, message: '配列形式が必要です' });
+        return defaults;
+      }
+      if (path.endsWith('.effects')) {
+        return value.map((entry, index) => {
+          const effectPath = `${path}.${index}`;
+          if (!isRecord(entry)) {
+            issues.push({
+              key: effectPath,
+              message: '効果オブジェクトが必要です',
+            });
+            return defaults[0];
+          }
+          const unlock = entry.id === 'crossing-unlock';
+          exactKeys(
+            entry,
+            unlock ? ['id', 'value', 'crossingTier'] : ['id', 'value'],
+            effectPath,
+            issues,
+          );
+          if (
+            ![
+              'damage-bonus',
+              'vision-bonus',
+              'supply-income-bonus',
+              'upkeep-reduction',
+              'crossing-unlock',
+            ].includes(String(entry.id))
+          )
+            issues.push({
+              key: `${effectPath}.id`,
+              message: '未実装の効果IDです',
+            });
+          if (
+            !isInteger(entry.value) ||
+            entry.value < 0 ||
+            entry.value > 100_000
+          )
+            issues.push({
+              key: `${effectPath}.value`,
+              message: '0以上100000以下の整数が必要です',
+            });
+          if (
+            unlock &&
+            !['bridge-2', 'bridge-3', 'ropeway-1', 'ropeway-2'].includes(
+              String(entry.crossingTier),
+            )
+          )
+            issues.push({
+              key: `${effectPath}.crossingTier`,
+              message: '未対応の渡河解放IDです',
+            });
+          if (!unlock && Object.hasOwn(entry, 'crossingTier'))
+            issues.push({
+              key: `${effectPath}.crossingTier`,
+              message: '渡河解放以外には指定できません',
+            });
+          return {
+            id: String(entry.id),
+            value: isInteger(entry.value) ? entry.value : 0,
+            ...(unlock && typeof entry.crossingTier === 'string'
+              ? { crossingTier: entry.crossingTier }
+              : {}),
+          };
+        });
+      }
+      const values = value.filter(
+        (entry): entry is string => typeof entry === 'string',
+      );
+      if (values.length !== value.length)
+        issues.push({ key: path, message: '研究IDの配列が必要です' });
+      if (new Set(values).size !== values.length)
+        issues.push({ key: path, message: '同じ研究IDを重複指定できません' });
+      return values;
+    }
     if (!isRecord(value) || !isRecord(defaults)) {
       issues.push({ key: path, message: 'オブジェクト形式が必要です' });
       return defaults;
@@ -81,7 +160,8 @@ export function validateRules(input: unknown): ValidationResult {
       const expected = defaults[key];
       const actual = value[key];
       const fieldPath = `${path}.${key}`;
-      if (isRecord(expected)) output[key] = walk(actual, expected, fieldPath);
+      if (isRecord(expected) || Array.isArray(expected))
+        output[key] = walk(actual, expected, fieldPath);
       else if (typeof expected === 'boolean') {
         if (typeof actual !== 'boolean')
           issues.push({
@@ -119,18 +199,29 @@ export function validateRules(input: unknown): ValidationResult {
             });
           output[key] = number ?? expected;
         } else if (typeof expected === 'string') {
-          if (
-            typeof actual !== 'string' ||
-            (actual !== expected &&
-              ![
-                'firepower-1',
-                'firepower-2',
-                'bridge-2',
-                'bridge-3',
-                'ropeway-1',
-                'ropeway-2',
-              ].includes(actual))
-          )
+          const allowed = fieldPath.endsWith('.domain')
+            ? ['power', 'logistics', 'information', 'engineering']
+            : fieldPath.endsWith('.id')
+              ? [
+                  'damage-bonus',
+                  'vision-bonus',
+                  'supply-income-bonus',
+                  'upkeep-reduction',
+                  'crossing-unlock',
+                ]
+              : [
+                  'firepower-1',
+                  'firepower-2',
+                  'bridge-2',
+                  'bridge-3',
+                  'ropeway-1',
+                  'ropeway-2',
+                  'supply-lines-1',
+                  'maintenance-1',
+                  'survey-1',
+                  'survey-2',
+                ];
+          if (typeof actual !== 'string' || !allowed.includes(actual))
             issues.push({ key: fieldPath, message: '未対応のIDです' });
           output[key] = typeof actual === 'string' ? actual : expected;
         } else output[key] = actual;
@@ -140,42 +231,61 @@ export function validateRules(input: unknown): ValidationResult {
   };
   const rules = walk(input, DEFAULT_RULES, 'rules') as RulesMaster;
   for (const [id, def] of Object.entries(rules.research.definitions)) {
+    const path = `rules.research.definitions.${id}`;
     if (
-      def.unlocksCrossing !== null &&
-      !['bridge-2', 'bridge-3', 'ropeway-1', 'ropeway-2'].includes(
-        def.unlocksCrossing,
-      )
+      !['power', 'logistics', 'information', 'engineering'].includes(def.domain)
     )
+      issues.push({ key: `${path}.domain`, message: '未対応の研究分野です' });
+    if (!Number.isSafeInteger(def.stage) || def.stage < 1 || def.stage > 20)
       issues.push({
-        key: `rules.research.definitions.${id}.unlocksCrossing`,
-        message: '未対応の渡河解放効果です',
+        key: `${path}.stage`,
+        message: '段階は1〜20の整数にしてください',
       });
-    if (
-      def.prerequisite !== null &&
-      !Object.hasOwn(rules.research.definitions, def.prerequisite)
-    )
+    if (def.effects.length === 0)
       issues.push({
-        key: `rules.research.definitions.${id}.prerequisite`,
-        message: '存在しない研究IDです',
+        key: `${path}.effects`,
+        message: '効果のない研究は登録できません',
       });
-    if (def.prerequisite === id)
-      issues.push({
-        key: `rules.research.definitions.${id}.prerequisite`,
-        message: '自分自身は前提にできません',
-      });
-    const seen = new Set<string>([id]);
-    let next = def.prerequisite;
-    while (next !== null) {
-      if (seen.has(next)) {
+    for (const prereq of def.prerequisites)
+      if (!Object.hasOwn(rules.research.definitions, prereq))
         issues.push({
-          key: `rules.research.definitions.${id}.prerequisite`,
+          key: `${path}.prerequisites`,
+          message: `存在しない研究ID: ${prereq}`,
+        });
+    for (const excluded of def.exclusiveWith) {
+      const peer = rules.research.definitions[excluded];
+      if (!peer)
+        issues.push({
+          key: `${path}.exclusiveWith`,
+          message: `存在しない研究ID: ${excluded}`,
+        });
+      else if (!peer.exclusiveWith.includes(id))
+        issues.push({
+          key: `${path}.exclusiveWith`,
+          message: '排他指定は相手側にも同じIDを指定してください',
+        });
+    }
+    if (def.prerequisites.includes(id) || def.exclusiveWith.includes(id))
+      issues.push({
+        key: path,
+        message: '研究は自分自身を前提/排他に指定できません',
+      });
+    const seen = new Set<string>();
+    const visit = (current: string): void => {
+      if (seen.has(current)) {
+        issues.push({
+          key: `${path}.prerequisites`,
           message: '研究前提に循環があります',
         });
-        break;
+        return;
       }
-      seen.add(next);
-      next = rules.research.definitions[next]?.prerequisite ?? null;
-    }
+      seen.add(current);
+      for (const parent of rules.research.definitions[current]?.prerequisites ??
+        [])
+        visit(parent);
+      seen.delete(current);
+    };
+    visit(id);
   }
   if (rules.limits.unitsPerFaction < 2)
     issues.push({
@@ -247,7 +357,8 @@ export function validateEnvelope(
     (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
       input.masterSchemaVersion !== 3 &&
       input.masterSchemaVersion !== 4 &&
-      input.masterSchemaVersion !== 5)
+      input.masterSchemaVersion !== 5 &&
+      input.masterSchemaVersion !== 6)
   )
     return {
       ok: false,
@@ -305,6 +416,82 @@ export function validateEnvelope(
         ...candidateRules,
         localFaction: DEFAULT_RULES.localFaction,
       };
+  }
+  if (
+    input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
+    isRecord(candidateRules)
+  ) {
+    const oldResearch = isRecord(candidateRules.research)
+      ? candidateRules.research
+      : null;
+    const oldDefinitions =
+      oldResearch && isRecord(oldResearch.definitions)
+        ? oldResearch.definitions
+        : null;
+    const converted = { ...DEFAULT_RULES.research.definitions } as Record<
+      string,
+      ResearchDefinition
+    >;
+    if (oldDefinitions) {
+      const migrationIssues: ValidationIssue[] = [];
+      for (const [id, oldValue] of Object.entries(oldDefinitions)) {
+        if (!converted[id]) {
+          migrationIssues.push({
+            key: `rules.research.definitions.${id}`,
+            message: '旧マスタに未知の研究IDがあります',
+          });
+          continue;
+        }
+        if (!isRecord(oldValue)) {
+          migrationIssues.push({
+            key: `rules.research.definitions.${id}`,
+            message: '旧研究定義がオブジェクトではありません',
+          });
+          continue;
+        }
+        exactKeys(
+          oldValue,
+          ['costCenti', 'prerequisite', 'damageBonus', 'unlocksCrossing'],
+          `rules.research.definitions.${id}`,
+          migrationIssues,
+        );
+        const baseline = converted[id];
+        const effects: ResearchEffect[] = [];
+        if (
+          typeof oldValue.damageBonus === 'number' &&
+          oldValue.damageBonus > 0
+        )
+          effects.push({ id: 'damage-bonus', value: oldValue.damageBonus });
+        if (typeof oldValue.unlocksCrossing === 'string')
+          effects.push({
+            id: 'crossing-unlock',
+            value: 0,
+            crossingTier: oldValue.unlocksCrossing as CrossingTierId,
+          });
+        converted[id] = {
+          ...baseline,
+          costCenti:
+            typeof oldValue.costCenti === 'number'
+              ? oldValue.costCenti
+              : baseline.costCenti,
+          prerequisites:
+            typeof oldValue.prerequisite === 'string'
+              ? [oldValue.prerequisite]
+              : [],
+          effects: effects.length ? effects : baseline.effects,
+        };
+      }
+      if (migrationIssues.length > 0)
+        return { ok: false, issues: migrationIssues };
+    }
+    candidateRules = {
+      ...candidateRules,
+      research: {
+        ...DEFAULT_RULES.research,
+        ...(oldResearch ?? {}),
+        definitions: converted,
+      },
+    };
   }
   const result = validateRules(candidateRules);
   return result.ok

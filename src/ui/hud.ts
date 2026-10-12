@@ -7,6 +7,7 @@ import type {
   UnitKind,
 } from '../simulation/types';
 import { crossingResearchComplete } from '../simulation/crossings';
+import { researchEffectValue } from '../simulation/research';
 
 export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
 export interface HudElements {
@@ -41,7 +42,7 @@ const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
         : '小拠点';
 const baseOwnerName = (owner: BaseOwnerId | null): string =>
   owner === 'local' ? '● 現地勢力' : (owner ?? '中立');
-const researchName = (id: ResearchId): string =>
+const researchName = (id: ResearchId, view?: FactionView): string =>
   ({
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
@@ -49,7 +50,34 @@ const researchName = (id: ResearchId): string =>
     'bridge-3': '架橋 III',
     'ropeway-1': '索道 I',
     'ropeway-2': '索道 II',
-  })[id];
+    'supply-lines-1': '供給路 I',
+    'maintenance-1': '維持効率 I',
+    'survey-1': '測量 I',
+    'survey-2': '広域観測 II',
+  })[id] ??
+  (view?.rules.research.definitions[id]
+    ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
+    : id);
+const effectLabel = (effect: {
+  id: string;
+  value: number;
+  crossingTier?: string;
+}): string => {
+  switch (effect.id) {
+    case 'damage-bonus':
+      return `攻撃 +${effect.value}`;
+    case 'vision-bonus':
+      return `視界 +${effect.value}`;
+    case 'supply-income-bonus':
+      return `拠点補給収入 +${effect.value} centi/tick`;
+    case 'upkeep-reduction':
+      return `維持費 -${effect.value} centi/tick/部隊`;
+    case 'crossing-unlock':
+      return `${effect.crossingTier ? crossingName(effect.crossingTier) : '渡河'}を解放`;
+    default:
+      return '未対応の効果';
+  }
+};
 const crossingName = (tier: string): string =>
   tier.startsWith('bridge') ? `橋 ${tier.slice(-1)}` : `索道 ${tier.slice(-1)}`;
 const amount = (n: number): string =>
@@ -272,14 +300,24 @@ export function updateHud(
     );
   }
   for (const id of researchIds) {
-    const def = view.rules.research.definitions[id];
-    const prerequisite =
-      def.prerequisite === null
-        ? ''
-        : ` · 前提 ${researchName(def.prerequisite)}`;
+    const def = view.rules.research.definitions[id]!;
+    const domainName = (
+      {
+        power: '戦力',
+        logistics: '兵站',
+        information: '情報',
+        engineering: '工兵',
+      } as const
+    )[def.domain];
+    const prerequisite = def.prerequisites.length
+      ? ` · 前提 ${def.prerequisites.map((id) => researchName(id, view)).join('・')}`
+      : '';
+    const exclusions = def.exclusiveWith.length
+      ? ` · 排他 ${def.exclusiveWith.map((id) => researchName(id, view)).join('・')}`
+      : '';
     text(
       `[data-research-details="${id}"]`,
-      `必要${amount(def.costCenti)}ポイント${def.damageBonus ? ` · 攻撃 +${def.damageBonus}` : ''}${def.unlocksCrossing ? ` · ${crossingName(def.unlocksCrossing)}を解放` : ''}${prerequisite}`,
+      `${domainName} ${def.stage} · 必要${amount(def.costCenti)}ポイント · ${def.effects.map(effectLabel).join('、')}${prerequisite}${exclusions}`,
     );
   }
   text(
@@ -294,7 +332,10 @@ export function updateHud(
     (base) => base.visibility === 'owned' && base.hp > 0,
   );
   const income = bases.reduce(
-      (n, base) => n + view.rules.bases[base.kind].supplyIncomeCentiPerTick,
+      (n, base) =>
+        n +
+        view.rules.bases[base.kind].supplyIncomeCentiPerTick +
+        researchEffectValue(own, view.rules, 'supply-income-bonus'),
       0,
     ),
     rp =
@@ -304,7 +345,13 @@ export function updateHud(
         0,
       ),
     upkeep = view.ownUnits.reduce(
-      (n, unit) => n + view.rules.units[unit.kind].upkeepCentiPerTick,
+      (n, unit) =>
+        n +
+        Math.max(
+          0,
+          view.rules.units[unit.kind].upkeepCentiPerTick -
+            researchEffectValue(own, view.rules, 'upkeep-reduction'),
+        ),
       0,
     );
   text(
@@ -318,7 +365,7 @@ export function updateHud(
     own.eliminatedAtTick !== null
       ? '脱落 · 研究停止'
       : own.activeResearch
-        ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
+        ? `${researchName(own.activeResearch.researchId, view)} 充填 ${((own.researchProgressCenti[own.activeResearch.researchId] ?? 0) / 100).toFixed(1)}pt`
         : `バンク中 · 研究完了 ${own.completedResearchIds.length}/${Object.keys(view.rules.research.definitions).length}`,
   );
   const selected = selectedUnits[0];
@@ -438,21 +485,32 @@ export function updateHud(
     own.activeResearch === null ||
     own.eliminatedAtTick !== null;
   for (const id of researchIds) {
-    const def = view.rules.research.definitions[id];
+    const def = view.rules.research.definitions[id]!;
     const done = own.completedResearchIds.includes(id);
     const active = own.activeResearch?.researchId === id;
-    const progress = own.researchProgressCenti[id];
+    const progress = own.researchProgressCenti[id] ?? 0;
     const reason =
       own.eliminatedAtTick !== null
         ? '脱落 · 研究停止'
         : done
-          ? `完了${def.damageBonus ? ` · 攻撃+${def.damageBonus}` : ''}${def.unlocksCrossing ? ` · ${crossingName(def.unlocksCrossing)}解放` : ''}`
+          ? `完了 · ${def.effects.map(effectLabel).join('、')}`
           : view.phase !== 'running'
             ? '開始・再開後に選択できます'
-            : def.prerequisite !== null &&
-                !own.completedResearchIds.includes(def.prerequisite)
-              ? `前提：${researchName(def.prerequisite)}が必要です`
-              : null;
+            : def.prerequisites.some(
+                  (id) => !own.completedResearchIds.includes(id),
+                )
+              ? `前提：${def.prerequisites
+                  .filter((id) => !own.completedResearchIds.includes(id))
+                  .map((id) => researchName(id, view))
+                  .join('・')}が必要です`
+              : def.exclusiveWith.some((id) =>
+                    own.completedResearchIds.includes(id),
+                  )
+                ? `排他：${def.exclusiveWith
+                    .filter((id) => own.completedResearchIds.includes(id))
+                    .map((id) => researchName(id, view))
+                    .join('・')}完了済みです`
+                : null;
     const button = elements.root.querySelector<HTMLButtonElement>(
       `[data-research="${id}"]`,
     )!;
@@ -523,8 +581,11 @@ export function updateHud(
     row.querySelector<HTMLElement>('.crossing-status')!.textContent = status;
     const requiredResearch = Object.entries(
       view.rules.research.definitions,
-    ).find(
-      ([, definition]) => definition.unlocksCrossing === site.tier,
+    ).find(([, definition]) =>
+      definition.effects.some(
+        (effect) =>
+          effect.id === 'crossing-unlock' && effect.crossingTier === site.tier,
+      ),
     )?.[0] as ResearchId | undefined;
     let buildReason: string | null = null;
     if (view.phase !== 'running') buildReason = '開始・再開後に操作できます';
@@ -550,7 +611,7 @@ export function updateHud(
       buildReason = '部隊を端点に隣接させてください';
     else if (!crossingResearchComplete(own, view.rules, site.tier))
       buildReason = requiredResearch
-        ? `前提研究: ${researchName(requiredResearch)}`
+        ? `前提研究: ${researchName(requiredResearch, view)}`
         : '渡河設備を解放する研究がありません';
     else if (own.supplyCenti < view.rules.crossings[site.tier].costCenti)
       buildReason = '補給が不足しています';

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -21,7 +21,25 @@ try {
 } catch {
   // A source archive can still build, but cannot claim an identified clean revision.
 }
-const info = { commit, dirty, rulesVersion: 'f05-v2', schemaVersion: 11 };
+const config = readFileSync(
+  join(projectRoot, 'src/simulation/config.ts'),
+  'utf8',
+);
+const rules = readFileSync(
+  join(projectRoot, 'src/simulation/rules.ts'),
+  'utf8',
+);
+const schemaVersion = Number(
+  config.match(/export const SCHEMA_VERSION = (\d+) as const/)?.[1],
+);
+const rulesVersion = rules.match(
+  /export const RULES_VERSION = '([^']+)' as const/,
+)?.[1];
+if (!Number.isSafeInteger(schemaVersion) || rulesVersion === undefined)
+  throw new Error(
+    'Unable to read schemaVersion/rulesVersion from simulation source',
+  );
+const info = { commit, dirty, rulesVersion, schemaVersion };
 const json = JSON.stringify(info, null, 2) + '\n';
 if (process.argv.includes('--write')) {
   mkdirSync(join(projectRoot, 'dist'), { recursive: true });

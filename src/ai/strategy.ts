@@ -56,21 +56,21 @@ function factionOrderDistance(a: CombatantId, b: CombatantId): number {
 
 function researchCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
-  const order: readonly ResearchId[] = [
-    'firepower-1',
-    'bridge-2',
-    'ropeway-1',
-    'firepower-2',
-    'bridge-3',
-    'ropeway-2',
-  ];
+  const order = Object.entries(view.rules.research.definitions)
+    .sort(([idA, a], [idB, b]) => a.stage - b.stage || idA.localeCompare(idB))
+    .map(([id]) => id as ResearchId);
   const next = order.find((id) => {
     const definition = view.rules.research.definitions[id];
+    if (!definition) return false;
     return (
       !faction.completedResearchIds.includes(id) &&
       faction.activeResearch?.researchId !== id &&
-      (definition.prerequisite === null ||
-        faction.completedResearchIds.includes(definition.prerequisite))
+      definition.prerequisites.every((prerequisite) =>
+        faction.completedResearchIds.includes(prerequisite),
+      ) &&
+      !definition.exclusiveWith.some((excluded) =>
+        faction.completedResearchIds.includes(excluded),
+      )
     );
   });
   return next ? { type: 'start-research', researchId: next } : undefined;

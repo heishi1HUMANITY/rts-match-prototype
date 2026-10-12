@@ -572,6 +572,7 @@ export function rejectMessage(reason: RejectCode): string {
     QUEUE_FULL: '生産キューの上限に達しています',
     ALREADY_RESEARCHED: '完了済みの研究です',
     PREREQUISITE_MISSING: '必要な前提研究が完了していません',
+    RESEARCH_EXCLUDED: '排他関係にある研究を完了済みです',
     CROSSING_NOT_FOUND: '渡河予定地が見つかりません',
     CROSSING_TAKEN: 'すでに他陣営が所有しています',
     CROSSING_BUSY: '他陣営が建設中か、別の作業中です',
