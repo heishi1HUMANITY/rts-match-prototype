@@ -1,9 +1,9 @@
-# 実装タスクとユーザー検査
+# 実装タスクとCP検査
 
 Issue番号からの着手は [共通作業手順](ISSUE_AGENT_RUNBOOK.md)、各機能の設計・依存・実装場所・動作確認は [タスク別実装ガイド](ISSUE_IMPLEMENTATION_GUIDE.md) を参照する。
 
-この文書は仕様と受入条件を管理する。作業状態・修正履歴・検査結果は各GのGitHub Issue/PRを正とする。
-実装・検証の最新状態は各Issueを参照。進め方は [WORKFLOW.md](WORKFLOW.md) を参照。
+この文書は仕様と受入条件を管理する。進捗の唯一の正は [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) のマージ済み・プレイ検証済み2列。各Issue/PRは依存・修正履歴・根拠を保持する。
+G1〜G4は機能の区分で、ユーザー合格をマージ条件にする区切りではない。以下の検査項目はSCENARIOS/e2eへ対応付ける機能契約。ユーザー検査は [WORKFLOW.md](WORKFLOW.md) のCP票で通常1試合・確認3点にまとめる。
 
 ## GitHub索引
 
@@ -42,9 +42,9 @@ T103とT104は型・境界が決まった後だけ並列化できる。通行可
 
 ## G2 / M2: 戦略ループを手動で試せる
 
-ブランチ例: gate/g2-strategy-loop。前提: G1合格・マージ。主な編集範囲: src/simulation、src/render、src/ui、検査シナリオ・テスト・docs/project。
+ブランチ例: gate/g2-strategy-loop。前提: G1の必要契約がmainへマージ済み。主な編集範囲: src/simulation、src/render、src/ui、検査シナリオ・テスト・docs/project。
 
-G1検査待ちの先行準備は [G2設計案](preparation/G2_DESIGN.md)、[段階別指示案](preparation/G2_AGENT_INSTRUCTIONS.md)、[テスト行列案](preparation/G2_TEST_MATRIX.md) を参照。これは調査・設計であり、G2の実装着手・暫定値の採用・タスク完了を意味しない。実装前にG1合格版との差分を照合する。
+設計資料は [G2設計案](preparation/G2_DESIGN.md)、[段階別指示案](preparation/G2_AGENT_INSTRUCTIONS.md)、[テスト行列案](preparation/G2_TEST_MATRIX.md) を参照。作成当時の検査待ち・合格待ちの記述は現在のマージゲートに適用せず、実装前にmainの契約との差分を照合する。
 
 | ID   | 実装内容                                | 依存       | 技術的な完了条件                                                                                 |
 | ---- | --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
@@ -69,7 +69,7 @@ G1検査待ちの先行準備は [G2設計案](preparation/G2_DESIGN.md)、[段�
 
 具体契約は [G3_DESIGN.md](preparation/G3_DESIGN.md)、画面検査手順は [G3_SCENARIOS.md](inspection/G3_SCENARIOS.md) を参照。
 
-ブランチ例: gate/g3-npc-match。前提: G2合格・マージ。主な編集範囲: src/ai、src/simulation、src/ui、src/render、テスト・docs/project。
+ブランチ例: gate/g3-npc-match。前提: G2の必要契約がmainへマージ済み。主な編集範囲: src/ai、src/simulation、src/ui、src/render、テスト・docs/project。
 
 | ID   | 実装内容                           | 依存       | 技術的な完了条件                                                                                  |
 | ---- | ---------------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
@@ -90,7 +90,7 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## G4 / M4: 初見で遊べるUIと導入
 
-ブランチ例: gate/g4-first-play。前提: G3合格・マージ。主な編集範囲: src/ui、src/render、必要なsimulation修正・テスト・docs/project。原本mockは編集しない。
+ブランチ例: gate/g4-first-play。前提: G3の必要契約がmainへマージ済み。主な編集範囲: src/ui、src/render、必要なsimulation修正・テスト・docs/project。原本mockは編集しない。
 
 | ID   | 実装内容                               | 依存       | 技術的な完了条件                                                                                |
 | ---- | -------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
@@ -113,7 +113,7 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## 共通の技術検証
 
-F01/#13はユーザー合格・PR #31マージ済み。複数選択、一括移動/停止、部隊ごとの経路と拒否表示を用意し、[F01画面確認手順](inspection/F01_SCENARIOS.md)に沿って確認する。F02/#14は `feature/f02-target-march` で対象追跡を実装し、[F02画面確認手順](inspection/F02_SCENARIOS.md)で検査する。F18/#39の駐留機能はF05合格とF08の兵種契約後に進める。
+F01/F02は [F01シナリオ](inspection/F01_SCENARIOS.md)・[F02シナリオ](inspection/F02_SCENARIOS.md)とe2eで検証する。F18/#39の駐留機能はF05の拠点契約とF08の兵種契約に依存する。現在のマージ/プレイ検証状態は#12だけで管理する。
 
 各Gでnpm run check、npm run references:check、Windows/Linux CI、実ブラウザ操作を実施する。
 ルール変更には意味のある再現テストを追加し、900×420とPCの結果と検査対象commitを残す。

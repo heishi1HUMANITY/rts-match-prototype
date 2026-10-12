@@ -1,6 +1,7 @@
 name: 不具合
 description: 再現可能な不具合の報告
 title: '[Bug] '
+labels: ['flow:ready', 'gate:auto']
 body:
   - type: textarea
     id: steps
@@ -14,3 +15,17 @@ body:
     attributes:
       label: ログ・スクリーンショット
       description: 秘密情報は含めない
+  - type: textarea
+    id: contract
+    attributes:
+      label: 自動判定する受入条件・シナリオID・CP
+      description: 修正後の結果、SCENARIOS項目番号、所属CPを記録。設計モデルが不足を補う
+    validations:
+      required: true
+  - type: input
+    id: inspection
+    attributes:
+      label: ユーザー検査（要/不要）と理由
+      description: 操作・表示・時間/強さに触るなら要、gate:autoをgate:playへ変更
+    validations:
+      required: true

@@ -1,25 +1,35 @@
 name: 開発タスク
-description: 初期スコープに沿った実装・調査
+description: CP単位の実装・設計・採否判断
 title: '[Task] '
+labels: ['flow:ready', 'gate:auto']
 body:
   - type: textarea
     id: outcome
     attributes:
-      label: 目的と完了条件
-      description: プレイヤーが何をできれば完了か、検証方法も記載
+      label: 目的
+      description: プレイヤーができるようになること
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: 対象・対象外・参照仕様
-      description: docs/project の仕様、UI mock、編集範囲
+      label: 実装範囲
+      description: 対象・対象外・参照仕様・編集範囲。判断だけならkind:decisionを付ける
     validations:
       required: true
   - type: textarea
     id: decisions
     attributes:
-      label: 未決定事項・依存タスク
+      label: 先に決める設計事項
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 依存・受入条件
+      description: 依存は本文で管理。受入条件はID付きの自動判定できる文（例 拠点にドロップした部隊が拠点セル到達でstopする）
+    validations:
+      required: true
   - type: input
     id: gate
     attributes:
@@ -28,5 +38,31 @@ body:
   - type: textarea
     id: inspection
     attributes:
-      label: 検査シナリオ・期待結果
-      description: TASKSの検査ID、seed、操作、画面で確認できる結果
+      label: 検査シナリオID
+      description: docs/project/inspection/F0x_SCENARIOS.mdの項目番号。非該当は理由を記載
+    validations:
+      required: true
+  - type: dropdown
+    id: inspection_required
+    attributes:
+      label: ユーザー検査
+      description: 操作・表示・時間/強さに触るなら要。要ならgate:autoを外しgate:playを付ける
+      options:
+        - 要
+        - 不要
+    validations:
+      required: true
+  - type: input
+    id: inspection_reason
+    attributes:
+      label: ユーザー検査の理由
+      description: 要/不要の理由を1行
+    validations:
+      required: true
+  - type: input
+    id: cp
+    attributes:
+      label: CP
+      description: 所属チェックポイント（CP1等）と同名Milestoneへ所属させる
+    validations:
+      required: true

@@ -1,12 +1,13 @@
 name: 検査・修正指示
-description: マージ後の指摘や独立した修正。検査中の指摘は対象GのIssueコメントでも可
-title: '[Review] G_ '
+description: CPプレイ検査の結果・差し戻し。Milestone所属の検査結果Issueコメントでも可
+title: '[Review] CP_ '
+labels: ['flow:ready', 'gate:play']
 body:
   - type: input
     id: target
     attributes:
-      label: 対象G・検査回・版
-      description: 分かる範囲で可。親エージェントがcommitと紐づける
+      label: 対象CP・Issue
+      description: 分かる範囲で可。親エージェントが検査対象版と紐づける
     validations:
       required: true
   - type: textarea
@@ -28,3 +29,8 @@ body:
     id: remaining
     attributes:
       label: 未検査・補足
+  - type: textarea
+    id: contract
+    attributes:
+      label: 修正受入条件・シナリオID・CP・ユーザー検査理由
+      description: 親が報告から自動判定可能な修正条件を整理する。操作・表示・時間/強さの修正はユーザー検査要

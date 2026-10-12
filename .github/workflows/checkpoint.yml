@@ -1,0 +1,48 @@
+name: Checkpoint sync
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply changes (false prints a read-only plan)'
+        type: boolean
+        default: false
+      pr_number:
+        description: 'Optional merged PR number: replay a missed merge event'
+        type: string
+        default: ''
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+concurrency:
+  group: checkpoint-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request_target' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Always run trusted main code, never a PR head / body.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: node --test scripts/checkpoint-sync.test.mjs
+      - name: Sync merge state and checkpoint sheets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY: ${{ github.event_name == 'pull_request_target' || inputs.apply }}
+          PAGES_URL: ${{ vars.PAGES_URL }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            node scripts/checkpoint-sync.mjs --apply
+          else
+            node scripts/checkpoint-sync.mjs
+          fi

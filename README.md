@@ -1,10 +1,10 @@
 # RTS Match Prototype
 
-エージェントへの依頼は **「#30を進めて」** のようにIssue番号だけで開始できます。[共通の作業手順](docs/project/ISSUE_AGENT_RUNBOOK.md)、[各Issueの実装ガイド](docs/project/ISSUE_IMPLEMENTATION_GUIDE.md)、[前回の引き継ぎ](docs/project/AGENT_HANDOFF.md) を入口に、設計・実装・検証・PR作成と画面確認の準備まで進めます。動作確認後は「#30 OK、マージして」、修正は「#30の修正。困ったふるまい」を伝えてください。
+エージェントへの依頼は **「#30を進めて」** のようにIssue番号だけで開始できます。[共通の作業手順](docs/project/ISSUE_AGENT_RUNBOOK.md)、[各Issueの実装ガイド](docs/project/ISSUE_IMPLEMENTATION_GUIDE.md)、[引き継ぎ](docs/project/AGENT_HANDOFF.md) を入口に、設計・実装・自動検証・独立モデルレビュー・PR作成まで進めます。ユーザーのプレイ検査はマージ後のチェックポイント（CP）で1試合ずつ行います。結果は「CP0 OK」または「CP0 NG（Issue番号と困ったふるまい）」で伝えてください。
 
 ブラウザの対戦本編を新規に作るプロジェクト。目標は **プレイヤー1人＋NPC2人の 1v1v1** を、世界観の知識なしで開始・操作・終了・再戦できること。
 
-G1・G2と、NPC/決着/再戦のG3はmainへマージ済みです。必要なゲームプレイ全体は [網羅表](docs/project/GAMEPLAY_COVERAGE.md) / [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) で追跡します。建築・中立NPC・兵種/研究などを含み、最小試作だけで全体完成とはしません。複数部隊一括移動→対象追跡→マスタ管理の順に基盤を整えます。
+進捗の唯一の正は [全体Issue #12の「マージ済み」「プレイ検証済み」](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) です。[網羅表](docs/project/GAMEPLAY_COVERAGE.md) は機能と仕様参照の索引です。建築・中立NPC・兵種/研究などを含み、最小試作だけで全体完成とはしません。
 
 通常設定はNPC2陣営と5分制で対戦し、結果から再戦できます。[G3の画面確認手順](docs/project/inspection/G3_SCENARIOS.md)を参照してください。
 
@@ -31,7 +31,9 @@ npm run build
 npm run preview
 ```
 
-GitHub CI は Windows / Linux の両方で同じ検査を実行し、commit SHA付きのビルド成果物を保存します。`dist/build-info.json`にはcommit、未コミット変更の有無、ルール版、状態schema版が入ります。公開・デプロイの自動処理はありません。
+GitHub CI は Windows / Linux の両方で `npm run check` を実行し、commit SHA付きのビルド成果物を保存します。PlaywrightはPCと900×420でe2eを実行し、失敗時は診断JSON・trace・画面をartifactへ保存します。mainへのpushで検証済みdistをGitHub Pagesへ配備します。PRはartifactから確認でき、外部previewサービスは使用しません。`dist/build-info.json`にはcommit、未コミット変更の有無、ルール版、状態schema版が入ります。
+
+ゲーム画面: [GitHub Pages](https://heishi1humanity.github.io/rts-match-prototype/)（初回のPages workflow成功後に利用可能）。[CP0検査票](docs/project/inspection/CP0.md) は通常設定で1試合と確認3点だけです。詳細シナリオのe2e対応状況は [e2e/README.md](e2e/README.md) を参照してください。
 
 ## G1の操作
 
@@ -51,7 +53,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md) / [lunaへの実装指示](docs/project/G1_LUNA_INSTRUCTIONS.md): 盤面・移動・入力・検査の契約
 - [G3設計](docs/project/preparation/G3_DESIGN.md): NPCの情報制約・脱落・順位・再戦の契約
-- [G2の先行設計案](docs/project/preparation/G2_DESIGN.md): G1検査待ちに進める調査・設計。実装開始前に合格版との照合が必要
+- [G2の設計](docs/project/preparation/G2_DESIGN.md): 実装時にmainの契約と照合する設計資料
 - [AGENTS.md](AGENTS.md): エージェントの作業方針
 - [初期スコープ](docs/project/SCOPE.md): 今回作る範囲と未決定事項
 - [構成・設計](docs/project/ARCHITECTURE.md): ゲーム処理と表示の境界

@@ -1,0 +1,45 @@
+name: 採否判断
+description: 実装せずユーザーの採否を決める
+title: '[decision] '
+labels: ['kind:decision', 'flow:ready', 'gate:auto']
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 実装範囲
+      description: 実装なし。判断後に進める実装Issueを記載
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: 先に決める設計事項
+      description: 採用/代替/除外の選択肢と影響
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 依存・受入条件
+      description: ユーザーの明示判断・理由・出所を記録し実装Issueへ転記。モデルが採否を代行しない
+    validations:
+      required: true
+  - type: input
+    id: inspection
+    attributes:
+      label: ユーザー検査・理由・検査シナリオID
+      value: '不要 — 実装なし、採否判断が必要。シナリオIDは実装Issueへ記録'
+    validations:
+      required: true
+  - type: input
+    id: cp
+    attributes:
+      label: CP
+    validations:
+      required: true
