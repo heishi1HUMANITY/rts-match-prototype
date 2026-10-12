@@ -17,7 +17,7 @@
 - 部隊/拠点の所属は`CombatantId = FactionId | 'local'`、操作actorとランキングは引き続き`FactionId`とする。通常コマンドからlocalを操作できず、local部隊は共通移動・攻撃・制圧・被害計算の対象としてだけ参加する。
 - 収入、チケット、脱落、陣営平均、選択/command actor、NPC B/C方針の各集計はA/B/Cのみ。local部隊の撃破で失うticketは、既存規則に従い攻撃されたA/B/Cだけに適用する。
 - 本拠HP、初期陸上部隊、成長/生産間隔/上限、奪還報酬、本拠討伐報酬はRulesMasterの`localFaction`項目で管理する。値は単位・上限・理由を付けて検証し、新規試合のsnapshotに固定する。
-- 現行の`localFaction`設定はマスタ管理画面で個別に編集でき、部隊成長は既存のHP・攻撃力計算に反映する。F06では既定の強さを変更しない。兵種別の現地勢力専用性能、編成やAIの強さ調整・比較検証は[F19 / Issue #42](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/42)で拡張する。
+- 現行の`localFaction`設定はマスタ管理画面で個別に編集でき、部隊成長は既存のHP・攻撃力計算に反映する。F06では既定の強さを変更しない。兵種別の現地勢力専用性能、編成やAIの強さ調整・比較検証は[F20 / Issue #42](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/42)で拡張する。
 
 ## 戦闘・侵攻・制圧
 

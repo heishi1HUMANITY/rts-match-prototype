@@ -35,7 +35,8 @@ G1〜G4は最小の試作・検査手順として作った区切りであり、�
 | F16 | [首都再建・試合フェーズ・脱落と全要素のバランス再設計](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/28) | 旧仕様3.1/3.5/3.7、G3暫定契約             | 未実装・設計対象         |
 | F17 | [ゲームパラメータのマスタ管理](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/30)                         | 今回のユーザー追加指示                    | 未実装・設計対象         |
 | F18 | [拠点への自部隊駐留と拠点防衛](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/39)                         | 2026-10-12ユーザー指示                    | 未実装・設計対象         |
-| F19 | [現地勢力の強さ調整と検証](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/42)                             | F06の後続調整依頼                         | 未実装・backlog          |
+| F19 | [拠点制圧後の再稼働HP率をマスタ設定](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/40)                   | F16の拠点調整                             | 未実装・backlog          |
+| F20 | [現地勢力の強さ調整と検証](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/42)                             | F06の後続調整依頼                         | 未実装・backlog          |
 
 既存G4/#5は、ミニマップ、敵詳細、建築/強化/渡河ポップ、研究・部隊・戦況・結果詳報、ガイド、PC/横持ち/タッチ、最終3D表示の読みやすさを全機能に対応させる。合格時に機能のない画面だけを完成扱いしない。
 

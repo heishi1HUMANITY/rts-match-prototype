@@ -109,7 +109,7 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## 最小試作に続くゲームプレイ全体
 
-2026-10-11以降のユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F18で追跡する。建築・中立NPC・自部隊の拠点駐留を後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
+2026-10-11以降のユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F20で追跡する。建築・中立NPC・自部隊の拠点駐留を後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
 
 ## 共通の技術検証
 
