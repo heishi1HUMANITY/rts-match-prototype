@@ -135,6 +135,9 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
     factions,
     units,
     bases,
+    facilities: state.facilities.filter(
+      (facility) => !newlyEliminated.has(facility.owner),
+    ),
     phase: result === null ? 'running' : 'finished',
     result,
   };

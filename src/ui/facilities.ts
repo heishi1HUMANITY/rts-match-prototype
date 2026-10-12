@@ -3,6 +3,7 @@ import type {
   FacilityKind,
   FactionView,
 } from '../simulation/types';
+import { facilityCandidateCells } from '../simulation/facilities';
 
 export const FACILITY_NAMES: Readonly<Record<FacilityKind, string>> = {
   turret: '砲座',
@@ -117,12 +118,7 @@ export function facilityBuildReason(
       : null);
   if (
     !center ||
-    ![
-      { x: center.x, y: center.y - 1 },
-      { x: center.x + 1, y: center.y },
-      { x: center.x, y: center.y + 1 },
-      { x: center.x - 1, y: center.y },
-    ].some(
+    !facilityCandidateCells(center, site ? [site.bankA, site.bankB] : []).some(
       (cell) =>
         cell.x >= 0 &&
         cell.y >= 0 &&

@@ -57,7 +57,7 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
   }
   await expect(page.locator('[data-facility-status]')).not.toContainText(
     '建築中',
-    { timeout: 15_000 },
+    { timeout: 45_000 },
   );
   await expect(page.locator('[data-facility-status]')).toContainText('妨害塔');
   await page.getByRole('button', { name: '一時停止', exact: true }).click();

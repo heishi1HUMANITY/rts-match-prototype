@@ -730,13 +730,12 @@ export function validateEnvelope(
           writable: true,
         });
       // F21 preserves arbitrary existing nodes and deliberate removals. Only
-      // newly introduced F11 facility definitions are supplemented for schema12.
-      if (input.masterSchemaVersion === 12)
-        for (const [id, definition] of Object.entries(
-          DEFAULT_RULES.research.definitions,
-        ))
-          if (id.startsWith('facility-') && !Object.hasOwn(converted, id))
-            converted[id] = definition;
+      // newly introduced F11 facility definitions are supplemented for both versions.
+      for (const [id, definition] of Object.entries(
+        DEFAULT_RULES.research.definitions,
+      ))
+        if (id.startsWith('facility-') && !Object.hasOwn(converted, id))
+          converted[id] = definition;
     } else if (oldDefinitions) {
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         if (Object.hasOwn(converted, id))

@@ -17,6 +17,7 @@ import {
 import { stepMatch } from './step';
 import { validateEnvelope } from './rules-validation';
 import { DEFAULT_RULES } from './rules';
+import { resolveMatchOutcome } from './outcome';
 import type {
   FacilityKind,
   FacilityState,
@@ -72,6 +73,66 @@ function visible(s: MatchState): MatchState {
   return { ...s, knowledge: updateFactionKnowledge(s) };
 }
 describe('F11 facilities', () => {
+  it('keeps both crossing slots through dismantling and removes them on elimination', () => {
+    let state = createMatch(42, { scenarioId: 'f11-facilities' });
+    const site = state.map.crossingSites!.find(
+      (entry) => entry.id === 'CROSS-RING-N',
+    )!;
+    state = {
+      ...state,
+      phase: 'running',
+      crossings: state.crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? { ...crossing, owner: 'A', hp: 100, job: null }
+          : crossing,
+      ),
+    };
+    const anchor = { kind: 'crossing' as const, id: site.id };
+    for (const kind of ['turret', 'mine'] as const) {
+      const result = beginFacilityBuild(state, 'A', kind, anchor);
+      expect(result.ok).toBe(true);
+      state = result.state;
+    }
+    expect(
+      new Set(
+        state.facilities.map((entry) => `${entry.cell.x},${entry.cell.y}`),
+      ).size,
+    ).toBe(2);
+    const dismantling: MatchState = {
+      ...state,
+      crossings: state.crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? {
+              ...crossing,
+              job: {
+                kind: 'dismantle',
+                builderUnitId: 'A-01',
+                factionId: 'A',
+                requiredTicks: 10,
+                paidCostCenti: 0,
+                progressTicks: 0,
+              },
+            }
+          : crossing,
+      ),
+    };
+    expect(cleanupFacilities(dismantling).facilities).toHaveLength(2);
+    expect(
+      beginFacilityBuild(dismantling, 'A', 'jammer', anchor),
+    ).toMatchObject({ ok: false, state: dismantling });
+    const eliminated = resolveMatchOutcome({
+      ...state,
+      factions: state.factions.map((faction) =>
+        faction.id === 'A' ? { ...faction, ticketsCenti: 0 } : faction,
+      ),
+    });
+    expect(
+      eliminated.factions.find((entry) => entry.id === 'A')!.eliminatedAtTick,
+    ).not.toBeNull();
+    expect(eliminated.facilities).toEqual([]);
+    const stale = { ...eliminated, facilities: state.facilities };
+    expect(cleanupFacilities(stale).facilities).toEqual([]);
+  });
   it('rejects locked research, duplicates, resource deficits and invalid anchors without mutation; charges once', () => {
     let s = fixture();
     const base = s.bases.find((b) => b.owner === 'A')!;

@@ -511,7 +511,7 @@ describe('F11 and F21 combined migration contract', () => {
           result.envelope.rules.research.definitions,
           'facility-turret',
         ),
-      ).toBe(version === 12);
+      ).toBe(true);
       expect(result.envelope.rules.facilities).toEqual(
         DEFAULT_RULES.facilities,
       );

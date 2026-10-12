@@ -21,6 +21,11 @@ export function facilityAnchorCell(
   owner: FactionId,
   anchor: FacilityAnchor,
 ): Cell | null {
+  if (
+    state.factions.find((faction) => faction.id === owner)?.eliminatedAtTick !==
+    null
+  )
+    return null;
   if (anchor.kind === 'base') {
     const base = state.bases.find((b) => b.id === anchor.id);
     return base?.owner === owner && base.hp > 0 ? base.cell : null;
@@ -29,10 +34,25 @@ export function facilityAnchorCell(
   const site = state.map.crossingSites?.find((s) => s.id === anchor.id);
   return crossing?.owner === owner &&
     crossing.hp > 0 &&
-    crossing.job === null &&
+    crossing.job?.kind !== 'build' &&
     site
     ? (site.cells[Math.floor(site.cells.length / 2)] ?? site.bankA)
     : null;
+}
+export function facilityCandidateCells(
+  center: Cell,
+  banks: readonly Cell[] = [],
+): readonly Cell[] {
+  const adjacent = (cell: Cell): Cell[] => [
+    { x: cell.x, y: cell.y - 1 },
+    { x: cell.x + 1, y: cell.y },
+    { x: cell.x, y: cell.y + 1 },
+    { x: cell.x - 1, y: cell.y },
+  ];
+  return [
+    ...adjacent(center),
+    ...banks.flatMap((bank) => [bank, ...adjacent(bank)]),
+  ];
 }
 /** Fixed public terrain order; enemy occupancy never changes acceptance or placement. */
 export function facilityPlacement(
@@ -42,12 +62,14 @@ export function facilityPlacement(
 ): Cell | null {
   const center = facilityAnchorCell(state, owner, anchor);
   if (!center) return null;
-  const candidates = [
-    { x: center.x, y: center.y - 1 },
-    { x: center.x + 1, y: center.y },
-    { x: center.x, y: center.y + 1 },
-    { x: center.x - 1, y: center.y },
-  ];
+  const site =
+    anchor.kind === 'crossing'
+      ? state.map.crossingSites?.find((site) => site.id === anchor.id)
+      : null;
+  const candidates = facilityCandidateCells(
+    center,
+    site ? [site.bankA, site.bankB] : [],
+  );
   return (
     candidates.find(
       (c) =>
@@ -70,6 +92,12 @@ export function validateFacilityBuild(
 ): RejectCode | null {
   if (!FACILITY_KINDS.includes(kind)) return 'INVALID_FACILITY_KIND';
   if (!facilityAnchorCell(state, actor, anchor))
+    return 'FACILITY_ANCHOR_UNAVAILABLE';
+  if (
+    anchor.kind === 'crossing' &&
+    state.crossings.find((crossing) => crossing.siteId === anchor.id)?.job !==
+      null
+  )
     return 'FACILITY_ANCHOR_UNAVAILABLE';
   if (
     anchor.kind === 'base' &&
