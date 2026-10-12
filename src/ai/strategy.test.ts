@@ -2,10 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { decideBotCommands } from './strategy';
 import { createMatch } from '../simulation/match';
 import { getFactionView } from '../simulation/view';
+import { applyCommand } from '../simulation/commands';
 import type { FactionView, MatchState } from '../simulation/types';
 
 function running(state: MatchState): MatchState {
-  return { ...state, phase: 'running' };
+  return {
+    ...state,
+    phase: 'running',
+    rules: {
+      ...state.rules,
+      npc: { ...state.rules.npc, maxCommandsPerDecision: 8 },
+    },
+  };
 }
 
 function replaceOwnFaction(
@@ -245,8 +253,106 @@ describe('stateless faction-view NPC policy', () => {
     expect(decideBotCommands(limited)).toHaveLength(1);
   });
 
+  it.each([1, 2])(
+    'gives every unit a turn with a %i-command budget despite continuous economy candidates',
+    (maxCommandsPerDecision) => {
+      const initial = getFactionView(running(createMatch(45)), 'B');
+      const ownUnits = Array.from({ length: 4 }, (_, index) => ({
+        ...initial.ownUnits[0]!,
+        id: `B-${index}`,
+      }));
+      const limited = {
+        ...initial,
+        ownUnits,
+        rules: {
+          ...initial.rules,
+          npc: {
+            ...initial.rules.npc,
+            decisionIntervalTicks: 30,
+            maxCommandsPerDecision,
+          },
+        },
+      };
+      const moved = new Set<string>();
+      const economicTypes = new Set<string>();
+      for (let decision = 0; decision < ownUnits.length + 3; decision += 1) {
+        const view = { ...limited, tick: decision * 30 };
+        const commands = decideBotCommands(view);
+        expect(commands.length).toBeLessThanOrEqual(maxCommandsPerDecision);
+        expect(commands).toEqual(decideBotCommands(view));
+        for (const command of commands) {
+          if (command.type === 'march') moved.add(command.unitId);
+          else economicTypes.add(command.type);
+        }
+      }
+      expect([...moved].sort()).toEqual(ownUnits.map(({ id }) => id));
+      expect(economicTypes).toContain('enqueue-production');
+      expect(economicTypes).toContain('start-research');
+    },
+  );
+
+  it('lets active research finish instead of switching to a different topic', () => {
+    const initial = getFactionView(running(createMatch(45)), 'B');
+    const charging = replaceOwnFaction(initial, {
+      activeResearch: { researchId: 'firepower-1' },
+    });
+    for (let decision = 0; decision < 8; decision += 1) {
+      expect(
+        decideBotCommands({
+          ...charging,
+          tick: decision * charging.rules.npc.decisionIntervalTicks,
+        }).some(({ type }) => type === 'start-research'),
+      ).toBe(false);
+    }
+    const finished = replaceOwnFaction(charging, {
+      activeResearch: null,
+      completedResearchIds: ['firepower-1'],
+    });
+    expect(decideBotCommands(finished)).toContainEqual({
+      type: 'start-research',
+      researchId: 'survey-1',
+    });
+  });
+
+  it('applies limited orders through shared validation and keeps every unit marching without reissuing orders', () => {
+    const initial = running(createMatch(45));
+    let state: MatchState = {
+      ...initial,
+      rules: {
+        ...initial.rules,
+        npc: {
+          ...initial.rules.npc,
+          decisionIntervalTicks: 30,
+          maxCommandsPerDecision: 1,
+        },
+      },
+    };
+    const ownIds = state.units
+      .filter(({ factionId }) => factionId === 'B')
+      .map(({ id }) => id);
+    const commanded = new Set<string>();
+    for (let decision = 0; decision < 16; decision += 1) {
+      state = { ...state, elapsedTicks: decision * 30 };
+      for (const command of decideBotCommands(getFactionView(state, 'B'))) {
+        if (command.type === 'march') {
+          expect(commanded.has(command.unitId)).toBe(false);
+          commanded.add(command.unitId);
+        }
+        const result = applyCommand(state, 'B', command);
+        expect(result.ok).toBe(true);
+        state = result.state;
+      }
+    }
+    expect([...commanded].sort()).toEqual(ownIds.sort());
+    expect(
+      state.units
+        .filter(({ factionId }) => factionId === 'B')
+        .every(({ marchOrder }) => marchOrder !== null),
+    ).toBe(true);
+  });
+
   it('uses only its owned-base view and emits the shared upgrade command', () => {
-    const initial = createMatch(42);
+    const initial = running(createMatch(42));
     const state = {
       ...initial,
       phase: 'running' as const,
