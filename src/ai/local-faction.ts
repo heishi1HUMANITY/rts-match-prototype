@@ -44,7 +44,7 @@ function routeLength(
 ): number | null {
   const route = findPath(state.map, currentCell(unit), goal, {
     factionId: 'local',
-    domain: unitCapabilities(unit.kind).movementDomain,
+    domain: unitCapabilities(unit.kind, state.rules).movementDomain,
     crossings: knownActiveCrossings(state, 'local'),
     unitKind: unit.kind,
     allowBlockedStart: true,

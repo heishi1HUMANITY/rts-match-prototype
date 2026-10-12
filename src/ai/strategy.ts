@@ -172,7 +172,7 @@ function nearestReachableGoal(
       base,
       route: findPath(view.map, from, base.cell, {
         factionId: view.viewerFactionId,
-        domain: unitCapabilities(unit.kind).movementDomain,
+        domain: unitCapabilities(unit.kind, view.rules).movementDomain,
         crossings: knownActiveCrossings(view),
         unitKind: unit.kind,
       }),
@@ -214,7 +214,7 @@ function crossingConstructionCommand(
         bank,
         route: findPath(view.map, currentCell(unit), bank, {
           factionId: view.viewerFactionId,
-          domain: unitCapabilities(unit.kind).movementDomain,
+          domain: unitCapabilities(unit.kind, view.rules).movementDomain,
           crossings: knownActiveCrossings(view),
           unitKind: unit.kind,
           allowBlockedStart: true,
@@ -344,7 +344,7 @@ function unitMoveCommand(
   unit: OwnUnitView,
 ): Command | undefined {
   const factionId = view.viewerFactionId;
-  if (unitCapabilities(unit.kind).movementDomain === 'water') {
+  if (unitCapabilities(unit.kind, view.rules).movementDomain === 'water') {
     const from = currentCell(unit);
     const enemyGoal = view.visibleEnemies
       .filter((enemy) => enemy.factionId !== factionId)
@@ -419,7 +419,7 @@ function unitMoveCommand(
       : proposedDefense &&
           findPath(view.map, currentCell(unit), proposedDefense.cell, {
             factionId: view.viewerFactionId,
-            domain: unitCapabilities(unit.kind).movementDomain,
+            domain: unitCapabilities(unit.kind, view.rules).movementDomain,
             crossings: knownActiveCrossings(view),
             unitKind: unit.kind,
           })

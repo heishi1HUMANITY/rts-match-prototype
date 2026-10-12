@@ -56,6 +56,12 @@ export interface ResearchEffect {
 export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
 export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
 export type MovementDomain = 'land' | 'air' | 'water';
+export type CombatTargetKind =
+  | 'unit'
+  | 'defender'
+  | 'base'
+  | 'crossing'
+  | 'stronghold';
 export type EliminationReason = 'tickets' | 'forces';
 
 export interface EliminationStatus {
@@ -229,7 +235,7 @@ export interface BaseState {
   readonly hp: number;
   readonly maxHp: number;
   readonly captureCandidate: CombatantId | null;
-  readonly captureTicks: number;
+  readonly captureProgressCentiTicks: number;
   /** Neutral garrison; it is not a faction and never participates in standings. */
   readonly defender: NeutralDefenderState | null;
   /** True after a local-faction base is destroyed and while it awaits recapture. */
@@ -265,7 +271,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 14;
+  readonly schemaVersion: 16;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -329,7 +335,7 @@ export interface VisibleBaseView {
   readonly hp: number;
   readonly maxHp: number;
   readonly captureCandidate: CombatantId | null;
-  readonly captureTicks: number;
+  readonly captureProgressCentiTicks: number;
   readonly defenderHp: number | null;
   readonly defenderMaxHp: number | null;
 }

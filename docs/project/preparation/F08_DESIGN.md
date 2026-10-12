@@ -27,11 +27,11 @@
 
 ## 生産とマスタ
 
-- RulesMasterの全6兵種に領域、target별整数damage、HP、射程、視界、tick/セル、費用、生産tick、維持費、損失ticket、解放研究IDを定義する。各MatchState.rulesへ複製され、試合中不変。
+- RulesMasterの全6兵種に領域、攻撃対象Entity集合（部隊/中立守備/拠点/渡河設備/現地本拠）、制圧可否、制圧効率%、対象別整数damage、HP、射程、視界、tick/セル、費用、生産tick、維持費、損失ticket、解放研究IDを定義する。攻撃対象集合・制圧可否・制圧効率はマスタで兵種別に編集でき、各MatchState.rulesへ複製されて試合中不変。Entity対象に含めても対応damageが0なら攻撃しない。制圧効率は1部隊の標準進捗に対する百分率で、複数部隊の値は加算する。100%が標準、200%なら1部隊で半分の時間、0%なら進捗しない。
 - 強襲/偵察は開始時配備・生産可能。追加兵種は対応するunit-unlock研究の完了後にcommandで生産可能。拒否は資源・ID・queueを変えない。
 - 陸/空は所有中で稼働するHQから出現し、水は自陣PORTから出現する。既存の生産commandのproduction site IDをHQ/PORT共通にし、portのセルに部隊をspawnする。未所有・未稼働・港不存在は理由付きで拒否。
 - 生産UIはHQ/港選択と6兵種カードを表示する。未研究、資源不足、上限、queue、港なしを区別する。B/Cも同じcommandと資源制約を使い、利用可能な研究と港からロスターを選ぶ。
-- RulesMaster schema 8、MatchState schema 14 / `f08-v1`。schema 7 masterから編集済み既存値を保持し、新3兵種と解放研究は既定値で補う一方向migrationを行う。schema 6以下の既存migration経路は維持する。schema13以前の診断replayは暗黙互換しない。diagnosticsに完全master snapshot/content IDを残す。
+- RulesMaster schema 10、MatchState schema 16 / `f08-v3`。schema 9以前のmasterから編集済み既存値を保持し、制圧効率は100%で補う。schema 8以前は新3兵種・解放研究・攻撃対象集合・制圧フラグも既定値で補う一方向migrationを行う。schema 7以下の既存migration経路は維持する。schema15以前の診断replayは暗黙互換しない。diagnosticsに完全master snapshot/content IDを残す。
 
 ## 戦闘・回復・制圧・ticket
 
@@ -39,7 +39,7 @@
 - targetごとに攻撃可能か判定する。march targetが攻撃不能なら射程内の別の有効対象へ通常優先で切り替える。攻撃不能な敵のHP/存在を新たに知るための情報漏洩を作らない。
 - damage bonus研究は全兵種の有効damageへ加算し、対象別基礎damageが0の攻撃を解放しない。local factionの現行growth倍率を含め、固定小数の丸めをテストする。
 - 中立defender/既存守備は陸・空・水を攻撃できる。F08で追加する兵種に固有の半減は設定しない。拠点上の非戦闘回復はHP上限まで、10tickごとに `ceil(maxHp×4/100)` とし、HQ中心の半径3セル以内で移動中でなく、直前tickにdamageを受けていない部隊に適用する。回復は同tickのcombatより後。
-- 陸上で `canCaptureBase` がtrueの部隊だけが制圧できる。air/waterは拠点・守備へdamageを与えられるが所有を変えない。哨戒艇は水路上の橋/索道を攻撃でき、HP0で予定地へ戻す。その他の水上部隊はF08に存在しない。
+- `canCaptureBase` がtrueで制圧効率が0より大きい部隊が制圧する。各部隊の百分率を合算し、必要制圧tickに対する進捗へ加算する。air/waterは既定で制圧不可だが、マスタで可否・効率を個別設定できる。哨戒艇は水路上の橋/索道を攻撃でき、HP0で予定地へ戻る。その他の水上部隊はF08に存在しない。
 - unit lossは兵種ごとのticket値を適用し、既存のHQ損失・試合結果条件を維持する。上限までの回復・同時撃破・local unitのticket非加算をテストする。
 
 ## 情報・表示・検査

@@ -16,10 +16,16 @@ import {
   RESEARCH_DEFINITIONS,
   type ResearchDefinition,
 } from './config';
-import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
+import type {
+  BaseKind,
+  CombatTargetKind,
+  CrossingTierId,
+  ResearchId,
+  UnitKind,
+} from './types';
 
-export const MASTER_SCHEMA_VERSION = 8 as const;
-export const RULES_VERSION = 'f08-v1' as const;
+export const MASTER_SCHEMA_VERSION = 10 as const;
+export const RULES_VERSION = 'f08-v3' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -34,6 +40,9 @@ export interface RulesMaster {
         readonly upkeepCentiPerTick: number;
         readonly moveTicksPerCell: number;
         readonly movementDomain: 'land' | 'air' | 'water';
+        readonly attackTargets: readonly CombatTargetKind[];
+        readonly canCaptureBase: boolean;
+        readonly captureEfficiencyPercent: number;
         readonly damageVsLand: number;
         readonly damageVsAir: number;
         readonly damageVsWater: number;
@@ -162,6 +171,9 @@ export const DEFAULT_RULES: RulesMaster = {
                 ? 3
                 : MOVE_TICKS_PER_CELL,
           movementDomain: stats.movementDomain,
+          attackTargets: [...stats.attackTargets],
+          canCaptureBase: stats.canCaptureBase,
+          captureEfficiencyPercent: 100,
           damageVsLand: stats.damageVsLand,
           damageVsAir: stats.damageVsAir,
           damageVsWater: stats.damageVsWater,
@@ -171,7 +183,7 @@ export const DEFAULT_RULES: RulesMaster = {
         },
       ];
     }),
-  ) as RulesMaster['units'],
+  ) as unknown as RulesMaster['units'],
   bases: {
     hq: { ...BASE_STATS.hq, ticketWeight: 0 },
     outpost: { ...BASE_STATS.outpost, ticketWeight: 1 },

@@ -174,7 +174,7 @@ describe('V06 view-only render frames', () => {
         hp: 0,
         maxHp: 100,
         captureCandidate: 'A',
-        captureTicks: 12,
+        captureProgressCentiTicks: 1200,
         defenderHp: 0,
         defenderMaxHp: 60,
       }),

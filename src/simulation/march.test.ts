@@ -427,14 +427,14 @@ describe('deterministic march updates', () => {
       owner: null,
       hp: 0,
       captureCandidate: 'A',
-      captureTicks: 1,
+      captureProgressCentiTicks: 100,
     });
     for (let tick = 0; tick < 30; tick += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
       hp: 30,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
     expect(unit(state, 'A-01').marchOrder?.target).toEqual({
       kind: 'base',

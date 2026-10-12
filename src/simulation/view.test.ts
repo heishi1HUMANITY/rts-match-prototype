@@ -237,6 +237,6 @@ describe('faction visibility and view isolation', () => {
       hp: 100,
       selfReportedLost: true,
     });
-    expect(lost).not.toHaveProperty('captureTicks');
+    expect(lost).not.toHaveProperty('captureProgressCentiTicks');
   });
 });

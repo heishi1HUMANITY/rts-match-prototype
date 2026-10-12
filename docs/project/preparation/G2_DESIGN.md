@@ -34,7 +34,7 @@ G2では視界・地形を全陣営で共通に制約する。勝敗・脱落・
 
 - `FactionState`: id/controller、supplyCenti、researchCenti、ticketsCenti、productionJobs、activeResearch、researchProgressCenti、completedResearchIds、nextUnitSerial、nextJobSerial。
 - `UnitState`: G1のid/factionId/cell/path/edgeProgressにkind、hp、maxHpを追加。初期01=強襲、02=偵察。IDは陣営内の単調増加番号で、撃破・取消後に再利用しない。
-- `BaseState`: id、kind(`hq`/`outpost`)、cell、owner(`FactionId`/null)、hp、maxHp、captureCandidate、captureTicks。首都の元陣営は変更不可のフィールドで保持。
+- `BaseState`: id、kind(`hq`/`outpost`)、cell、owner(`FactionId`/null)、hp、maxHp、captureCandidate、captureProgressCentiTicks。首都の元陣営は変更不可のフィールドで保持。
 - `FactionKnowledge`: visible/exploredの行優先1600要素と、拠点のlastSeen情報（owner、hp、seenTick）。未観測と観測済みを区別する。
 - `MatchState`: 上記に加え、scenarioIdとG1のseed/map/phase/elapsedTicksを保持。すべてJSON化可能。DOM・Three.js・時刻APIを含めない。
 - `createMatch(seed, { scenarioId })`、`applyCommand(state, actor, unknown)`、`stepMatch(state)`、`getFactionView(state, actor)`を公開する。scenarioIdは列挙済みIDのみ。未指定は通常設定。
@@ -88,7 +88,7 @@ G1合格版の初期部隊位置を維持する前提案。首都はA(6,34)、B(
 - 敵: 可視判定を通過した生存部隊のID/factionId/kind/2倍整数位置/HP/maxHPのみ。経路・目的地・キュー・資源・研究・非可視部隊IDは含めない。DTOは列挙したfieldだけを構築し、元UnitStateのspread/Omitで作らない。
 - 非可視拠点: `unknown / remembered / visible / owned`で判別する型を使い、未観測のunknownをowner=null（中立）と混同しない。既観測ならlastSeenと観測tickを返し、現在値のように表示しない。自軍が所有を失った拠点は自軍報告として喪失だけ通知し、記憶にselfReportedLost=trueを付ける。新所有者は可視になるまで更新しない。
 
-拠点のvisible/owned DTOにはowner/hp/maxHp/captureCandidate/captureTicksを含め、現在進捗を表示する。rememberedは観測時owner/hp/seenTickだけとし、制圧進捗は保持・表示しない。unknownはこれらの動的項目を持たない。
+拠点のvisible/owned DTOにはowner/hp/maxHp/captureCandidate/captureProgressCentiTicksを含め、現在進捗を表示する。rememberedは観測時owner/hp/seenTickだけとし、制圧進捗は保持・表示しない。unknownはこれらの動的項目を持たない。
 
 rendererとHUDの通常入力をFactionViewへ変更する。`MatchState`を渡して各所でfilterする設計は採用しない。敵の線・目的地・非表示DOMラベル・pick・通知にも非可視情報を渡さない。霧は未探索を濃色、探索済み非可視を薄色で覆い、所有拠点は自軍報告として操作できる。
 

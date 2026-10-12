@@ -1,7 +1,7 @@
 import { DEFAULT_RULES, MASTER_SCHEMA_VERSION } from './rules';
 import type { MasterEnvelope, RulesMaster } from './rules';
 import type { ResearchDefinition } from './config';
-import type { CrossingTierId, ResearchEffect } from './types';
+import type { CombatTargetKind, CrossingTierId, ResearchEffect } from './types';
 
 export interface ValidationIssue {
   readonly key: string;
@@ -164,6 +164,25 @@ export function validateRules(input: unknown): ValidationResult {
           };
         });
       }
+      if (path.endsWith('.attackTargets')) {
+        const allowed: readonly CombatTargetKind[] = [
+          'unit',
+          'defender',
+          'base',
+          'crossing',
+          'stronghold',
+        ];
+        const targets = value.filter(
+          (entry): entry is CombatTargetKind =>
+            typeof entry === 'string' &&
+            allowed.includes(entry as CombatTargetKind),
+        );
+        if (targets.length !== value.length)
+          issues.push({ key: path, message: '未対応の攻撃対象種類です' });
+        if (new Set(targets).size !== targets.length)
+          issues.push({ key: path, message: '攻撃対象を重複指定できません' });
+        return targets;
+      }
       const values = value.filter(
         (entry): entry is string => typeof entry === 'string',
       );
@@ -219,14 +238,16 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
-          const max = fieldPath.endsWith('timeLimitTicks')
-            ? 100_000_000
-            : fieldPath.endsWith('moveTicksPerCell') ||
-                fieldPath.endsWith('decisionIntervalTicks') ||
-                fieldPath.endsWith('updateIntervalTicks') ||
-                fieldPath.endsWith('requiredTicks')
-              ? 10_000
-              : 1_000_000_000;
+          const max = fieldPath.endsWith('captureEfficiencyPercent')
+            ? 1_000
+            : fieldPath.endsWith('timeLimitTicks')
+              ? 100_000_000
+              : fieldPath.endsWith('moveTicksPerCell') ||
+                  fieldPath.endsWith('decisionIntervalTicks') ||
+                  fieldPath.endsWith('updateIntervalTicks') ||
+                  fieldPath.endsWith('requiredTicks')
+                ? 10_000
+                : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -422,7 +443,9 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 4 &&
       input.masterSchemaVersion !== 5 &&
       input.masterSchemaVersion !== 6 &&
-      input.masterSchemaVersion !== 7)
+      input.masterSchemaVersion !== 7 &&
+      input.masterSchemaVersion !== 8 &&
+      input.masterSchemaVersion !== 9)
   )
     return {
       ok: false,
@@ -523,7 +546,12 @@ export function validateEnvelope(
       string,
       ResearchDefinition
     >;
-    if (oldDefinitions && input.masterSchemaVersion !== 7) {
+    if (
+      oldDefinitions &&
+      input.masterSchemaVersion !== 7 &&
+      input.masterSchemaVersion !== 8 &&
+      input.masterSchemaVersion !== 9
+    ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
         if (!converted[id]) {

@@ -203,7 +203,7 @@ describe('G3 simultaneous elimination and result', () => {
       hp: 100,
       defender: { hp: 60, maxHp: 60, disabledTicks: 0 },
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
     expect(cleaned.bases.find(({ id }) => id === 'HQ-A')).toMatchObject({
       owner: 'A',

@@ -34,13 +34,13 @@ F17 v1は既存の兵種・研究IDのパラメータ編集が対象で、兵種
 
 2026-10-12のユーザー修正依頼との照合で、この分担を確認した。現行PRでは型の追加機能を先取りせず、F08/F09の各Issueで実装する。
 
-| 分類     | 調整対象（内部の単位）                                                                                                          | 既定値の根拠                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| unit     | maxHp/baseDamage/range/vision/costCenti/buildTicks/upkeepCentiPerTick/moveTicksPerCell、陣営全体の部隊上限とキュー上限          | 基点のUNIT_STATS、MOVE_TICKS_PER_CELL、UNIT_LIMIT、PRODUCTION_QUEUE_LIMIT |
-| base     | maxHp/vision/supplyIncomeCentiPerTick/researchIncomeCentiPerTick/ticketWeight、captureTicks/captureRadius、拠点差のチケット係数 | BASE_STATS、capture/ticketsの実装                                         |
-| research | costCenti/prerequisite/damageBonus、基本研究収入Centi/tick                                                                      | RESEARCH_DEFINITIONS、BASE_RESEARCH_INCOME_CENTI_PER_TICK                 |
-| match    | timeLimitTicks、initialSupplyCenti/initialResearchCenti/initialTicketsCenti、unitLossTicketsCenti/hqLossTicketsCenti            | config、match、tickets、outcome                                           |
-| npc      | decisionIntervalTicks、現在の防衛判断距離等の方針パラメータ                                                                     | runtime/advance、ai/strategyの直書き値も棚卸し                            |
+| 分類     | 調整対象（内部の単位）                                                                                                                       | 既定値の根拠                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| unit     | maxHp/baseDamage/range/vision/costCenti/buildTicks/upkeepCentiPerTick/moveTicksPerCell、陣営全体の部隊上限とキュー上限                       | 基点のUNIT_STATS、MOVE_TICKS_PER_CELL、UNIT_LIMIT、PRODUCTION_QUEUE_LIMIT |
+| base     | maxHp/vision/supplyIncomeCentiPerTick/researchIncomeCentiPerTick/ticketWeight、captureProgressCentiTicks/captureRadius、拠点差のチケット係数 | BASE_STATS、capture/ticketsの実装                                         |
+| research | costCenti/prerequisite/damageBonus、基本研究収入Centi/tick                                                                                   | RESEARCH_DEFINITIONS、BASE_RESEARCH_INCOME_CENTI_PER_TICK                 |
+| match    | timeLimitTicks、initialSupplyCenti/initialResearchCenti/initialTicketsCenti、unitLossTicketsCenti/hqLossTicketsCenti                         | config、match、tickets、outcome                                           |
+| npc      | decisionIntervalTicks、現在の防衛判断距離等の方針パラメータ                                                                                  | runtime/advance、ai/strategyの直書き値も棚卸し                            |
 
 拠点重み`ticketWeight`は現行の首都0/稼働前哨拠点1を既定値とし、`tickets.ts`の固定加算をマスタ参照へ移す。生存軍・所有・稼働状態の条件は維持する。重みと差分係数・上限は別項目とし、変更時の圧力計算と画面表示が一致することを検証する。
 

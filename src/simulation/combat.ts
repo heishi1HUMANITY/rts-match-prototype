@@ -75,7 +75,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   const preferred = visibleMarchCombatTarget(state, attacker);
   if (
     preferred?.kind === 'unit' &&
-    unitCapabilities(attacker.kind).attackTargets.includes('unit')
+    unitCapabilities(attacker.kind, state.rules).attackTargets.includes('unit')
   ) {
     const target = state.units.find(({ id }) => id === preferred.id);
     if (
@@ -102,7 +102,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     if (base !== undefined) {
       if (base.defender && base.defender.hp > 0) {
         if (
-          unitCapabilities(attacker.kind).attackTargets.includes('defender') &&
+          unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+            'defender',
+          ) &&
           state.rules.units[attacker.kind].damageVsStructure > 0
         )
           return {
@@ -116,7 +118,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
             ),
           };
       } else if (
-        unitCapabilities(attacker.kind).attackTargets.includes('base') &&
+        unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+          'base',
+        ) &&
         state.rules.units[attacker.kind].damageVsStructure > 0
       ) {
         return {
@@ -134,7 +138,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   }
   const units = state.units
     .filter(() =>
-      unitCapabilities(attacker.kind).attackTargets.includes('unit'),
+      unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+        'unit',
+      ),
     )
     .filter(
       (target) => target.factionId !== attacker.factionId && target.hp > 0,
@@ -193,13 +199,17 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     .sort(compareTarget);
   if (
     defenders[0] &&
-    unitCapabilities(attacker.kind).attackTargets.includes('defender') &&
+    unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+      'defender',
+    ) &&
     state.rules.units[attacker.kind].damageVsStructure > 0
   )
     return defenders[0];
   const bases = state.bases
     .filter(() =>
-      unitCapabilities(attacker.kind).attackTargets.includes('base'),
+      unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+        'base',
+      ),
     )
     .filter(
       (base) =>
@@ -237,6 +247,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     state.localFaction.active &&
     !state.localFaction.defeated &&
     stronghold.hp > 0 &&
+    unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+      'stronghold',
+    ) &&
     state.rules.units[attacker.kind].damageVsStructure > 0 &&
     strongholdDistance <= rangeSquared &&
     isCellVisibleToFaction(state, stronghold.cell, attacker.factionId)
@@ -248,8 +261,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     };
 
   return (
-    (unitCapabilities(attacker.kind).attackTargets.includes('crossing') &&
-    state.rules.units[attacker.kind].damageVsStructure > 0
+    (unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+      'crossing',
+    ) && state.rules.units[attacker.kind].damageVsStructure > 0
       ? activeCrossings(state)
           .filter((crossing) => crossing.owner !== attacker.factionId)
           .filter((crossing) =>
@@ -394,7 +408,12 @@ export function resolveCombat(state: MatchState): MatchState {
     if (hp > 0) return { ...base, hp, defender };
     if (base.kind === 'hq') {
       if (base.homeFactionId) destroyedHqs.add(base.homeFactionId);
-      return { ...base, hp: 0, captureCandidate: null, captureTicks: 0 };
+      return {
+        ...base,
+        hp: 0,
+        captureCandidate: null,
+        captureProgressCentiTicks: 0,
+      };
     }
     return {
       ...base,
@@ -413,7 +432,7 @@ export function resolveCombat(state: MatchState): MatchState {
       conqueredFromLocal:
         base.owner === 'local' || base.conqueredFromLocal === true,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     };
   });
 
@@ -458,7 +477,7 @@ export function resolveCombat(state: MatchState): MatchState {
                   }
                 : null,
               captureCandidate: null,
-              captureTicks: 0,
+              captureProgressCentiTicks: 0,
               conqueredFromLocal: true,
             }
           : base,

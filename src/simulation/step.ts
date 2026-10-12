@@ -34,7 +34,7 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
     unit.path[0] &&
     !canTraverse(state.map, unit.path[0], {
       factionId: unit.factionId,
-      domain: unitCapabilities(unit.kind).movementDomain,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
       crossings: activeCrossings(state),
       unitKind: unit.kind,
     })
@@ -111,7 +111,7 @@ function revalidateRoutes(state: MatchState): MatchState {
     const origin = edge ?? unit.cell;
     const route = findPath(state.map, origin, destination, {
       factionId: unit.factionId,
-      domain: unitCapabilities(unit.kind).movementDomain,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
       crossings,
       unitKind: unit.kind,
       allowBlockedStart: true,

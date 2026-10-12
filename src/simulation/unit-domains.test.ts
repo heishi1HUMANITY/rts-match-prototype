@@ -124,6 +124,49 @@ describe('F08 unit domains and roles', () => {
     );
   });
 
+  it('uses the editable attack target set from the match rules', () => {
+    let state = started();
+    const quietUnits = Object.fromEntries(
+      Object.entries(state.rules.units).map(([kind, stats]) => [
+        kind,
+        { ...stats, attackTargets: [] },
+      ]),
+    ) as unknown as typeof state.rules.units;
+    const rules = {
+      ...state.rules,
+      units: {
+        ...quietUnits,
+        helicopter: {
+          ...quietUnits.helicopter,
+          attackTargets: ['unit'] as const,
+        },
+      },
+    };
+    state = {
+      ...state,
+      rules,
+      units: state.units.map((unit) =>
+        unit.id === 'A-01'
+          ? {
+              ...unit,
+              kind: 'helicopter' as UnitKind,
+              cell: { x: 10, y: 10 },
+              hp: 90,
+              maxHp: 90,
+            }
+          : unit.id === 'B-01'
+            ? { ...unit, cell: { x: 11, y: 10 } }
+            : unit,
+      ),
+    };
+    state = { ...state, knowledge: updateFactionKnowledge(state) };
+    const targetHp = state.units.find(({ id }) => id === 'B-01')!.hp;
+    const after = resolveCombat(state);
+    expect(after.units.find(({ id }) => id === 'B-01')!.hp).toBeLessThan(
+      targetHp,
+    );
+  });
+
   it('does not allow aircraft or boats to capture bases and heals only at HQ on the recovery pulse', () => {
     let state = started();
     const target = state.bases.find(({ id }) => id === 'OUT-01')!;
@@ -150,6 +193,29 @@ describe('F08 unit domains and roles', () => {
     };
     const captured = advanceCapture(state);
     expect(captured.bases.find(({ id }) => id === target.id)?.owner).toBeNull();
+    let captureEnabled: MatchState = {
+      ...state,
+      rules: {
+        ...state.rules,
+        units: {
+          ...state.rules.units,
+          helicopter: {
+            ...state.rules.units.helicopter,
+            canCaptureBase: true,
+            captureEfficiencyPercent: 200,
+          },
+        },
+      },
+    };
+    for (
+      let tick = 0;
+      tick < captureEnabled.rules.capture.requiredTicks / 2;
+      tick += 1
+    )
+      captureEnabled = advanceCapture(captureEnabled);
+    expect(captureEnabled.bases.find(({ id }) => id === target.id)?.owner).toBe(
+      'A',
+    );
     const recovered = stepMatch(state);
     expect(recovered.units.find(({ id }) => id === 'A-02')?.hp).toBe(53);
     expect(recovered.units.find(({ id }) => id === 'A-01')?.hp).toBe(50);

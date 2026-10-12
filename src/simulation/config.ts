@@ -1,6 +1,7 @@
 import type {
   BaseKind,
   Cell,
+  CombatTargetKind,
   FactionId,
   ResearchDomain,
   ResearchEffect,
@@ -9,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 14 as const;
+export const SCHEMA_VERSION = 16 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -41,6 +42,8 @@ export const UNIT_STATS: Readonly<
       readonly range: number;
       readonly vision: number;
       readonly movementDomain: 'land' | 'air' | 'water';
+      readonly attackTargets: readonly CombatTargetKind[];
+      readonly canCaptureBase: boolean;
       readonly damageVsLand: number;
       readonly damageVsAir: number;
       readonly damageVsWater: number;
@@ -58,6 +61,8 @@ export const UNIT_STATS: Readonly<
     range: 2,
     vision: 6,
     movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
     damageVsLand: 2,
     damageVsAir: 2,
     damageVsWater: 2,
@@ -73,6 +78,8 @@ export const UNIT_STATS: Readonly<
     range: 1,
     vision: 8,
     movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
     damageVsLand: 1,
     damageVsAir: 1,
     damageVsWater: 1,
@@ -88,6 +95,8 @@ export const UNIT_STATS: Readonly<
     range: 5,
     vision: 5,
     movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
     damageVsLand: 5,
     damageVsAir: 0,
     damageVsWater: 5,
@@ -103,6 +112,8 @@ export const UNIT_STATS: Readonly<
     range: 4,
     vision: 7,
     movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
     damageVsLand: 1,
     damageVsAir: 8,
     damageVsWater: 1,
@@ -118,6 +129,8 @@ export const UNIT_STATS: Readonly<
     range: 3,
     vision: 8,
     movementDomain: 'air',
+    attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+    canCaptureBase: false,
     damageVsLand: 4,
     damageVsAir: 4,
     damageVsWater: 4,
@@ -133,6 +146,8 @@ export const UNIT_STATS: Readonly<
     range: 3,
     vision: 7,
     movementDomain: 'water',
+    attackTargets: ['unit', 'defender', 'base', 'crossing', 'stronghold'],
+    canCaptureBase: false,
     damageVsLand: 4,
     damageVsAir: 4,
     damageVsWater: 4,

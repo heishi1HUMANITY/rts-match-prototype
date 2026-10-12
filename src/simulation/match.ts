@@ -97,7 +97,7 @@ function buildBases(rules: RulesMaster): BaseState[] {
       hp: rules.bases[kind].maxHp,
       maxHp: rules.bases[kind].maxHp,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
       defender:
         owner === null && !hq
           ? {

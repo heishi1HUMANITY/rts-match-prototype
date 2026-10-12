@@ -343,7 +343,7 @@ export function applyCommand(
   if (
     !canTraverse(state.map, target, {
       factionId: unit.factionId,
-      domain: unitCapabilities(unit.kind).movementDomain,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
       crossings: knownActiveCrossings(state, unit.factionId),
       unitKind: unit.kind,
     })
@@ -359,7 +359,7 @@ export function applyCommand(
   const origin = currentEdge ?? unit.cell;
   const route = findPath(state.map, origin, target, {
     factionId: unit.factionId,
-    domain: unitCapabilities(unit.kind).movementDomain,
+    domain: unitCapabilities(unit.kind, state.rules).movementDomain,
     crossings: knownActiveCrossings(state, unit.factionId),
     unitKind: unit.kind,
     allowBlockedStart: true,
