@@ -59,7 +59,7 @@ describe('simultaneous combat target selection', () => {
       owner: null,
       hp: 300,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
       defender: { hp: 160, maxHp: 160 },
     });
 
@@ -117,7 +117,7 @@ describe('simultaneous combat target selection', () => {
       owner: null,
       hp: 300,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
       defender: { hp: 160, maxHp: 160 },
     });
   });

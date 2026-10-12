@@ -98,7 +98,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 7,
+        masterSchemaVersion: 10,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -126,7 +126,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 7,
+        masterSchemaVersion: 10,
         revision: 10,
         rules: {
           defenses: {
@@ -189,7 +189,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(7);
+    expect(loaded.envelope.masterSchemaVersion).toBe(10);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -218,5 +218,49 @@ describe('F17 browser master store', () => {
     });
     expect(saved.ok).toBe(false);
     expect(storage.getItem('rts-match-prototype.master.v1')).toBe(before);
+  });
+
+  it('upgrades schema 7 unit values and keeps the expanded research defaults', () => {
+    const storage = new MemoryStorage();
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    for (const kind of ['artillery', 'antiAir', 'helicopter', 'patrolBoat'])
+      delete legacy.units[kind];
+    for (const unit of Object.values(legacy.units) as Record<string, any>[]) {
+      const oldDamage = unit.baseDamage ?? 2;
+      delete unit.movementDomain;
+      delete unit.damageVsLand;
+      delete unit.damageVsAir;
+      delete unit.damageVsWater;
+      delete unit.damageVsStructure;
+      delete unit.lossTicketsCenti;
+      delete unit.unlockResearchId;
+      unit.baseDamage = oldDamage;
+    }
+    for (const id of ['artillery-1', 'air-defense-1', 'aircraft-1', 'naval-1'])
+      delete legacy.research.definitions[id];
+    legacy.units.assault.maxHp = 111;
+    legacy.units.assault.baseDamage = 5;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 7, revision: 20, rules: legacy }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.envelope.rules.units.assault).toMatchObject({
+      maxHp: 111,
+      damageVsLand: 5,
+      damageVsAir: 5,
+      damageVsWater: 5,
+      damageVsStructure: 5,
+      movementDomain: 'land',
+    });
+    expect(loaded.envelope.rules.units.patrolBoat.unlockResearchId).toBe(
+      'naval-1',
+    );
+    expect(loaded.envelope.rules.research.definitions['naval-1']).toBeDefined();
   });
 });

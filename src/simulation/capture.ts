@@ -46,13 +46,20 @@ export function advanceCapture(state: MatchState): MatchState {
   let factions = state.factions;
   const bases = state.bases.map((base) => {
     if (base.kind === 'hq' || base.owner !== null) {
-      if (base.captureCandidate === null && base.captureTicks === 0)
+      if (
+        base.captureCandidate === null &&
+        base.captureProgressCentiTicks === 0
+      )
         return base;
-      return { ...base, captureCandidate: null, captureTicks: 0 };
+      return { ...base, captureCandidate: null, captureProgressCentiTicks: 0 };
     }
-    const present = new Set<CombatantId>();
+    const captureEfficiencyByFaction = new Map<CombatantId, number>();
     for (const unit of state.units) {
-      if (unit.hp <= 0 || !unitCapabilities(unit.kind).canCaptureBase) continue;
+      if (
+        unit.hp <= 0 ||
+        !unitCapabilities(unit.kind, state.rules).canCaptureBase
+      )
+        continue;
       const position = currentUnitPosition(unit);
       if (
         isWithinCaptureRadius(
@@ -63,13 +70,19 @@ export function advanceCapture(state: MatchState): MatchState {
           state.rules.capture.radius,
         )
       ) {
-        present.add(unit.factionId);
+        const current = captureEfficiencyByFaction.get(unit.factionId) ?? 0;
+        captureEfficiencyByFaction.set(
+          unit.factionId,
+          current +
+            unitCapabilities(unit.kind, state.rules).captureEfficiencyPercent,
+        );
       }
     }
     if (base.defender && base.defender.hp > 0) {
-      return base.captureCandidate === null && base.captureTicks === 0
+      return base.captureCandidate === null &&
+        base.captureProgressCentiTicks === 0
         ? base
-        : { ...base, captureCandidate: null, captureTicks: 0 };
+        : { ...base, captureCandidate: null, captureProgressCentiTicks: 0 };
     }
     let eligibleBase = base;
     if (base.defender && base.defender.hp === 0) {
@@ -77,17 +90,17 @@ export function advanceCapture(state: MatchState): MatchState {
         if (
           base.defender.disabledTicks === 0 &&
           base.captureCandidate === null &&
-          base.captureTicks === 0
+          base.captureProgressCentiTicks === 0
         )
           return base;
         return {
           ...base,
           captureCandidate: null,
-          captureTicks: 0,
+          captureProgressCentiTicks: 0,
           defender: { ...base.defender, disabledTicks: 0 },
         };
       }
-      if (present.size === 0) {
+      if (captureEfficiencyByFaction.size === 0) {
         const disabledTicks = base.defender.disabledTicks + 1;
         if (disabledTicks >= state.rules.defenses[base.kind].respawnTicks) {
           const maxHp = state.rules.defenses[base.kind].maxHp;
@@ -95,14 +108,14 @@ export function advanceCapture(state: MatchState): MatchState {
             ...base,
             hp: base.maxHp,
             captureCandidate: null,
-            captureTicks: 0,
+            captureProgressCentiTicks: 0,
             defender: { hp: maxHp, maxHp, disabledTicks: 0 },
           };
         }
         return {
           ...base,
           captureCandidate: null,
-          captureTicks: 0,
+          captureProgressCentiTicks: 0,
           defender: { ...base.defender, disabledTicks },
         };
       }
@@ -114,22 +127,31 @@ export function advanceCapture(state: MatchState): MatchState {
     }
     if (eligibleBase.hp !== 0) {
       return eligibleBase.captureCandidate === null &&
-        eligibleBase.captureTicks === 0
+        eligibleBase.captureProgressCentiTicks === 0
         ? eligibleBase
-        : { ...eligibleBase, captureCandidate: null, captureTicks: 0 };
+        : {
+            ...eligibleBase,
+            captureCandidate: null,
+            captureProgressCentiTicks: 0,
+          };
     }
-    if (present.size !== 1) {
+    if (captureEfficiencyByFaction.size !== 1) {
       return eligibleBase.captureCandidate === null &&
-        eligibleBase.captureTicks === 0
+        eligibleBase.captureProgressCentiTicks === 0
         ? eligibleBase
-        : { ...eligibleBase, captureCandidate: null, captureTicks: 0 };
+        : {
+            ...eligibleBase,
+            captureCandidate: null,
+            captureProgressCentiTicks: 0,
+          };
     }
-    const candidate = [...present][0]!;
-    const captureTicks =
+    const candidate = [...captureEfficiencyByFaction.keys()][0]!;
+    const captureProgressCentiTicks =
       eligibleBase.captureCandidate === candidate
-        ? eligibleBase.captureTicks + 1
-        : 1;
-    if (captureTicks >= state.rules.capture.requiredTicks) {
+        ? eligibleBase.captureProgressCentiTicks +
+          captureEfficiencyByFaction.get(candidate)!
+        : captureEfficiencyByFaction.get(candidate)!;
+    if (captureProgressCentiTicks >= state.rules.capture.requiredTicks * 100) {
       if (candidate === 'local') {
         localFaction = {
           ...localFaction,
@@ -164,12 +186,16 @@ export function advanceCapture(state: MatchState): MatchState {
         owner: candidate,
         hp: Math.max(1, Math.floor(eligibleBase.maxHp * 0.3)),
         captureCandidate: null,
-        captureTicks: 0,
+        captureProgressCentiTicks: 0,
         defender: null,
         conqueredFromLocal: false,
       };
     }
-    return { ...eligibleBase, captureCandidate: candidate, captureTicks };
+    return {
+      ...eligibleBase,
+      captureCandidate: candidate,
+      captureProgressCentiTicks,
+    };
   });
   if (
     bases.every((base, index) => base === state.bases[index]) &&

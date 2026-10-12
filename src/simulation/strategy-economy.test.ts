@@ -518,7 +518,7 @@ describe('G2 research', () => {
     };
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
     expect(faction(state).researchCenti).toBe(120);
-    expect(faction(state).researchProgressCenti).toEqual({
+    expect(faction(state).researchProgressCenti).toMatchObject({
       'firepower-1': 0,
       'firepower-2': 0,
       'bridge-2': 0,

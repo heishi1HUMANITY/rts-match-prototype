@@ -85,7 +85,12 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
           if (base.kind === 'hq') {
             return base.homeFactionId !== null &&
               newlyEliminated.has(base.homeFactionId)
-              ? { ...base, hp: 0, captureCandidate: null, captureTicks: 0 }
+              ? {
+                  ...base,
+                  hp: 0,
+                  captureCandidate: null,
+                  captureProgressCentiTicks: 0,
+                }
               : base;
           }
           return base.owner !== null &&
@@ -103,7 +108,7 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
                     }
                   : null,
                 captureCandidate: null,
-                captureTicks: 0,
+                captureProgressCentiTicks: 0,
               }
             : base;
         });

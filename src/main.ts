@@ -395,7 +395,9 @@ const handleClick = (event: MouseEvent): void => {
   if (produce !== undefined) {
     runtime.dispatch({
       type: 'enqueue-production',
-      baseId: `HQ-${runtime.playerSnapshot().view.viewerFactionId}`,
+      baseId:
+        hud.root.querySelector<HTMLSelectElement>('[data-production-site]')
+          ?.value ?? `HQ-${runtime.playerSnapshot().view.viewerFactionId}`,
       unitKind: produce,
     });
     return;

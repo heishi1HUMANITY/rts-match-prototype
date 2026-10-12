@@ -133,6 +133,92 @@ describe('F03 rules validation', () => {
     );
   });
 
+  it('validates editable attack target sets and capture flags', () => {
+    const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    invalid.units.helicopter.attackTargets = ['unit', 'unknown', 'unit'];
+    invalid.units.helicopter.canCaptureBase = 'true';
+    invalid.units.helicopter.captureEfficiencyPercent = 1001;
+    const result = validateRules(invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.map(({ key }) => key)).toEqual(
+      expect.arrayContaining([
+        'rules.units.helicopter.attackTargets',
+        'rules.units.helicopter.canCaptureBase',
+        'rules.units.helicopter.captureEfficiencyPercent',
+      ]),
+    );
+  });
+
+  it('migrates schema 8 unit attack profiles to editable F08 defaults', () => {
+    const v8Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    for (const unit of Object.values(v8Rules.units) as Record<string, any>[]) {
+      delete unit.attackTargets;
+      delete unit.canCaptureBase;
+      delete unit.captureEfficiencyPercent;
+    }
+    v8Rules.units.helicopter.maxHp = 95;
+    const result = validateEnvelope({
+      masterSchemaVersion: 8,
+      revision: 28,
+      rules: v8Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 28,
+        rules: {
+          units: {
+            helicopter: {
+              maxHp: 95,
+              attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+              canCaptureBase: false,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it('preserves schema 9 target and capture settings while defaulting efficiency', () => {
+    const v9Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    for (const unit of Object.values(v9Rules.units) as Record<string, any>[])
+      delete unit.captureEfficiencyPercent;
+    v9Rules.units.helicopter.attackTargets = ['unit', 'base'];
+    v9Rules.units.helicopter.canCaptureBase = true;
+    const result = validateEnvelope({
+      masterSchemaVersion: 9,
+      revision: 29,
+      rules: v9Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 29,
+        rules: {
+          units: {
+            helicopter: {
+              attackTargets: ['unit', 'base'],
+              canCaptureBase: true,
+              captureEfficiencyPercent: 100,
+            },
+          },
+        },
+      },
+    });
+  });
+
   it('rejects impossible local-faction limits, appearance and overflow growth', () => {
     const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -193,7 +279,14 @@ describe('F03 rules validation', () => {
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 12,
         rules: {
-          units: { assault: { baseDamage: 7 } },
+          units: {
+            assault: {
+              damageVsLand: 7,
+              damageVsAir: 7,
+              damageVsWater: 7,
+              damageVsStructure: 7,
+            },
+          },
           defenses: DEFAULT_RULES.defenses,
         },
       },

@@ -42,15 +42,15 @@ describe('F05 neutral garrisons and capture', () => {
       owner: null,
       hp: 0,
       captureCandidate: 'A',
-      captureTicks: 1,
+      captureProgressCentiTicks: 200,
       defender: { hp: 0 },
     });
-    for (let tick = 0; tick < 29; tick += 1) state = stepMatch(state);
+    for (let tick = 0; tick < 14; tick += 1) state = stepMatch(state);
     expect(outpost()).toMatchObject({
       owner: 'A',
       hp: 30,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
       defender: null,
     });
   });

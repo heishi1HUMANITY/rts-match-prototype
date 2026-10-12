@@ -963,7 +963,17 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const path = unit.control === 'own' ? unit.path : [];
       const march = unit.control === 'own' ? unit.marchOrder : null;
       const localUnit = unit.factionId === 'local';
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${unit.kind === 'scout' ? '偵' : '突'}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
+      const glyph = (
+        {
+          assault: '強',
+          scout: '偵',
+          artillery: '砲',
+          antiAir: '空',
+          helicopter: 'ヘ',
+          patrolBoat: '艇',
+        } as const
+      )[unit.kind];
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
       objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(

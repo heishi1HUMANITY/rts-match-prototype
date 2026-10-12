@@ -28,7 +28,7 @@ describe('outpost capture', () => {
       expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
         owner: null,
         captureCandidate: 'A',
-        captureTicks: tick,
+        captureProgressCentiTicks: tick * 100,
       });
     }
     state = advanceCapture(state);
@@ -37,7 +37,7 @@ describe('outpost capture', () => {
       hp: Math.floor(state.rules.bases.large.maxHp * 0.3),
       defender: null,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
   });
 
@@ -58,7 +58,11 @@ describe('outpost capture', () => {
     const baseIndex = state.bases.findIndex(({ id }) => id === 'OUT-02');
     const bases = state.bases.map((base, index) =>
       index === baseIndex
-        ? { ...base, captureCandidate: 'A' as const, captureTicks: 12 }
+        ? {
+            ...base,
+            captureCandidate: 'A' as const,
+            captureProgressCentiTicks: 1200,
+          }
         : base,
     );
     state = { ...state, bases, units: [a, b, c] };
@@ -66,13 +70,13 @@ describe('outpost capture', () => {
     expect(state.bases[baseIndex]).toMatchObject({
       owner: null,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
     state = { ...state, units: [] };
     state = advanceCapture(state);
     expect(state.bases[baseIndex]).toMatchObject({
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
   });
 
@@ -81,7 +85,11 @@ describe('outpost capture', () => {
     const baseIndex = state.bases.findIndex(({ id }) => id === 'OUT-02');
     const bases = state.bases.map((base, index) =>
       index === baseIndex
-        ? { ...base, captureCandidate: 'A' as const, captureTicks: 10 }
+        ? {
+            ...base,
+            captureCandidate: 'A' as const,
+            captureProgressCentiTicks: 1000,
+          }
         : base,
     );
     const deadA = {
@@ -97,7 +105,7 @@ describe('outpost capture', () => {
     state = advanceCapture(state);
     expect(state.bases[baseIndex]).toMatchObject({
       captureCandidate: 'B',
-      captureTicks: 1,
+      captureProgressCentiTicks: 100,
     });
   });
 
@@ -111,14 +119,41 @@ describe('outpost capture', () => {
     state = advanceCapture(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       captureCandidate: 'A',
-      captureTicks: 1,
+      captureProgressCentiTicks: 100,
     });
     const outside = { ...atBoundary, cell: { x: 22, y: 20 } };
     state = { ...state, units: [outside] };
     state = advanceCapture(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
+    });
+  });
+
+  it('adds capture progress at the configured per-unit efficiency', () => {
+    let state = unguarded(createMatch(42));
+    const unit = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: 20, y: 20 },
+    };
+    state = {
+      ...state,
+      units: [unit],
+      rules: {
+        ...state.rules,
+        units: {
+          ...state.rules.units,
+          assault: {
+            ...state.rules.units.assault,
+            captureEfficiencyPercent: 200,
+          },
+        },
+      },
+    };
+    for (let tick = 0; tick < 15; tick += 1) state = advanceCapture(state);
+    expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
+      owner: 'A',
+      captureProgressCentiTicks: 0,
     });
   });
 });

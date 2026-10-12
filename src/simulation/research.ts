@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { DEFAULT_RULES } from './rules';
 import type { RulesMaster } from './rules';
-import type { ResearchEffectId, CrossingTierId } from './types';
+import type { ResearchEffectId, CrossingTierId, UnitKind } from './types';
 
 function isResearchId(state: MatchState, value: string): value is ResearchId {
   return Object.prototype.hasOwnProperty.call(
@@ -149,4 +149,20 @@ export function researchEffectValue(
       )
     );
   }, 0);
+}
+
+export function isUnitUnlocked(
+  faction: Pick<FactionState, 'completedResearchIds'>,
+  rules: RulesMaster,
+  kind: UnitKind,
+): boolean {
+  const researchId = rules.units[kind].unlockResearchId;
+  return (
+    researchId === null ||
+    faction.completedResearchIds.some((id) =>
+      rules.research.definitions[id]?.effects.some(
+        (effect) => effect.id === 'unit-unlock' && effect.unitKind === kind,
+      ),
+    )
+  );
 }

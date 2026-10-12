@@ -14,7 +14,9 @@ import type {
   OwnUnitView,
   ResearchId,
   VisibleEnemyUnitView,
+  UnitKind,
 } from '../simulation/types';
+import { isUnitUnlocked } from '../simulation/research';
 
 function distanceSquared(a: Cell, b: Cell): number {
   const dx = a.x - b.x;
@@ -57,7 +59,15 @@ function factionOrderDistance(a: CombatantId, b: CombatantId): number {
 function researchCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
   const order = Object.entries(view.rules.research.definitions)
-    .sort(([idA, a], [idB, b]) => a.stage - b.stage || idA.localeCompare(idB))
+    .sort(([idA, a], [idB, b]) => {
+      const priority = (id: string): number =>
+        id === 'firepower-1' ? 0 : id === 'survey-1' ? 1 : 2;
+      return (
+        priority(idA) - priority(idB) ||
+        a.stage - b.stage ||
+        idA.localeCompare(idB)
+      );
+    })
     .map(([id]) => id as ResearchId);
   const next = order.find((id) => {
     const definition = view.rules.research.definitions[id];
@@ -88,7 +98,7 @@ function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
             owner: crossing.owner,
             allowedUnitKinds: crossing.site.tier.startsWith('ropeway')
               ? (['scout'] as const)
-              : (['assault', 'scout'] as const),
+              : (['assault', 'scout', 'artillery', 'antiAir'] as const),
           },
         ]
       : [],
@@ -97,11 +107,6 @@ function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
 
 function productionCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
-  const hq = view.bases.find(
-    (base): base is OwnedBaseView =>
-      base.kind === 'hq' && base.visibility === 'owned',
-  );
-  if (!hq || hq.hp <= 0) return undefined;
   const committed = view.ownUnits.length + faction.productionJobs.length;
   if (
     committed >= view.rules.limits.unitsPerFaction ||
@@ -110,17 +115,50 @@ function productionCommand(view: FactionView): Command | undefined {
     return undefined;
   }
 
-  const scoutCount = view.ownUnits.filter(
-    ({ kind }) => kind === 'scout',
-  ).length;
-  const queuedScouts = faction.productionJobs.filter(
-    ({ unitKind }) => unitKind === 'scout',
-  ).length;
-  const desired: 'assault' | 'scout' =
-    scoutCount + queuedScouts === 0 ? 'scout' : 'assault';
-  if (faction.supplyCenti < view.rules.units[desired].costCenti)
-    return undefined;
-  return { type: 'enqueue-production', baseId: hq.id, unitKind: desired };
+  const hq = view.bases.find(
+    (base): base is OwnedBaseView =>
+      base.kind === 'hq' && base.visibility === 'owned' && base.hp > 0,
+  );
+  const ports = (view.map.ports ?? []).filter(
+    ({ factionId }) => factionId === view.viewerFactionId,
+  );
+  const kinds: readonly UnitKind[] = [
+    'antiAir',
+    'patrolBoat',
+    'artillery',
+    'helicopter',
+    'assault',
+    'scout',
+  ];
+  const candidates = kinds
+    .flatMap((kind) => {
+      const stats = view.rules.units[kind];
+      if (
+        !isUnitUnlocked(faction, view.rules, kind) ||
+        faction.supplyCenti < stats.costCenti
+      )
+        return [];
+      const siteId = stats.movementDomain === 'water' ? ports[0]?.id : hq?.id;
+      if (!siteId) return [];
+      const count =
+        view.ownUnits.filter(({ kind: ownedKind }) => ownedKind === kind)
+          .length +
+        faction.productionJobs.filter(({ unitKind }) => unitKind === kind)
+          .length;
+      return [{ kind, siteId, count }];
+    })
+    .sort(
+      (a, b) =>
+        a.count - b.count || kinds.indexOf(a.kind) - kinds.indexOf(b.kind),
+    );
+  const desired = candidates[0];
+  return desired
+    ? {
+        type: 'enqueue-production',
+        baseId: desired.siteId,
+        unitKind: desired.kind,
+      }
+    : undefined;
 }
 
 function nearestReachableGoal(
@@ -134,7 +172,7 @@ function nearestReachableGoal(
       base,
       route: findPath(view.map, from, base.cell, {
         factionId: view.viewerFactionId,
-        domain: unitCapabilities(unit.kind).movementDomain,
+        domain: unitCapabilities(unit.kind, view.rules).movementDomain,
         crossings: knownActiveCrossings(view),
         unitKind: unit.kind,
       }),
@@ -176,7 +214,7 @@ function crossingConstructionCommand(
         bank,
         route: findPath(view.map, currentCell(unit), bank, {
           factionId: view.viewerFactionId,
-          domain: unitCapabilities(unit.kind).movementDomain,
+          domain: unitCapabilities(unit.kind, view.rules).movementDomain,
           crossings: knownActiveCrossings(view),
           unitKind: unit.kind,
           allowBlockedStart: true,
@@ -306,6 +344,63 @@ function unitMoveCommand(
   unit: OwnUnitView,
 ): Command | undefined {
   const factionId = view.viewerFactionId;
+  if (unitCapabilities(unit.kind, view.rules).movementDomain === 'water') {
+    const from = currentCell(unit);
+    const enemyGoal = view.visibleEnemies
+      .filter((enemy) => enemy.factionId !== factionId)
+      .filter(
+        (enemy) => view.rules.units[enemy.kind].movementDomain === 'water',
+      )
+      .map((enemy) => ({ enemy, cell: enemyCell(enemy) }))
+      .map((entry) => ({
+        ...entry,
+        route: findPath(view.map, from, entry.cell, { domain: 'water' }),
+      }))
+      .filter((entry) => entry.route !== null)
+      .sort(
+        (a, b) =>
+          a.route!.length - b.route!.length ||
+          a.enemy.id.localeCompare(b.enemy.id),
+      )[0];
+    if (enemyGoal) {
+      if (
+        unit.marchOrder?.target.kind === 'unit' &&
+        unit.marchOrder.target.id === enemyGoal.enemy.id
+      )
+        return undefined;
+      return {
+        type: 'march',
+        unitId: unit.id,
+        target: { kind: 'unit', id: enemyGoal.enemy.id },
+      };
+    }
+    const riverCells = (view.map.terrain ?? [])
+      .flatMap((kind, index) =>
+        kind === 'river'
+          ? [
+              {
+                x: index % view.map.width,
+                y: Math.floor(index / view.map.width),
+              },
+            ]
+          : [],
+      )
+      .sort(
+        (a, b) =>
+          Math.abs(a.x - 20) +
+          Math.abs(a.y - 20) -
+          (Math.abs(b.x - 20) + Math.abs(b.y - 20)),
+      );
+    for (const target of riverCells) {
+      const route = findPath(view.map, from, target, { domain: 'water' });
+      if (route === null || route.length === 0) continue;
+      const destination = endpoint(unit);
+      if (destination?.x === target.x && destination.y === target.y)
+        return undefined;
+      return { type: 'move', unitId: unit.id, target };
+    }
+    return undefined;
+  }
   const outposts = view.bases.filter(
     (base) => base.kind !== 'hq' && !isOwnBase(base, factionId),
   );
@@ -324,7 +419,7 @@ function unitMoveCommand(
       : proposedDefense &&
           findPath(view.map, currentCell(unit), proposedDefense.cell, {
             factionId: view.viewerFactionId,
-            domain: unitCapabilities(unit.kind).movementDomain,
+            domain: unitCapabilities(unit.kind, view.rules).movementDomain,
             crossings: knownActiveCrossings(view),
             unitKind: unit.kind,
           })

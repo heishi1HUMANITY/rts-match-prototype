@@ -1,6 +1,7 @@
 import type {
   BaseKind,
   Cell,
+  CombatTargetKind,
   FactionId,
   ResearchDomain,
   ResearchEffect,
@@ -9,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 13 as const;
+export const SCHEMA_VERSION = 16 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -38,9 +39,17 @@ export const UNIT_STATS: Readonly<
       readonly buildTicks: number;
       readonly upkeepCenti: number;
       readonly maxHp: number;
-      readonly baseDamage: number;
       readonly range: number;
       readonly vision: number;
+      readonly movementDomain: 'land' | 'air' | 'water';
+      readonly attackTargets: readonly CombatTargetKind[];
+      readonly canCaptureBase: boolean;
+      readonly damageVsLand: number;
+      readonly damageVsAir: number;
+      readonly damageVsWater: number;
+      readonly damageVsStructure: number;
+      readonly lossTicketsCenti: number;
+      readonly unlockResearchId: string | null;
     }
   >
 > = {
@@ -49,18 +58,102 @@ export const UNIT_STATS: Readonly<
     buildTicks: 120,
     upkeepCenti: 5,
     maxHp: 100,
-    baseDamage: 2,
     range: 2,
     vision: 6,
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+    damageVsLand: 2,
+    damageVsAir: 2,
+    damageVsWater: 2,
+    damageVsStructure: 2,
+    lossTicketsCenti: 800,
+    unlockResearchId: null,
   },
   scout: {
     costCenti: 6_000,
     buildTicks: 60,
     upkeepCenti: 3,
     maxHp: 60,
-    baseDamage: 1,
     range: 1,
     vision: 8,
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+    damageVsLand: 1,
+    damageVsAir: 1,
+    damageVsWater: 1,
+    damageVsStructure: 1,
+    lossTicketsCenti: 400,
+    unlockResearchId: null,
+  },
+  artillery: {
+    costCenti: 10_000,
+    buildTicks: 100,
+    upkeepCenti: 6,
+    maxHp: 80,
+    range: 5,
+    vision: 5,
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+    damageVsLand: 5,
+    damageVsAir: 0,
+    damageVsWater: 5,
+    damageVsStructure: 5,
+    lossTicketsCenti: 960,
+    unlockResearchId: 'artillery-1',
+  },
+  antiAir: {
+    costCenti: 9_000,
+    buildTicks: 90,
+    upkeepCenti: 5,
+    maxHp: 90,
+    range: 4,
+    vision: 7,
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+    damageVsLand: 1,
+    damageVsAir: 8,
+    damageVsWater: 1,
+    damageVsStructure: 1,
+    lossTicketsCenti: 800,
+    unlockResearchId: 'air-defense-1',
+  },
+  helicopter: {
+    costCenti: 14_000,
+    buildTicks: 140,
+    upkeepCenti: 7,
+    maxHp: 90,
+    range: 3,
+    vision: 8,
+    movementDomain: 'air',
+    attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+    canCaptureBase: false,
+    damageVsLand: 4,
+    damageVsAir: 4,
+    damageVsWater: 4,
+    damageVsStructure: 1,
+    lossTicketsCenti: 1040,
+    unlockResearchId: 'aircraft-1',
+  },
+  patrolBoat: {
+    costCenti: 12_000,
+    buildTicks: 120,
+    upkeepCenti: 6,
+    maxHp: 110,
+    range: 3,
+    vision: 7,
+    movementDomain: 'water',
+    attackTargets: ['unit', 'defender', 'base', 'crossing', 'stronghold'],
+    canCaptureBase: false,
+    damageVsLand: 4,
+    damageVsAir: 4,
+    damageVsWater: 4,
+    damageVsStructure: 4,
+    lossTicketsCenti: 960,
+    unlockResearchId: 'naval-1',
   },
 };
 
@@ -156,6 +249,38 @@ export const RESEARCH_DEFINITIONS: Readonly<
     exclusiveWith: [],
     effects: [{ id: 'vision-bonus', value: 1 }],
   },
+  'artillery-1': {
+    domain: 'power',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'unit-unlock', value: 0, unitKind: 'artillery' }],
+  },
+  'air-defense-1': {
+    domain: 'power',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'unit-unlock', value: 0, unitKind: 'antiAir' }],
+  },
+  'aircraft-1': {
+    domain: 'information',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'unit-unlock', value: 0, unitKind: 'helicopter' }],
+  },
+  'naval-1': {
+    domain: 'engineering',
+    stage: 1,
+    costCenti: 5_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'unit-unlock', value: 0, unitKind: 'patrolBoat' }],
+  },
 };
 
 export const BASE_CELLS: readonly {
@@ -242,4 +367,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f04-crossing',
   'f05-neutral-defense',
   'f06-local-faction',
+  'f08-unit-domains',
 ];

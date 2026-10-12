@@ -24,7 +24,7 @@ G1〜G4は最小の試作・検査手順として作った区切りであり、�
 | F05 | [中立拠点の守備NPCと守備戦闘・制圧](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/17)                    | 旧仕様3.4/3.6、計算モデル7                | 未実装・設計対象         |
 | F06 | [独立した現地勢力の本拠・部隊生産・拠点侵攻](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/18)           | 旧仕様3.8、計算モデル13                   | 実装中・ユーザー検査待ち |
 | F07 | [徘徊NPCの採否を確定し出現・侵攻ループを用意](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/19)          | 旧仕様3.1/3.4/4.1と計算モデル13の矛盾     | 未実装・設計対象         |
-| F08 | [6兵種と陸・空・水の移動/戦闘/回復](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/20)                    | 旧仕様3.6、計算モデル6/10                 | 未実装・設計対象         |
+| F08 | [6兵種と陸・空・水の移動/戦闘/回復](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/20)                    | 旧仕様3.6、計算モデル6/10                 | 実装中・`F08_DESIGN.md`  |
 | F09 | [戦力・兵站・情報・工兵の研究ツリーを充填方式で拡張](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/21)   | 旧仕様3.9、ユーザー承認済みの研究充填方式 | 未実装・設計対象         |
 | F10 | [拠点Lv2/Lv3強化・回復・砲座](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/22)                          | 旧仕様3.4/3.12、計算モデル22              | 未実装・設計対象         |
 | F11 | [防御施設の建築・攻撃・視界効果](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/23)                       | 旧仕様3.14、計算モデル24                  | 未実装・設計対象         |

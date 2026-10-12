@@ -191,7 +191,7 @@ describe('advanceMatch NPC orchestration', () => {
         captured ||= state.bases.some(
           (base) =>
             base.kind === 'outpost' &&
-            (base.owner !== null || base.captureTicks > 0),
+            (base.owner !== null || base.captureProgressCentiTicks > 0),
         );
         combat ||= initial.units.some((unit) => {
           const current = state.units.find((entry) => entry.id === unit.id);

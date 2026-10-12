@@ -62,19 +62,20 @@ describe('G2 fixed-tick integration', () => {
     expect(stepMatch(paused)).toBe(paused);
   });
 
-  it('captures an uncontested outpost on tick 30 and includes its income that tick', () => {
+  it('adds present unit capture efficiencies and includes capture income', () => {
     let state = running(createMatch(42, { scenarioId: 'g2-capture' }));
-    for (let i = 0; i < 30; i += 1) state = stepMatch(state);
-    expect(state.elapsedTicks).toBe(30);
+    for (let i = 0; i < 15; i += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
       hp: 30,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
+    for (let i = 0; i < 15; i += 1) state = stepMatch(state);
+    expect(state.elapsedTicks).toBe(30);
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
-      supplyCenti: 21_580,
-      researchCenti: 370,
+      supplyCenti: 21_880,
+      researchCenti: 520,
     });
   });
 

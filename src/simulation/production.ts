@@ -6,9 +6,17 @@ import type {
   UnitKind,
   UnitState,
 } from './types';
+import { isUnitUnlocked } from './research';
 
 function isUnitKind(value: string): value is UnitKind {
-  return value === 'assault' || value === 'scout';
+  return [
+    'assault',
+    'scout',
+    'artillery',
+    'antiAir',
+    'helicopter',
+    'patrolBoat',
+  ].includes(value);
 }
 
 function numberedId(factionId: FactionId, serial: number): string {
@@ -27,13 +35,14 @@ export function enqueueProduction(
   requestedKind: string,
 ): CommandResult {
   const base = state.bases.find(({ id }) => id === baseId);
-  if (base === undefined) {
+  const port = state.map.ports?.find(({ id }) => id === baseId);
+  if (base === undefined && port === undefined) {
     return { ok: false, state, reason: 'BASE_NOT_FOUND' };
   }
-  if (base.owner !== actor) {
+  if (base && base.owner !== actor) {
     return { ok: false, state, reason: 'NOT_OWNER' };
   }
-  if (base.kind !== 'hq' || base.hp <= 0) {
+  if (base && (base.kind !== 'hq' || base.hp <= 0)) {
     return { ok: false, state, reason: 'HQ_UNAVAILABLE' };
   }
   if (!isUnitKind(requestedKind)) {
@@ -42,6 +51,15 @@ export function enqueueProduction(
   const faction = state.factions.find(({ id }) => id === actor);
   if (faction === undefined) {
     return { ok: false, state, reason: 'INVALID_ACTOR' };
+  }
+  const stats = state.rules.units[requestedKind];
+  if (!isUnitUnlocked(faction, state.rules, requestedKind))
+    return { ok: false, state, reason: 'RESEARCH_REQUIRED' };
+  if (stats.movementDomain === 'water') {
+    if (!port || port.factionId !== actor)
+      return { ok: false, state, reason: 'PORT_UNAVAILABLE' };
+  } else if (!base || base.kind !== 'hq' || base.hp <= 0) {
+    return { ok: false, state, reason: 'HQ_UNAVAILABLE' };
   }
   const liveCount = state.units.filter(
     (unit) => unit.factionId === actor && unit.hp > 0,
@@ -55,7 +73,6 @@ export function enqueueProduction(
   if (faction.productionJobs.length >= state.rules.limits.productionQueue) {
     return { ok: false, state, reason: 'QUEUE_FULL' };
   }
-  const stats = state.rules.units[requestedKind];
   if (faction.supplyCenti < stats.costCenti) {
     return { ok: false, state, reason: 'INSUFFICIENT_SUPPLY' };
   }
@@ -140,10 +157,14 @@ export function cancelAllProductionForDestroyedHq(
   if (faction === undefined || faction.productionJobs.length === 0) {
     return state;
   }
-  const refund = faction.productionJobs.reduce(
-    (sum, job) => sum + job.costCenti,
-    0,
+  const cancelled = faction.productionJobs.filter(
+    ({ baseId }) => baseId === hq.id,
   );
+  if (cancelled.length === 0) return state;
+  const remaining = faction.productionJobs.filter(
+    ({ baseId }) => baseId !== hq.id,
+  );
+  const refund = cancelled.reduce((sum, job) => sum + job.costCenti, 0);
   return {
     ...state,
     factions: state.factions.map((entry) =>
@@ -151,7 +172,11 @@ export function cancelAllProductionForDestroyedHq(
         ? {
             ...entry,
             supplyCenti: entry.supplyCenti + refund,
-            productionJobs: [],
+            productionJobs: remaining.map((job, index) =>
+              index === 0
+                ? { ...job, status: 'active' as const }
+                : { ...job, status: 'queued' as const },
+            ),
           }
         : entry,
     ),
@@ -179,16 +204,23 @@ export function advanceProduction(state: MatchState): MatchState {
       };
     }
     const base = next.bases.find(({ id }) => id === active.baseId);
-    if (base === undefined || base.hp <= 0 || base.owner !== faction.id) {
+    const port = next.map.ports?.find(({ id }) => id === active.baseId);
+    const domain = next.rules.units[active.unitKind].movementDomain;
+    if (
+      domain === 'water'
+        ? !port || port.factionId !== faction.id
+        : !base || base.hp <= 0 || base.owner !== faction.id
+    ) {
       throw new Error('active production job has no working owned HQ');
     }
+    const spawn = port?.cell ?? base!.cell;
     spawned.push({
       id: active.unitId,
       factionId: faction.id,
       kind: active.unitKind,
       hp: next.rules.units[active.unitKind].maxHp,
       maxHp: next.rules.units[active.unitKind].maxHp,
-      cell: { x: base.cell.x, y: base.cell.y },
+      cell: { x: spawn.x, y: spawn.y },
       path: [],
       edgeProgress: 0,
       moveTicksPerCell: next.rules.units[active.unitKind].moveTicksPerCell,

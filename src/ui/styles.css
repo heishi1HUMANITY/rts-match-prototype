@@ -949,6 +949,23 @@ select:focus-visible {
 .master-field [aria-invalid='true'] {
   border-color: #b21f2d;
 }
+.master-targets {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.master-targets > strong,
+.master-targets > small,
+.master-targets > .master-field-error {
+  grid-column: 1 / -1;
+}
+.master-target-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+.master-target-option input[type='checkbox'] {
+  margin: 0;
+}
 .master-json {
   display: grid;
   grid-template-columns: auto minmax(150px, 1fr) auto auto;

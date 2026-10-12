@@ -78,7 +78,7 @@ function routeTo(
   const origin = edge ?? unit.cell;
   const route = findPath(state.map, origin, destination, {
     factionId: unit.factionId,
-    domain: unitCapabilities(unit.kind).movementDomain,
+    domain: unitCapabilities(unit.kind, state.rules).movementDomain,
     crossings: knownActiveCrossings(state, unit.factionId),
     unitKind: unit.kind,
     allowBlockedStart: true,
@@ -215,8 +215,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
     };
   }
   if (visibleEnemyBase) {
-    const base = state.bases.find(({ id }) => id === order.target.id)!;
-    if (inBaseRange(state, unit, base.cell)) {
+    if (inBaseRange(state, unit, destination)) {
       return {
         ...unit,
         path: holdAtNextCenter(unit),

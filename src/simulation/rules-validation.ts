@@ -1,7 +1,7 @@
 import { DEFAULT_RULES, MASTER_SCHEMA_VERSION } from './rules';
 import type { MasterEnvelope, RulesMaster } from './rules';
 import type { ResearchDefinition } from './config';
-import type { CrossingTierId, ResearchEffect } from './types';
+import type { CombatTargetKind, CrossingTierId, ResearchEffect } from './types';
 
 export interface ValidationIssue {
   readonly key: string;
@@ -88,9 +88,14 @@ export function validateRules(input: unknown): ValidationResult {
             return defaults[0];
           }
           const unlock = entry.id === 'crossing-unlock';
+          const unitUnlock = entry.id === 'unit-unlock';
           exactKeys(
             entry,
-            unlock ? ['id', 'value', 'crossingTier'] : ['id', 'value'],
+            unlock
+              ? ['id', 'value', 'crossingTier']
+              : unitUnlock
+                ? ['id', 'value', 'unitKind']
+                : ['id', 'value'],
             effectPath,
             issues,
           );
@@ -101,6 +106,7 @@ export function validateRules(input: unknown): ValidationResult {
               'supply-income-bonus',
               'upkeep-reduction',
               'crossing-unlock',
+              'unit-unlock',
             ].includes(String(entry.id))
           )
             issues.push({
@@ -131,14 +137,51 @@ export function validateRules(input: unknown): ValidationResult {
               key: `${effectPath}.crossingTier`,
               message: '渡河解放以外には指定できません',
             });
+          if (
+            unitUnlock &&
+            !['artillery', 'antiAir', 'helicopter', 'patrolBoat'].includes(
+              String(entry.unitKind),
+            )
+          )
+            issues.push({
+              key: `${effectPath}.unitKind`,
+              message: '未対応の兵種解放IDです',
+            });
+          if (!unitUnlock && Object.hasOwn(entry, 'unitKind'))
+            issues.push({
+              key: `${effectPath}.unitKind`,
+              message: '兵種解放以外には指定できません',
+            });
           return {
             id: String(entry.id),
             value: isInteger(entry.value) ? entry.value : 0,
             ...(unlock && typeof entry.crossingTier === 'string'
               ? { crossingTier: entry.crossingTier }
               : {}),
+            ...(unitUnlock && typeof entry.unitKind === 'string'
+              ? { unitKind: entry.unitKind }
+              : {}),
           };
         });
+      }
+      if (path.endsWith('.attackTargets')) {
+        const allowed: readonly CombatTargetKind[] = [
+          'unit',
+          'defender',
+          'base',
+          'crossing',
+          'stronghold',
+        ];
+        const targets = value.filter(
+          (entry): entry is CombatTargetKind =>
+            typeof entry === 'string' &&
+            allowed.includes(entry as CombatTargetKind),
+        );
+        if (targets.length !== value.length)
+          issues.push({ key: path, message: '未対応の攻撃対象種類です' });
+        if (new Set(targets).size !== targets.length)
+          issues.push({ key: path, message: '攻撃対象を重複指定できません' });
+        return targets;
       }
       const values = value.filter(
         (entry): entry is string => typeof entry === 'string',
@@ -171,26 +214,40 @@ export function validateRules(input: unknown): ValidationResult {
         output[key] = typeof actual === 'boolean' ? actual : expected;
       } else {
         const allowedNull = expected === null;
-        if (allowedNull && (actual === null || typeof actual === 'string'))
+        if (allowedNull && (actual === null || typeof actual === 'string')) {
+          if (
+            fieldPath.endsWith('.unlockResearchId') &&
+            ![
+              null,
+              'artillery-1',
+              'air-defense-1',
+              'aircraft-1',
+              'naval-1',
+            ].includes(actual)
+          )
+            issues.push({ key: fieldPath, message: '未対応の研究IDです' });
           output[key] = actual;
-        else if (!allowedNull && typeof expected === 'number') {
+        } else if (!allowedNull && typeof expected === 'number') {
           const positive =
             !fieldPath.endsWith('initialResearchCenti') &&
             !fieldPath.endsWith('damageBonus') &&
+            !fieldPath.includes('damageVs') &&
             !fieldPath.endsWith('supplyIncomeCentiPerTick') &&
             !fieldPath.endsWith('researchIncomeCentiPerTick') &&
             !fieldPath.endsWith('baseIncomeCentiPerTick') &&
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
-          const max = fieldPath.endsWith('timeLimitTicks')
-            ? 100_000_000
-            : fieldPath.endsWith('moveTicksPerCell') ||
-                fieldPath.endsWith('decisionIntervalTicks') ||
-                fieldPath.endsWith('updateIntervalTicks') ||
-                fieldPath.endsWith('requiredTicks')
-              ? 10_000
-              : 1_000_000_000;
+          const max = fieldPath.endsWith('captureEfficiencyPercent')
+            ? 1_000
+            : fieldPath.endsWith('timeLimitTicks')
+              ? 100_000_000
+              : fieldPath.endsWith('moveTicksPerCell') ||
+                  fieldPath.endsWith('decisionIntervalTicks') ||
+                  fieldPath.endsWith('updateIntervalTicks') ||
+                  fieldPath.endsWith('requiredTicks')
+                ? 10_000
+                : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -201,27 +258,45 @@ export function validateRules(input: unknown): ValidationResult {
         } else if (typeof expected === 'string') {
           const allowed = fieldPath.endsWith('.domain')
             ? ['power', 'logistics', 'information', 'engineering']
-            : fieldPath.endsWith('.id')
-              ? [
-                  'damage-bonus',
-                  'vision-bonus',
-                  'supply-income-bonus',
-                  'upkeep-reduction',
-                  'crossing-unlock',
-                ]
-              : [
-                  'firepower-1',
-                  'firepower-2',
-                  'bridge-2',
-                  'bridge-3',
-                  'ropeway-1',
-                  'ropeway-2',
-                  'supply-lines-1',
-                  'maintenance-1',
-                  'survey-1',
-                  'survey-2',
-                ];
-          if (typeof actual !== 'string' || !allowed.includes(actual))
+            : fieldPath.endsWith('.movementDomain')
+              ? ['land', 'air', 'water']
+              : fieldPath.endsWith('.unlockResearchId')
+                ? [
+                    null,
+                    'artillery-1',
+                    'air-defense-1',
+                    'aircraft-1',
+                    'naval-1',
+                  ]
+                : fieldPath.endsWith('.id')
+                  ? [
+                      'damage-bonus',
+                      'vision-bonus',
+                      'supply-income-bonus',
+                      'upkeep-reduction',
+                      'crossing-unlock',
+                      'unit-unlock',
+                    ]
+                  : [
+                      'firepower-1',
+                      'firepower-2',
+                      'bridge-2',
+                      'bridge-3',
+                      'ropeway-1',
+                      'ropeway-2',
+                      'supply-lines-1',
+                      'maintenance-1',
+                      'survey-1',
+                      'survey-2',
+                      'artillery-1',
+                      'air-defense-1',
+                      'aircraft-1',
+                      'naval-1',
+                    ];
+          if (
+            (typeof actual !== 'string' && actual !== null) ||
+            !allowed.includes(actual as string | null)
+          )
             issues.push({ key: fieldPath, message: '未対応のIDです' });
           output[key] = typeof actual === 'string' ? actual : expected;
         } else output[key] = actual;
@@ -312,10 +387,19 @@ export function validateRules(input: unknown): ValidationResult {
     Math.ceil(rules.match.timeLimitTicks / 600) *
       rules.localFaction.growthPercentPerMinute *
       100;
-  for (const kind of ['assault', 'scout'] as const) {
+  for (const kind of Object.keys(
+    rules.units,
+  ) as (keyof RulesMaster['units'])[]) {
     const grownHp = (rules.units[kind].maxHp * growthAtMatchEnd) / 10_000;
     const grownDamage =
-      (rules.units[kind].baseDamage * growthAtMatchEnd) / 10_000;
+      (Math.max(
+        rules.units[kind].damageVsLand,
+        rules.units[kind].damageVsAir,
+        rules.units[kind].damageVsWater,
+        rules.units[kind].damageVsStructure,
+      ) *
+        growthAtMatchEnd) /
+      10_000;
     if (
       !Number.isSafeInteger(Math.round(grownHp)) ||
       !Number.isSafeInteger(Math.round(grownDamage))
@@ -358,7 +442,10 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 3 &&
       input.masterSchemaVersion !== 4 &&
       input.masterSchemaVersion !== 5 &&
-      input.masterSchemaVersion !== 6)
+      input.masterSchemaVersion !== 6 &&
+      input.masterSchemaVersion !== 7 &&
+      input.masterSchemaVersion !== 8 &&
+      input.masterSchemaVersion !== 9)
   )
     return {
       ok: false,
@@ -370,6 +457,30 @@ export function validateEnvelope(
       ],
     };
   let candidateRules = input.rules;
+  if (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION) {
+    if (!isRecord(candidateRules))
+      return {
+        ok: false,
+        issues: [{ key: 'rules', message: '設定形式を認識できません' }],
+      };
+    const oldUnits = isRecord(candidateRules.units) ? candidateRules.units : {};
+    const units: Record<string, unknown> = {};
+    for (const [kind, defaults] of Object.entries(DEFAULT_RULES.units)) {
+      const old = isRecord(oldUnits[kind]) ? oldUnits[kind] : {};
+      const { baseDamage: legacyDamage, ...preserved } = old;
+      const fallback =
+        typeof legacyDamage === 'number'
+          ? {
+              damageVsLand: legacyDamage,
+              damageVsAir: legacyDamage,
+              damageVsWater: legacyDamage,
+              damageVsStructure: legacyDamage,
+            }
+          : {};
+      units[kind] = { ...defaults, ...preserved, ...fallback };
+    }
+    candidateRules = { ...candidateRules, units };
+  }
   if (input.masterSchemaVersion === 3) {
     if (!isRecord(input.rules) || Object.hasOwn(input.rules, 'defenses'))
       return {
@@ -381,7 +492,10 @@ export function validateEnvelope(
           },
         ],
       };
-    candidateRules = { ...input.rules, defenses: DEFAULT_RULES.defenses };
+    candidateRules = {
+      ...(isRecord(candidateRules) ? candidateRules : {}),
+      defenses: DEFAULT_RULES.defenses,
+    };
   } else if (input.masterSchemaVersion === 4) {
     if (
       !isRecord(input.rules) ||
@@ -398,7 +512,7 @@ export function validateEnvelope(
         ],
       };
     candidateRules = {
-      ...input.rules,
+      ...(isRecord(candidateRules) ? candidateRules : {}),
       defenses: {
         ...input.rules.defenses,
         respawnEnabled: DEFAULT_RULES.defenses.respawnEnabled,
@@ -432,7 +546,12 @@ export function validateEnvelope(
       string,
       ResearchDefinition
     >;
-    if (oldDefinitions) {
+    if (
+      oldDefinitions &&
+      input.masterSchemaVersion !== 7 &&
+      input.masterSchemaVersion !== 8 &&
+      input.masterSchemaVersion !== 9
+    ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
         if (!converted[id]) {
@@ -483,6 +602,10 @@ export function validateEnvelope(
       }
       if (migrationIssues.length > 0)
         return { ok: false, issues: migrationIssues };
+    } else if (oldDefinitions) {
+      for (const [id, oldValue] of Object.entries(oldDefinitions))
+        if (Object.hasOwn(converted, id))
+          converted[id] = oldValue as ResearchDefinition;
     }
     candidateRules = {
       ...candidateRules,

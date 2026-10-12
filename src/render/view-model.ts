@@ -131,7 +131,7 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
   const capture =
     base.captureCandidate === null
       ? ''
-      : ` · ${base.captureCandidate}制圧 ${base.captureTicks}/${captureRequiredTicks}`;
+      : ` · ${base.captureCandidate}制圧 ${base.captureProgressCentiTicks / 100}/${captureRequiredTicks}`;
   const defender =
     base.defenderMaxHp === null
       ? ''

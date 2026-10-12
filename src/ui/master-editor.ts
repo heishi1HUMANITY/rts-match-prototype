@@ -106,10 +106,45 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'HP',
     help: '新規作成される部隊・拠点・守備に適用します。',
   },
-  baseDamage: {
-    label: '基本攻撃力',
+  damageVsLand: {
+    label: '対陸damage',
     unit: 'damage/tick',
-    help: '守備または部隊の1tickごとの攻撃力です。',
+    help: '陸上兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsAir: {
+    label: '対空damage',
+    unit: 'damage/tick',
+    help: '航空兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsWater: {
+    label: '対艦damage',
+    unit: 'damage/tick',
+    help: '水上兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsStructure: {
+    label: '対構造物damage',
+    unit: 'damage/tick',
+    help: '守備・拠点・渡河設備・現地本拠へ与えるdamageです。0は攻撃不可。',
+  },
+  attackTargets: {
+    label: '攻撃できる対象',
+    unit: '',
+    help: '対象を選択します。damageが0の対象は選択しても攻撃しません。',
+  },
+  canCaptureBase: {
+    label: '拠点を制圧できる',
+    unit: '',
+    help: '無効な部隊は拠点の所有を変更できません。',
+  },
+  captureEfficiencyPercent: {
+    label: '制圧効率',
+    unit: '%',
+    help: '制圧可能兵種の1部隊あたりの進捗速度です。100%が標準、複数部隊の進捗は加算されます。',
+  },
+  lossTicketsCenti: {
+    label: '損失ticket',
+    unit: 'ticket ×100',
+    help: 'この兵種を失った陣営のticket減少量です。',
   },
   range: { label: '攻撃射程', unit: 'セル', help: '円形の攻撃範囲です。' },
   vision: { label: '視界', unit: 'セル', help: '円形の視界範囲です。' },
@@ -307,11 +342,18 @@ function fieldsFor(rules: RulesMaster): {
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
     if (Array.isArray(value)) {
+      if (path.endsWith('.attackTargets')) {
+        result.push({ group, path, value });
+        return;
+      }
+      if (path.endsWith('.prerequisites') || path.endsWith('.exclusiveWith'))
+        return;
       value.forEach((child, index) => visit(child, `${path}.${index}`, group));
       return;
     }
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       const key = path.split('.').at(-1)!;
+      if (path.startsWith('units.') && key === 'baseDamage') return;
       if (
         [
           'domain',
@@ -320,6 +362,9 @@ function fieldsFor(rules: RulesMaster): {
           'exclusiveWith',
           'id',
           'crossingTier',
+          'movementDomain',
+          'unlockResearchId',
+          'unitKind',
         ].includes(key)
       )
         return;
@@ -328,10 +373,14 @@ function fieldsFor(rules: RulesMaster): {
       );
       if (
         unlockValue &&
-        getPath(
-          rules,
-          `research.definitions.${unlockValue[1]}.effects.${unlockValue[2]}.id`,
-        ) === 'crossing-unlock'
+        ['crossing-unlock', 'unit-unlock'].includes(
+          String(
+            getPath(
+              rules,
+              `research.definitions.${unlockValue[1]}.effects.${unlockValue[2]}.id`,
+            ),
+          ),
+        )
       )
         return;
       result.push({ group, path, value });
@@ -353,6 +402,10 @@ function fieldLabel(path: string): string {
   const ids: Record<string, string> = {
     assault: '強襲',
     scout: '偵察',
+    artillery: '自走砲',
+    antiAir: '対空車両',
+    helicopter: '攻撃ヘリ',
+    patrolBoat: '哨戒艇',
     hq: '首都',
     outpost: '小拠点',
     medium: '中拠点',
@@ -363,6 +416,10 @@ function fieldLabel(path: string): string {
     'maintenance-1': '兵站・維持 I',
     'survey-1': '情報・測量 I',
     'survey-2': '情報・測量 II',
+    'artillery-1': '自走砲',
+    'air-defense-1': '対空車両',
+    'aircraft-1': '攻撃ヘリ',
+    'naval-1': '哨戒艇',
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
@@ -379,6 +436,7 @@ function fieldLabel(path: string): string {
       'supply-income-bonus': '拠点補給収入',
       'upkeep-reduction': '維持費減額',
       'crossing-unlock': '渡河解放（数値なし）',
+      'unit-unlock': '兵種解放（数値なし）',
     };
     return `${ids[researchId] ?? researchId} · ${effectNames[effect?.id ?? ''] ?? '効果値'}`;
   }
@@ -418,7 +476,7 @@ export function createMasterEditor(
       const issue = issues.find((entry) => entry.key === fieldPath);
       input.setAttribute('aria-invalid', String(issue !== undefined));
       const detail = input
-        .closest('label')
+        .closest('.master-field')
         ?.querySelector<HTMLElement>('.master-field-error');
       if (detail) detail.textContent = issue?.message ?? '';
     }
@@ -455,6 +513,39 @@ export function createMasterEditor(
             : '無効'
           : String(standardValue);
       detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${standardLabel}`;
+      if (Array.isArray(field.value) && field.path.endsWith('.attackTargets')) {
+        const choices = [
+          ['unit', '部隊'],
+          ['defender', '中立守備'],
+          ['base', '拠点'],
+          ['crossing', '渡河設備'],
+          ['stronghold', '現地勢力本拠'],
+        ] as const;
+        const container = document.createElement('div');
+        container.className = 'master-field master-targets';
+        container.dataset.masterPath = field.path;
+        const name = document.createElement('strong');
+        name.textContent = fieldLabel(field.path);
+        const help = document.createElement('small');
+        help.textContent = meta.help;
+        container.append(name, help);
+        for (const [value, text] of choices) {
+          const option = document.createElement('label');
+          option.className = 'master-target-option';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = field.value.includes(value);
+          checkbox.dataset.masterPath = field.path;
+          checkbox.dataset.masterArrayOption = value;
+          option.append(checkbox, text);
+          container.append(option);
+        }
+        const fieldError = document.createElement('small');
+        fieldError.className = 'master-field-error';
+        container.append(fieldError);
+        groupHost!.append(container);
+        continue;
+      }
       const input =
         field.path.endsWith('.prerequisite') ||
         field.path.endsWith('.unlocksCrossing')
@@ -468,6 +559,10 @@ export function createMasterEditor(
         } else {
           input.type = 'number';
           input.step = '1';
+          if (field.path.endsWith('.captureEfficiencyPercent')) {
+            input.min = '0';
+            input.max = '1000';
+          }
           input.value = String(field.value);
           input.inputMode = 'numeric';
         }
@@ -492,6 +587,23 @@ export function createMasterEditor(
     for (const input of fieldHost.querySelectorAll<
       HTMLInputElement | HTMLSelectElement
     >('[data-master-path]')) {
+      const path = input.dataset.masterPath!;
+      if (input.dataset.masterArrayOption) {
+        const options = Array.from(
+          fieldHost.querySelectorAll<HTMLInputElement>(
+            '[data-master-array-option]',
+          ),
+        ).filter((entry) => entry.dataset.masterPath === path);
+        if (options[0] !== input) continue;
+        setPath(
+          next,
+          path,
+          options
+            .filter((entry) => entry.checked)
+            .map((entry) => entry.dataset.masterArrayOption!),
+        );
+        continue;
+      }
       const value =
         input instanceof HTMLInputElement
           ? input.type === 'checkbox'
@@ -500,7 +612,7 @@ export function createMasterEditor(
               ? ''
               : Number(input.value)
           : input.value || null;
-      setPath(next, input.dataset.masterPath!, value);
+      setPath(next, path, value);
     }
     const result = validateRules(next);
     if (!result.ok) showValidation(result.issues);

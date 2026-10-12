@@ -43,7 +43,7 @@ function baseViews(
         defenderHp: base.defender?.hp ?? null,
         defenderMaxHp: base.defender?.maxHp ?? null,
         captureCandidate: base.captureCandidate,
-        captureTicks: base.captureTicks,
+        captureProgressCentiTicks: base.captureProgressCentiTicks,
       };
     }
     if (knowledge.visible[cellIndex]) {
@@ -58,7 +58,7 @@ function baseViews(
         defenderHp: base.defender?.hp ?? null,
         defenderMaxHp: base.defender?.maxHp ?? null,
         captureCandidate: base.captureCandidate,
-        captureTicks: base.captureTicks,
+        captureProgressCentiTicks: base.captureProgressCentiTicks,
       };
     }
     const memory = memories.get(base.id);
@@ -106,7 +106,7 @@ function baseViews(
       defenderHp: null,
       defenderMaxHp: null,
       captureCandidate: null,
-      captureTicks: 0,
+      captureProgressCentiTicks: 0,
     });
   }
   return views;
