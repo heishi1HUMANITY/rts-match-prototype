@@ -2,9 +2,10 @@
 
 ## 対象版
 
-- Issue / PR: #30 / PR作成後に追記
+- Issue / PR: [#30](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/30) / [#34](https://github.com/heishi1HUMANITY/rts-match-prototype/pull/34)
 - ブランチ: `codex/f17-master-management`
-- 完全SHA: コミット後に追記
+- 実装コードの完全SHA: `d6d86904a7e69495f012602825cae4a61080ad6b`
+- 検査対象: PR #34の現head（実装コード変更は上記SHA、以後は検査票/引継ぎ記録のみ）
 - 起動コマンド: `npm ci`（初回のみ）、`npm run dev -- --host 127.0.0.1`
 - URL: `http://127.0.0.1:5173/`（ローカル開発サーバー）
 - 通常設定: 現行の標準値。追加fixture・seed指定はありません。
@@ -16,9 +17,10 @@
 
 ## 親エージェント検証
 
-- `npm run check`: 成功（Prettier、TypeScript、23 test files / 192 tests、production build）。buildは679.88 kBのchunk警告あり。
+- `npm run check`: 成功（Prettier、TypeScript、23 test files / 193 tests、production build）。buildは679.93 kBのchunk警告あり。
 - `npm run references:check`: 成功（継承資料471ファイル）。
 - `git diff --check`: 成功。
+- clean-tree post-commit build info at implementation SHA: `d6d86904a7e69495f012602825cae4a61080ad6b`, `dirty: false`, schema 7, rules `f17-v1`.
 - 実ブラウザ操作 / PC / 900×420 / タッチ: **未確認（画面確認待ち）**。computer-useが現在のChrome URLを安全に特定できず停止したため、別経路でのUI操作は行っていません。
 - ユーザー合格: 未実施。
 
