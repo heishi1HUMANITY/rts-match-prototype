@@ -8,6 +8,8 @@ import { advanceLocalFactionOrders } from '../ai/local-faction';
 import type { FactionId, MatchState } from '../simulation/types';
 
 const BOT_FACTIONS: readonly FactionId[] = ['B', 'C'];
+// F06 keeps its existing one-second response; B/C difficulty is independent.
+const LOCAL_DECISION_INTERVAL_TICKS = 10;
 
 function enablesBots(state: MatchState): boolean {
   if (
@@ -23,7 +25,7 @@ function enablesBots(state: MatchState): boolean {
 }
 
 /**
- * Applies deterministic bot orders at one-second boundaries, then advances one
+ * Applies deterministic bot orders at configured boundaries, then advances one
  * fixed simulation tick. Bot decisions are reconstructed from the state, so
  * this function adds no replay history or persistent AI state.
  */
@@ -69,7 +71,8 @@ export function advanceMatch(state: MatchState): MatchState {
         if (result.ok) prepared = result.state;
       }
     }
-    prepared = advanceLocalFactionOrders(prepared);
   }
+  if (prepared.elapsedTicks % LOCAL_DECISION_INTERVAL_TICKS === 0)
+    prepared = advanceLocalFactionOrders(prepared);
   return stepMatch(prepared);
 }

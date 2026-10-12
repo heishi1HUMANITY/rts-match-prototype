@@ -321,7 +321,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   decisionIntervalTicks: {
     label: '判断間隔',
     unit: 'tick (0.1秒)',
-    help: 'NPCが判断して命令を作る間隔です。',
+    help: '対戦NPC B/Cが判断して命令を作る間隔です。現地勢力は対象外です。',
   },
   defenseAttentionRadius: {
     label: '防衛判断距離',
@@ -331,7 +331,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   maxCommandsPerDecision: {
     label: '判断あたり命令上限',
     unit: '命令',
-    help: 'NPCが1回に出せる命令数の上限です。',
+    help: '対戦NPC B/Cが1回に出せる命令数の上限です。必要な操作を順番に処理します。',
   },
   baseIncomeCentiPerTick: {
     label: '基礎研究収入',

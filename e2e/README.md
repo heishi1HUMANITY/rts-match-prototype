@@ -31,3 +31,5 @@ IDの出典は [G1_SCENARIOS.md](../docs/project/inspection/G1_SCENARIOS.md) で
 `playwright-report/` にHTMLレポート、`test-results/` にスクリーンショット・失敗時trace/videoを保存します。失敗時fixtureは既存の診断JSONエクスポーターを呼び、seed/scenario/command履歴・状態・ビルド情報を `diagnostic.json` に保存します。ページが起動できない等でエクスポートできない場合は、取得エラーを添付します。fixture付きの `test` は `./fixtures` からimportしてください。
 
 CIは成功・失敗にかかわらずレポートと診断成果物を14日保存します。PRのdist artifactは既存のWindows/Linux checksで保存し、main pushでは両OSのchecksとe2e成功後に同じLinuxビルドをGitHub Pagesへ配備します。PR preview URLは未導入です。
+
+NPC-R01修正のシナリオは [NPC_R01_SCENARIOS.md](../docs/project/inspection/NPC_R01_SCENARIOS.md) を参照。`npc-pacing.spec.ts` は標準マスタ復元、通常B/Cの生産・研究・行軍、診断snapshot/replayエクスポート、一時停止・再開・リセットを両viewportで検証する。厳密な判断tick、命令上限、公平巡回、現地勢力周期、旧AI診断拒否はruntime/AIユニットテストで検証し、遊びやすさはCP0プレイで判定する。

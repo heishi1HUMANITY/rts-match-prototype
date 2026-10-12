@@ -59,6 +59,8 @@ function factionOrderDistance(a: CombatantId, b: CombatantId): number {
 
 function researchCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
+  // Selecting another topic replaces the active charge job. Let it finish.
+  if (faction.activeResearch !== null) return undefined;
   const order = Object.entries(view.rules.research.definitions)
     .sort(([idA, a], [idB, b]) => {
       const priority = (id: string): number =>
@@ -526,18 +528,23 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
     return [];
   }
 
+  // Rotate fixed action slots rather than only the available commands: an
+  // always-available economic action must not starve later units at low limits.
+  const slots: (() => Command | undefined)[] = [
+    () => productionCommand(view),
+    () => researchCommand(view),
+    () => baseUpgradeCommand(view),
+    ...[...view.ownUnits]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((unit) => () => unitMoveCommand(view, unit)),
+  ];
+  const decision = Math.floor(view.tick / view.rules.npc.decisionIntervalTicks);
+  const start = decision % slots.length;
   const commands: Command[] = [];
-  const maxCommands = view.rules.npc.maxCommandsPerDecision;
-  const production = productionCommand(view);
-  if (production && commands.length < maxCommands) commands.push(production);
-  const research = researchCommand(view);
-  if (research && commands.length < maxCommands) commands.push(research);
-  const upgrade = baseUpgradeCommand(view);
-  if (upgrade && commands.length < maxCommands) commands.push(upgrade);
-  for (const unit of view.ownUnits) {
-    if (commands.length >= maxCommands) break;
-    const move = unitMoveCommand(view, unit);
-    if (move) commands.push(move);
+  for (let offset = 0; offset < slots.length; offset += 1) {
+    if (commands.length >= view.rules.npc.maxCommandsPerDecision) break;
+    const command = slots[(start + offset) % slots.length]!();
+    if (command) commands.push(command);
   }
   return commands;
 }
