@@ -5,6 +5,7 @@ import type {
   FactionId,
   GridMap,
   MovementDomain,
+  UnitKind,
 } from './types';
 
 const DIRECTIONS = [
@@ -23,13 +24,15 @@ export function findPath(
     readonly factionId?: FactionId;
     readonly domain?: MovementDomain;
     readonly crossings?: readonly ActiveCrossing[];
+    readonly unitKind?: UnitKind;
+    readonly allowBlockedStart?: boolean;
   } = {},
 ): readonly Cell[] | null {
   if (
     map.width <= 0 ||
     map.height <= 0 ||
     map.blocked.length !== map.width * map.height ||
-    !canTraverse(map, from, options) ||
+    (!options.allowBlockedStart && !canTraverse(map, from, options)) ||
     !canTraverse(map, to, options)
   ) {
     return null;

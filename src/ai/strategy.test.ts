@@ -53,6 +53,48 @@ describe('stateless faction-view NPC policy', () => {
     });
   });
 
+  it('resumes its own paused crossing job without charging or needing new supply', () => {
+    let state = running(createMatch(42, { scenarioId: 'f04-crossing' }));
+    const site = state.map.crossingSites!.find(
+      ({ id }) => id === 'CROSS-RING-N',
+    )!;
+    state = {
+      ...state,
+      units: state.units.map((unit) =>
+        unit.id === 'B-01' ? { ...unit, cell: site.bankA } : unit,
+      ),
+      crossings: state.crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? {
+              ...crossing,
+              job: {
+                kind: 'build',
+                factionId: 'B',
+                progressTicks: 12,
+                requiredTicks: 180,
+                paidCostCenti: 6_000,
+              },
+            }
+          : crossing,
+      ),
+      factions: state.factions.map((faction) =>
+        faction.id === 'B' ? { ...faction, supplyCenti: 0 } : faction,
+      ),
+    };
+    let view = getFactionView(state, 'B');
+    view = {
+      ...view,
+      bases: [],
+      ownUnits: view.ownUnits.filter(({ id }) => id === 'B-01'),
+      visibleEnemies: [],
+    };
+    expect(decideBotCommands(view)).toContainEqual({
+      type: 'build-crossing',
+      siteId: site.id,
+      unitId: 'B-01',
+    });
+  });
+
   it('tracks a visible threat and keeps the same order while it is searching', () => {
     const view = getFactionView(running(createMatch(42)), 'B');
     const enemy = {

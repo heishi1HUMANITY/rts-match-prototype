@@ -1,6 +1,8 @@
 import { findPath } from '../simulation/pathfinding';
+import { crossingResearchComplete } from '../simulation/crossings';
 import type {
   BaseView,
+  ActiveCrossing,
   Cell,
   Command,
   FactionId,
@@ -48,15 +50,43 @@ function factionOrderDistance(a: FactionId, b: FactionId): number {
 
 function researchCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
-  const next: ResearchId | undefined = faction.completedResearchIds.includes(
+  const order: readonly ResearchId[] = [
     'firepower-1',
-  )
-    ? faction.completedResearchIds.includes('firepower-2')
-      ? undefined
-      : 'firepower-2'
-    : 'firepower-1';
-  if (!next || faction.activeResearch?.researchId === next) return undefined;
-  return { type: 'start-research', researchId: next };
+    'bridge-2',
+    'ropeway-1',
+    'firepower-2',
+    'bridge-3',
+    'ropeway-2',
+  ];
+  const next = order.find((id) => {
+    const definition = view.rules.research.definitions[id];
+    return (
+      !faction.completedResearchIds.includes(id) &&
+      faction.activeResearch?.researchId !== id &&
+      (definition.prerequisite === null ||
+        faction.completedResearchIds.includes(definition.prerequisite))
+    );
+  });
+  return next ? { type: 'start-research', researchId: next } : undefined;
+}
+
+function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
+  return view.crossings.flatMap((crossing) =>
+    (crossing.visibility === 'owned' || crossing.visibility === 'visible') &&
+    crossing.owner === view.viewerFactionId &&
+    crossing.hp > 0 &&
+    crossing.job?.kind !== 'build'
+      ? [
+          {
+            ...crossing.site,
+            owner: crossing.owner,
+            allowedUnitKinds: crossing.site.tier.startsWith('ropeway')
+              ? (['scout'] as const)
+              : (['assault', 'scout'] as const),
+          },
+        ]
+      : [],
+  );
 }
 
 function productionCommand(view: FactionView): Command | undefined {
@@ -99,6 +129,8 @@ function nearestReachableGoal(
       route: findPath(view.map, from, base.cell, {
         factionId: unit.factionId,
         domain: 'land',
+        crossings: knownActiveCrossings(view),
+        unitKind: unit.kind,
       }),
     }))
     .filter(
@@ -110,6 +142,69 @@ function nearestReachableGoal(
         return a.route.length - b.route.length;
       return a.base.id < b.base.id ? -1 : a.base.id > b.base.id ? 1 : 0;
     })[0]?.base;
+}
+
+function crossingConstructionCommand(
+  view: FactionView,
+  unit: OwnUnitView,
+): Command | undefined {
+  if (unit.kind !== 'assault') return undefined;
+  const known = view.crossings.filter(
+    (crossing) =>
+      crossing.visibility === 'visible' || crossing.visibility === 'owned',
+  );
+  const options = known
+    .flatMap((crossing) => {
+      const { site } = crossing;
+      const stats = view.rules.crossings[site.tier];
+      if (!crossingResearchComplete(view.ownFaction, view.rules, site.tier))
+        return [];
+      const resumesOwnBuild =
+        crossing.job?.kind === 'build' &&
+        crossing.job.factionId === view.ownFaction.id;
+      if (crossing.owner !== null) return [];
+      if (crossing.job !== null && !resumesOwnBuild) return [];
+      if (!resumesOwnBuild && view.ownFaction.supplyCenti < stats.costCenti)
+        return [];
+      const paths = [site.bankA, site.bankB].map((bank) => ({
+        bank,
+        route: findPath(view.map, currentCell(unit), bank, {
+          factionId: unit.factionId,
+          domain: 'land',
+          crossings: knownActiveCrossings(view),
+          unitKind: unit.kind,
+          allowBlockedStart: true,
+        }),
+      }));
+      const best = paths
+        .filter((entry) => entry.route !== null)
+        .sort((a, b) => a.route!.length - b.route!.length)[0];
+      if (!best) return [];
+      return [
+        {
+          siteId: site.id,
+          bank: best.bank,
+          route: best.route!,
+          adjacent:
+            isNear(unit.cell, site.bankA) || isNear(unit.cell, site.bankB),
+        },
+      ];
+    })
+    .sort(
+      (a, b) =>
+        a.route.length - b.route.length || (a.siteId < b.siteId ? -1 : 1),
+    )[0];
+  if (!options) return undefined;
+  if (options.adjacent)
+    return { type: 'build-crossing', siteId: options.siteId, unitId: unit.id };
+  const destination = endpoint(unit);
+  if (destination?.x === options.bank.x && destination.y === options.bank.y)
+    return undefined;
+  return { type: 'move', unitId: unit.id, target: options.bank };
+}
+
+function isNear(cell: Cell, bank: Cell): boolean {
+  return Math.abs(cell.x - bank.x) + Math.abs(cell.y - bank.y) <= 1;
 }
 
 function enemyCell(enemy: VisibleEnemyUnitView): Cell {
@@ -224,6 +319,8 @@ function unitMoveCommand(
           findPath(view.map, currentCell(unit), proposedDefense.cell, {
             factionId: unit.factionId,
             domain: 'land',
+            crossings: knownActiveCrossings(view),
+            unitKind: unit.kind,
           })
         ? proposedDefense
         : undefined;
@@ -254,7 +351,7 @@ function unitMoveCommand(
           cell: baseGoal.cell,
         }
       : undefined);
-  if (!goal) return undefined;
+  if (!goal) return crossingConstructionCommand(view, unit);
   if (
     order &&
     order.status !== 'arrived' &&

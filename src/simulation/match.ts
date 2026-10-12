@@ -69,9 +69,10 @@ function freshFactions(rules: RulesMaster): FactionState[] {
     supplyCenti: rules.match.initialSupplyCenti,
     researchCenti: rules.match.initialResearchCenti,
     researchProgressCenti: {
-      'firepower-1': 0,
-      'firepower-2': 0,
-    },
+      ...Object.fromEntries(
+        Object.keys(rules.research.definitions).map((id) => [id, 0]),
+      ),
+    } as FactionState['researchProgressCenti'],
     ticketsCenti: rules.match.initialTicketsCenti,
     eliminatedAtTick: null,
     eliminationReason: null,
@@ -204,11 +205,18 @@ function configuredFixture(
         return { ...unit, cell: { x: 21, y: 20 }, path: route };
       return unit;
     });
+  } else if (scenarioId === 'f04-crossing') {
+    units = units.map((unit) =>
+      unit.id === 'A-01' ? { ...unit, cell: { x: 19, y: 10 } } : unit,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
+    );
   }
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v8 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-v9 match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},
@@ -225,6 +233,7 @@ export function createMatch(
       `invalid rules: ${validation.issues.map(({ key }) => key).join(', ')}`,
     );
   const rules = cloneRules(validation.rules);
+  const map = scenarioMap(seed, scenarioId);
   const initial = configuredFixture(
     {
       schemaVersion: SCHEMA_VERSION,
@@ -239,9 +248,17 @@ export function createMatch(
       factions: freshFactions(rules),
       phase: 'ready',
       result: null,
-      map: scenarioMap(seed, scenarioId),
+      map,
       units: buildUnits(rules),
       bases: buildBases(rules),
+      crossings: (map.crossingSites ?? []).map((site) => ({
+        siteId: site.id,
+        owner: null,
+        hp: 0,
+        maxHp: 0,
+        lastDamagedTick: -1,
+        job: null,
+      })),
     },
     scenarioId,
   );

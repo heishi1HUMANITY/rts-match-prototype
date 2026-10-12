@@ -59,6 +59,7 @@ export function validateRules(input: unknown): ValidationResult {
     'units',
     'bases',
     'research',
+    'crossings',
     'match',
     'limits',
     'capture',
@@ -112,7 +113,14 @@ export function validateRules(input: unknown): ValidationResult {
           if (
             typeof actual !== 'string' ||
             (actual !== expected &&
-              !['firepower-1', 'firepower-2'].includes(actual))
+              ![
+                'firepower-1',
+                'firepower-2',
+                'bridge-2',
+                'bridge-3',
+                'ropeway-1',
+                'ropeway-2',
+              ].includes(actual))
           )
             issues.push({ key: fieldPath, message: '未対応のIDです' });
           output[key] = typeof actual === 'string' ? actual : expected;
@@ -123,6 +131,16 @@ export function validateRules(input: unknown): ValidationResult {
   };
   const rules = walk(input, DEFAULT_RULES, 'rules') as RulesMaster;
   for (const [id, def] of Object.entries(rules.research.definitions)) {
+    if (
+      def.unlocksCrossing !== null &&
+      !['bridge-2', 'bridge-3', 'ropeway-1', 'ropeway-2'].includes(
+        def.unlocksCrossing,
+      )
+    )
+      issues.push({
+        key: `rules.research.definitions.${id}.unlocksCrossing`,
+        message: '未対応の渡河解放効果です',
+      });
     if (
       def.prerequisite !== null &&
       !Object.hasOwn(rules.research.definitions, def.prerequisite)

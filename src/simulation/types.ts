@@ -12,9 +12,22 @@ export type ScenarioId =
   | 'g3-elimination'
   | 'g3-mutual'
   | 'g3-spectate'
-  | 'f02-pursuit';
+  | 'f02-pursuit'
+  | 'f04-crossing';
 export type UnitKind = 'assault' | 'scout';
-export type ResearchId = 'firepower-1' | 'firepower-2';
+export type CrossingTierId =
+  | 'bridge-1'
+  | 'bridge-2'
+  | 'bridge-3'
+  | 'ropeway-1'
+  | 'ropeway-2';
+export type ResearchId =
+  | 'firepower-1'
+  | 'firepower-2'
+  | 'bridge-2'
+  | 'bridge-3'
+  | 'ropeway-1'
+  | 'ropeway-2';
 export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
 export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
 export type MovementDomain = 'land' | 'air' | 'water';
@@ -65,7 +78,7 @@ export interface PortSite {
 
 export interface CrossingSite {
   readonly id: string;
-  readonly kind: 'bridge' | 'ropeway';
+  readonly tier: CrossingTierId;
   readonly bankA: Cell;
   readonly bankB: Cell;
   readonly cells: readonly Cell[];
@@ -73,8 +86,53 @@ export interface CrossingSite {
 
 export interface ActiveCrossing extends CrossingSite {
   readonly owner: FactionId;
-  readonly complete: boolean;
+  readonly allowedUnitKinds: readonly UnitKind[];
 }
+
+export interface CrossingJob {
+  readonly kind: 'build' | 'dismantle';
+  readonly factionId: FactionId;
+  readonly progressTicks: number;
+  readonly requiredTicks: number;
+  readonly paidCostCenti: number;
+}
+
+export interface CrossingState {
+  readonly siteId: string;
+  readonly owner: FactionId | null;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly lastDamagedTick: number;
+  readonly job: CrossingJob | null;
+}
+
+export interface CrossingMemory {
+  readonly siteId: string;
+  readonly owner: FactionId | null;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly job: CrossingJob | null;
+  readonly seenTick: number;
+}
+
+export type CrossingView =
+  | {
+      readonly visibility: 'unknown';
+      readonly site: CrossingSite;
+      readonly owner: null;
+      readonly hp: null;
+      readonly maxHp: null;
+      readonly job: null;
+    }
+  | {
+      readonly visibility: 'remembered' | 'visible' | 'owned';
+      readonly site: CrossingSite;
+      readonly owner: FactionId | null;
+      readonly hp: number;
+      readonly maxHp: number;
+      readonly job: CrossingJob | null;
+      readonly seenTick?: number;
+    };
 
 export interface ProductionJob {
   readonly id: string;
@@ -120,6 +178,8 @@ export interface UnitState {
   readonly edgeProgress: number;
   readonly moveTicksPerCell?: number;
   readonly marchOrder?: MarchOrder | null;
+  /** Retains a direct order while a newly closed crossing blocks its route. */
+  readonly moveTarget?: Cell | null;
 }
 
 export interface MarchTarget {
@@ -161,10 +221,11 @@ export interface FactionKnowledge {
   readonly visible: readonly boolean[];
   readonly explored: readonly boolean[];
   readonly baseMemory: readonly BaseMemory[];
+  readonly crossingMemory: readonly CrossingMemory[];
 }
 
 export interface MatchState {
-  readonly schemaVersion: 8;
+  readonly schemaVersion: 9;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -175,6 +236,7 @@ export interface MatchState {
   readonly map: GridMap;
   readonly units: readonly UnitState[];
   readonly bases: readonly BaseState[];
+  readonly crossings: readonly CrossingState[];
   readonly knowledge: readonly FactionKnowledge[];
   readonly result: MatchResult | null;
 }
@@ -270,6 +332,7 @@ export interface FactionView {
   readonly ownUnits: readonly OwnUnitView[];
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
   readonly bases: readonly BaseView[];
+  readonly crossings: readonly CrossingView[];
 }
 
 export type Command =
@@ -289,7 +352,17 @@ export type Command =
       readonly unitKind: UnitKind;
     }
   | { readonly type: 'cancel-production'; readonly jobId: string }
-  | { readonly type: 'start-research'; readonly researchId: ResearchId | null };
+  | { readonly type: 'start-research'; readonly researchId: ResearchId | null }
+  | {
+      readonly type: 'build-crossing';
+      readonly siteId: string;
+      readonly unitId: string;
+    }
+  | {
+      readonly type: 'dismantle-crossing';
+      readonly siteId: string;
+      readonly unitId: string;
+    };
 
 export type RejectCode =
   | 'INVALID_COMMAND'
@@ -312,7 +385,14 @@ export type RejectCode =
   | 'PREREQUISITE_MISSING'
   | 'FACTION_ELIMINATED'
   | 'TARGET_NOT_FOUND'
-  | 'INVALID_TARGET';
+  | 'INVALID_TARGET'
+  | 'CROSSING_NOT_FOUND'
+  | 'CROSSING_TAKEN'
+  | 'CROSSING_BUSY'
+  | 'CROSSING_NOT_OWNED'
+  | 'CROSSING_NOT_ADJACENT'
+  | 'CROSSING_UNIT_RESTRICTED'
+  | 'CROSSING_RESEARCH_REQUIRED';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

@@ -465,7 +465,14 @@ describe('G2 research', () => {
     state = withFaction(state, {
       researchCenti: 0,
       completedResearchIds: ['firepower-1'],
-      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_000 },
+      researchProgressCenti: {
+        'firepower-1': 6_000,
+        'firepower-2': 8_000,
+        'bridge-2': 0,
+        'bridge-3': 0,
+        'ropeway-1': 0,
+        'ropeway-2': 0,
+      },
     });
     state = accepted(state, {
       type: 'start-research',
@@ -510,6 +517,10 @@ describe('G2 research', () => {
     expect(faction(state).researchProgressCenti).toEqual({
       'firepower-1': 0,
       'firepower-2': 0,
+      'bridge-2': 0,
+      'bridge-3': 0,
+      'ropeway-1': 0,
+      'ropeway-2': 0,
     });
     for (const id of ['A', 'B', 'C'] as const) {
       const current = state.factions.find((entry) => entry.id === id)!;
@@ -520,7 +531,14 @@ describe('G2 research', () => {
   it('uses the income from this tick to finish after combat, so its bonus starts next tick', () => {
     let state = withFaction(runningMatch(), {
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 5_998, 'firepower-2': 0 },
+      researchProgressCenti: {
+        'firepower-1': 5_998,
+        'firepower-2': 0,
+        'bridge-2': 0,
+        'bridge-3': 0,
+        'ropeway-1': 0,
+        'ropeway-2': 0,
+      },
       activeResearch: { researchId: 'firepower-1' },
     });
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);

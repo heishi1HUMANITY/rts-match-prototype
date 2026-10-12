@@ -1,8 +1,9 @@
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
 import type { FactionView, ResearchId, UnitKind } from '../simulation/types';
+import { crossingResearchComplete } from '../simulation/crossings';
 
-export type HudPanel = 'production' | 'research' | 'base' | null;
+export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
 export interface HudElements {
   readonly root: HTMLElement;
   readonly board: HTMLElement;
@@ -34,7 +35,16 @@ const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
         ? '大拠点'
         : '小拠点';
 const researchName = (id: ResearchId): string =>
-  id === 'firepower-1' ? '戦力研究 I' : '戦力研究 II';
+  ({
+    'firepower-1': '戦力研究 I',
+    'firepower-2': '戦力研究 II',
+    'bridge-2': '架橋 II',
+    'bridge-3': '架橋 III',
+    'ropeway-1': '索道 I',
+    'ropeway-2': '索道 II',
+  })[id];
+const crossingName = (tier: string): string =>
+  tier.startsWith('bridge') ? `橋 ${tier.slice(-1)}` : `索道 ${tier.slice(-1)}`;
 const amount = (n: number): string =>
   Math.floor(n / 100).toLocaleString('ja-JP');
 const seconds = (ticks: number): string => `${(ticks / 10).toFixed(1)}秒`;
@@ -43,12 +53,12 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F03 · 地形と拠点</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F04 · 渡河設備</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -61,13 +71,13 @@ export function createHud(app: HTMLElement): HudElements {
           <h3>生産キュー</h3><div class="production-queue"></div>
         </section>
         <section data-panel="research" hidden><button data-action="bank-research">指定解除・バンクする</button><p>選択中の研究にポイントを充填。必要量で完了。指定しない間はバンクします。切替・解除でも充填済みポイントは残ります。</p>
-          <div class="action-card"><button data-research="firepower-1">戦力研究 I</button><small data-research-details="firepower-1"></small><progress data-research-progress="firepower-1" max="100" value="0"></progress><span data-research-reason="firepower-1"></span></div>
-          <div class="action-card"><button data-research="firepower-2">戦力研究 II</button><small data-research-details="firepower-2"></small><progress data-research-progress="firepower-2" max="100" value="0"></progress><span data-research-reason="firepower-2"></span></div>
+          <div class="research-cards"></div>
         </section>
+        <section data-panel="crossings" hidden><p>予定地は公開情報です。敵設備の所有・耐久・作業は視界内だけ更新します。</p><div class="crossing-list"></div></section>
         <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-capture-help></p><button data-action="production">生産を開く</button></section>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>`;
@@ -112,8 +122,10 @@ export function setHudPanel(
       ? '部隊生産'
       : panel === 'research'
         ? '戦力研究'
-        : '拠点情報';
-  for (const name of ['production', 'research', 'bases'])
+        : panel === 'crossings'
+          ? '橋・索道'
+          : '拠点情報';
+  for (const name of ['production', 'research', 'bases', 'crossings'])
     elements.root
       .querySelector(`[data-action="${name}"]`)
       ?.setAttribute(
@@ -207,7 +219,32 @@ export function updateHud(
         : `補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 視界${stats.vision}`;
     text(`[data-unit-details="${kind}"]`, detail);
   }
-  for (const id of ['firepower-1', 'firepower-2'] as const) {
+  const researchIds = Object.keys(
+    view.rules.research.definitions,
+  ) as ResearchId[];
+  const researchCards =
+    elements.root.querySelector<HTMLElement>('.research-cards')!;
+  if (researchCards.dataset.ids !== researchIds.join('|')) {
+    researchCards.dataset.ids = researchIds.join('|');
+    researchCards.replaceChildren(
+      ...researchIds.map((id) => {
+        const card = document.createElement('div');
+        card.className = 'action-card';
+        const button = document.createElement('button');
+        button.dataset.research = id;
+        const details = document.createElement('small');
+        details.dataset.researchDetails = id;
+        const progress = document.createElement('progress');
+        progress.dataset.researchProgress = id;
+        progress.max = 100;
+        const reason = document.createElement('span');
+        reason.dataset.researchReason = id;
+        card.append(button, details, progress, reason);
+        return card;
+      }),
+    );
+  }
+  for (const id of researchIds) {
     const def = view.rules.research.definitions[id];
     const prerequisite =
       def.prerequisite === null
@@ -215,7 +252,7 @@ export function updateHud(
         : ` · 前提 ${researchName(def.prerequisite)}`;
     text(
       `[data-research-details="${id}"]`,
-      `必要${amount(def.costCenti)}ポイント · 攻撃 +${def.damageBonus}${prerequisite}`,
+      `必要${amount(def.costCenti)}ポイント${def.damageBonus ? ` · 攻撃 +${def.damageBonus}` : ''}${def.unlocksCrossing ? ` · ${crossingName(def.unlocksCrossing)}を解放` : ''}${prerequisite}`,
     );
   }
   text(
@@ -373,7 +410,7 @@ export function updateHud(
     snapshot.contextLost ||
     own.activeResearch === null ||
     own.eliminatedAtTick !== null;
-  for (const id of ['firepower-1', 'firepower-2'] as const) {
+  for (const id of researchIds) {
     const def = view.rules.research.definitions[id];
     const done = own.completedResearchIds.includes(id);
     const active = own.activeResearch?.researchId === id;
@@ -382,7 +419,7 @@ export function updateHud(
       own.eliminatedAtTick !== null
         ? '脱落 · 研究停止'
         : done
-          ? `完了 · 攻撃+${def.damageBonus}`
+          ? `完了${def.damageBonus ? ` · 攻撃+${def.damageBonus}` : ''}${def.unlocksCrossing ? ` · ${crossingName(def.unlocksCrossing)}解放` : ''}`
           : view.phase !== 'running'
             ? '開始・再開後に選択できます'
             : def.prerequisite !== null &&
@@ -405,6 +442,117 @@ export function updateHud(
     )!;
     bar.value = (100 * progress) / def.costCenti;
     bar.setAttribute('aria-label', `${researchName(id)}の充填率`);
+  }
+  const crossingHost =
+    elements.root.querySelector<HTMLElement>('.crossing-list')!;
+  const crossingIds = view.crossings.map(({ site }) => site.id);
+  if (crossingHost.dataset.ids !== crossingIds.join('|')) {
+    crossingHost.dataset.ids = crossingIds.join('|');
+    crossingHost.replaceChildren(
+      ...view.crossings.map(({ site }) => {
+        const row = document.createElement('article');
+        row.className = 'crossing-card';
+        row.dataset.crossing = site.id;
+        const title = document.createElement('strong');
+        const status = document.createElement('span');
+        status.className = 'crossing-status';
+        const build = document.createElement('button');
+        build.dataset.crossingBuild = site.id;
+        build.textContent = '建設';
+        const dismantle = document.createElement('button');
+        dismantle.dataset.crossingDismantle = site.id;
+        dismantle.textContent = '解体';
+        const reason = document.createElement('small');
+        reason.className = 'crossing-reason';
+        row.append(title, status, build, dismantle, reason);
+        return row;
+      }),
+    );
+  }
+  const selectedBuilder =
+    selectedUnits.find(({ kind }) => kind === 'assault') ?? selectedUnits[0];
+  for (const crossing of view.crossings) {
+    const { site } = crossing;
+    const row = crossingHost.querySelector<HTMLElement>(
+      `[data-crossing="${site.id}"]`,
+    )!;
+    row.querySelector('strong')!.textContent =
+      `${crossingName(site.tier)} · ${site.id}`;
+    let status = '未観測 · 状態不明';
+    if (crossing.visibility === 'remembered')
+      status = `最終観測 T${crossing.seenTick}: ${crossing.owner ?? '中立'} HP${crossing.hp}/${crossing.maxHp}`;
+    else if (
+      crossing.visibility === 'visible' ||
+      crossing.visibility === 'owned'
+    ) {
+      const job = crossing.job;
+      status =
+        crossing.owner === null
+          ? job?.kind === 'build'
+            ? `${job.factionId} 建設 ${job.progressTicks}/${job.requiredTicks} tick`
+            : '未建設'
+          : `${crossing.owner}所有 · HP${crossing.hp}/${crossing.maxHp}${job ? ` · ${job.kind === 'dismantle' ? '解体' : '建設'} ${job.progressTicks}/${job.requiredTicks}` : ''}`;
+    }
+    row.querySelector<HTMLElement>('.crossing-status')!.textContent = status;
+    const requiredResearch = Object.entries(
+      view.rules.research.definitions,
+    ).find(
+      ([, definition]) => definition.unlocksCrossing === site.tier,
+    )?.[0] as ResearchId | undefined;
+    let buildReason: string | null = null;
+    if (view.phase !== 'running') buildReason = '開始・再開後に操作できます';
+    else if (
+      crossing.visibility !== 'visible' &&
+      crossing.visibility !== 'owned'
+    )
+      buildReason = '予定地へ移動し、状態を確認してください';
+    else if (crossing.owner !== null) buildReason = '他陣営が所有中です';
+    else if (crossing.job)
+      buildReason = `${crossing.job.factionId}が作業中です`;
+    else if (!selectedBuilder) buildReason = '強襲部隊を選択してください';
+    else if (selectedBuilder.kind !== 'assault')
+      buildReason = '強襲部隊が建設できます';
+    else if (
+      ![site.bankA, site.bankB].some(
+        (bank) =>
+          Math.abs(selectedBuilder.cell.x - bank.x) +
+            Math.abs(selectedBuilder.cell.y - bank.y) <=
+          1,
+      )
+    )
+      buildReason = '部隊を端点に隣接させてください';
+    else if (!crossingResearchComplete(own, view.rules, site.tier))
+      buildReason = requiredResearch
+        ? `前提研究: ${researchName(requiredResearch)}`
+        : '渡河設備を解放する研究がありません';
+    else if (own.supplyCenti < view.rules.crossings[site.tier].costCenti)
+      buildReason = '補給が不足しています';
+    const build = row.querySelector<HTMLButtonElement>(
+      '[data-crossing-build]',
+    )!;
+    build.disabled =
+      buildReason !== null ||
+      snapshot.contextLost ||
+      own.eliminatedAtTick !== null;
+    const dismantle = row.querySelector<HTMLButtonElement>(
+      '[data-crossing-dismantle]',
+    )!;
+    const canDismantle =
+      crossing.visibility === 'owned' &&
+      crossing.owner === view.viewerFactionId &&
+      crossing.job === null &&
+      selectedUnits.some((unit) =>
+        [site.bankA, site.bankB].some(
+          (bank) =>
+            Math.abs(unit.cell.x - bank.x) + Math.abs(unit.cell.y - bank.y) <=
+            1,
+        ),
+      );
+    dismantle.disabled =
+      !canDismantle || view.phase !== 'running' || snapshot.contextLost;
+    row.querySelector<HTMLElement>('.crossing-reason')!.textContent =
+      buildReason ??
+      `費用 ${amount(view.rules.crossings[site.tier].costCenti)} · 建設 ${seconds(view.rules.crossings[site.tier].buildTicks)} · 選択部隊で建設`;
   }
   const selector =
     elements.root.querySelector<HTMLSelectElement>('[data-base-select]')!;
@@ -522,7 +670,21 @@ function drawMiniMap(
       context.fillRect(port.cell.x * cellWidth, port.cell.y * cellHeight, 3, 3);
     }
     for (const site of view.map.crossingSites ?? []) {
-      context.fillStyle = site.kind === 'bridge' ? '#f4d35e' : '#f28f3b';
+      const crossing = view.crossings.find(
+        (entry) => entry.site.id === site.id,
+      );
+      context.fillStyle =
+        crossing?.visibility === 'owned' || crossing?.visibility === 'visible'
+          ? crossing.owner === 'A'
+            ? '#e47a2f'
+            : crossing.owner === 'B'
+              ? '#2d9fc5'
+              : crossing.owner === 'C'
+                ? '#d8ad24'
+                : '#78858c'
+          : site.tier.startsWith('bridge')
+            ? '#f4d35e'
+            : '#f28f3b';
       context.fillRect(
         site.bankA.x * cellWidth,
         site.bankA.y * cellHeight,

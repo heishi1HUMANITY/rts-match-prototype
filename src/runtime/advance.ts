@@ -9,7 +9,8 @@ import type { FactionId, MatchState } from '../simulation/types';
 const BOT_FACTIONS: readonly FactionId[] = ['B', 'C'];
 
 function enablesBots(state: MatchState): boolean {
-  if (state.scenarioId === 'f02-pursuit') return false;
+  if (state.scenarioId === 'f02-pursuit' || state.scenarioId === 'f04-crossing')
+    return false;
   return state.scenarioId === 'standard' || state.scenarioId.startsWith('g3-');
 }
 

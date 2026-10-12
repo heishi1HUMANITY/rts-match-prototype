@@ -1,4 +1,5 @@
 import { findPath } from './pathfinding';
+import { knownActiveCrossings } from './crossings';
 import {
   getUnitPositionX1024,
   getUnitPositionY1024,
@@ -77,6 +78,9 @@ function routeTo(
   const route = findPath(state.map, origin, destination, {
     factionId: unit.factionId,
     domain: 'land',
+    crossings: knownActiveCrossings(state, unit.factionId),
+    unitKind: unit.kind,
+    allowBlockedStart: true,
   });
   if (route === null) return null;
   return edge === undefined ? route : [edge, ...route];
@@ -96,6 +100,7 @@ export function advanceMarchOrder(
   return {
     ...unit,
     path,
+    moveTarget: null,
     marchOrder: {
       target,
       lastKnownCell: { ...lastKnownCell },
@@ -160,6 +165,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
       return {
         ...unit,
         path: holdAtNextCenter(unit),
+        moveTarget: null,
         marchOrder: { ...order, status },
       };
     }
@@ -167,12 +173,14 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
       return {
         ...unit,
         path: [],
+        moveTarget: null,
         marchOrder: { ...order, status: 'searching' },
       };
     }
     return {
       ...unit,
       path: route,
+      moveTarget: null,
       marchOrder: { ...order, status, lastKnownCell, lastSeenTick },
     };
   }
@@ -181,6 +189,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
     return {
       ...unit,
       path: holdAtNextCenter(unit),
+      moveTarget: null,
       marchOrder: {
         ...order,
         lastKnownCell,
@@ -210,6 +219,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
     return {
       ...unit,
       path: holdAtNextCenter(unit),
+      moveTarget: null,
       marchOrder: { ...order, lastKnownCell, lastSeenTick, status: 'blocked' },
     };
   }
@@ -218,6 +228,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
   return {
     ...unit,
     path: route,
+    moveTarget: null,
     marchOrder: { ...order, lastKnownCell, lastSeenTick, status },
   };
 }

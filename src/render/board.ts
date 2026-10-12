@@ -501,8 +501,11 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   };
 
   let mapMesh: THREE.InstancedMesh | null = null;
-  let mapSiteLabels: { readonly cell: Cell; readonly label: HTMLDivElement }[] =
-    [];
+  let mapSiteLabels: {
+    readonly cell: Cell;
+    readonly label: HTMLDivElement;
+    readonly crossingId?: string;
+  }[] = [];
   let renderedMap: GridMap | null = null;
   const installMap = (map: GridMap): void => {
     if (
@@ -549,13 +552,15 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     for (const site of map.crossingSites ?? []) {
       const label = document.createElement('div');
       label.className = 'rts-map-site-label crossing-site';
-      label.textContent = site.kind === 'bridge' ? '⇄ 渡河予定' : '↗ 索道予定';
+      label.textContent = site.tier.startsWith('bridge')
+        ? `⇄ 橋${site.tier.slice(-1)}`
+        : `↗ 索道${site.tier.slice(-1)}`;
       label.setAttribute(
         'aria-label',
-        `公開${site.kind === 'bridge' ? '橋' : '索道'}予定地 ${site.id}`,
+        `公開${site.tier.startsWith('bridge') ? '橋' : '索道'}予定地 ${site.id}`,
       );
       labelLayer.append(label);
-      mapSiteLabels.push({ cell: site.bankA, label });
+      mapSiteLabels.push({ cell: site.bankA, label, crossingId: site.id });
     }
     renderedMap = map;
     let count = 0;
@@ -1030,8 +1035,30 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       occupiedLabels.push(label);
     }
     syncBases(current);
-    for (const entry of mapSiteLabels)
+    for (const entry of mapSiteLabels) {
+      if (entry.crossingId) {
+        const crossing = current.crossings.find(
+          ({ site }) => site.id === entry.crossingId,
+        );
+        if (crossing && crossing.visibility !== 'unknown') {
+          const prefix = crossing.site.tier.startsWith('bridge')
+            ? '⇄ 橋'
+            : '↗ 索道';
+          if (crossing.visibility === 'remembered') {
+            entry.label.textContent = `${prefix}${crossing.site.tier.slice(-1)} · 最終観測 T${crossing.seenTick}`;
+          } else if (crossing.owner === null) {
+            entry.label.textContent =
+              crossing.job?.kind === 'build'
+                ? `${prefix}${crossing.site.tier.slice(-1)} · ${crossing.job.factionId}建設中`
+                : `${prefix}${crossing.site.tier.slice(-1)} · 未建設`;
+          } else {
+            entry.label.textContent = `${prefix}${crossing.site.tier.slice(-1)} · ${crossing.owner} HP${crossing.hp}`;
+          }
+          entry.label.title = entry.label.textContent;
+        }
+      }
       updateLabelPosition(entry.label, cellPosition(entry.cell, 0.05), -3);
+    }
     syncFog(current);
     refreshMovePreview();
     if (!contextLost) renderer.render(scene, camera);

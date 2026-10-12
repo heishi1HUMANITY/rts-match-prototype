@@ -14,11 +14,12 @@ import {
   UNIT_LOSS_TICKETS_CENTI,
   UNIT_STATS,
   RESEARCH_DEFINITIONS,
+  type ResearchDefinition,
 } from './config';
-import type { BaseKind, ResearchId, UnitKind } from './types';
+import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 2 as const;
-export const RULES_VERSION = 'f03-v1' as const;
+export const MASTER_SCHEMA_VERSION = 3 as const;
+export const RULES_VERSION = 'f04-v1' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -57,10 +58,24 @@ export interface RulesMaster {
           readonly costCenti: number;
           readonly prerequisite: ResearchId | null;
           readonly damageBonus: number;
+          readonly unlocksCrossing: CrossingTierId | null;
         }
       >
     >;
   };
+  readonly crossings: Readonly<
+    Record<
+      CrossingTierId,
+      {
+        readonly costCenti: number;
+        readonly buildTicks: number;
+        readonly dismantleTicks: number;
+        readonly maxHp: number;
+        readonly regenerationPerTick: number;
+        readonly vision: number;
+      }
+    >
+  >;
   readonly match: {
     readonly timeLimitTicks: number;
     readonly initialSupplyCenti: number;
@@ -139,8 +154,54 @@ export const DEFAULT_RULES: RulesMaster = {
   research: {
     baseIncomeCentiPerTick: BASE_RESEARCH_INCOME_CENTI_PER_TICK,
     definitions: {
-      'firepower-1': { ...RESEARCH_DEFINITIONS['firepower-1'] },
-      'firepower-2': { ...RESEARCH_DEFINITIONS['firepower-2'] },
+      ...(Object.fromEntries(
+        Object.entries(RESEARCH_DEFINITIONS).map(([id, definition]) => [
+          id,
+          { ...definition },
+        ]),
+      ) as Record<ResearchId, ResearchDefinition>),
+    },
+  },
+  crossings: {
+    'bridge-1': {
+      costCenti: 6_000,
+      buildTicks: 180,
+      dismantleTicks: 40,
+      maxHp: 180,
+      regenerationPerTick: 1,
+      vision: 5,
+    },
+    'bridge-2': {
+      costCenti: 8_000,
+      buildTicks: 240,
+      dismantleTicks: 40,
+      maxHp: 260,
+      regenerationPerTick: 1,
+      vision: 5,
+    },
+    'bridge-3': {
+      costCenti: 12_000,
+      buildTicks: 300,
+      dismantleTicks: 50,
+      maxHp: 340,
+      regenerationPerTick: 1,
+      vision: 5,
+    },
+    'ropeway-1': {
+      costCenti: 5_000,
+      buildTicks: 180,
+      dismantleTicks: 40,
+      maxHp: 200,
+      regenerationPerTick: 1,
+      vision: 6,
+    },
+    'ropeway-2': {
+      costCenti: 9_000,
+      buildTicks: 240,
+      dismantleTicks: 50,
+      maxHp: 300,
+      regenerationPerTick: 1,
+      vision: 6,
     },
   },
   match: {
