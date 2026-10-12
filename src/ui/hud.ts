@@ -8,6 +8,7 @@ import type {
 } from '../simulation/types';
 import { crossingResearchComplete } from '../simulation/crossings';
 import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
+import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
 
 export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
 export interface HudElements {
@@ -82,6 +83,8 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'air-defense-1': '対空車両',
     'aircraft-1': '攻撃ヘリ',
     'naval-1': '哨戒艇',
+    'base-development-1': '拠点整備',
+    'base-development-2': '要塞化',
   })[id] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
@@ -105,6 +108,8 @@ const effectLabel = (effect: {
       return `${effect.crossingTier ? crossingName(effect.crossingTier) : '渡河'}を解放`;
     case 'unit-unlock':
       return `${effect.unitKind ? kindName(effect.unitKind as UnitKind) : '兵種'}を解放`;
+    case 'base-upgrade-max':
+      return `拠点をLv${effect.value}まで強化`;
     default:
       return '未対応の効果';
   }
@@ -124,7 +129,7 @@ export function createHud(app: HTMLElement): HudElements {
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -139,7 +144,7 @@ export function createHud(app: HTMLElement): HudElements {
           <div class="research-cards"></div>
         </section>
         <section data-panel="crossings" hidden><p>予定地は公開情報です。敵設備の所有・耐久・作業は視界内だけ更新します。</p><div class="crossing-list"></div></section>
-        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-capture-help></p><button data-action="production">生産を開く</button></section>
+        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-upgrade-reason></p><button data-action="upgrade-base">拠点を強化</button><p data-capture-help></p><button data-action="production">生産を開く</button></section>
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
@@ -310,7 +315,7 @@ export function updateHud(
   }
   text(
     '.scenario-badge',
-    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId === 'f06-local-faction' ? '現地勢力' : view.scenarioId === 'f08-unit-domains' ? '6兵種・陸空水' : view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' || view.scenarioId === 'f08-unit-domains' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId === 'f06-local-faction' ? '現地勢力' : view.scenarioId === 'f08-unit-domains' ? '6兵種・陸空水' : view.scenarioId === 'f10-base-upgrades' ? '拠点強化' : view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' || view.scenarioId === 'f08-unit-domains' || view.scenarioId === 'f10-base-upgrades' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
   for (const kind of UNIT_KINDS) {
     const stats = view.rules.units[kind];
@@ -751,16 +756,71 @@ export function updateHud(
   selector.value = elements.selectedBaseId;
   const base = view.bases.find((base) => base.id === elements.selectedBaseId);
   let detail = '拠点を選んでください';
+  let upgradeReason = '自軍所有の稼働拠点を選ぶと強化できます';
+  const upgradeButton = elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="upgrade-base"]',
+  )!;
+  upgradeButton.hidden = base?.visibility !== 'owned';
+  upgradeButton.disabled = true;
+  upgradeButton.textContent = '拠点を強化';
   if (base) {
     const location = `${base.id} (${base.cell.x},${base.cell.y})`;
     if (base.visibility === 'unknown')
       detail = `${location}\n未観測：所有・HPは不明`;
     else if (base.visibility === 'remembered')
       detail = `${location}\n最終観測 TICK ${base.seenTick}：${baseOwnerName(base.owner)} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
-    else
-      detail = `${location}\n所有：${baseOwnerName(base.owner)} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureProgressCentiTicks / 100}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
+    else {
+      const level = base.level;
+      const activeTier =
+        level > 1
+          ? baseUpgradeTier(base.kind, level as 2 | 3, view.rules)
+          : null;
+      const supplyIncome = Math.floor(
+        (view.rules.bases[base.kind].supplyIncomeCentiPerTick *
+          (activeTier?.supplyIncomePercent ?? 100)) /
+          100,
+      );
+      const researchIncome = Math.floor(
+        (view.rules.bases[base.kind].researchIncomeCentiPerTick *
+          (activeTier?.researchIncomePercent ?? 100)) /
+          100,
+      );
+      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureProgressCentiTicks / 100}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${supplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
+      if (base.visibility === 'owned') {
+        if (base.upgradeJob) {
+          upgradeReason = `Lv${base.upgradeJob.targetLevel}へ強化中 · 残り${seconds(base.upgradeJob.remainingTicks)}`;
+        } else if (level >= 3) {
+          upgradeReason = '最大レベルです';
+        } else if (
+          base.kind === 'hq' &&
+          base.id !== `HQ-${view.viewerFactionId}`
+        ) {
+          upgradeReason = '首都は元の所有陣営のみ強化できます';
+        } else {
+          const targetLevel = (level + 1) as 2 | 3;
+          const tier = baseUpgradeTier(base.kind, targetLevel, view.rules);
+          const requiredResearch =
+            targetLevel === 2
+              ? view.rules.baseUpgrades.level2ResearchId
+              : view.rules.baseUpgrades.level3ResearchId;
+          if (maximumBaseLevel(own, view.rules) < targetLevel) {
+            upgradeReason = `研究「${researchName(requiredResearch, view)}」が必要です`;
+          } else if (base.hp <= 0 || view.phase !== 'running') {
+            upgradeReason = '試合開始後、稼働中の拠点を強化できます';
+          } else if (own.supplyCenti < tier.costCenti) {
+            upgradeReason = `補給不足 · 必要 ${amount(tier.costCenti)}`;
+          } else {
+            upgradeReason = `完了後: HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · 補給/研究収入 +${tier.supplyIncomePercent - 100}% · 砲座 ${tier.turretDamage} damage`;
+            upgradeButton.disabled =
+              snapshot.contextLost || own.eliminatedAtTick !== null;
+            upgradeButton.textContent = `Lv${targetLevel}へ強化 · 補給${amount(tier.costCenti)} · ${seconds(tier.buildTicks)}`;
+          }
+        }
+      }
+    }
   }
   text('.base-detail', detail);
+  text('[data-upgrade-reason]', upgradeReason);
   const dialog =
     elements.root.querySelector<HTMLDialogElement>('.result-dialog')!;
   if (view.result !== null) {

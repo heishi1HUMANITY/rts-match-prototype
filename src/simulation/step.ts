@@ -16,6 +16,7 @@ import { canTraverse } from './map';
 import { findPath } from './pathfinding';
 import { unitCapabilities } from './unit-capabilities';
 import { advanceLocalFaction } from './local-faction';
+import { advanceBaseUpgrades } from './base-upgrades';
 import type { MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
@@ -149,6 +150,7 @@ export function stepMatch(state: MatchState): MatchState {
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
   next = recoverNearHeadquarters(next, beforeCombat);
   next = advanceCapture(next);
+  next = advanceBaseUpgrades(next);
   next = applyEconomyTick(next);
   next = advanceResearch(next);
   next = advanceProduction(next);

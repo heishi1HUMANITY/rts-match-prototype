@@ -136,7 +136,8 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
     base.defenderMaxHp === null
       ? ''
       : ` · ${base.defenderHp === 0 ? '守備撃破' : `守備 ${base.defenderHp}/${base.defenderMaxHp}`}`;
-  return `${kind} · ${ownerName} HP${base.hp}/${base.maxHp}${defender}${capture}`;
+  const level = base.level > 1 ? ` Lv${base.level}` : '';
+  return `${kind} · ${ownerName}${level} HP${base.hp}/${base.maxHp}${defender}${capture}`;
 }
 
 /** Keeps stacked production spawns selectable with a 44px target inside the playfield. */

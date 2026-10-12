@@ -17,6 +17,7 @@ import type {
   UnitKind,
 } from '../simulation/types';
 import { isUnitUnlocked } from '../simulation/research';
+import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
 
 function distanceSquared(a: Cell, b: Cell): number {
   const dx = a.x - b.x;
@@ -84,6 +85,38 @@ function researchCommand(view: FactionView): Command | undefined {
     );
   });
   return next ? { type: 'start-research', researchId: next } : undefined;
+}
+
+function baseUpgradeCommand(view: FactionView): Command | undefined {
+  const maximum = maximumBaseLevel(view.ownFaction, view.rules);
+  if (maximum <= 1) return undefined;
+  const candidate = view.bases
+    .filter((base): base is OwnedBaseView => base.visibility === 'owned')
+    .filter(
+      (base) =>
+        base.hp > 0 &&
+        base.level < maximum &&
+        base.level < 3 &&
+        base.upgradeJob === null &&
+        (base.kind !== 'hq' || base.id === `HQ-${view.viewerFactionId}`),
+    )
+    .map((base) => {
+      const targetLevel = (base.level + 1) as 2 | 3;
+      return {
+        base,
+        cost: baseUpgradeTier(base.kind, targetLevel, view.rules).costCenti,
+      };
+    })
+    .filter(({ cost }) => view.ownFaction.supplyCenti >= cost)
+    .sort(
+      (a, b) =>
+        a.base.level - b.base.level ||
+        a.cost - b.cost ||
+        (a.base.id < b.base.id ? -1 : a.base.id > b.base.id ? 1 : 0),
+    )[0];
+  return candidate
+    ? { type: 'upgrade-base', baseId: candidate.base.id }
+    : undefined;
 }
 
 function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
@@ -499,6 +532,8 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
   if (production && commands.length < maxCommands) commands.push(production);
   const research = researchCommand(view);
   if (research && commands.length < maxCommands) commands.push(research);
+  const upgrade = baseUpgradeCommand(view);
+  if (upgrade && commands.length < maxCommands) commands.push(upgrade);
   for (const unit of view.ownUnits) {
     if (commands.length >= maxCommands) break;
     const move = unitMoveCommand(view, unit);

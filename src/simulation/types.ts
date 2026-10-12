@@ -19,7 +19,8 @@ export type ScenarioId =
   | 'f04-crossing'
   | 'f05-neutral-defense'
   | 'f06-local-faction'
-  | 'f08-unit-domains';
+  | 'f08-unit-domains'
+  | 'f10-base-upgrades';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -46,7 +47,8 @@ export type ResearchEffectId =
   | 'supply-income-bonus'
   | 'upkeep-reduction'
   | 'crossing-unlock'
-  | 'unit-unlock';
+  | 'unit-unlock'
+  | 'base-upgrade-max';
 export interface ResearchEffect {
   readonly id: ResearchEffectId;
   readonly value: number;
@@ -234,6 +236,9 @@ export interface BaseState {
   readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly maxHp: number;
+  readonly level: 1 | 2 | 3;
+  readonly upgradeJob: BaseUpgradeJob | null;
+  readonly lastDamagedTick: number;
   readonly captureCandidate: CombatantId | null;
   readonly captureProgressCentiTicks: number;
   /** Neutral garrison; it is not a faction and never participates in standings. */
@@ -242,6 +247,12 @@ export interface BaseState {
   readonly conqueredFromLocal?: boolean;
   /** Immutable original owner for HQs; null for neutral outposts. */
   readonly homeFactionId: FactionId | null;
+}
+
+export interface BaseUpgradeJob {
+  readonly targetLevel: 2 | 3;
+  readonly costCenti: number;
+  readonly remainingTicks: number;
 }
 
 export interface NeutralDefenderState {
@@ -271,7 +282,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 16;
+  readonly schemaVersion: 17;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -334,6 +345,7 @@ export interface VisibleBaseView {
   readonly owner: BaseOwnerId | null;
   readonly hp: number;
   readonly maxHp: number;
+  readonly level: 1 | 2 | 3;
   readonly captureCandidate: CombatantId | null;
   readonly captureProgressCentiTicks: number;
   readonly defenderHp: number | null;
@@ -346,6 +358,7 @@ export interface OwnedBaseView extends Omit<
 > {
   readonly visibility: 'owned';
   readonly owner: BaseOwnerId;
+  readonly upgradeJob: BaseUpgradeJob | null;
 }
 
 export type BaseView =
@@ -437,6 +450,7 @@ export type Command =
       readonly baseId: string;
       readonly unitKind: UnitKind;
     }
+  | { readonly type: 'upgrade-base'; readonly baseId: string }
   | { readonly type: 'cancel-production'; readonly jobId: string }
   | { readonly type: 'start-research'; readonly researchId: ResearchId | null }
   | {
@@ -465,6 +479,10 @@ export type RejectCode =
   | 'RESEARCH_NOT_FOUND'
   | 'HQ_UNAVAILABLE'
   | 'INSUFFICIENT_SUPPLY'
+  | 'BASE_UPGRADE_MAX'
+  | 'BASE_UPGRADE_BUSY'
+  | 'BASE_UPGRADE_RESEARCH_REQUIRED'
+  | 'BASE_UPGRADE_NOT_OWNED'
   | 'UNIT_LIMIT'
   | 'QUEUE_FULL'
   | 'ALREADY_RESEARCHED'

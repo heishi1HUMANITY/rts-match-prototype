@@ -173,6 +173,7 @@ describe('V06 view-only render frames', () => {
         owner: null,
         hp: 0,
         maxHp: 100,
+        level: 1,
         captureCandidate: 'A',
         captureProgressCentiTicks: 1200,
         defenderHp: 0,

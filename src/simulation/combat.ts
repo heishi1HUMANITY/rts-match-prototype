@@ -17,6 +17,7 @@ import type {
 } from './types';
 import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
+import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
 
 interface Target {
   readonly kind: 'unit' | 'defender' | 'base' | 'crossing' | 'stronghold';
@@ -378,6 +379,39 @@ export function resolveCombat(state: MatchState): MatchState {
       );
   }
 
+  // Upgraded base turrets fire on fixed interval boundaries and join the same
+  // pre-damage snapshot as units and neutral garrisons.
+  for (const base of snapshot.bases) {
+    if (base.owner === null || base.hp <= 0) continue;
+    const turret = baseTurretDamage(base, snapshot.rules);
+    if (!turret || snapshot.elapsedTicks % turret.interval !== 0) continue;
+    const target = snapshot.units
+      .filter((unit) => unit.hp > 0 && unit.factionId !== base.owner)
+      .map((unit) => ({
+        unit,
+        distanceSquared: distanceSquared(
+          1024 * base.cell.x + 512,
+          1024 * base.cell.y + 512,
+          getUnitPositionX1024(unit),
+          getUnitPositionY1024(unit),
+        ),
+      }))
+      .filter(
+        ({ distanceSquared: distance }) =>
+          distance <= (1024 * turret.range) ** 2,
+      )
+      .sort(
+        (a, b) =>
+          a.distanceSquared - b.distanceSquared ||
+          (a.unit.id < b.unit.id ? -1 : a.unit.id > b.unit.id ? 1 : 0),
+      )[0]?.unit;
+    if (target) {
+      const air = snapshot.rules.units[target.kind].movementDomain === 'air';
+      const damage = air ? Math.ceil(turret.damage / 2) : turret.damage;
+      unitDamage.set(target.id, (unitDamage.get(target.id) ?? 0) + damage);
+    }
+  }
+
   let unitLosses = new Map<FactionId, number>();
   let units = snapshot.units
     .map((unit) => {
@@ -405,35 +439,50 @@ export function resolveCombat(state: MatchState): MatchState {
     if (damage <= 0 || base.hp <= 0)
       return defender === base.defender ? base : { ...base, defender };
     const hp = Math.max(0, base.hp - damage);
-    if (hp > 0) return { ...base, hp, defender };
+    const damaged = {
+      ...base,
+      hp,
+      defender,
+      lastDamagedTick: snapshot.elapsedTicks,
+    };
+    if (hp > 0) return damaged;
     if (base.kind === 'hq') {
       if (base.homeFactionId) destroyedHqs.add(base.homeFactionId);
-      return {
-        ...base,
-        hp: 0,
+      return resetBaseToLevelOne(
+        {
+          ...damaged,
+          captureCandidate: null,
+          captureProgressCentiTicks: 0,
+        },
+        snapshot.rules,
+        snapshot.elapsedTicks,
+        0,
+      );
+    }
+    return resetBaseToLevelOne(
+      {
+        ...damaged,
+        owner: null,
+        hp: base.owner !== null ? base.maxHp : hp,
+        defender:
+          base.owner !== null && snapshot.rules.defenses.respawnEnabled
+            ? {
+                hp: snapshot.rules.defenses[base.kind].maxHp,
+                maxHp: snapshot.rules.defenses[base.kind].maxHp,
+                disabledTicks: 0,
+              }
+            : base.owner !== null
+              ? null
+              : defender,
+        conqueredFromLocal:
+          base.owner === 'local' || base.conqueredFromLocal === true,
         captureCandidate: null,
         captureProgressCentiTicks: 0,
-      };
-    }
-    return {
-      ...base,
-      hp: base.owner !== null ? base.maxHp : hp,
-      defender:
-        base.owner !== null && snapshot.rules.defenses.respawnEnabled
-          ? {
-              hp: snapshot.rules.defenses[base.kind].maxHp,
-              maxHp: snapshot.rules.defenses[base.kind].maxHp,
-              disabledTicks: 0,
-            }
-          : base.owner !== null
-            ? null
-            : defender,
-      owner: null,
-      conqueredFromLocal:
-        base.owner === 'local' || base.conqueredFromLocal === true,
-      captureCandidate: null,
-      captureProgressCentiTicks: 0,
-    };
+      },
+      snapshot.rules,
+      snapshot.elapsedTicks,
+      base.owner !== null ? 1 : 0,
+    );
   });
 
   let localFaction = snapshot.localFaction;
@@ -465,21 +514,25 @@ export function resolveCombat(state: MatchState): MatchState {
       units = units.filter((unit) => unit.factionId !== 'local');
       bases = bases.map((base) =>
         base.owner === 'local' && base.kind !== 'hq'
-          ? {
-              ...base,
-              owner: null,
-              hp: base.maxHp,
-              defender: snapshot.rules.defenses.respawnEnabled
-                ? {
-                    hp: snapshot.rules.defenses[base.kind].maxHp,
-                    maxHp: snapshot.rules.defenses[base.kind].maxHp,
-                    disabledTicks: 0,
-                  }
-                : null,
-              captureCandidate: null,
-              captureProgressCentiTicks: 0,
-              conqueredFromLocal: true,
-            }
+          ? resetBaseToLevelOne(
+              {
+                ...base,
+                owner: null,
+                defender: snapshot.rules.defenses.respawnEnabled
+                  ? {
+                      hp: snapshot.rules.defenses[base.kind].maxHp,
+                      maxHp: snapshot.rules.defenses[base.kind].maxHp,
+                      disabledTicks: 0,
+                    }
+                  : null,
+                captureCandidate: null,
+                captureProgressCentiTicks: 0,
+                conqueredFromLocal: true,
+              },
+              snapshot.rules,
+              snapshot.elapsedTicks,
+              1,
+            )
           : base,
       );
     } else {

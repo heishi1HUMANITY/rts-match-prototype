@@ -9,6 +9,7 @@ import { findPath } from './pathfinding';
 import { unitCapabilities } from './unit-capabilities';
 import { cancelProduction, enqueueProduction } from './production';
 import { startResearch } from './research';
+import { beginBaseUpgrade } from './base-upgrades';
 import {
   getUnitPositionX1024,
   getUnitPositionY1024,
@@ -41,6 +42,7 @@ type ParsedCommand =
       readonly target: MarchTarget;
     }
   | { readonly type: 'start-research'; readonly researchId: string | null }
+  | { readonly type: 'upgrade-base'; readonly baseId: string }
   | {
       readonly type: 'build-crossing';
       readonly siteId: string;
@@ -105,6 +107,12 @@ function parseCommand(input: unknown): ParsedCommand | null {
   ) {
     return { type: 'cancel-production', jobId: input.jobId };
   }
+  if (
+    input.type === 'upgrade-base' &&
+    hasExactKeys(input, ['type', 'baseId']) &&
+    typeof input.baseId === 'string'
+  )
+    return { type: 'upgrade-base', baseId: input.baseId };
   if (
     input.type === 'start-research' &&
     hasExactKeys(input, ['type', 'researchId']) &&
@@ -240,6 +248,12 @@ export function applyCommand(
   }
   if (command.type === 'start-research') {
     return startResearch(state, actor, command.researchId);
+  }
+  if (command.type === 'upgrade-base') {
+    const result = beginBaseUpgrade(state, actor, command.baseId);
+    return result.ok
+      ? succeed(result.state)
+      : reject(state, result.reason as RejectCode);
   }
   if (
     command.type === 'build-crossing' ||

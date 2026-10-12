@@ -244,4 +244,30 @@ describe('stateless faction-view NPC policy', () => {
 
     expect(decideBotCommands(limited)).toHaveLength(1);
   });
+
+  it('uses only its owned-base view and emits the shared upgrade command', () => {
+    const initial = createMatch(42);
+    const state = {
+      ...initial,
+      phase: 'running' as const,
+      factions: initial.factions.map((faction) =>
+        faction.id === 'B'
+          ? {
+              ...faction,
+              supplyCenti: 100_000,
+              completedResearchIds: ['base-development-1'],
+            }
+          : faction,
+      ),
+    };
+    const view = getFactionView(state, 'B');
+    const commands = decideBotCommands(view);
+    expect(commands).toContainEqual({ type: 'upgrade-base', baseId: 'HOME-B' });
+    expect(
+      commands.some(
+        (command) =>
+          command.type === 'upgrade-base' && command.baseId === 'HOME-A',
+      ),
+    ).toBe(false);
+  });
 });
