@@ -36,6 +36,11 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  respawnEnabled: {
+    label: '守備NPCの復活',
+    unit: '',
+    help: '無効にすると、撃破された守備NPCは復活しません。',
+  },
   maxHp: {
     label: '最大HP',
     unit: 'HP',
@@ -333,7 +338,14 @@ export function createMasterEditor(
       const name = document.createElement('strong');
       name.textContent = fieldLabel(field.path);
       const detail = document.createElement('small');
-      detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${String(getPath(DEFAULT_RULES, field.path))}`;
+      const standardValue = getPath(DEFAULT_RULES, field.path);
+      const standardLabel =
+        typeof standardValue === 'boolean'
+          ? standardValue
+            ? '有効'
+            : '無効'
+          : String(standardValue);
+      detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${standardLabel}`;
       const input =
         field.path.endsWith('.prerequisite') ||
         field.path.endsWith('.unlocksCrossing')
@@ -341,10 +353,15 @@ export function createMasterEditor(
           : document.createElement('input');
       input.dataset.masterPath = field.path;
       if (input instanceof HTMLInputElement) {
-        input.type = 'number';
-        input.step = '1';
-        input.value = String(field.value);
-        input.inputMode = 'numeric';
+        if (typeof field.value === 'boolean') {
+          input.type = 'checkbox';
+          input.checked = field.value;
+        } else {
+          input.type = 'number';
+          input.step = '1';
+          input.value = String(field.value);
+          input.inputMode = 'numeric';
+        }
       } else {
         input.innerHTML = field.path.endsWith('.unlocksCrossing')
           ? '<option value="">なし</option><option value="bridge-2">橋 II</option><option value="bridge-3">橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>'
@@ -368,9 +385,11 @@ export function createMasterEditor(
     >('[data-master-path]')) {
       const value =
         input instanceof HTMLInputElement
-          ? input.value === ''
-            ? ''
-            : Number(input.value)
+          ? input.type === 'checkbox'
+            ? input.checked
+            : input.value === ''
+              ? ''
+              : Number(input.value)
           : input.value || null;
       setPath(next, input.dataset.masterPath!, value);
     }

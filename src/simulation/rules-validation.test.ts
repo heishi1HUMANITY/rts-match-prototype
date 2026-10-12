@@ -71,6 +71,20 @@ describe('F03 rules validation', () => {
     );
   });
 
+  it('requires the garrison respawn setting to be a boolean', () => {
+    const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    invalid.defenses.respawnEnabled = 'false';
+    const result = validateRules(invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.map(({ key }) => key)).toContain(
+      'rules.defenses.respawnEnabled',
+    );
+  });
+
   it('requires a supported master envelope version and exact fields', () => {
     expect(
       validateEnvelope({
@@ -109,6 +123,33 @@ describe('F03 rules validation', () => {
         rules: {
           units: { assault: { baseDamage: 7 } },
           defenses: DEFAULT_RULES.defenses,
+        },
+      },
+    });
+  });
+
+  it('migrates schema 4 defense values and enables the prior respawn behavior', () => {
+    const v4Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v4Rules.defenses.respawnEnabled;
+    v4Rules.defenses.outpost.respawnTicks = 525;
+    const result = validateEnvelope({
+      masterSchemaVersion: 4,
+      revision: 17,
+      rules: v4Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 17,
+        rules: {
+          defenses: {
+            respawnEnabled: true,
+            outpost: { respawnTicks: 525 },
+          },
         },
       },
     });

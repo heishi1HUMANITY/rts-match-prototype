@@ -67,11 +67,40 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 4,
+        masterSchemaVersion: 5,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
           defenses: DEFAULT_RULES.defenses,
+        },
+      },
+    });
+  });
+
+  it('loads and upgrades schema 4 defense settings while preserving user values', () => {
+    const storage = new MemoryStorage();
+    const v4Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v4Rules.defenses.respawnEnabled;
+    v4Rules.defenses.medium.respawnTicks = 480;
+    storage.values.set(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 4, revision: 10, rules: v4Rules }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded).toMatchObject({
+      ok: true,
+      source: 'storage',
+      envelope: {
+        masterSchemaVersion: 5,
+        revision: 10,
+        rules: {
+          defenses: {
+            respawnEnabled: true,
+            medium: { respawnTicks: 480 },
+          },
         },
       },
     });

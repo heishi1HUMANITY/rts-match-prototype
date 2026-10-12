@@ -209,6 +209,20 @@ describe('G3 simultaneous elimination and result', () => {
       owner: 'A',
       hp: 0,
     });
+    const withoutRespawn = resolveMatchOutcome({
+      ...withDefeat,
+      rules: {
+        ...withDefeat.rules,
+        defenses: { ...withDefeat.rules.defenses, respawnEnabled: false },
+      },
+    });
+    expect(
+      withoutRespawn.bases.find(({ id }) => id === 'OUT-03'),
+    ).toMatchObject({
+      owner: null,
+      hp: 100,
+      defender: null,
+    });
     const afterTick = stepMatch(cleaned);
     expect(byId(afterTick, 'A').supplyCenti).toBe(
       byId(cleaned, 'A').supplyCenti,

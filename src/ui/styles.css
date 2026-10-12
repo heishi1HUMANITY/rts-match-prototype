@@ -935,6 +935,12 @@ select:focus-visible {
   background: #fff;
   font-size: 11px;
 }
+.master-field input[type='checkbox'] {
+  width: auto;
+  min-height: 24px;
+  justify-self: start;
+  accent-color: var(--accent);
+}
 .master-field-error {
   grid-column: 1 / -1;
   color: #a22727;

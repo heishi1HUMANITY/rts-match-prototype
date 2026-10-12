@@ -83,6 +83,33 @@ describe('F05 neutral garrisons and capture', () => {
     });
   });
 
+  it('keeps a defeated garrison disabled when respawn is turned off', () => {
+    let state = createMatch(42, { scenarioId: 'f05-neutral-defense' });
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        defenses: { ...state.rules.defenses, respawnEnabled: false },
+      },
+      units: [],
+      bases: state.bases.map((base) =>
+        base.id === 'OUT-03'
+          ? {
+              ...base,
+              hp: 0,
+              defender: { hp: 0, maxHp: 60, disabledTicks: 0 },
+            }
+          : base,
+      ),
+    };
+    for (let tick = 0; tick < 400; tick += 1) state = stepMatch(running(state));
+    expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
+      owner: null,
+      hp: 0,
+      defender: { hp: 0, disabledTicks: 0 },
+    });
+  });
+
   it('rebuilds a full neutral garrison when an owned outpost is destroyed', () => {
     let state = createMatch(42);
     const attacker = {
@@ -107,6 +134,33 @@ describe('F05 neutral garrisons and capture', () => {
       owner: null,
       hp: 300,
       defender: { hp: 160, maxHp: 160, disabledTicks: 0 },
+    });
+  });
+
+  it('leaves a neutralized owned outpost without a garrison when respawn is disabled', () => {
+    let state = createMatch(42);
+    const attacker = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: 19, y: 20 },
+    };
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        defenses: { ...state.rules.defenses, respawnEnabled: false },
+      },
+      units: [attacker],
+      bases: state.bases.map((base) =>
+        base.id === 'OUT-02'
+          ? { ...base, owner: 'B', hp: 1, defender: null }
+          : base,
+      ),
+    };
+    const next = resolveCombat(state);
+    expect(next.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
+      owner: null,
+      hp: 300,
+      defender: null,
     });
   });
 

@@ -90,11 +90,13 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
                 ...base,
                 owner: null,
                 hp: base.maxHp,
-                defender: {
-                  hp: state.rules.defenses[base.kind].maxHp,
-                  maxHp: state.rules.defenses[base.kind].maxHp,
-                  disabledTicks: 0,
-                },
+                defender: state.rules.defenses.respawnEnabled
+                  ? {
+                      hp: state.rules.defenses[base.kind].maxHp,
+                      maxHp: state.rules.defenses[base.kind].maxHp,
+                      disabledTicks: 0,
+                    }
+                  : null,
                 captureCandidate: null,
                 captureTicks: 0,
               }

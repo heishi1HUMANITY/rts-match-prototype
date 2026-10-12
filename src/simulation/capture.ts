@@ -71,6 +71,20 @@ export function advanceCapture(state: MatchState): MatchState {
     }
     let eligibleBase = base;
     if (base.defender && base.defender.hp === 0) {
+      if (!state.rules.defenses.respawnEnabled) {
+        if (
+          base.defender.disabledTicks === 0 &&
+          base.captureCandidate === null &&
+          base.captureTicks === 0
+        )
+          return base;
+        return {
+          ...base,
+          captureCandidate: null,
+          captureTicks: 0,
+          defender: { ...base.defender, disabledTicks: 0 },
+        };
+      }
       if (present.size === 0) {
         const disabledTicks = base.defender.disabledTicks + 1;
         if (disabledTicks >= state.rules.defenses[base.kind].respawnTicks) {

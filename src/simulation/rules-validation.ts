@@ -81,7 +81,14 @@ export function validateRules(input: unknown): ValidationResult {
       const actual = value[key];
       const fieldPath = `${path}.${key}`;
       if (isRecord(expected)) output[key] = walk(actual, expected, fieldPath);
-      else {
+      else if (typeof expected === 'boolean') {
+        if (typeof actual !== 'boolean')
+          issues.push({
+            key: fieldPath,
+            message: '有効/無効を指定してください',
+          });
+        output[key] = typeof actual === 'boolean' ? actual : expected;
+      } else {
         const allowedNull = expected === null;
         if (allowedNull && (actual === null || typeof actual === 'string'))
           output[key] = actual;
@@ -204,7 +211,8 @@ export function validateEnvelope(
     input.revision < 0 ||
     !('rules' in input) ||
     (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
-      input.masterSchemaVersion !== 3)
+      input.masterSchemaVersion !== 3 &&
+      input.masterSchemaVersion !== 4)
   )
     return {
       ok: false,
@@ -227,8 +235,31 @@ export function validateEnvelope(
           },
         ],
       };
-    // Preserve validated schema 3 settings and add only F05's new defaults.
+    // Preserve schema 3 settings and add F05's rules with current defaults.
     candidateRules = { ...input.rules, defenses: DEFAULT_RULES.defenses };
+  } else if (input.masterSchemaVersion === 4) {
+    if (
+      !isRecord(input.rules) ||
+      !isRecord(input.rules.defenses) ||
+      Object.hasOwn(input.rules.defenses, 'respawnEnabled')
+    )
+      return {
+        ok: false,
+        issues: [
+          {
+            key: 'masterSchemaVersion',
+            message: 'schema 4の設定形式として認識できません',
+          },
+        ],
+      };
+    // Preserve schema 4 settings and enable the prior respawn behavior.
+    candidateRules = {
+      ...input.rules,
+      defenses: {
+        ...input.rules.defenses,
+        respawnEnabled: DEFAULT_RULES.defenses.respawnEnabled,
+      },
+    };
   }
   const result = validateRules(candidateRules);
   return result.ok

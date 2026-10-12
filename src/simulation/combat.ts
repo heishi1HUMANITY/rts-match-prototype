@@ -310,13 +310,15 @@ export function resolveCombat(state: MatchState): MatchState {
       ...base,
       hp: base.owner !== null ? base.maxHp : hp,
       defender:
-        base.owner !== null
+        base.owner !== null && snapshot.rules.defenses.respawnEnabled
           ? {
               hp: snapshot.rules.defenses[base.kind].maxHp,
               maxHp: snapshot.rules.defenses[base.kind].maxHp,
               disabledTicks: 0,
             }
-          : defender,
+          : base.owner !== null
+            ? null
+            : defender,
       owner: null,
       captureCandidate: null,
       captureTicks: 0,
