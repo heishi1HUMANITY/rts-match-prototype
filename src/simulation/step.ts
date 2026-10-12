@@ -14,6 +14,7 @@ import {
 } from './crossings';
 import { canTraverse } from './map';
 import { findPath } from './pathfinding';
+import { unitCapabilities } from './unit-capabilities';
 import type { MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
@@ -32,7 +33,7 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
     unit.path[0] &&
     !canTraverse(state.map, unit.path[0], {
       factionId: unit.factionId,
-      domain: 'land',
+      domain: unitCapabilities(unit.kind).movementDomain,
       crossings: activeCrossings(state),
       unitKind: unit.kind,
     })
@@ -68,7 +69,7 @@ function revalidateRoutes(state: MatchState): MatchState {
     const origin = edge ?? unit.cell;
     const route = findPath(state.map, origin, destination, {
       factionId: unit.factionId,
-      domain: 'land',
+      domain: unitCapabilities(unit.kind).movementDomain,
       crossings,
       unitKind: unit.kind,
       allowBlockedStart: true,

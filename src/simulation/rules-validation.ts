@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
   const rootKeys = [
     'units',
     'bases',
+    'defenses',
     'research',
     'crossings',
     'match',
@@ -199,10 +200,11 @@ export function validateEnvelope(
     Object.keys(input).some(
       (key) => !['masterSchemaVersion', 'revision', 'rules'].includes(key),
     ) ||
-    input.masterSchemaVersion !== MASTER_SCHEMA_VERSION ||
     !isInteger(input.revision) ||
     input.revision < 0 ||
-    !('rules' in input)
+    !('rules' in input) ||
+    (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
+      input.masterSchemaVersion !== 3)
   )
     return {
       ok: false,
@@ -213,7 +215,22 @@ export function validateEnvelope(
         },
       ],
     };
-  const result = validateRules(input.rules);
+  let candidateRules = input.rules;
+  if (input.masterSchemaVersion === 3) {
+    if (!isRecord(input.rules) || Object.hasOwn(input.rules, 'defenses'))
+      return {
+        ok: false,
+        issues: [
+          {
+            key: 'masterSchemaVersion',
+            message: 'schema 3の設定形式として認識できません',
+          },
+        ],
+      };
+    // Preserve validated schema 3 settings and add only F05's new defaults.
+    candidateRules = { ...input.rules, defenses: DEFAULT_RULES.defenses };
+  }
+  const result = validateRules(candidateRules);
   return result.ok
     ? {
         ok: true,

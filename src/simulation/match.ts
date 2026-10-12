@@ -93,10 +93,18 @@ function buildBases(rules: RulesMaster): BaseState[] {
       kind,
       cell: { ...cell },
       owner,
-      hp: owner === null ? 0 : rules.bases[kind].maxHp,
+      hp: rules.bases[kind].maxHp,
       maxHp: rules.bases[kind].maxHp,
       captureCandidate: null,
       captureTicks: 0,
+      defender:
+        owner === null && !hq
+          ? {
+              hp: rules.defenses[kind].maxHp,
+              maxHp: rules.defenses[kind].maxHp,
+              disabledTicks: 0,
+            }
+          : null,
       homeFactionId: hq ? factionId : null,
     };
   });
@@ -143,6 +151,9 @@ function configuredFixture(
           ? { ...unit, cell: { x: 20, y: 29 } }
           : unit,
     );
+    bases = bases.map((base) =>
+      base.id === 'OUT-03' ? { ...base, hp: 0, defender: null } : base,
+    );
   } else if (scenarioId === 'g2-combat') {
     units = units.map((unit) => {
       if (unit.id === 'A-01')
@@ -153,6 +164,11 @@ function configuredFixture(
       if (unit.id === 'B-02') return { ...unit, cell: { x: 30, y: 20 } };
       return unit;
     });
+    bases = bases.map((base) =>
+      base.owner === null && base.kind !== 'hq'
+        ? { ...base, hp: 0, defender: null }
+        : base,
+    );
   } else if (scenarioId === 'g2-economy') {
     factions = factions.map((faction) =>
       faction.id === 'A'
@@ -160,7 +176,9 @@ function configuredFixture(
         : faction,
     );
     bases = bases.map((base) =>
-      base.id === 'OUT-03' ? { ...base, owner: 'A', hp: 100 } : base,
+      base.id === 'OUT-03'
+        ? { ...base, owner: 'A', hp: 100, defender: null }
+        : base,
     );
   } else if (scenarioId === 'g3-elimination') {
     factions = factions.map((faction) =>
@@ -205,9 +223,25 @@ function configuredFixture(
         return { ...unit, cell: { x: 21, y: 20 }, path: route };
       return unit;
     });
+    bases = bases.map((base) =>
+      base.owner === null && base.kind !== 'hq'
+        ? { ...base, hp: 0, defender: null }
+        : base,
+    );
   } else if (scenarioId === 'f04-crossing') {
     units = units.map((unit) =>
       unit.id === 'A-01' ? { ...unit, cell: { x: 19, y: 10 } } : unit,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
+    );
+  } else if (scenarioId === 'f05-neutral-defense') {
+    units = units.map((unit) =>
+      unit.id === 'A-01'
+        ? { ...unit, cell: { x: 19, y: 28 } }
+        : unit.id === 'A-02'
+          ? { ...unit, cell: { x: 20, y: 29 } }
+          : unit,
     );
     factions = factions.map((faction) =>
       faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
@@ -216,7 +250,7 @@ function configuredFixture(
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v9 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-v10 match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},

@@ -50,6 +50,33 @@ describe('F17 browser master store', () => {
     });
   });
 
+  it('loads and upgrades schema 3 saved settings while preserving user values', () => {
+    const storage = new MemoryStorage();
+    const v3Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v3Rules.defenses;
+    v3Rules.units.scout.costCenti = 8_000;
+    storage.values.set(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 3, revision: 9, rules: v3Rules }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded).toMatchObject({
+      ok: true,
+      source: 'storage',
+      envelope: {
+        masterSchemaVersion: 4,
+        revision: 9,
+        rules: {
+          units: { scout: { costCenti: 8_000 } },
+          defenses: DEFAULT_RULES.defenses,
+        },
+      },
+    });
+  });
+
   it('keeps the previous valid bytes after invalid imports and failed writes', () => {
     const storage = new MemoryStorage();
     const store = new MasterStore(storage);

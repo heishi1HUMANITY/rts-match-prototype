@@ -1,4 +1,5 @@
 import { findPath } from '../simulation/pathfinding';
+import { unitCapabilities } from '../simulation/unit-capabilities';
 import { crossingResearchComplete } from '../simulation/crossings';
 import type {
   BaseView,
@@ -128,7 +129,7 @@ function nearestReachableGoal(
       base,
       route: findPath(view.map, from, base.cell, {
         factionId: unit.factionId,
-        domain: 'land',
+        domain: unitCapabilities(unit.kind).movementDomain,
         crossings: knownActiveCrossings(view),
         unitKind: unit.kind,
       }),
@@ -170,7 +171,7 @@ function crossingConstructionCommand(
         bank,
         route: findPath(view.map, currentCell(unit), bank, {
           factionId: unit.factionId,
-          domain: 'land',
+          domain: unitCapabilities(unit.kind).movementDomain,
           crossings: knownActiveCrossings(view),
           unitKind: unit.kind,
           allowBlockedStart: true,
@@ -318,7 +319,7 @@ function unitMoveCommand(
       : proposedDefense &&
           findPath(view.map, currentCell(unit), proposedDefense.cell, {
             factionId: unit.factionId,
-            domain: 'land',
+            domain: unitCapabilities(unit.kind).movementDomain,
             crossings: knownActiveCrossings(view),
             unitKind: unit.kind,
           })

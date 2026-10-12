@@ -89,7 +89,12 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
             ? {
                 ...base,
                 owner: null,
-                hp: 0,
+                hp: base.maxHp,
+                defender: {
+                  hp: state.rules.defenses[base.kind].maxHp,
+                  maxHp: state.rules.defenses[base.kind].maxHp,
+                  disabledTicks: 0,
+                },
                 captureCandidate: null,
                 captureTicks: 0,
               }

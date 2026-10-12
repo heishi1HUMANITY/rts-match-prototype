@@ -4,9 +4,9 @@ import { createMap, isCellBlocked } from './map';
 import { createMatch } from './match';
 
 describe('initial match contract', () => {
-  it('creates schema-v8 ready state with three factions, typed units, and bases', () => {
+  it('creates schema-v10 ready state with three factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(9);
+    expect(match.schemaVersion).toBe(10);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -136,6 +136,8 @@ describe('initial match contract', () => {
     'g3-mutual',
     'g3-spectate',
     'f02-pursuit',
+    'f04-crossing',
+    'f05-neutral-defense',
   ] as const)('reproduces scenario fixture %s', (scenarioId) => {
     const match = createMatch(42, { scenarioId });
     expect(createMatch(42, { scenarioId })).toEqual(match);
@@ -196,7 +198,8 @@ describe('initial match contract', () => {
     });
     expect(standard.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
-      hp: 0,
+      hp: 100,
+      defender: { hp: 60, maxHp: 60 },
     });
   });
 });

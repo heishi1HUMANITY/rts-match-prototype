@@ -146,9 +146,14 @@ describe('V06 view-only render frames', () => {
       kind: 'outpost' as const,
       cell: { x: 20, y: 20 },
     };
-    expect(baseLabel({ ...base, visibility: 'unknown' })).toBe(
-      '小拠点 · 未観測',
-    );
+    expect(
+      baseLabel({
+        ...base,
+        visibility: 'unknown',
+        defenderHp: null,
+        defenderMaxHp: null,
+      }),
+    ).toBe('小拠点 · 未観測');
     const remembered = baseLabel({
       ...base,
       visibility: 'remembered',
@@ -156,8 +161,10 @@ describe('V06 view-only render frames', () => {
       hp: 42,
       seenTick: 17,
       selfReportedLost: false,
+      defenderHp: 0,
+      defenderMaxHp: 60,
     });
-    expect(remembered).toContain('B HP42 · T17の観測');
+    expect(remembered).toContain('B HP42 · 守備0/60 · T17の観測');
     expect(remembered).not.toContain('制圧');
     expect(
       baseLabel({
@@ -168,7 +175,9 @@ describe('V06 view-only render frames', () => {
         maxHp: 100,
         captureCandidate: 'A',
         captureTicks: 12,
+        defenderHp: 0,
+        defenderMaxHp: 60,
       }),
-    ).toContain('中立 HP0/100 · A制圧 12/30');
+    ).toContain('中立 HP0/100 · 守備撃破 · A制圧 12/30');
   });
 });

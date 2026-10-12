@@ -13,7 +13,8 @@ export type ScenarioId =
   | 'g3-mutual'
   | 'g3-spectate'
   | 'f02-pursuit'
-  | 'f04-crossing';
+  | 'f04-crossing'
+  | 'f05-neutral-defense';
 export type UnitKind = 'assault' | 'scout';
 export type CrossingTierId =
   | 'bridge-1'
@@ -203,8 +204,17 @@ export interface BaseState {
   readonly maxHp: number;
   readonly captureCandidate: FactionId | null;
   readonly captureTicks: number;
+  /** Neutral garrison; it is not a faction and never participates in standings. */
+  readonly defender: NeutralDefenderState | null;
   /** Immutable original owner for HQs; null for neutral outposts. */
   readonly homeFactionId: FactionId | null;
+}
+
+export interface NeutralDefenderState {
+  readonly hp: number;
+  readonly maxHp: number;
+  /** Consecutive ticks without eligible capturers while disabled. */
+  readonly disabledTicks: number;
 }
 
 export interface BaseMemory {
@@ -213,6 +223,8 @@ export interface BaseMemory {
   readonly hp: number;
   readonly seenTick: number;
   readonly selfReportedLost: boolean;
+  readonly defenderHp: number;
+  readonly defenderMaxHp: number;
 }
 
 export interface FactionKnowledge {
@@ -225,7 +237,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 9;
+  readonly schemaVersion: 10;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -262,6 +274,8 @@ export interface UnknownBaseView {
   readonly id: string;
   readonly kind: BaseKind;
   readonly cell: Cell;
+  readonly defenderHp: null;
+  readonly defenderMaxHp: null;
 }
 
 export interface RememberedBaseView {
@@ -273,6 +287,8 @@ export interface RememberedBaseView {
   readonly hp: number;
   readonly seenTick: number;
   readonly selfReportedLost: boolean;
+  readonly defenderHp: number;
+  readonly defenderMaxHp: number;
 }
 
 export interface VisibleBaseView {
@@ -285,6 +301,8 @@ export interface VisibleBaseView {
   readonly maxHp: number;
   readonly captureCandidate: FactionId | null;
   readonly captureTicks: number;
+  readonly defenderHp: number | null;
+  readonly defenderMaxHp: number | null;
 }
 
 export interface OwnedBaseView extends Omit<

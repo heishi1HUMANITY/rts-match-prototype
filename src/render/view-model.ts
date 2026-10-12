@@ -110,14 +110,22 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
           : '小拠点';
   if (base.visibility === 'unknown') return `${kind} · 未観測`;
   if (base.visibility === 'remembered') {
-    return `${kind} · ${base.owner ?? '中立'} HP${base.hp} · T${base.seenTick}の観測${base.selfReportedLost ? '・喪失報告' : ''}`;
+    const defender =
+      base.defenderMaxHp > 0
+        ? ` · 守備${base.defenderHp}/${base.defenderMaxHp}`
+        : '';
+    return `${kind} · ${base.owner ?? '中立'} HP${base.hp}${defender} · T${base.seenTick}の観測${base.selfReportedLost ? '・喪失報告' : ''}`;
   }
   const owner = base.owner ?? '中立';
   const capture =
     base.captureCandidate === null
       ? ''
       : ` · ${base.captureCandidate}制圧 ${base.captureTicks}/${captureRequiredTicks}`;
-  return `${kind} · ${owner} HP${base.hp}/${base.maxHp}${capture}`;
+  const defender =
+    base.defenderMaxHp === null
+      ? ''
+      : ` · ${base.defenderHp === 0 ? '守備撃破' : `守備 ${base.defenderHp}/${base.defenderMaxHp}`}`;
+  return `${kind} · ${owner} HP${base.hp}/${base.maxHp}${defender}${capture}`;
 }
 
 /** Keeps stacked production spawns selectable with a 44px target inside the playfield. */

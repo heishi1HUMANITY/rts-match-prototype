@@ -1,5 +1,9 @@
 import type { MasterEnvelope, RulesMaster } from '../simulation/rules';
-import { cloneRules, DEFAULT_RULES } from '../simulation/rules';
+import {
+  cloneRules,
+  DEFAULT_RULES,
+  MASTER_SCHEMA_VERSION,
+} from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
 import type { ValidationIssue } from '../simulation/rules-validation';
 import { rulesContentId } from '../runtime/diagnostics';
@@ -35,12 +39,12 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   maxHp: {
     label: '最大HP',
     unit: 'HP',
-    help: '新規作成される部隊・拠点に適用します。',
+    help: '新規作成される部隊・拠点・守備に適用します。',
   },
   baseDamage: {
     label: '基本攻撃力',
     unit: 'damage/tick',
-    help: '1tickごとの攻撃力です。',
+    help: '守備または部隊の1tickごとの攻撃力です。',
   },
   range: { label: '攻撃射程', unit: 'セル', help: '円形の攻撃範囲です。' },
   vision: { label: '視界', unit: 'セル', help: '円形の視界範囲です。' },
@@ -154,6 +158,11 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'セル',
     help: '拠点を制圧できる範囲です。',
   },
+  respawnTicks: {
+    label: '守備復活時間',
+    unit: 'tick (0.1秒)',
+    help: '制圧可能な部隊が範囲にいない間、守備撃破後に復活するまでの時間です。',
+  },
   updateIntervalTicks: {
     label: '更新間隔',
     unit: 'tick (0.1秒)',
@@ -219,6 +228,7 @@ function fieldsFor(rules: RulesMaster): {
   const labels: Record<string, string> = {
     units: '兵種',
     bases: '拠点',
+    defenses: '中立守備',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',
     crossings: '渡河設備',
@@ -473,7 +483,7 @@ export function createMasterEditor(
       if (!valid.ok) return;
       const json = JSON.stringify(
         {
-          masterSchemaVersion: 3,
+          masterSchemaVersion: MASTER_SCHEMA_VERSION,
           revision: savedEnvelope.revision,
           rules: valid.rules,
         },
