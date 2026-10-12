@@ -1,3 +1,4 @@
+import { renderResearchEditor } from './research-editor';
 import type { MasterEnvelope, RulesMaster } from '../simulation/rules';
 import {
   cloneRules,
@@ -349,7 +350,10 @@ function getPath(source: unknown, path: string): unknown {
   return path
     .split('.')
     .reduce<unknown>(
-      (value, key) => (value as Record<string, unknown>)[key],
+      (value, key) =>
+        value !== null && typeof value === 'object'
+          ? (value as Record<string, unknown>)[key]
+          : undefined,
       source,
     );
 }
@@ -387,6 +391,7 @@ function fieldsFor(rules: RulesMaster): {
   };
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
+    if (path === 'research.definitions') return;
     if (Array.isArray(value)) {
       if (path.endsWith('.attackTargets')) {
         result.push({ group, path, value });
@@ -511,9 +516,10 @@ export function createMasterEditor(
   const dialog = document.createElement('dialog');
   dialog.className = 'master-dialog';
   dialog.setAttribute('aria-labelledby', 'master-title');
-  dialog.innerHTML = `<form method="dialog" class="master-editor"><header><div><h1 id="master-title">マスタ管理</h1><p data-master-state></p></div><button value="close" data-master-close>閉じる</button></header><div class="master-active"></div><div class="master-fields"></div><section class="master-json"><label for="master-json-input">JSON読込</label><input id="master-file" type="file" accept="application/json,.json"><textarea id="master-json-input" rows="3" placeholder="JSONを貼り付けても読み込めます"></textarea><button type="button" data-master-import>JSONを検証して読込</button><button type="button" data-master-export>JSONを書き出す</button></section><div class="master-error" role="alert" aria-live="polite"></div><footer><button type="button" data-master-reset>標準値へ戻す</button><span></span><button type="button" data-master-save>保存する</button><button type="button" class="primary" data-master-start>保存値で新しく開始</button></footer></form>`;
+  dialog.innerHTML = `<form method="dialog" class="master-editor"><header><div><h1 id="master-title">マスタ管理</h1><p data-master-state></p></div><button value="close" data-master-close>閉じる</button></header><div class="master-active"></div><div class="master-scroll"><div class="master-fields"></div><section class="master-research"></section></div><section class="master-json"><label for="master-json-input">JSON読込</label><input id="master-file" type="file" accept="application/json,.json"><textarea id="master-json-input" rows="3" placeholder="JSONを貼り付けても読み込めます"></textarea><button type="button" data-master-import>JSONを検証して読込</button><button type="button" data-master-export>JSONを書き出す</button></section><div class="master-error" role="alert" aria-live="polite"></div><footer><button type="button" data-master-reset>標準値へ戻す</button><span></span><button type="button" data-master-save>保存する</button><button type="button" class="primary" data-master-start>保存値で新しく開始</button></footer></form>`;
   root.append(dialog);
   const fieldHost = dialog.querySelector<HTMLElement>('.master-fields')!;
+  const researchHost = dialog.querySelector<HTMLElement>('.master-research')!;
   const state = dialog.querySelector<HTMLElement>('[data-master-state]')!;
   const active = dialog.querySelector<HTMLElement>('.master-active')!;
   const errorHost = dialog.querySelector<HTMLElement>('.master-error')!;
@@ -527,11 +533,14 @@ export function createMasterEditor(
       (issue) => `${issue.key || 'master'}：${issue.message}`,
     );
     errorHost.textContent = lines.join('\n');
-    for (const input of fieldHost.querySelectorAll<
+    for (const input of dialog.querySelectorAll<
       HTMLInputElement | HTMLSelectElement
-    >('[data-master-path]')) {
-      const fieldPath = input.dataset.masterPath!;
-      const issue = issues.find((entry) => entry.key === fieldPath);
+    >('[data-master-path], [data-research-path]')) {
+      const fieldPath = input.dataset.masterPath ?? input.dataset.researchPath!;
+      const issue = issues.find(
+        (entry) =>
+          entry.key === fieldPath || entry.key.startsWith(`${fieldPath}.`),
+      );
       input.setAttribute('aria-invalid', String(issue !== undefined));
       const detail = input
         .closest('.master-field')
@@ -540,6 +549,11 @@ export function createMasterEditor(
     }
   };
   const render = (): void => {
+    const expanded = new Set(
+      [
+        ...researchHost.querySelectorAll<HTMLDetailsElement>('details[open]'),
+      ].map((entry) => entry.dataset.researchNode ?? 'external'),
+    );
     fieldHost.replaceChildren();
     let groupHost: HTMLElement | null = null;
     let groupName = '';
@@ -635,6 +649,19 @@ export function createMasterEditor(
       label.append(name, detail, input, fieldError);
       groupHost!.append(label);
     }
+    renderResearchEditor(researchHost, draft, (update, structural) => {
+      collect();
+      draft = update(draft);
+      draftDirty = true;
+      if (structural) render();
+      state.textContent = `保存済み revision ${savedEnvelope.revision} · 未保存の変更あり · 保存後は次の新規試合に適用`;
+      const checked = validateRules(draft);
+      showValidation(checked.ok ? [] : checked.issues);
+    });
+    for (const entry of researchHost.querySelectorAll<HTMLDetailsElement>(
+      'details',
+    ))
+      entry.open = expanded.has(entry.dataset.researchNode ?? 'external');
     active.textContent = `現在の試合: ${rulesContentId(options.active())} · 保存後も進行中の値は変わりません。`;
     state.textContent = `保存済み revision ${savedEnvelope.revision} · ${draftDirty ? '未保存の変更あり' : '保存値と一致'} · 保存後は次の新規試合に適用`;
   };
@@ -672,6 +699,7 @@ export function createMasterEditor(
           : input.value || null;
       setPath(next, path, value);
     }
+    draft = next as unknown as RulesMaster;
     const result = validateRules(next);
     if (!result.ok) showValidation(result.issues);
     return result;

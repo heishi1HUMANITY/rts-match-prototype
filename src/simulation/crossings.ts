@@ -28,18 +28,11 @@ export function crossingResearchComplete(
   tier: CrossingSite['tier'],
 ): boolean {
   if (tier === 'bridge-1') return true;
-  const unlock = Object.entries(rules.research.definitions).find(
-    ([, definition]) =>
-      definition.effects.some(
-        (effect) =>
-          effect.id === 'crossing-unlock' && effect.crossingTier === tier,
-      ),
-  )?.[0];
-  return (
-    unlock !== undefined &&
-    faction.completedResearchIds.includes(
-      unlock as FactionState['completedResearchIds'][number],
-    )
+  return faction.completedResearchIds.some((id) =>
+    rules.research.definitions[id]?.effects.some(
+      (effect) =>
+        effect.id === 'crossing-unlock' && effect.crossingTier === tier,
+    ),
   );
 }
 

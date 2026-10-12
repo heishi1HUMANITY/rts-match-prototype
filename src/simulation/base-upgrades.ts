@@ -11,27 +11,16 @@ export function maximumBaseLevel(
   faction: Pick<MatchState['factions'][number], 'completedResearchIds'>,
   rules: RulesMaster,
 ): number {
-  const level2 = rules.baseUpgrades.level2ResearchId;
-  const level3 = rules.baseUpgrades.level3ResearchId;
-  let maximum = 1;
-  if (
-    faction.completedResearchIds.includes(level2) &&
-    (rules.research.definitions[level2]?.effects.some(
-      (effect) => effect.id === 'base-upgrade-max' && effect.value >= 2,
-    ) ??
-      false)
-  )
-    maximum = 2;
-  if (
-    maximum >= 2 &&
-    faction.completedResearchIds.includes(level3) &&
-    (rules.research.definitions[level3]?.effects.some(
-      (effect) => effect.id === 'base-upgrade-max' && effect.value >= 3,
-    ) ??
-      false)
-  )
-    maximum = 3;
-  return maximum;
+  return faction.completedResearchIds.reduce(
+    (maximum, id) =>
+      Math.max(
+        maximum,
+        ...(rules.research.definitions[id]?.effects ?? [])
+          .filter((effect) => effect.id === 'base-upgrade-max')
+          .map((effect) => effect.value),
+      ),
+    1,
+  );
 }
 
 export function baseUpgradeTier(

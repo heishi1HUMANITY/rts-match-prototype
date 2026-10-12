@@ -799,12 +799,19 @@ export function updateHud(
         } else {
           const targetLevel = (level + 1) as 2 | 3;
           const tier = baseUpgradeTier(base.kind, targetLevel, view.rules);
-          const requiredResearch =
-            targetLevel === 2
-              ? view.rules.baseUpgrades.level2ResearchId
-              : view.rules.baseUpgrades.level3ResearchId;
           if (maximumBaseLevel(own, view.rules) < targetLevel) {
-            upgradeReason = `研究「${researchName(requiredResearch, view)}」が必要です`;
+            const candidates = Object.entries(view.rules.research.definitions)
+              .filter(([, definition]) =>
+                definition.effects.some(
+                  (effect) =>
+                    effect.id === 'base-upgrade-max' &&
+                    effect.value >= targetLevel,
+                ),
+              )
+              .map(([id]) => researchName(id, view));
+            upgradeReason = candidates.length
+              ? `研究「${candidates.join(' / ')}」のいずれかが必要です`
+              : `Lv${targetLevel}を解放する研究が登録されていません`;
           } else if (base.hp <= 0 || view.phase !== 'running') {
             upgradeReason = '試合開始後、稼働中の拠点を強化できます';
           } else if (own.supplyCenti < tier.costCenti) {

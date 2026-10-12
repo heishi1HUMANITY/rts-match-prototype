@@ -79,7 +79,9 @@ export function validateRules(input: unknown): ValidationResult {
         return defaults;
       }
       if (path.endsWith('.effects')) {
-        return value.map((entry, index) => {
+        if (value.length > 32)
+          issues.push({ key: path, message: '効果は32件以下にしてください' });
+        return value.slice(0, 32).map((entry, index) => {
           const effectPath = `${path}.${index}`;
           if (!isRecord(entry)) {
             issues.push({
@@ -123,6 +125,20 @@ export function validateRules(input: unknown): ValidationResult {
             issues.push({
               key: `${effectPath}.value`,
               message: '0以上100000以下の整数が必要です',
+            });
+          if ((unlock || unitUnlock) && entry.value !== 0)
+            issues.push({
+              key: `${effectPath}.value`,
+              message: '解放効果の値は0にしてください',
+            });
+          if (
+            entry.id === 'base-upgrade-max' &&
+            entry.value !== 2 &&
+            entry.value !== 3
+          )
+            issues.push({
+              key: `${effectPath}.value`,
+              message: '強化上限は2または3にしてください',
             });
           if (
             unlock &&
@@ -198,6 +214,32 @@ export function validateRules(input: unknown): ValidationResult {
       issues.push({ key: path, message: 'オブジェクト形式が必要です' });
       return defaults;
     }
+    if (path === 'rules.research.definitions') {
+      const entries = Object.entries(value);
+      if (entries.length < 1 || entries.length > 128)
+        issues.push({
+          key: path,
+          message: '研究ノードは1〜128件にしてください',
+        });
+      return Object.fromEntries(
+        entries.slice(0, 128).map(([id, definition]) => {
+          if (!/^[a-z][a-z0-9-]{0,63}$/.test(id))
+            issues.push({
+              key: `${path}.${id}`,
+              message:
+                '研究IDは小文字英字から始まる英数字・ハイフン64文字以内にしてください',
+            });
+          return [
+            id,
+            walk(
+              definition,
+              DEFAULT_RULES.research.definitions['firepower-1'],
+              `${path}.${id}`,
+            ),
+          ];
+        }),
+      );
+    }
     const keys = Object.keys(defaults);
     exactKeys(value, keys, path, issues);
     const output: Record<string, unknown> = {};
@@ -216,19 +258,14 @@ export function validateRules(input: unknown): ValidationResult {
         output[key] = typeof actual === 'boolean' ? actual : expected;
       } else {
         const allowedNull = expected === null;
-        if (allowedNull && (actual === null || typeof actual === 'string')) {
-          if (
-            fieldPath.endsWith('.unlockResearchId') &&
-            ![
-              null,
-              'artillery-1',
-              'air-defense-1',
-              'aircraft-1',
-              'naval-1',
-            ].includes(actual)
-          )
-            issues.push({ key: fieldPath, message: '未対応の研究IDです' });
-          output[key] = actual;
+        if (fieldPath.endsWith('.unlockResearchId')) {
+          if (actual !== null && typeof actual !== 'string')
+            issues.push({
+              key: fieldPath,
+              message: '研究IDまたはnullが必要です',
+            });
+          output[key] =
+            actual === null || typeof actual === 'string' ? actual : expected;
         } else if (!allowedNull && typeof expected === 'number') {
           const positive =
             !fieldPath.endsWith('initialResearchCenti') &&
@@ -265,45 +302,10 @@ export function validateRules(input: unknown): ValidationResult {
             ? ['power', 'logistics', 'information', 'engineering']
             : fieldPath.endsWith('.movementDomain')
               ? ['land', 'air', 'water']
-              : fieldPath.endsWith('.unlockResearchId')
-                ? [
-                    null,
-                    'artillery-1',
-                    'air-defense-1',
-                    'aircraft-1',
-                    'naval-1',
-                  ]
-                : fieldPath.endsWith('.id')
-                  ? [
-                      'damage-bonus',
-                      'vision-bonus',
-                      'supply-income-bonus',
-                      'upkeep-reduction',
-                      'crossing-unlock',
-                      'unit-unlock',
-                      'base-upgrade-max',
-                    ]
-                  : [
-                      'firepower-1',
-                      'firepower-2',
-                      'bridge-2',
-                      'bridge-3',
-                      'ropeway-1',
-                      'ropeway-2',
-                      'supply-lines-1',
-                      'maintenance-1',
-                      'survey-1',
-                      'survey-2',
-                      'base-development-1',
-                      'base-development-2',
-                      'artillery-1',
-                      'air-defense-1',
-                      'aircraft-1',
-                      'naval-1',
-                    ];
+              : null;
           if (
-            (typeof actual !== 'string' && actual !== null) ||
-            !allowed.includes(actual as string | null)
+            typeof actual !== 'string' ||
+            (allowed !== null && !allowed.includes(actual))
           )
             issues.push({ key: fieldPath, message: '未対応のIDです' });
           output[key] = typeof actual === 'string' ? actual : expected;
@@ -313,6 +315,23 @@ export function validateRules(input: unknown): ValidationResult {
     return output;
   };
   const rules = walk(input, DEFAULT_RULES, 'rules') as RulesMaster;
+  const checkReference = (id: string | null, path: string): void => {
+    if (id !== null && !Object.hasOwn(rules.research.definitions, id))
+      issues.push({ key: path, message: `存在しない研究ID: ${id}` });
+  };
+  for (const [kind, unit] of Object.entries(rules.units))
+    checkReference(
+      unit.unlockResearchId,
+      `rules.units.${kind}.unlockResearchId`,
+    );
+  checkReference(
+    rules.baseUpgrades.level2ResearchId,
+    'rules.baseUpgrades.level2ResearchId',
+  );
+  checkReference(
+    rules.baseUpgrades.level3ResearchId,
+    'rules.baseUpgrades.level3ResearchId',
+  );
   for (const [id, def] of Object.entries(rules.research.definitions)) {
     const path = `rules.research.definitions.${id}`;
     if (
@@ -336,7 +355,9 @@ export function validateRules(input: unknown): ValidationResult {
           message: `存在しない研究ID: ${prereq}`,
         });
     for (const excluded of def.exclusiveWith) {
-      const peer = rules.research.definitions[excluded];
+      const peer = Object.hasOwn(rules.research.definitions, excluded)
+        ? rules.research.definitions[excluded]
+        : undefined;
       if (!peer)
         issues.push({
           key: `${path}.exclusiveWith`,
@@ -353,23 +374,25 @@ export function validateRules(input: unknown): ValidationResult {
         key: path,
         message: '研究は自分自身を前提/排他に指定できません',
       });
-    const seen = new Set<string>();
-    const visit = (current: string): void => {
-      if (seen.has(current)) {
-        issues.push({
-          key: `${path}.prerequisites`,
-          message: '研究前提に循環があります',
-        });
-        return;
-      }
-      seen.add(current);
-      for (const parent of rules.research.definitions[current]?.prerequisites ??
-        [])
-        visit(parent);
-      seen.delete(current);
-    };
-    visit(id);
   }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (id: string): void => {
+    if (visiting.has(id)) {
+      issues.push({
+        key: `rules.research.definitions.${id}.prerequisites`,
+        message: '研究前提に循環があります',
+      });
+      return;
+    }
+    if (visited.has(id)) return;
+    visiting.add(id);
+    for (const parent of rules.research.definitions[id]?.prerequisites ?? [])
+      visit(parent);
+    visiting.delete(id);
+    visited.add(id);
+  };
+  for (const id of Object.keys(rules.research.definitions)) visit(id);
   if (rules.limits.unitsPerFaction < 2)
     issues.push({
       key: 'rules.limits.unitsPerFaction',
@@ -567,6 +590,16 @@ export function validateEnvelope(
       oldResearch && isRecord(oldResearch.definitions)
         ? oldResearch.definitions
         : null;
+    if (input.masterSchemaVersion === 11 && oldDefinitions === null)
+      return {
+        ok: false,
+        issues: [
+          {
+            key: 'rules.research.definitions',
+            message: '研究定義オブジェクトが必要です',
+          },
+        ],
+      };
     const converted = { ...DEFAULT_RULES.research.definitions } as Record<
       string,
       ResearchDefinition
@@ -629,6 +662,15 @@ export function validateEnvelope(
       }
       if (migrationIssues.length > 0)
         return { ok: false, issues: migrationIssues };
+    } else if (oldDefinitions && input.masterSchemaVersion === 11) {
+      for (const id of Object.keys(converted)) delete converted[id];
+      for (const [id, oldValue] of Object.entries(oldDefinitions))
+        Object.defineProperty(converted, id, {
+          value: oldValue,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
     } else if (oldDefinitions) {
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         if (Object.hasOwn(converted, id))
