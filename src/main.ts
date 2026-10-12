@@ -1,11 +1,14 @@
 import { createBoardView } from './render/board';
 import { createDiagnostic } from './runtime/diagnostics';
 import { MatchRuntime } from './runtime/controller';
+import { MasterStore } from './runtime/master-store';
 import { SCENARIO_IDS } from './simulation/config';
+import type { RulesMaster } from './simulation/rules';
 import type { ScenarioId } from './simulation/types';
 import type { GestureOrigin, Point } from './ui/input';
 import { CanvasInput } from './ui/input';
 import { createHud, setHudPanel, updateHud } from './ui/hud';
+import { createMasterEditor } from './ui/master-editor';
 import { resolveMarchTarget } from './ui/march-target';
 import './ui/styles.css';
 
@@ -13,6 +16,8 @@ const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing application root');
 
 const hud = createHud(app);
+const masterStore = new MasterStore();
+const loadedMaster = masterStore.load();
 let runtime!: MatchRuntime;
 let input!: CanvasInput;
 let activeMovePreview: {
@@ -36,31 +41,40 @@ let board = createBoardView({
   },
 });
 
-runtime = new MatchRuntime({
-  onChange: (snapshot) => {
-    const nextLifecycleKey = `${snapshot.view.phase}:${snapshot.view.ownFaction.eliminatedAtTick !== null}`;
-    if (
-      nextLifecycleKey !== lifecycleKey &&
-      (snapshot.view.phase === 'finished' ||
-        snapshot.view.phase === 'ready' ||
-        snapshot.view.ownFaction.eliminatedAtTick !== null)
-    ) {
-      input?.reset();
-      hud.multiSelect = false;
-      activeMovePreview = null;
-      activeDragUnitId = null;
-      activeDragUnitIds = null;
-      clearMoveFeedback();
-    }
-    lifecycleKey = nextLifecycleKey;
-    updateHud(hud, snapshot);
-    board.setSelections(snapshot.selectedUnitIds);
-    refreshActiveMovePreview();
+runtime = new MatchRuntime(
+  {
+    onChange: (snapshot) => {
+      const nextLifecycleKey = `${snapshot.view.phase}:${snapshot.view.ownFaction.eliminatedAtTick !== null}`;
+      if (
+        nextLifecycleKey !== lifecycleKey &&
+        (snapshot.view.phase === 'finished' ||
+          snapshot.view.phase === 'ready' ||
+          snapshot.view.ownFaction.eliminatedAtTick !== null)
+      ) {
+        input?.reset();
+        hud.multiSelect = false;
+        activeMovePreview = null;
+        activeDragUnitId = null;
+        activeDragUnitIds = null;
+        clearMoveFeedback();
+      }
+      lifecycleKey = nextLifecycleKey;
+      updateHud(hud, snapshot);
+      board.setSelections(snapshot.selectedUnitIds);
+      refreshActiveMovePreview();
+    },
+    onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
   },
-  onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
-});
+  42,
+  'standard',
+  loadedMaster.envelope.rules,
+);
 updateHud(hud, runtime.playerSnapshot());
 if (bootError !== null) runtime.notify(bootError);
+if (!loadedMaster.ok)
+  runtime.notify(
+    `保存済みマスタを使用できません。標準値で起動しました: ${loadedMaster.error.message}`,
+  );
 if (!board.available) hud.start.disabled = true;
 
 function isBoardPoint(point: Point): boolean {
@@ -301,6 +315,55 @@ function downloadDiagnostic(): void {
   }
 }
 
+const masterEditor = createMasterEditor(hud.root, {
+  saved: () => masterStore.load().envelope,
+  active: () => runtime.snapshot().state.rules,
+  onSave: (rules) => {
+    const result = masterStore.saveRules(rules);
+    return result.ok
+      ? { ok: true as const, envelope: result.envelope }
+      : {
+          ok: false as const,
+          message: result.error.message,
+          ...(result.error.issues ? { issues: result.error.issues } : {}),
+        };
+  },
+  onReset: () => {
+    const result = masterStore.reset();
+    return result.ok
+      ? { ok: true as const, envelope: result.envelope }
+      : {
+          ok: false as const,
+          message: result.error.message,
+          ...(result.error.issues ? { issues: result.error.issues } : {}),
+        };
+  },
+  onStart: (rules: RulesMaster) => {
+    const seed = seedOrExplain();
+    if (seed === null) {
+      masterEditor.open();
+      return;
+    }
+    const scenario = hud.scenario.value;
+    if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
+    input.reset();
+    clearActiveDrag();
+    setHudPanel(hud, null);
+    runtime.reset(seed, scenario as ScenarioId, rules);
+    board.resetCamera();
+  },
+  onClose: () => clearActiveDrag(),
+});
+
+function openMasterEditor(): void {
+  input.reset();
+  clearActiveDrag();
+  setHudPanel(hud, null);
+  if (runtime.playerSnapshot().view.phase === 'running')
+    runtime.dispatch({ type: 'pause' });
+  masterEditor.open();
+}
+
 const handleClick = (event: MouseEvent): void => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -339,6 +402,7 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'start' });
   } else if (action === 'pause') runtime.dispatch({ type: 'pause' });
   else if (action === 'resume') runtime.dispatch({ type: 'resume' });
+  else if (action === 'master') openMasterEditor();
   else if (action === 'replay') {
     input.reset();
     hud.multiSelect = false;
@@ -348,7 +412,8 @@ const handleClick = (event: MouseEvent): void => {
     clearMoveFeedback();
     setHudPanel(hud, null);
     hud.selectedBaseId = 'HQ-A';
-    runtime.reset(runtime.playerSnapshot().view.seed);
+    const active = runtime.snapshot().state;
+    runtime.reset(active.seed, active.scenarioId, active.rules);
     board.resetCamera();
     if (board.available) runtime.dispatch({ type: 'start' });
   } else if (action === 'reset') {
@@ -356,7 +421,12 @@ const handleClick = (event: MouseEvent): void => {
     hud.multiSelect = false;
     clearActiveDrag();
     setHudPanel(hud, null);
-    runtime.reset(runtime.playerSnapshot().view.seed);
+    const current = runtime.playerSnapshot().view;
+    runtime.reset(
+      current.seed,
+      current.scenarioId,
+      masterStore.load().envelope.rules,
+    );
     board.resetCamera();
   } else if (action === 'apply-seed') {
     const seed = seedOrExplain();
@@ -367,7 +437,11 @@ const handleClick = (event: MouseEvent): void => {
     const scenario = hud.scenario.value;
     if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
     setHudPanel(hud, null);
-    runtime.reset(seed, scenario as ScenarioId);
+    runtime.reset(
+      seed,
+      scenario as ScenarioId,
+      masterStore.load().envelope.rules,
+    );
     board.resetCamera();
   } else if (action === 'stop' || action === 'group-stop') {
     runtime.groupStop();

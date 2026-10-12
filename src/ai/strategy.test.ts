@@ -60,8 +60,8 @@ describe('stateless faction-view NPC policy', () => {
       id: 'A-01',
       factionId: 'A' as const,
       kind: 'assault' as const,
-      positionX2: 57,
-      positionY2: 67,
+      positionX1024: 29184,
+      positionY1024: 34304,
       hp: 100,
       maxHp: 100,
     };
@@ -188,5 +188,18 @@ describe('stateless faction-view NPC policy', () => {
       ),
     ).toEqual([]);
     expect(decideBotCommands({ ...view, phase: 'paused' })).toEqual([]);
+  });
+
+  it('applies the NPC command limit to production, research, and movement together', () => {
+    const view = getFactionView(running(createMatch(45)), 'B');
+    const limited = {
+      ...view,
+      rules: {
+        ...view.rules,
+        npc: { ...view.rules.npc, maxCommandsPerDecision: 1 },
+      },
+    };
+
+    expect(decideBotCommands(limited)).toHaveLength(1);
   });
 });

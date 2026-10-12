@@ -13,7 +13,9 @@ export function stepUnit(unit: UnitState): UnitState {
   if (unit.path.length === 0) {
     return unit.edgeProgress === 0 ? unit : { ...unit, edgeProgress: 0 };
   }
-  if (unit.edgeProgress === 0) return { ...unit, edgeProgress: 1 };
+  const progress = unit.edgeProgress + 1;
+  if (progress < (unit.moveTicksPerCell ?? 2))
+    return { ...unit, edgeProgress: progress };
 
   const [nextCell, ...remainingPath] = unit.path;
   if (nextCell === undefined) return { ...unit, edgeProgress: 0 };

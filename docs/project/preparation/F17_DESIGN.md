@@ -24,6 +24,16 @@ M1の共有型と注入契約を親が先に固定する。M3/M4はその型が�
 
 `RulesMaster`はJSON可能なreadonlyデータとして次を持つ。既存のUnitKind/ResearchId/BaseKindは当面維持し、値の編集を対象にする。IDの追加や未実装効果の登録を許可しない。将来F08/F09等で対応範囲を明示拡張する。
 
+### 型・研究IDを追加する範囲
+
+F17 v1は既存の兵種・研究IDのパラメータ編集が対象で、兵種や研究の定義そのものを追加するUI/APIは含まない。これは後続機能へ接続するための意図した段階分けとする。
+
+- F08 / Issue #20で強襲・偵察・自走砲・対空車両・攻撃ヘリ・哨戒艇をマスタ定義へ追加し、それぞれの移動領域、攻撃可否、解放研究などを実装する。ヘリコプター等の新兵種はこのIssueで追加し、定義だけでなく経路・戦闘・生産・表示まで機能させる。
+- F09 / Issue #21で研究定義を安定ID、分野/段階、前提/排他、効果IDへ一般化し、該当する効果実装と接続する。既存の研究充填・進捗保持を維持する。
+- マスタから選べる研究効果はシミュレーションに実装・登録済みの効果に限る。まだ実装されていない効果を自由記述や任意コードとして実行する仕組みは、この2 Issueでは計画していない。新しい効果は、その効果を実装する機能IssueとF09の効果契約へ追加する。
+
+2026-10-12のユーザー修正依頼との照合で、この分担を確認した。現行PRでは型の追加機能を先取りせず、F08/F09の各Issueで実装する。
+
 | 分類     | 調整対象（内部の単位）                                                                                                          | 既定値の根拠                                                              |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | unit     | maxHp/baseDamage/range/vision/costCenti/buildTicks/upkeepCentiPerTick/moveTicksPerCell、陣営全体の部隊上限とキュー上限          | 基点のUNIT_STATS、MOVE_TICKS_PER_CELL、UNIT_LIMIT、PRODUCTION_QUEUE_LIMIT |
@@ -85,5 +95,15 @@ replayは診断に含まれるsnapshotを検証して注入し、現在のlocalS
 - B保存後でもAの診断を再現でき、同seed/履歴/active snapshotで一致する。返されたviewやdraftの書換えでactiveが変わらない。
 - ブラウザ再読込で保存値が残り、JSON書出し→標準へ戻す→import→保存→新規開始で同じ設定を復元できる。
 - PC/900×420で編集画面が操作でき、終了/リセット/管理画面開閉で盤面に誤命令が出ない。
+
+## 実装記録 2026-10-12
+
+- `src/simulation/rules.ts` のmaster schema v1 / `RulesMaster` を実装。現在存在する兵種/拠点/研究/試合開始値/上限/制圧/チケット/NPC判断の値を編集できる。100ms固定tick、40×40 map、配置、検査シナリオ、未実装機能は公開しない。
+- F17 v1では兵種・研究ID自体の追加をしない。新しい兵種（攻撃ヘリを含む）はF08 / Issue #20、実装済み効果を持つ新研究定義はF09 / Issue #21で扱う。未実装効果の自由登録は受け付けない。
+- `rules-validation.ts` が全オブジェクトの不足/余剰キー、整数/範囲、未対応ID、研究前提参照/循環、開始部隊上限、試合収入の安全整数範囲を検証し、keyと日本語理由を返す。
+- `MatchState.rules`をschema7/rules f17-v1の各試合へclone注入。simulation・NPC・view・HUD/renderはactive snapshotを参照する。移動速度はunitごとに保存し、途中座標・視界・交戦・制圧・F02追跡・描画で1/1024セル単位の整数位置を共用する。
+- `MasterStore` は同一originのlocalStorageへrevision付きenvelopeを保存し、JSON import/exportと標準値復元を提供する。管理UIではdraft/saved/activeを別表示し、保存で現在の試合を変更しない。新規設定開始は保存snapshot、再戦はactive snapshotを使用する。
+- 診断JSONへmaster schema、完全rules snapshot、FNV-1a 64-bit content IDを記録する。replayはsnapshotをvalidatorへ通し、ID一致を確認してから実行する。
+- UIのPC/900×420操作は [F17画面確認手順](../inspection/F17_SCENARIOS.md) に記録する。F17ユーザー検査が終わるまで、実ブラウザの外観・操作性は未確認として扱う。
 
 検査票を `docs/project/inspection/F17_SCENARIOS.md` として実装結果に合わせて作り、対象SHA・CI・実検査範囲をIssue #30へ記録する。

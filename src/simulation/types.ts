@@ -1,3 +1,5 @@
+import type { RulesMaster } from './rules';
+
 /** Plain, serializable state. Browser and renderer dependencies belong elsewhere. */
 export type FactionId = 'A' | 'B' | 'C';
 export type Phase = 'ready' | 'running' | 'paused' | 'finished';
@@ -86,7 +88,8 @@ export interface UnitState {
   /** Excludes cell and begins with the next cell to reach. */
   readonly path: readonly Cell[];
   /** Completed ticks on the current two-tick edge. */
-  readonly edgeProgress: 0 | 1;
+  readonly edgeProgress: number;
+  readonly moveTicksPerCell?: number;
   readonly marchOrder?: MarchOrder | null;
 }
 
@@ -132,7 +135,8 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 6;
+  readonly schemaVersion: 7;
+  readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
   readonly elapsedTicks: number;
@@ -156,8 +160,8 @@ export interface VisibleEnemyUnitView {
   readonly id: string;
   readonly factionId: FactionId;
   readonly kind: UnitKind;
-  readonly positionX2: number;
-  readonly positionY2: number;
+  readonly positionX1024: number;
+  readonly positionY1024: number;
   readonly hp: number;
   readonly maxHp: number;
 }
@@ -225,6 +229,7 @@ export interface FactionView {
   readonly phase: Phase;
   readonly tick: number;
   readonly timeLimitTicks: number;
+  readonly rules: RulesMaster;
   readonly result: MatchResult | null;
   /** Public elimination status, without hidden force counts or resources. */
   readonly publicEliminations: Readonly<Record<FactionId, EliminationStatus>>;

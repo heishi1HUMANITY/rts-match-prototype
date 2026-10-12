@@ -2,11 +2,13 @@ import { applyCommand } from '../simulation/commands';
 import {
   MAP_HEIGHT,
   MAP_WIDTH,
-  MOVE_TICKS_PER_CELL,
   SCHEMA_VERSION,
   TICK_DURATION_MS,
 } from '../simulation/config';
 import { createMatch } from '../simulation/match';
+import { cloneRules } from '../simulation/rules';
+import { validateRules } from '../simulation/rules-validation';
+import type { RulesMaster } from '../simulation/rules';
 import { advanceMatch } from './advance';
 import type { MatchState, ScenarioId } from '../simulation/types';
 import type { CommandEntry, RuntimeSnapshot } from './controller';
@@ -18,8 +20,10 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 6;
-  readonly rulesVersion: 'f02-v1';
+  readonly schemaVersion: 7;
+  readonly rulesVersion: 'f17-v1';
+  readonly rules: RulesMaster;
+  readonly rulesContentId: string;
   readonly scenarioId: ScenarioId;
   readonly seed: number;
   readonly history: readonly CommandEntry[];
@@ -36,6 +40,16 @@ const stable = (value: unknown): string =>
     return item;
   });
 
+export function rulesContentId(rules: RulesMaster): string {
+  const text = stable(rules);
+  let hash = 0xcbf29ce484222325n;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= BigInt(text.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return `f17-${hash.toString(16).padStart(16, '0')}`;
+}
+
 export function replay(input: ReplayInput): {
   readonly state: MatchState;
   readonly outcomes: readonly {
@@ -46,7 +60,7 @@ export function replay(input: ReplayInput): {
 } {
   if (
     input.schemaVersion !== SCHEMA_VERSION ||
-    input.rulesVersion !== 'f02-v1' ||
+    input.rulesVersion !== 'f17-v1' ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -54,7 +68,16 @@ export function replay(input: ReplayInput): {
     input.finalTick < 0
   )
     throw new Error('invalid replay header');
-  let state = createMatch(input.seed, { scenarioId: input.scenarioId });
+  const validation = validateRules(input.rules);
+  if (
+    !validation.ok ||
+    rulesContentId(validation.rules) !== input.rulesContentId
+  )
+    throw new Error('invalid replay rules snapshot');
+  let state = createMatch(input.seed, {
+    scenarioId: input.scenarioId,
+    rules: validation.rules,
+  });
   let previousTick = 0;
   const outcomes: { seq: number; ok: boolean; reason?: string }[] = [];
   for (const entry of input.history) {
@@ -102,8 +125,10 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
-    schemaVersion: 6,
-    rulesVersion: 'f02-v1',
+    schemaVersion: 7,
+    rulesVersion: 'f17-v1',
+    rules: snapshot.state.rules,
+    rulesContentId: rulesContentId(snapshot.state.rules),
     scenarioId: snapshot.state.scenarioId,
     seed: snapshot.state.seed,
     history: snapshot.history,
@@ -121,12 +146,14 @@ export function createDiagnostic(
   return {
     build,
     rules: {
-      rulesVersion: build.rulesVersion,
+      rulesVersion: 'f17-v1',
       schemaVersion: SCHEMA_VERSION,
       width: MAP_WIDTH,
       height: MAP_HEIGHT,
       tickDurationMs: TICK_DURATION_MS,
-      moveTicksPerCell: MOVE_TICKS_PER_CELL,
+      rulesContentId: rulesContentId(snapshot.state.rules),
+      masterSchemaVersion: 1,
+      rules: cloneRules(snapshot.state.rules),
     },
     seed: snapshot.state.seed,
     phase: snapshot.state.phase,

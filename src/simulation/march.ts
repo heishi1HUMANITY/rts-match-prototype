@@ -1,8 +1,7 @@
-import { UNIT_STATS } from './config';
 import { findPath } from './pathfinding';
 import {
-  getUnitPositionX2,
-  getUnitPositionY2,
+  getUnitPositionX1024,
+  getUnitPositionY1024,
   isCellVisibleToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
@@ -19,7 +18,7 @@ function sameCell(a: Cell, b: Cell): boolean {
 }
 
 function currentEdge(unit: UnitState): Cell | undefined {
-  return unit.edgeProgress === 1 ? unit.path[0] : undefined;
+  return unit.edgeProgress > 0 ? unit.path[0] : undefined;
 }
 
 function holdAtNextCenter(unit: UnitState): readonly Cell[] {
@@ -38,27 +37,31 @@ function distanceSquared(
   return dx * dx + dy * dy;
 }
 
-function inUnitRange(unit: UnitState, target: UnitState): boolean {
-  const range = UNIT_STATS[unit.kind].range * 2;
+function inUnitRange(
+  state: MatchState,
+  unit: UnitState,
+  target: UnitState,
+): boolean {
+  const range = state.rules.units[unit.kind].range * 1024;
   return (
     distanceSquared(
-      getUnitPositionX2(unit),
-      getUnitPositionY2(unit),
-      getUnitPositionX2(target),
-      getUnitPositionY2(target),
+      getUnitPositionX1024(unit),
+      getUnitPositionY1024(unit),
+      getUnitPositionX1024(target),
+      getUnitPositionY1024(target),
     ) <=
     range * range
   );
 }
 
-function inBaseRange(unit: UnitState, cell: Cell): boolean {
-  const range = UNIT_STATS[unit.kind].range * 2;
+function inBaseRange(state: MatchState, unit: UnitState, cell: Cell): boolean {
+  const range = state.rules.units[unit.kind].range * 1024;
   return (
     distanceSquared(
-      getUnitPositionX2(unit),
-      getUnitPositionY2(unit),
-      2 * cell.x + 1,
-      2 * cell.y + 1,
+      getUnitPositionX1024(unit),
+      getUnitPositionY1024(unit),
+      1024 * cell.x + 512,
+      1024 * cell.y + 512,
     ) <=
     range * range
   );
@@ -123,8 +126,8 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
       if (targetVisible) {
         liveEnemy = target;
         lastKnownCell = {
-          x: Math.floor(getUnitPositionX2(target) / 2),
-          y: Math.floor(getUnitPositionY2(target) / 2),
+          x: Math.floor(getUnitPositionX1024(target) / 1024),
+          y: Math.floor(getUnitPositionY1024(target) / 1024),
         };
         destination = lastKnownCell;
         lastSeenTick = state.elapsedTicks;
@@ -171,7 +174,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
     };
   }
 
-  if (liveEnemy !== undefined && inUnitRange(unit, liveEnemy)) {
+  if (liveEnemy !== undefined && inUnitRange(state, unit, liveEnemy)) {
     return {
       ...unit,
       path: holdAtNextCenter(unit),
@@ -185,7 +188,7 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
   }
   if (visibleEnemyBase) {
     const base = state.bases.find(({ id }) => id === order.target.id)!;
-    if (inBaseRange(unit, base.cell)) {
+    if (inBaseRange(state, unit, base.cell)) {
       return {
         ...unit,
         path: holdAtNextCenter(unit),
@@ -268,7 +271,7 @@ export function visibleMarchCombatTarget(
       target.factionId !== attacker.factionId &&
       target.hp > 0 &&
       isUnitVisibleToFaction(state, target, attacker.factionId) &&
-      inUnitRange(attacker, target)
+      inUnitRange(state, attacker, target)
       ? order.target
       : null;
   }
@@ -278,7 +281,7 @@ export function visibleMarchCombatTarget(
     base.owner !== attacker.factionId &&
     base.hp > 0 &&
     isCellVisibleToFaction(state, base.cell, attacker.factionId) &&
-    inBaseRange(attacker, base.cell)
+    inBaseRange(state, attacker, base.cell)
     ? order.target
     : null;
 }

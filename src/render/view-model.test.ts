@@ -15,8 +15,8 @@ const enemy: VisibleEnemyUnitView = {
   id: 'B-01',
   factionId: 'B',
   kind: 'scout',
-  positionX2: 21,
-  positionY2: 23,
+  positionX1024: 10752,
+  positionY1024: 11776,
   hp: 60,
   maxHp: 60,
 };
@@ -104,7 +104,7 @@ describe('V06 view-only render frames', () => {
     });
   });
   it('interpolates a continuously visible enemy only across adjacent ticks of the same scenario', () => {
-    const moved = { ...enemy, positionX2: 23 };
+    const moved = { ...enemy, positionX1024: 11776 };
     expect(
       getUnitFrames(view(0, [enemy]), view(1, [moved]), 0.5).find(
         ({ unit }) => unit.id === enemy.id,

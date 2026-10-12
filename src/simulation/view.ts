@@ -1,7 +1,7 @@
 import { MAP_WIDTH } from './config';
 import {
-  getUnitPositionX2,
-  getUnitPositionY2,
+  getUnitPositionX1024,
+  getUnitPositionY1024,
   isUnitVisibleToFaction,
 } from './visibility';
 import type {
@@ -100,6 +100,8 @@ export function getFactionView(
       cell: { ...unit.cell },
       path: unit.path.map((cell) => ({ ...cell })),
       edgeProgress: unit.edgeProgress,
+      moveTicksPerCell:
+        unit.moveTicksPerCell ?? state.rules.units[unit.kind].moveTicksPerCell,
       marchOrder: unit.marchOrder
         ? {
             ...unit.marchOrder,
@@ -119,8 +121,8 @@ export function getFactionView(
       id: unit.id,
       factionId: unit.factionId,
       kind: unit.kind,
-      positionX2: getUnitPositionX2(unit),
-      positionY2: getUnitPositionY2(unit),
+      positionX1024: getUnitPositionX1024(unit),
+      positionY1024: getUnitPositionY1024(unit),
       hp: unit.hp,
       maxHp: unit.maxHp,
     }));
@@ -131,6 +133,7 @@ export function getFactionView(
     phase: state.phase,
     tick: state.elapsedTicks,
     timeLimitTicks: state.timeLimitTicks,
+    rules: JSON.parse(JSON.stringify(state.rules)) as MatchState['rules'],
     result:
       state.result === null
         ? null

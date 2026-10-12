@@ -31,7 +31,10 @@ export function advanceMatch(state: MatchState): MatchState {
     resolved === state
       ? state
       : { ...resolved, knowledge: updateFactionKnowledge(resolved) };
-  if (enablesBots(prepared) && prepared.elapsedTicks % 10 === 0) {
+  if (
+    enablesBots(prepared) &&
+    prepared.elapsedTicks % prepared.rules.npc.decisionIntervalTicks === 0
+  ) {
     // Both views must describe the same pre-command world. In particular, B's
     // command must not affect information available to C at this boundary.
     const decisions = BOT_FACTIONS.map((factionId) => {

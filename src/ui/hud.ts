@@ -1,11 +1,5 @@
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
-import {
-  BASE_STATS,
-  BASE_RESEARCH_INCOME_CENTI_PER_TICK,
-  RESEARCH_DEFINITIONS,
-  UNIT_STATS,
-} from '../simulation/config';
 import type { FactionView, ResearchId, UnitKind } from '../simulation/types';
 
 export type HudPanel = 'production' | 'research' | 'base' | null;
@@ -43,7 +37,7 @@ export function createHud(app: HTMLElement): HudElements {
     <header class="topbar">
       <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F02 · 対象への進軍</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
-      <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button></div>
+      <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
         <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
@@ -54,15 +48,15 @@ export function createHud(app: HTMLElement): HudElements {
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
-          <div class="action-card"><button data-produce="assault">強襲を生産</button><small>補給120 · 12秒 · HP100 · 射程2</small><span data-production-reason="assault"></span></div>
-          <div class="action-card"><button data-produce="scout">偵察を生産</button><small>補給60 · 6秒 · HP60 · 視界8</small><span data-production-reason="scout"></span></div>
+          <div class="action-card"><button data-produce="assault">強襲を生産</button><small data-unit-details="assault"></small><span data-production-reason="assault"></span></div>
+          <div class="action-card"><button data-produce="scout">偵察を生産</button><small data-unit-details="scout"></small><span data-production-reason="scout"></span></div>
           <h3>生産キュー</h3><div class="production-queue"></div>
         </section>
         <section data-panel="research" hidden><button data-action="bank-research">指定解除・バンクする</button><p>選択中の研究にポイントを充填。必要量で完了。指定しない間はバンクします。切替・解除でも充填済みポイントは残ります。</p>
-          <div class="action-card"><button data-research="firepower-1">戦力研究 I</button><small>必要60ポイント · 全部隊の攻撃 +1</small><progress data-research-progress="firepower-1" max="100" value="0"></progress><span data-research-reason="firepower-1"></span></div>
-          <div class="action-card"><button data-research="firepower-2">戦力研究 II</button><small>必要90ポイント · さらに攻撃 +1 · 前提 I</small><progress data-research-progress="firepower-2" max="100" value="0"></progress><span data-research-reason="firepower-2"></span></div>
+          <div class="action-card"><button data-research="firepower-1">戦力研究 I</button><small data-research-details="firepower-1"></small><progress data-research-progress="firepower-1" max="100" value="0"></progress><span data-research-reason="firepower-1"></span></div>
+          <div class="action-card"><button data-research="firepower-2">戦力研究 II</button><small data-research-details="firepower-2"></small><progress data-research-progress="firepower-2" max="100" value="0"></progress><span data-research-reason="firepower-2"></span></div>
         </section>
-        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p>中立拠点は半径1に自軍だけが3秒いると制圧。敵所有なら先にHPを0にします。</p><button data-action="production">生産を開く</button></section>
+        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-capture-help></p><button data-action="production">生産を開く</button></section>
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
@@ -128,10 +122,16 @@ function productionReason(view: FactionView, kind: UnitKind): string | null {
   );
   if (hq?.visibility !== 'owned' || hq.hp <= 0)
     return '首都が破壊されているため生産できません';
-  if (view.ownUnits.length + view.ownFaction.productionJobs.length >= 6)
-    return '部隊上限6（予約を含む）';
-  if (view.ownFaction.productionJobs.length >= 3) return '予約は3件までです';
-  return view.ownFaction.supplyCenti < UNIT_STATS[kind].costCenti
+  if (
+    view.ownUnits.length + view.ownFaction.productionJobs.length >=
+    view.rules.limits.unitsPerFaction
+  )
+    return `部隊上限${view.rules.limits.unitsPerFaction}（予約を含む）`;
+  if (
+    view.ownFaction.productionJobs.length >= view.rules.limits.productionQueue
+  )
+    return `予約は${view.rules.limits.productionQueue}件までです`;
+  return view.ownFaction.supplyCenti < view.rules.units[kind].costCenti
     ? '補給が不足しています'
     : null;
 }
@@ -187,6 +187,29 @@ export function updateHud(
     '.scenario-badge',
     `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
+  for (const kind of ['assault', 'scout'] as const) {
+    const stats = view.rules.units[kind];
+    const detail =
+      kind === 'assault'
+        ? `補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 射程${stats.range}`
+        : `補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 視界${stats.vision}`;
+    text(`[data-unit-details="${kind}"]`, detail);
+  }
+  for (const id of ['firepower-1', 'firepower-2'] as const) {
+    const def = view.rules.research.definitions[id];
+    const prerequisite =
+      def.prerequisite === null
+        ? ''
+        : ` · 前提 ${researchName(def.prerequisite)}`;
+    text(
+      `[data-research-details="${id}"]`,
+      `必要${amount(def.costCenti)}ポイント · 攻撃 +${def.damageBonus}${prerequisite}`,
+    );
+  }
+  text(
+    '[data-capture-help]',
+    `中立拠点は半径${view.rules.capture.radius}に自軍だけが${seconds(view.rules.capture.requiredTicks)}いると制圧。敵所有なら先にHPを0にします。`,
+  );
   text(
     '[data-resources]',
     `補給 ${amount(own.supplyCenti)} / 研究バンク ${(own.researchCenti / 100).toFixed(1)}`,
@@ -195,17 +218,17 @@ export function updateHud(
     (base) => base.visibility === 'owned' && base.hp > 0,
   );
   const income = bases.reduce(
-      (n, base) => n + BASE_STATS[base.kind].supplyIncomeCentiPerTick,
+      (n, base) => n + view.rules.bases[base.kind].supplyIncomeCentiPerTick,
       0,
     ),
     rp =
-      BASE_RESEARCH_INCOME_CENTI_PER_TICK +
+      view.rules.research.baseIncomeCentiPerTick +
       bases.reduce(
-        (n, base) => n + BASE_STATS[base.kind].researchIncomeCentiPerTick,
+        (n, base) => n + view.rules.bases[base.kind].researchIncomeCentiPerTick,
         0,
       ),
     upkeep = view.ownUnits.reduce(
-      (n, unit) => n + UNIT_STATS[unit.kind].upkeepCenti,
+      (n, unit) => n + view.rules.units[unit.kind].upkeepCentiPerTick,
       0,
     );
   text(
@@ -220,7 +243,7 @@ export function updateHud(
       ? '脱落 · 研究停止'
       : own.activeResearch
         ? `${researchName(own.activeResearch.researchId)} 充填 ${(own.researchProgressCenti[own.activeResearch.researchId] / 100).toFixed(1)}pt`
-        : `バンク中 · 研究完了 ${own.completedResearchIds.length}/2`,
+        : `バンク中 · 研究完了 ${own.completedResearchIds.length}/${Object.keys(view.rules.research.definitions).length}`,
   );
   const selected = selectedUnits[0];
   text(
@@ -339,7 +362,7 @@ export function updateHud(
     own.activeResearch === null ||
     own.eliminatedAtTick !== null;
   for (const id of ['firepower-1', 'firepower-2'] as const) {
-    const def = RESEARCH_DEFINITIONS[id];
+    const def = view.rules.research.definitions[id];
     const done = own.completedResearchIds.includes(id);
     const active = own.activeResearch?.researchId === id;
     const progress = own.researchProgressCenti[id];
@@ -347,12 +370,12 @@ export function updateHud(
       own.eliminatedAtTick !== null
         ? '脱落 · 研究停止'
         : done
-          ? '完了 · 攻撃+1'
+          ? `完了 · 攻撃+${def.damageBonus}`
           : view.phase !== 'running'
             ? '開始・再開後に選択できます'
             : def.prerequisite !== null &&
                 !own.completedResearchIds.includes(def.prerequisite)
-              ? '前提：戦力研究Iが必要です'
+              ? `前提：${researchName(def.prerequisite)}が必要です`
               : null;
     const button = elements.root.querySelector<HTMLButtonElement>(
       `[data-research="${id}"]`,
@@ -390,7 +413,7 @@ export function updateHud(
     else if (base.visibility === 'remembered')
       detail = `${location}\n最終観測 TICK ${base.seenTick}：${base.owner ?? '中立'} / HP${base.hp}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
     else
-      detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/30` : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${BASE_STATS[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${BASE_STATS[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
+      detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/${view.rules.capture.requiredTicks}` : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
   }
   text('.base-detail', detail);
   const dialog =

@@ -15,6 +15,7 @@ import type {
   UnitKind,
 } from '../simulation/types';
 import { FixedStepClock } from './clock';
+import type { RulesMaster } from '../simulation/rules';
 
 export interface CommandEntry {
   readonly seq: number;
@@ -180,8 +181,9 @@ export class MatchRuntime {
     private readonly options: RuntimeOptions,
     seed = 42,
     scenarioId: ScenarioId = 'standard',
+    rules?: RulesMaster,
   ) {
-    this.state = createMatch(seed, { scenarioId });
+    this.state = createMatch(seed, { scenarioId, ...(rules ? { rules } : {}) });
     this.previousTickState = this.state;
     this.requestFrame =
       options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
@@ -353,9 +355,13 @@ export class MatchRuntime {
     return result;
   }
 
-  reset(seed: number, scenarioId: ScenarioId = this.state.scenarioId): void {
+  reset(
+    seed: number,
+    scenarioId: ScenarioId = this.state.scenarioId,
+    rules: RulesMaster = this.state.rules,
+  ): void {
     const previous = this.state;
-    this.state = createMatch(seed, { scenarioId });
+    this.state = createMatch(seed, { scenarioId, rules });
     this.previousTickState = this.state;
     this.history = [];
     this.selectedUnitIds = [];
@@ -549,9 +555,9 @@ export function rejectMessage(reason: RejectCode): string {
     HQ_UNAVAILABLE: '首都が破壊されているため生産できません',
     INSUFFICIENT_SUPPLY: '補給が不足しています',
     UNIT_LIMIT: '部隊上限に達しています',
-    QUEUE_FULL: '生産予約は3件までです',
+    QUEUE_FULL: '生産キューの上限に達しています',
     ALREADY_RESEARCHED: '完了済みの研究です',
-    PREREQUISITE_MISSING: '先に戦力研究Iを完了してください',
+    PREREQUISITE_MISSING: '必要な前提研究が完了していません',
   };
   return messages[reason];
 }

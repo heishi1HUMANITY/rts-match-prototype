@@ -1,16 +1,13 @@
 import {
   BASE_CELLS,
-  BASE_STATS,
-  INITIAL_RESEARCH_CENTI,
-  INITIAL_SUPPLY_CENTI,
-  INITIAL_TICKETS_CENTI,
   INITIAL_UNIT_PLACEMENTS,
   SCENARIO_IDS,
   SCHEMA_VERSION,
   SHORT_TIME_LIMIT_TICKS,
-  STANDARD_TIME_LIMIT_TICKS,
-  UNIT_STATS,
 } from './config';
+import { DEFAULT_RULES, cloneRules } from './rules';
+import { validateRules } from './rules-validation';
+import type { RulesMaster } from './rules';
 import { createMap } from './map';
 import { findPath } from './pathfinding';
 import { createInitialKnowledge } from './visibility';
@@ -62,19 +59,20 @@ export {
 
 export interface CreateMatchOptions {
   readonly scenarioId?: ScenarioId;
+  readonly rules?: RulesMaster;
 }
 
-function freshFactions(): FactionState[] {
+function freshFactions(rules: RulesMaster): FactionState[] {
   return (['A', 'B', 'C'] as const).map((id) => ({
     id,
     controller: id === 'A' ? 'human' : 'bot',
-    supplyCenti: INITIAL_SUPPLY_CENTI,
-    researchCenti: INITIAL_RESEARCH_CENTI,
+    supplyCenti: rules.match.initialSupplyCenti,
+    researchCenti: rules.match.initialResearchCenti,
     researchProgressCenti: {
       'firepower-1': 0,
       'firepower-2': 0,
     },
-    ticketsCenti: INITIAL_TICKETS_CENTI,
+    ticketsCenti: rules.match.initialTicketsCenti,
     eliminatedAtTick: null,
     eliminationReason: null,
     productionJobs: [],
@@ -85,7 +83,7 @@ function freshFactions(): FactionState[] {
   }));
 }
 
-function buildBases(): BaseState[] {
+function buildBases(rules: RulesMaster): BaseState[] {
   return BASE_CELLS.map(({ id, kind, cell, factionId }) => {
     const owner = factionId;
     const hq = kind === 'hq';
@@ -94,8 +92,8 @@ function buildBases(): BaseState[] {
       kind,
       cell: { ...cell },
       owner,
-      hp: owner === null ? 0 : BASE_STATS[kind].maxHp,
-      maxHp: BASE_STATS[kind].maxHp,
+      hp: owner === null ? 0 : rules.bases[kind].maxHp,
+      maxHp: rules.bases[kind].maxHp,
       captureCandidate: null,
       captureTicks: 0,
       homeFactionId: hq ? factionId : null,
@@ -103,16 +101,17 @@ function buildBases(): BaseState[] {
   });
 }
 
-function buildUnits(): UnitState[] {
+function buildUnits(rules: RulesMaster): UnitState[] {
   return INITIAL_UNIT_PLACEMENTS.map(({ id, factionId, kind, cell }) => ({
     id,
     factionId,
     kind,
-    hp: UNIT_STATS[kind].maxHp,
-    maxHp: UNIT_STATS[kind].maxHp,
+    hp: rules.units[kind].maxHp,
+    maxHp: rules.units[kind].maxHp,
     cell: { ...cell },
     path: [],
     edgeProgress: 0,
+    moveTicksPerCell: rules.units[kind].moveTicksPerCell,
     marchOrder: null,
   }));
 }
@@ -209,22 +208,29 @@ export function createMatch(
   const scenarioId = options.scenarioId ?? 'standard';
   if (!SCENARIO_IDS.includes(scenarioId))
     throw new RangeError('unknown scenarioId');
+  const validation = validateRules(options.rules ?? DEFAULT_RULES);
+  if (!validation.ok)
+    throw new RangeError(
+      `invalid rules: ${validation.issues.map(({ key }) => key).join(', ')}`,
+    );
+  const rules = cloneRules(validation.rules);
   const initial = configuredFixture(
     {
       schemaVersion: SCHEMA_VERSION,
+      rules,
       seed,
       scenarioId,
       elapsedTicks: 0,
       timeLimitTicks:
         scenarioId === 'g3-timeout' || scenarioId === 'g3-spectate'
           ? SHORT_TIME_LIMIT_TICKS
-          : STANDARD_TIME_LIMIT_TICKS,
-      factions: freshFactions(),
+          : rules.match.timeLimitTicks,
+      factions: freshFactions(rules),
       phase: 'ready',
       result: null,
       map: createMap(seed),
-      units: buildUnits(),
-      bases: buildBases(),
+      units: buildUnits(rules),
+      bases: buildBases(rules),
     },
     scenarioId,
   );

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { MatchRuntime } from './controller';
-import { assertReplayMatches, createDiagnostic, replay } from './diagnostics';
+import {
+  assertReplayMatches,
+  createDiagnostic,
+  replay,
+  rulesContentId,
+} from './diagnostics';
+import { DEFAULT_RULES } from '../simulation/rules';
 import type { ScenarioId } from '../simulation/types';
 
 function running(scenario: ScenarioId) {
@@ -122,12 +128,18 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f02-v1',
-      schemaVersion: 6,
+      rulesVersion: 'f17-v1',
+      schemaVersion: 7,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
-      rules: { schemaVersion: 6, rulesVersion: 'f02-v1' },
+      rules: {
+        schemaVersion: 7,
+        rulesVersion: 'f17-v1',
+        rulesContentId: rulesContentId(runtime.snapshot().state.rules),
+        masterSchemaVersion: 1,
+        rules: runtime.snapshot().state.rules,
+      },
     });
     runtime.stopLoop();
   });
@@ -184,8 +196,10 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 6 as const,
-      rulesVersion: 'f02-v1' as const,
+      schemaVersion: 7 as const,
+      rulesVersion: 'f17-v1' as const,
+      rules: DEFAULT_RULES,
+      rulesContentId: rulesContentId(DEFAULT_RULES),
     };
     expect(() =>
       replay({ ...input, rulesVersion: 'g1-v1' } as unknown as typeof input),
@@ -339,8 +353,8 @@ describe('G3 zero-tick result diagnostics', () => {
         createDiagnostic(runtime.snapshot(), {
           commit: 'test',
           dirty: false,
-          rulesVersion: 'f02-v1',
-          schemaVersion: 6,
+          rulesVersion: 'f17-v1',
+          schemaVersion: 7,
         }),
       ).not.toThrow();
       runtime.stopLoop();

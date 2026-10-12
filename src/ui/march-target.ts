@@ -26,8 +26,8 @@ export function resolveMarchTarget(
       ? {
           target: { kind: 'unit', id: enemy.id },
           cell: {
-            x: Math.floor(enemy.positionX2 / 2),
-            y: Math.floor(enemy.positionY2 / 2),
+            x: Math.floor(enemy.positionX1024 / 1024),
+            y: Math.floor(enemy.positionY1024 / 1024),
           },
           label: `追跡先: ${enemy.id}`,
         }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { getFactionView } from './view';
 import { createMatch } from './match';
 import {
-  getUnitPositionX2,
-  getUnitPositionY2,
+  getUnitPositionX1024,
+  getUnitPositionY1024,
   isUnitVisibleToFaction,
   updateFactionKnowledge,
 } from './visibility';
@@ -80,8 +80,8 @@ describe('faction visibility and view isolation', () => {
     const withOutside = withState(state, {
       units: [...state.units.filter(({ id }) => id !== outside.id), outside],
     });
-    expect(getUnitPositionX2(scout)).toBe(15);
-    expect(getUnitPositionY2(scout)).toBe(67);
+    expect(getUnitPositionX1024(scout)).toBe(7680);
+    expect(getUnitPositionY1024(scout)).toBe(34304);
     expect(isUnitVisibleToFaction(withExact, exact, 'A')).toBe(true);
     expect(isUnitVisibleToFaction(withOutside, outside, 'A')).toBe(false);
 
@@ -91,7 +91,7 @@ describe('faction visibility and view isolation', () => {
       path: [{ x: 15, y: 33 }],
       edgeProgress: 1 as const,
     };
-    expect(getUnitPositionX2(halfway)).toBe(30);
+    expect(getUnitPositionX1024(halfway)).toBe(15360);
     expect(
       isUnitVisibleToFaction(
         withState(state, { units: [scout, halfway] }),
@@ -193,7 +193,7 @@ describe('faction visibility and view isolation', () => {
       firstView.visibleEnemies.every(
         (enemy) =>
           Object.keys(enemy).sort().join(',') ===
-          'control,factionId,hp,id,kind,maxHp,positionX2,positionY2',
+          'control,factionId,hp,id,kind,maxHp,positionX1024,positionY1024',
       ),
     ).toBe(true);
 

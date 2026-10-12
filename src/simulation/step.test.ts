@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyTicketTick } from './tickets';
 import { createMatch } from './match';
-import { stepMatch } from './step';
+import { stepMatch, stepUnit } from './step';
+import { DEFAULT_RULES } from './rules';
 import type { MatchState, ProductionJob, UnitState } from './types';
 
 function running(state: MatchState): MatchState {
@@ -24,6 +25,36 @@ function onlyUnits(state: MatchState, units: UnitState[]): MatchState {
 }
 
 describe('G2 fixed-tick integration', () => {
+  it('uses the match snapshot movement time for speed, interpolation, and later reset isolation', () => {
+    const rules = structuredClone(DEFAULT_RULES);
+    const customRules = {
+      ...rules,
+      units: {
+        ...rules.units,
+        assault: { ...rules.units.assault, moveTicksPerCell: 4 },
+      },
+    };
+    const match = createMatch(42, { rules: customRules });
+    const unit = match.units.find(({ id }) => id === 'A-01')!;
+    expect(unit.moveTicksPerCell).toBe(4);
+    let moving: UnitState = { ...unit, path: [{ x: 7, y: 33 }] };
+    for (const progress of [1, 2, 3]) {
+      moving = stepUnit(moving);
+      expect(moving.edgeProgress).toBe(progress);
+      expect(moving.cell).toEqual({ x: 6, y: 33 });
+    }
+    moving = stepUnit(moving);
+    expect(moving.edgeProgress).toBe(0);
+    expect(moving.cell).toEqual({ x: 7, y: 33 });
+    const mutableView = JSON.parse(
+      JSON.stringify(match.rules),
+    ) as typeof match.rules;
+    (
+      mutableView.units.assault as { moveTicksPerCell: number }
+    ).moveTicksPerCell = 9;
+    expect(match.rules.units.assault.moveTicksPerCell).toBe(4);
+  });
+
   it('keeps ready and paused states referentially unchanged', () => {
     const ready = createMatch(42);
     expect(stepMatch(ready)).toBe(ready);

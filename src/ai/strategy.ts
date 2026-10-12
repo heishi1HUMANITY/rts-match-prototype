@@ -1,8 +1,3 @@
-import {
-  PRODUCTION_QUEUE_LIMIT,
-  UNIT_LIMIT,
-  UNIT_STATS,
-} from '../simulation/config';
 import { findPath } from '../simulation/pathfinding';
 import type {
   BaseView,
@@ -26,7 +21,7 @@ function distanceSquared(a: Cell, b: Cell): number {
 }
 
 function currentCell(unit: OwnUnitView): Cell {
-  return unit.edgeProgress === 1 && unit.path[0] ? unit.path[0] : unit.cell;
+  return unit.edgeProgress > 0 && unit.path[0] ? unit.path[0] : unit.cell;
 }
 
 function endpoint(unit: OwnUnitView): Cell | undefined {
@@ -73,8 +68,8 @@ function productionCommand(view: FactionView): Command | undefined {
   if (!hq || hq.hp <= 0) return undefined;
   const committed = view.ownUnits.length + faction.productionJobs.length;
   if (
-    committed >= UNIT_LIMIT ||
-    faction.productionJobs.length >= PRODUCTION_QUEUE_LIMIT
+    committed >= view.rules.limits.unitsPerFaction ||
+    faction.productionJobs.length >= view.rules.limits.productionQueue
   ) {
     return undefined;
   }
@@ -87,7 +82,8 @@ function productionCommand(view: FactionView): Command | undefined {
   ).length;
   const desired: 'assault' | 'scout' =
     scoutCount + queuedScouts === 0 ? 'scout' : 'assault';
-  if (faction.supplyCenti < UNIT_STATS[desired].costCenti) return undefined;
+  if (faction.supplyCenti < view.rules.units[desired].costCenti)
+    return undefined;
   return { type: 'enqueue-production', baseId: hq.id, unitKind: desired };
 }
 
@@ -112,8 +108,8 @@ function nearestReachableGoal(
 
 function enemyCell(enemy: VisibleEnemyUnitView): Cell {
   return {
-    x: Math.max(0, Math.min(39, Math.floor(enemy.positionX2 / 2))),
-    y: Math.max(0, Math.min(39, Math.floor(enemy.positionY2 / 2))),
+    x: Math.max(0, Math.min(39, Math.floor(enemy.positionX1024 / 1024))),
+    y: Math.max(0, Math.min(39, Math.floor(enemy.positionY1024 / 1024))),
   };
 }
 
@@ -122,14 +118,17 @@ function isNearFriendlyPosition(
   enemy: VisibleEnemyUnitView,
   unit: OwnUnitView,
 ): boolean {
-  const enemyPosition = { x: enemy.positionX2 / 2, y: enemy.positionY2 / 2 };
+  const enemyPosition = {
+    x: enemy.positionX1024 / 1024,
+    y: enemy.positionY1024 / 1024,
+  };
   const friendlyPositions: Cell[] = [
     ...view.ownUnits.map(currentCell),
     ...view.bases
       .filter((base) => isOwnBase(base, view.viewerFactionId))
       .map(({ cell }) => cell),
   ];
-  const attentionRadiusSquared = 10 * 10;
+  const attentionRadiusSquared = view.rules.npc.defenseAttentionRadius ** 2;
   return (
     friendlyPositions.some(
       (position) =>
@@ -158,17 +157,27 @@ function enemyDefenseGoal(
     })[0];
   if (!enemy) return undefined;
   const ownX2 =
-    2 * unit.cell.x +
-    1 +
-    (unit.path[0] ? unit.edgeProgress * (unit.path[0].x - unit.cell.x) : 0);
+    1024 * unit.cell.x +
+    512 +
+    (unit.path[0]
+      ? Math.round(
+          (1024 * unit.edgeProgress * (unit.path[0].x - unit.cell.x)) /
+            (unit.moveTicksPerCell ?? 2),
+        )
+      : 0);
   const ownY2 =
-    2 * unit.cell.y +
-    1 +
-    (unit.path[0] ? unit.edgeProgress * (unit.path[0].y - unit.cell.y) : 0);
-  const stats = UNIT_STATS[unit.kind];
-  const dx = ownX2 - enemy.enemy.positionX2;
-  const dy = ownY2 - enemy.enemy.positionY2;
-  if (dx * dx + dy * dy <= (2 * stats.range) ** 2) return null;
+    1024 * unit.cell.y +
+    512 +
+    (unit.path[0]
+      ? Math.round(
+          (1024 * unit.edgeProgress * (unit.path[0].y - unit.cell.y)) /
+            (unit.moveTicksPerCell ?? 2),
+        )
+      : 0);
+  const stats = view.rules.units[unit.kind];
+  const dx = ownX2 - enemy.enemy.positionX1024;
+  const dy = ownY2 - enemy.enemy.positionY1024;
+  if (dx * dx + dy * dy <= (1024 * stats.range) ** 2) return null;
   return { target: { kind: 'unit', id: enemy.enemy.id }, cell: enemy.cell };
 }
 
@@ -278,14 +287,15 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
   }
 
   const commands: Command[] = [];
+  const maxCommands = view.rules.npc.maxCommandsPerDecision;
   const production = productionCommand(view);
-  if (production) commands.push(production);
+  if (production && commands.length < maxCommands) commands.push(production);
   const research = researchCommand(view);
-  if (research) commands.push(research);
+  if (research && commands.length < maxCommands) commands.push(research);
   for (const unit of view.ownUnits) {
+    if (commands.length >= maxCommands) break;
     const move = unitMoveCommand(view, unit);
     if (move) commands.push(move);
-    if (commands.length >= 8) break;
   }
   return commands;
 }
