@@ -14,12 +14,12 @@ describe('arbitrary research IDs', () => {
         definitions: {
           ...defaults.research.definitions,
           constructor: {
-            domain: 'power',
+            domain: 'power' as const,
             stage: 1,
             costCenti: 100,
             prerequisites: [],
             exclusiveWith: [],
-            effects: [{ id: 'damage-bonus', value: 7 }],
+            effects: [{ id: 'damage-bonus' as const, value: 7 }],
           },
         },
       },
