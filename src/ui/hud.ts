@@ -40,7 +40,7 @@ const UNIT_KINDS: readonly UnitKind[] = [
   'patrolBoat',
 ];
 const kindName = (kind: UnitKind): string =>
-  ({
+  Object.entries({
     assault: '強襲',
     scout: '偵察',
     artillery: '自走砲',
@@ -85,7 +85,7 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'naval-1': '哨戒艇',
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
-  })[id] ??
+  }).find(([key]) => key === id)?.[1] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
     : id);
