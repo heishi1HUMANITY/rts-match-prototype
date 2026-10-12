@@ -38,7 +38,15 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
   await page.getByRole('button', { name: '施設', exact: true }).click();
   await page.locator('[data-facility-anchor]').selectOption('base:HQ-A');
   for (const kind of ['turret', 'antiAir', 'mine', 'watchtower', 'jammer']) {
-    await page.locator('[data-facility-anchor]').selectOption(kind === 'jammer' ? 'base:MID-02' : kind === 'mine' || kind === 'watchtower' ? 'base:OUT-03' : 'base:HQ-A');
+    await page
+      .locator('[data-facility-anchor]')
+      .selectOption(
+        kind === 'jammer'
+          ? 'base:MID-02'
+          : kind === 'mine' || kind === 'watchtower'
+            ? 'base:OUT-03'
+            : 'base:HQ-A',
+      );
     const build = page.locator(`[data-facility-build="${kind}"]`);
     await expect(build).toBeEnabled();
     await build.click();

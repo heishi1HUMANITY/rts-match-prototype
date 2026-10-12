@@ -395,9 +395,11 @@ export function createMatch(
     scenarioId === 'f11-facilities'
       ? {
           ...withLocalUnits,
-          bases: withLocalUnits.bases.map((base) => ['OUT-03', 'MID-02'].includes(base.id)
-            ? { ...base, owner: 'A' as const, hp: base.maxHp, defender: null }
-            : base),
+          bases: withLocalUnits.bases.map((base) =>
+            ['OUT-03', 'MID-02'].includes(base.id)
+              ? { ...base, owner: 'A' as const, hp: base.maxHp, defender: null }
+              : base,
+          ),
           factions: withLocalUnits.factions.map((f) => ({
             ...f,
             supplyCenti: 1000000,
