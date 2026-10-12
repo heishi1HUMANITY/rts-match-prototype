@@ -845,7 +845,7 @@ select:focus-visible {
 }
 .master-editor {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
   max-height: calc(100dvh - 24px);
 }
 .master-editor > header,
@@ -1196,4 +1196,77 @@ select:focus-visible {
     sans-serif;
   background: rgba(255, 255, 255, 0.94);
   white-space: nowrap;
+}
+.research-editor {
+  min-width: 0;
+}
+.research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.research-actions input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.research-node {
+  border: 1px solid #c9d1d8;
+  border-radius: 6px;
+  margin: 8px 0;
+  padding: 8px;
+  min-width: 0;
+}
+.research-node summary {
+  cursor: pointer;
+  min-height: 36px;
+  overflow-wrap: anywhere;
+}
+.research-node-fields {
+  display: grid;
+  gap: 10px;
+}
+.research-effects {
+  display: grid;
+  gap: 10px;
+}
+.research-effect {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid #d9dde2;
+  padding-top: 8px;
+}
+.research-effect > .master-field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.research-editor select {
+  max-width: 100%;
+}
+.research-editor button,
+.research-editor input,
+.research-editor select:not([multiple]) {
+  min-height: 44px;
+}
+.research-editor select[multiple] {
+  min-height: 80px;
+}
+
+.master-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.master-scroll .master-fields {
+  overflow: visible;
+}
+.master-scroll > .research-editor {
+  margin: 0 10px 10px;
+}
+.research-editor .master-field {
+  grid-template-columns: minmax(100px, 1fr) minmax(95px, 2fr);
+}
+.research-editor .master-field-error {
+  grid-column: 1 / -1;
 }

@@ -405,8 +405,8 @@ export function createMatch(
           rules: {
             ...rules,
             npc: { ...rules.npc, decisionIntervalTicks: 10000 },
-            localFaction: { ...rules.localFaction, appearanceTick: 10000 },
           },
+          localFaction: { ...withLocalUnits.localFaction, defeated: true },
         }
       : withLocalUnits;
   const partial = { ...fixture, knowledge: [] } as MatchState;

@@ -365,3 +365,175 @@ describe('F03 rules validation', () => {
     });
   });
 });
+
+describe('F21 variable research definitions', () => {
+  const editable = () =>
+    structuredClone(DEFAULT_RULES) as unknown as Record<string, any>;
+  it('accepts an added stable ID and removing an unreferenced default node', () => {
+    const rules = editable();
+    delete rules.research.definitions['survey-2'];
+    rules.research.definitions['custom-power'] = {
+      ...rules.research.definitions['firepower-1'],
+      prerequisites: ['survey-1'],
+    };
+    const result = validateRules(rules);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rules.research.definitions['custom-power']).toEqual(
+      rules.research.definitions['custom-power'],
+    );
+    expect(Object.hasOwn(result.rules.research.definitions, 'survey-2')).toBe(
+      false,
+    );
+  });
+  it('reports every dangling external reference when removing a node', () => {
+    const rules = editable();
+    delete rules.research.definitions['base-development-1'];
+    delete rules.research.definitions['artillery-1'];
+    const result = validateRules(rules);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'rules.baseUpgrades.level2ResearchId',
+          message: expect.stringContaining('base-development-1'),
+        }),
+        expect.objectContaining({
+          key: 'rules.units.artillery.unlockResearchId',
+          message: expect.stringContaining('artillery-1'),
+        }),
+        expect.objectContaining({
+          key: 'rules.research.definitions.base-development-2.prerequisites',
+          message: expect.stringContaining('base-development-1'),
+        }),
+      ]),
+    );
+  });
+  it.each(['Uppercase', 'contains.dot', '__proto__', 'a'.repeat(65), ''])(
+    'rejects unsafe ID %s',
+    (id) => {
+      const rules = editable();
+      Object.defineProperty(rules.research.definitions, id, {
+        value: rules.research.definitions['firepower-1'],
+        enumerable: true,
+      });
+      expect(validateRules(rules).ok).toBe(false);
+    },
+  );
+  it('rejects too many nodes, invalid effect-specific values and unknown effects', () => {
+    for (const effect of [
+      { id: 'base-upgrade-max', value: 4 },
+      { id: 'unit-unlock', value: 1, unitKind: 'artillery' },
+      { id: 'crossing-unlock', value: 0, crossingTier: 'bridge-1' },
+      { id: 'free-resources', value: 1 },
+    ]) {
+      const rules = editable();
+      rules.research.definitions['custom'] = {
+        ...rules.research.definitions['firepower-1'],
+        effects: [effect],
+      };
+      expect(validateRules(rules).ok).toBe(false);
+    }
+  });
+});
+
+it('bounds variable node count and handles densely connected acyclic prerequisites', () => {
+  const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+    string,
+    any
+  >;
+  for (let index = 0; index < 80; index += 1)
+    rules.research.definitions[`node-${index}`] = {
+      ...rules.research.definitions['firepower-1'],
+      prerequisites: Array.from(
+        { length: index },
+        (_, parent) => `node-${parent}`,
+      ),
+    };
+  expect(validateRules(rules).ok).toBe(true);
+  for (let index = 80; index < 129; index += 1)
+    rules.research.definitions[`node-${index}`] =
+      rules.research.definitions['firepower-1'];
+  expect(validateRules(rules).ok).toBe(false);
+});
+
+it('rejects inherited object names as references without throwing', () => {
+  const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+    string,
+    any
+  >;
+  rules.research.definitions['firepower-1'].exclusiveWith = ['toString'];
+  expect(validateRules(rules).ok).toBe(false);
+});
+
+it('rejects a research-reference array even when its coercion matches a valid ID', () => {
+  const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+    string,
+    any
+  >;
+  rules.units.assault.unlockResearchId = ['firepower-1'];
+  expect(validateRules(rules).ok).toBe(false);
+});
+
+describe('F11 and F21 combined migration contract', () => {
+  it.each([11, 12])(
+    'preserves arbitrary schema %i IDs, edits and deliberate removals',
+    (version) => {
+      const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+        string,
+        any
+      >;
+      delete rules.facilities;
+      delete rules.research.definitions['survey-2'];
+      for (const id of Object.keys(rules.research.definitions))
+        if (id.startsWith('facility-')) delete rules.research.definitions[id];
+      rules.research.definitions['custom-power'] = {
+        ...rules.research.definitions['firepower-1'],
+        costCenti: 4321,
+      };
+      const result = validateEnvelope({
+        masterSchemaVersion: version,
+        revision: 7,
+        rules,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.envelope.masterSchemaVersion).toBe(13);
+      expect(
+        result.envelope.rules.research.definitions['custom-power']!.costCenti,
+      ).toBe(4321);
+      expect(
+        Object.hasOwn(result.envelope.rules.research.definitions, 'survey-2'),
+      ).toBe(false);
+      expect(
+        Object.hasOwn(
+          result.envelope.rules.research.definitions,
+          'facility-turret',
+        ),
+      ).toBe(version === 12);
+      expect(result.envelope.rules.facilities).toEqual(
+        DEFAULT_RULES.facilities,
+      );
+    },
+  );
+  it('validates custom facility unlocks and rejects nonzero unlock values or unknown facility kinds', () => {
+    for (const effect of [
+      { id: 'facility-unlock', value: 0, facilityKind: 'jammer' },
+      { id: 'facility-unlock', value: 1, facilityKind: 'jammer' },
+      { id: 'facility-unlock', value: 0, facilityKind: 'unknown' },
+    ]) {
+      const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+        string,
+        any
+      >;
+      rules.research.definitions['custom-facility'] = {
+        ...rules.research.definitions['firepower-1'],
+        effects: [effect],
+      };
+      expect(validateRules(rules).ok).toBe(
+        effect.value === 0 && effect.facilityKind === 'jammer',
+      );
+    }
+  });
+});

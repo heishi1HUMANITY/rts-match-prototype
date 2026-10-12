@@ -1,3 +1,4 @@
+import { parseStrictJson } from './strict-json';
 import {
   cloneRules,
   DEFAULT_RULES,
@@ -77,7 +78,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseMasterJson(json: string): ParseMasterResult {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(json) as unknown;
+    parsed = parseStrictJson(json);
   } catch (error) {
     return {
       ok: false,

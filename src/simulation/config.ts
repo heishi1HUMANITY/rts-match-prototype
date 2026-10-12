@@ -172,7 +172,7 @@ export const RESEARCH_DEFINITIONS: Readonly<
   ...Object.fromEntries(
     (['turret', 'antiAir', 'mine', 'watchtower', 'jammer'] as const).map(
       (kind) => [
-        `facility-${kind}`,
+        `facility-${kind.toLowerCase()}`,
         {
           domain: 'engineering' as const,
           stage: 1,

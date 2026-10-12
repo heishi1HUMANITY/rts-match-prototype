@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand } from './commands';
 import { resolveCombat } from './combat';
 import { applyEconomyTick } from './economy';
-import { advanceBaseUpgrades } from './base-upgrades';
+import { advanceBaseUpgrades, maximumBaseLevel } from './base-upgrades';
 import { createMatch } from './match';
 import { advanceCapture } from './capture';
 import type { MatchState } from './types';
@@ -203,4 +203,27 @@ describe('F10 base upgrades', () => {
       upgradeJob: null,
     });
   });
+});
+
+it('applies registered base level effects from any completed research ID', () => {
+  const state = running();
+  const rules = {
+    ...state.rules,
+    research: {
+      ...state.rules.research,
+      definitions: {
+        ...state.rules.research.definitions,
+        'custom-fortification': {
+          ...state.rules.research.definitions['base-development-2']!,
+          prerequisites: [],
+        },
+      },
+    },
+  };
+  expect(
+    maximumBaseLevel({ completedResearchIds: ['custom-fortification'] }, rules),
+  ).toBe(3);
+  expect(maximumBaseLevel({ completedResearchIds: ['missing'] }, rules)).toBe(
+    1,
+  );
 });

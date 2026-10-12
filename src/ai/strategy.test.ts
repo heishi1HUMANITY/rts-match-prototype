@@ -377,3 +377,30 @@ describe('stateless faction-view NPC policy', () => {
     ).toBe(false);
   });
 });
+
+it('chooses arbitrary IDs using registered effects and shared prerequisites', () => {
+  const state = running(createMatch(42));
+  const view = getFactionView(state, 'B');
+  const custom = {
+    ...view,
+    rules: {
+      ...view.rules,
+      research: {
+        ...view.rules.research,
+        definitions: {
+          'renamed-power': view.rules.research.definitions['firepower-1']!,
+          'renamed-survey': view.rules.research.definitions['survey-1']!,
+        },
+      },
+    },
+  };
+  expect(decideBotCommands(custom)).toContainEqual({
+    type: 'start-research',
+    researchId: 'renamed-power',
+  });
+  expect(
+    decideBotCommands(
+      replaceOwnFaction(custom, { completedResearchIds: ['renamed-power'] }),
+    ),
+  ).toContainEqual({ type: 'start-research', researchId: 'renamed-survey' });
+});
