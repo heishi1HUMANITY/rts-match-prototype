@@ -7,3 +7,6 @@ artwork/
 docs/*
 !docs/project/
 docs/project/reference-manifest.json
+
+playwright-report/
+test-results/
