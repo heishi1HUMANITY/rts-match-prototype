@@ -4,12 +4,16 @@ on:
     paths:
       - 'notebooks/**'
       - 'tools/colab/**'
+      - 'docs/project/QWEN_AGENT_WORKFLOW.md'
+      - '.qwen/agents/**'
       - '.github/workflows/colab-notebook.yml'
   push:
     branches: [main]
     paths:
       - 'notebooks/**'
       - 'tools/colab/**'
+      - 'docs/project/QWEN_AGENT_WORKFLOW.md'
+      - '.qwen/agents/**'
       - '.github/workflows/colab-notebook.yml'
 permissions:
   contents: read

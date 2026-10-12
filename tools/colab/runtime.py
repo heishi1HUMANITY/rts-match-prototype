@@ -271,27 +271,279 @@ def restore_checkpoint(destination, repo, remote):
     return metadata
 
 
-def agent_settings(context_size):
-    return {
+def agent_settings(context_size, reviewer=False):
+    settings = {
         "security": {"auth": {"selectedType": "openai"}},
         "model": {"name": "qwen-local"},
         "modelProviders": {"openai": [{"id": "qwen-local", "baseUrl": "http://127.0.0.1:8080/v1",
             "envKey": "LOCAL_LLM_API_KEY", "generationConfig": {"contextWindowSize": context_size,
             "timeout": 600000, "samplingParams": {"temperature": 1.0, "top_p": 0.95, "max_tokens": 4096}}}]},
         "context": {"fileName": ["AGENTS.md", "QWEN.md"]},
-        "tools": {"approvalMode": "auto-edit"},
+        "tools": {"approvalMode": "auto-edit", "core": ["read_file", "read_many_files",
+            "list_directory", "grep_search", "glob", "write_file", "edit", "run_shell_command", "todo_write"]},
         "permissions": {"allow": ["run_shell_command(npm run check)", "run_shell_command(npm run references:check)",
             "run_shell_command(npm run format)", "run_shell_command(npm run typecheck)", "run_shell_command(npm test *)",
             "run_shell_command(npm run build)", "run_shell_command(git status *)", "run_shell_command(git diff *)", "run_shell_command(git log *)", "run_shell_command(rg *)"],
             "deny": ["run_shell_command(git push *)", "run_shell_command(gh *)", "run_shell_command(rm -rf *)"]},
         "memory": {"enableManagedAutoMemory": False, "enableManagedAutoDream": False, "enableAutoSkill": False},
         "telemetry": {"enabled": False}}
+    if reviewer:
+        settings["tools"] = {"approvalMode": "plan", "core": [
+            "read_file", "read_many_files", "list_directory", "grep_search", "glob"]}
+        settings["permissions"] = {"allow": [], "deny": [
+            "run_shell_command", "write_file", "edit", "agent", "web_fetch", "web_search"]}
+    return settings
 
 
-def agent_command(prompt, turns=60, minutes=45):
-    return ["qwen", "--auth-type", "openai", "--model", "qwen-local", "--approval-mode", "auto-edit",
+def agent_command(prompt, turns=60, minutes=45, reviewer=False):
+    command = ["qwen", "--auth-type", "openai", "--model", "qwen-local", "--approval-mode", "plan" if reviewer else "auto-edit",
             "--max-session-turns", str(turns), "--max-tool-calls", "150", "--max-wall-time", f"{minutes}m",
-            "--output-format", "stream-json", "--include-partial-messages", "--prompt", prompt]
+            "--output-format", "stream-json", "--include-partial-messages"]
+    excluded = ["agent", "workflow", "exec", "skill", "tool_call", "tool_search",
+        "web_fetch", "web_search", "enter_worktree", "exit_worktree", "record_artifact",
+        "report_findings", "send_message", "task_stop", "update_goal", "get_goal", "list_agents"]
+    if reviewer:
+        command += ["--json-schema", json.dumps(REVIEW_SCHEMA)]
+        excluded += ["write_file", "edit", "notebook_edit", "run_shell_command", "todo_write"]
+    command += ["--exclude-tools", ",".join(excluded)]
+    command += ["--prompt", prompt]
+    return command
+
+
+REVIEW_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "properties": {
+        "status": {"type": "string", "enum": ["pass", "changes_required", "blocked"]},
+        "findings": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False,
+            "properties": {"id": {"type": "string"}, "file": {"type": "string"},
+                "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+                "problem": {"type": "string"}, "expected": {"type": "string"},
+                "verification": {"type": "string"}},
+            "required": ["id", "file", "severity", "problem", "expected", "verification"]}},
+        "unchecked": {"type": "array", "items": {"type": "string"}},
+        "user_checks": {"type": "array", "minItems": 3, "maxItems": 5,
+            "items": {"type": "object", "additionalProperties": False,
+                "properties": {"action": {"type": "string"}, "expected": {"type": "string"}},
+                "required": ["action", "expected"]}}},
+    "required": ["status", "findings", "unchecked", "user_checks"]}
+
+
+def review_ready(report):
+    """Fail closed even when a model contradicts its own pass verdict."""
+    if not isinstance(report, dict) or set(report) != set(REVIEW_SCHEMA["required"]):
+        return False
+    if report["status"] != "pass" or report["findings"] != []:
+        return False
+    if not isinstance(report["unchecked"], list) or not all(isinstance(s, str) for s in report["unchecked"]):
+        return False
+    checks = report["user_checks"]
+    return (isinstance(checks, list) and 3 <= len(checks) <= 5
+            and all(isinstance(c, dict) and set(c) == {"action", "expected"}
+                    and all(isinstance(v, str) and v.strip() for v in c.values()) for c in checks))
+
+
+def workspace_fingerprint(repo):
+    """Bind verification to file contents, including deletions and untracked files.
+
+    Commits with unchanged contents keep the same fingerprint. Ignored build/cache
+    files do not invalidate the source review.
+    """
+    names = subprocess.check_output(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], cwd=repo).decode().split("\0")
+    digest = hashlib.sha256()
+    for name in sorted(set(filter(None, names))):
+        if (Path(repo) / name).is_symlink():
+            raise ValueError(f"Review does not support symbolic links: {name}")
+        path = safe_child(repo, name)
+        if not path.is_file():
+            continue
+        digest.update(name.encode() + b"\0")
+        digest.update(sha256(path).encode() + b"\0")
+    return digest.hexdigest()
+
+
+def prepare_control_folder(repo):
+    folder = Path(repo) / ".colab"
+    folder.mkdir(exist_ok=True)
+    git_dir = Path(run(["git", "rev-parse", "--absolute-git-dir"], cwd=repo, capture=True).strip())
+    exclude = git_dir / "info/exclude"
+    exclude.parent.mkdir(exist_ok=True)
+    previous = exclude.read_text(encoding="utf-8") if exclude.exists() else ""
+    if "/.colab/" not in previous.splitlines():
+        exclude.write_text(previous + "\n/.colab/\n", encoding="utf-8")
+    return folder
+
+
+def choose_work_branch(issue_number, requested, saved, related):
+    if requested:
+        return requested
+    candidates = {p["headRefName"] for p in related}
+    default = f"colab/issue-{issue_number}"
+    if saved and (not candidates or saved in candidates):
+        return saved
+    if default in candidates or not candidates:
+        return default
+    if len(candidates) == 1:
+        return next(iter(candidates))
+    raise RuntimeError("関連PRが複数あり継続先を選べません。WORK_BRANCHで対象を指定してください。")
+
+
+def run_qwen_phase(repo, destination, prompt, env, context_size, turns, minutes, reviewer=False):
+    """One fresh CLI conversation; never resumes the implementation's transcript."""
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    settings_path = Path.home() / ".qwen/settings.json"
+    write_json(settings_path, agent_settings(context_size, reviewer))
+    process = None
+    result = None
+    denials = []
+    try:
+        process = subprocess.Popen(agent_command(prompt, turns, minutes, reviewer), cwd=repo,
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+            start_new_session=True)
+        with (destination / "events.jsonl").open("w", encoding="utf-8") as log:
+            for line in process.stdout:
+                clean = line.replace(env.get("LOCAL_LLM_API_KEY", "__missing_key__"), "[redacted]")
+                log.write(clean); log.flush()
+                print(clean, end="")
+                try:
+                    event = json.loads(clean)
+                    if event.get("type") == "result":
+                        result = event
+                        denials.extend(event.get("permission_denials") or [])
+                except (ValueError, AttributeError):
+                    pass
+        exit_code = process.wait()
+    finally:
+        if process is not None and process.poll() is None:
+            stop_owned_process(process)
+        write_json(settings_path, agent_settings(context_size))
+    success = (exit_code == 0 and isinstance(result, dict) and not result.get("is_error")
+               and result.get("subtype") == "success" and not denials)
+    report = None
+    if reviewer and result:
+        report = result.get("structured_result")
+        if report is None:
+            try:
+                report = json.loads(result.get("result", ""))
+            except (ValueError, TypeError):
+                pass
+    summary = {"success": success, "exit_code": exit_code, "permission_denials": denials, "report": report}
+    write_json(destination / "result.json", summary)
+    return summary
+
+
+def run_required_checks(repo, destination):
+    results = []
+    for command in (["npm", "run", "check"], ["npm", "run", "references:check"]):
+        process = subprocess.run(command, cwd=repo, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True)
+        results.append({"command": command, "exit_code": process.returncode, "output": process.stdout[-12000:]})
+        print(process.stdout[-12000:])
+    write_json(Path(destination) / "checks.json", results)
+    return results
+
+
+def checks_passed(checks):
+    required = {("npm", "run", "check"), ("npm", "run", "references:check")}
+    return (isinstance(checks, list) and len(checks) == len(required)
+            and all(isinstance(c, dict) and c.get("exit_code") == 0
+                    and isinstance(c.get("command"), list) for c in checks)
+            and {tuple(c.get("command", [])) for c in checks} == required)
+
+
+def run_issue_workflow(repo, destination, issue_number, issue_context, env, context_size,
+                       turns=60, minutes=45, repairs=2, feedback="",
+                       phase_runner=run_qwen_phase, checker=run_required_checks):
+    """Python owns the required implement -> review -> fix -> re-review loop."""
+    repo, destination = Path(repo), Path(destination)
+    if repairs not in (0, 1, 2):
+        raise ValueError("At most two automatic repair rounds are supported")
+    destination.mkdir(parents=True, exist_ok=True)
+    control = prepare_control_folder(repo)
+    state_path = destination / "workflow.json"
+    # Immediately revoke an earlier successful run before any new edits/checks.
+    state = {"ready": False, "issue": issue_number,
+        "branch": run(["git", "branch", "--show-current"], cwd=repo, capture=True).strip(),
+        "phase": "implementing", "rounds": []}
+    write_json(state_path, state)
+    common = (f"Issue #{issue_number}。作業場所 {repo}。AGENTS.mdと.colab/workflow.md、"
+        "docs/project/ISSUE_AGENT_RUNBOOK.mdとISSUE_IMPLEMENTATION_GUIDE.mdの対象節を読む。"
+        f"最新Issue/コメント/関連PRは {issue_context}。.colab/ci-failures.jsonがあればCI失敗ログも読み修正する。既存差分は保全して継続する。"
+        "利用者へ技術設計やコードレビューを要求しない。GitHub投稿/push/merge/Issue closeは親セル専用。"
+        "実施していないテスト/ブラウザ操作/ユーザー合格を実施済みと書かない。")
+    request = common + ("設計・実装・テスト・ユーザー用3〜5操作と期待結果を.COLAB_HANDOFF.mdへ記録。"
+        "範囲を内部APIだけに縮小せず、通常対戦へ接続する。" + ("\nユーザーの追加指示:\n" + feedback if feedback.strip() else ""))
+    for attempt in range(repairs + 1):
+        round_dir = destination / f"round-{attempt + 1}"
+        implementation = phase_runner(repo, round_dir / "implementation", request, env, context_size, turns, minutes)
+        state["phase"] = "checking"
+        write_json(state_path, state)
+        checks = checker(repo, round_dir)
+        fingerprint = workspace_fingerprint(repo)
+        input_path = control / "review-input.json"
+        base = run(["git", "merge-base", "origin/main", "HEAD"], cwd=repo, capture=True).strip()
+        diff = subprocess.check_output(["git", "diff", "--binary", base], cwd=repo).decode(errors="replace")
+        (control / "review.diff").write_text(diff, encoding="utf-8")
+        write_json(input_path, {"issue_context": str(issue_context), "base": base,
+            "diff_file": str(control / "review.diff"), "files": run(["git", "status", "--short"], cwd=repo, capture=True),
+            "implementation": implementation, "checks": checks, "fingerprint": fingerprint,
+            "feedback": feedback, "previous_rounds": state["rounds"]})
+        state["phase"] = "reviewing"
+        write_json(state_path, state)
+        review_prompt = common + (f"\nあなたは実装者と別会話の読み取り専用レビュー担当。{input_path}とreview.diff、"
+            "変更/追加ファイル、実際のテストを読む。通常対戦への接続、仕様・受入条件、境界、NPC公平性、"
+            "費用/視界/command、マスタ契約、回帰、テストの検出力を独立に検証。"
+            "実装者の自己申告を合格の根拠にしない。コード編集やshell実行はしない。"
+            "現物で確認した問題はseverity/file/problem/expected/verification付きfindingsへ。"
+            "未解決問題やテスト失敗はchanges_required、必要資料不足はblocked。"
+            "findingsゼロかつ全必須チェック成功のときだけpass。見た目の実機未検査はuncheckedへ明示。"
+            "user_checksは利用者が画面で試せる3〜5操作と期待結果。指定schemaのJSONを出力。")
+        review = phase_runner(repo, round_dir / "review", review_prompt, env, context_size,
+            turns, minutes, reviewer=True)
+        unchanged = workspace_fingerprint(repo) == fingerprint
+        passed = (implementation["success"] and review["success"] and unchanged
+            and checks_passed(checks) and review_ready(review.get("report"))
+            and (repo / ".COLAB_HANDOFF.md").is_file())
+        record = {"implementation_success": implementation["success"], "review": review,
+            "checks_passed": checks_passed(checks), "source_unchanged": unchanged}
+        state["rounds"].append(record)
+        state.update({"ready": passed, "fingerprint": fingerprint, "phase": "ready" if passed else "needs-fix"})
+        write_json(state_path, state)
+        if passed:
+            return state
+        if not unchanged:
+            state["phase"] = "review-modified-workspace"
+            write_json(state_path, state)
+            return state
+        request = common + (f"\n前回のチェック/独立レビュー結果は {input_path} と "
+            f"{round_dir / 'review/result.json'}。指摘と失敗を修正し、.COLAB_HANDOFF.mdを更新する。"
+            "レビュー結果を編集して合格にしない。必要な根拠でコード/テストを直す。")
+    return state
+
+
+def require_reviewed_workspace(repo, state, issue_number=None):
+    if (not state.get("ready") or workspace_fingerprint(repo) != state.get("fingerprint")
+            or (issue_number is not None and state.get("issue") != issue_number)
+            or (state.get("branch") is not None and state["branch"] != run(
+                ["git", "branch", "--show-current"], cwd=repo, capture=True).strip())):
+        raise RuntimeError("独立レビュー未完了、またはレビュー後に内容が変わりました。実装セルで再検証してください。")
+
+
+def require_approved_revision(repo, state, issue_number, preview, published_sha, pr):
+    require_reviewed_workspace(repo, state, issue_number)
+    expected = run(["git", "rev-parse", "HEAD"], cwd=repo, capture=True).strip()
+    if preview.get("dirty") is not False or preview.get("commit") != expected or published_sha != expected:
+        raise RuntimeError("PR提出後のclean版をセル12で画面確認してください。")
+    if pr.get("headRefOid") != expected:
+        raise RuntimeError("PRの内容が検査版から変わっています。再検査してください。")
+    checks = pr.get("statusCheckRollup") or []
+    required_names = {"checks (ubuntu-latest)", "checks (windows-latest)"}
+    successful = {c.get("name") for c in checks if c.get("conclusion") == "SUCCESS"}
+    if not required_names <= successful or not all(
+            c.get("conclusion") in ("SUCCESS", "SKIPPED", "NEUTRAL") or c.get("state") == "SUCCESS" for c in checks):
+        raise RuntimeError("Windows/Linux CI成功待ち、または未完了/失敗のチェックがあります。")
+    return expected
 
 
 def stop_owned_process(process):

@@ -31,8 +31,9 @@ llama-serverはGPU/CUDA/OS/コンパイラが一致すればビルドも再利�
 GitHub SecretsはColab左側の鍵から `GH_TOKEN`（対象repoへアクセスできるtoken）を登録。
 tokenはNotebook本文やDriveには保存しません。
 
-コード編集とテストはQwen Code、外部投稿とPR作成は最後の専用セルで行います。
-ゲーム機能のマージはこのNotebookでは実行しません。
+実装Qwen → 必須チェック → 別会話の読み取り専用Qwenレビュー → 最大2回の修正・再レビューを親セルが管理します。
+GPT/Codex/Claudeのレビューを前提にしません。外部投稿とPR作成は最後の専用セルで行います。
+マージはユーザーが画面検査後に明示合格した場合だけ、最後の専用セルで行います。
 Colabのセッション終了は防げません。作業は120秒ごと・実行終了時に保存します。
 強制終了直前の最大120秒程度の変更は失われる可能性があり、途中保存は検証合格を意味しません。
 ''')
@@ -48,11 +49,14 @@ LLAMA_REF = "refs/heads/master" # @param {type:"string"}
 CONTEXT_SIZE = 16384 # @param [8192,16384,32768] {type:"raw"}
 REPAIR_MODEL = False # @param {type:"boolean"}
 RESUME_WORK = True # @param {type:"boolean"}
-# 関連PRがある場合はそのbranchを指定。空欄ならcolab/issue-N。
+# 通常は空欄。保存済みbranch/明確な既存PRを自動選択。複数候補のときだけ指定。
 WORK_BRANCH = "" # @param {type:"string"}
 RUN_AGENT = False # @param {type:"boolean"}
 MAX_TURNS = 60 # @param {type:"integer"}
 MAX_MINUTES = 45 # @param {type:"integer"}
+MAX_REPAIRS = 2 # @param [0,1,2] {type:"raw"}
+USER_FEEDBACK = "" # @param {type:"string"}
+# MAX_MINUTESは各実装/レビュー担当の上限。全体は修正回数・テスト時間によって延びます。
 REPOSITORY = "heishi1HUMANITY/rts-match-prototype"
 QWEN_CODE_VERSION = "0.25.1"
 assert ISSUE_NUMBER > 0 and MAX_TURNS > 0 and 1 <= MAX_MINUTES <= 180
@@ -87,6 +91,7 @@ md('''
 モデルと実行環境の取得は再実行可能です。設定revisionを変えない限り同じ版を使います。
 ''')
 code((ROOT / "tools/colab/runtime.py").read_text(encoding="utf-8"))
+code("# Qwenだけで実装・レビュー・検査準備を進める共通指示\nQWEN_WORKFLOW_INSTRUCTIONS = " + repr((ROOT / "docs/project/QWEN_AGENT_WORKFLOW.md").read_text(encoding="utf-8")))
 code('''
 # @title 4. Node / Qwen Code / CUDA実行プログラム
 install_node(CACHE, RUNTIME)
@@ -172,16 +177,17 @@ pulls = json.loads(gh(["pr", "list", "--repo", REPOSITORY, "--state", "open",
 related = [p for p in pulls if re.search(rf"(?<![0-9])#{ISSUE_NUMBER}(?![0-9])", p["body"] + " " + p["title"])]
 if related:
     print("関連候補PR:", [(p["number"], p["headRefName"], p["url"]) for p in related])
-    if not WORK_BRANCH:
-        raise RuntimeError("既存PRとの重複防止: 対象を確認して設定のWORK_BRANCHを指定してください。")
-branch = WORK_BRANCH or f"colab/issue-{ISSUE_NUMBER}"
+CHECKPOINTS = CACHE / "work" / f"issue-{ISSUE_NUMBER}"
+saved_branch = read_json(CHECKPOINTS / "latest.json")["branch"] if RESUME_WORK and (CHECKPOINTS / "latest.json").exists() else ""
+branch = choose_work_branch(ISSUE_NUMBER, WORK_BRANCH, saved_branch, related)
+print("作業ブランチを選択:", branch)
 run(["git", "check-ref-format", "--branch", branch], capture=True)
 assert branch not in ("main", "master"), "専用ブランチを指定してください"
 REPO = RUNTIME / f"issue-{ISSUE_NUMBER}"
 CHECKPOINTS = CACHE / "work" / f"issue-{ISSUE_NUMBER}"
 remote = f"https://github.com/{REPOSITORY}.git"
 if not REPO.exists():
-    if RESUME_WORK and (CHECKPOINTS / "latest.json").exists():
+    if RESUME_WORK and saved_branch == branch and (CHECKPOINTS / "latest.json").exists():
         restored = restore_checkpoint(CHECKPOINTS, REPO, remote)
         assert restored["branch"] == branch, "保存branchと設定が異なります。WORK_BRANCHを合わせてください。"
         print("作業を復元:", restored["id"])
@@ -199,25 +205,39 @@ assert run(["git", "remote", "get-url", "origin"], cwd=REPO, capture=True).strip
 run(["git", "config", "user.name", "Colab implementation agent"], cwd=REPO)
 run(["git", "config", "user.email", "colab-agent@users.noreply.github.com"], cwd=REPO)
 run(["npm", "ci"], cwd=REPO)
-ISSUE_CONTEXT = RUNTIME / f"issue-{ISSUE_NUMBER}-context.json"
-write_json(ISSUE_CONTEXT, {"issue": issue, "related_prs": related})
+CONTROL = prepare_control_folder(REPO)
+(CONTROL / "workflow.md").write_text(QWEN_WORKFLOW_INSTRUCTIONS, encoding="utf-8")
+ISSUE_CONTEXT = CONTROL / "issue-context.json"
+def refresh_issue_context():
+    current_issue = json.loads(gh(["issue", "view", str(ISSUE_NUMBER), "--repo", REPOSITORY,
+        "--json", "number,title,body,comments,state,labels"]))
+    assert current_issue["state"] == "OPEN", "対象Issueが完了済みです。再実装しません。"
+    current_prs = json.loads(gh(["pr", "list", "--repo", REPOSITORY, "--head", branch, "--state", "open",
+        "--json", "number,title,body,headRefName,headRefOid,url,statusCheckRollup"]))
+    failures = []
+    for pr in current_prs:
+        for check in pr.get("statusCheckRollup", []):
+            if check.get("conclusion") in ("FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED") or check.get("state") in ("FAILURE", "ERROR"):
+                match = re.match(rf"https://github.com/{re.escape(REPOSITORY)}/actions/runs/([0-9]+)", check.get("detailsUrl", ""))
+                log = "失敗ログの自動取得ができませんでした。未確認として扱ってください。"
+                if match:
+                    try: log = gh(["run", "view", match[1], "--repo", REPOSITORY, "--log-failed"])[-60000:]
+                    except subprocess.CalledProcessError: pass
+                failures.append({"pr": pr["number"], "head": pr["headRefOid"], "check": check, "log": log})
+    write_json(ISSUE_CONTEXT, {"issue": current_issue, "related_prs": current_prs or related})
+    write_json(CONTROL / "ci-failures.json", {"failures": failures})
+    return current_issue
+issue = refresh_issue_context()
 write_json(Path.home() / ".qwen/settings.json", agent_settings(CONTEXT_SIZE))
 checkpoint(REPO, CHECKPOINTS, {"phase": "prepared", "model": MODEL_METADATA["revision"]})
 print(issue["title"], "branch:", branch)
 ''')
 code('''
-# @title 10. 実装する（設定のRUN_AGENT=Trueで有効）
+# @title 10. 実装・独立レビュー・修正する（RUN_AGENT=Trueで有効）
 import threading
 if RUN_AGENT:
-    prompt = f"""Issue #{ISSUE_NUMBER}を進めてください。作業場所は{REPO}です。
-AGENTS.md、README、docs/project/ISSUE_AGENT_RUNBOOK.md、ISSUE_IMPLEMENTATION_GUIDE.mdの対象節を読み、
-最新Issue本文・コメント・関連PRは{ISSUE_CONTEXT}を読んでください。既存差分は前回の作業です。保全して継続してください。
-設計・実装・npm run check・npm run references:checkと動作確認手順の作成まで進めてください。
-APIだけ/テストfixtureだけで完了としない。合格済み仕様を維持。技術設計をユーザーへ要求しない。
-必要な未許可コマンド、重大な仕様判断、未検査、残作業と画面確認手順は必ず.COLAB_HANDOFF.mdに記録してください。
-Colab内のlocalhostはユーザーのPCとは別です。ブラウザを操作していないなら実検査済みと記録しない。
-GitHub投稿、push、PR作成、merge、Issue close、依存の無断追加、秘密情報の探索は行わない。
-最後に日本語で変更・検証結果・残作業・ユーザーが画面で確認する短い手順を報告してください。"""
+    WORKFLOW_STATE = {"ready": False}
+    issue = refresh_issue_context()
     agent_env = {k: v for k, v in os.environ.items()
                  if not any(word in k.upper() for word in ("TOKEN", "SECRET", "PASSWORD", "API_KEY"))}
     agent_env["LOCAL_LLM_API_KEY"] = LOCAL_LLM_API_KEY
@@ -228,35 +248,29 @@ GitHub投稿、push、PR作成、merge、Issue close、依存の無断追加、�
             except Exception as error: print("途中保存に失敗:", type(error).__name__)
     saver = threading.Thread(target=periodic_save, daemon=True)
     saver.start()
-    log_path = CHECKPOINTS / ("agent-" + time.strftime("%Y%m%d-%H%M%S") + ".jsonl")
-    agent_process = None
-    permission_denials = []
+    WORKFLOW_DIR = CHECKPOINTS / ("workflow-" + time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8])
+    write_json(CONTROL / "active-workflow.json", {"directory": str(WORKFLOW_DIR)})
+    WORKFLOW_STATE = {"ready": False}
     try:
-        agent_process = subprocess.Popen(agent_command(prompt, MAX_TURNS, MAX_MINUTES), cwd=REPO,
-            env=agent_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, start_new_session=True)
-        with log_path.open("w", encoding="utf-8") as log:
-            for line in agent_process.stdout:
-                clean = line.replace(GH_TOKEN_VALUE, "[redacted]").replace(LOCAL_LLM_API_KEY, "[redacted]")
-                log.write(clean); log.flush()
-                print(clean, end="")
-                try:
-                    event = json.loads(clean)
-                    if event.get("type") == "result":
-                        permission_denials.extend(event.get("permission_denials") or [])
-                except (ValueError, AttributeError):
-                    pass
-        if permission_denials:
-            print("未許可で実行されなかった操作があります。ログと引き継ぎを確認:", permission_denials)
-        exit_code = agent_process.wait()
-        print("エージェント終了コード:", exit_code, "（0でも検証/残作業を確認）")
+        WORKFLOW_STATE = run_issue_workflow(REPO, WORKFLOW_DIR, ISSUE_NUMBER, ISSUE_CONTEXT,
+            agent_env, CONTEXT_SIZE, MAX_TURNS, MAX_MINUTES, MAX_REPAIRS, USER_FEEDBACK)
+        print("状態:", WORKFLOW_STATE["phase"])
+        if WORKFLOW_STATE["ready"]:
+            print("Qwen独立レビューと必須チェック完了。ユーザーの動作確認へ進めます。")
+        else:
+            print("指摘/未完了が残っています。合格ではありません。差分を保存しました。")
+        last_review = WORKFLOW_STATE["rounds"][-1]["review"].get("report") if WORKFLOW_STATE["rounds"] else None
+        if last_review:
+            print("画面で確認する操作:")
+            for index, item in enumerate(last_review.get("user_checks", []), 1):
+                print(f"{index}. {item['action']} → {item['expected']}")
+            for item in last_review.get("unchecked", []): print("未検査:", item)
     finally:
-        if agent_process is not None and agent_process.poll() is None:
-            stop_owned_process(agent_process)
         stop_checkpoints.set(); saver.join(timeout=30)
-        checkpoint(REPO, CHECKPOINTS, {"phase": "agent-stopped", "model": MODEL_METADATA["revision"]})
+        checkpoint(REPO, CHECKPOINTS, {"phase": "workflow-stopped", "model": MODEL_METADATA["revision"]})
     print("保存先:", CHECKPOINTS)
 else:
-    print("まだ実装は開始していません。設定のRUN_AGENT=Trueにして、このセルを実行してください。")
+    print("RUN_AGENT=Trueにして実行します。修正依頼はUSER_FEEDBACKへ普通の言葉で記入します。")
 ''')
 code('''
 # @title 11. 保存・差分確認（いつでも実行可能）
@@ -268,8 +282,13 @@ print("作業保存済み。ログ/途中保存はDriveに残ります。")
 ''')
 code('''
 # @title 12. 検証と画面プレビュー（エージェント終了後）
+require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
 run(["npm", "run", "check"], cwd=REPO)
 run(["npm", "run", "references:check"], cwd=REPO)
+PREVIEW_BUILD = read_json(REPO / "dist/build-info.json")
+require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
+PREVIEW_SHA = PREVIEW_BUILD["commit"]
+PREVIEW_CLEAN = not PREVIEW_BUILD["dirty"]
 CHECKED_DIFF = run(["git", "diff", "--binary", "HEAD"], cwd=REPO, capture=True)
 if "preview_process" in globals() and preview_process.poll() is None and globals().get("preview_repo") != REPO:
     stop_owned_process(preview_process)
@@ -289,7 +308,8 @@ md('''
 次のセルはチェックを再実行してから、専用ブランチをpushし、PRを作成/更新します。
 `PUBLISH_PR=True`を選んだ場合だけ外部へ反映します。mainへ直接pushせず、マージもしません。
 既存PRがある場合は新規PRを重複作成しません。
-PR提出前に変更内容と `.COLAB_HANDOFF.md` の未完了事項を確認してください。
+CI失敗時はセル10を再実行すると、最新コメントとCI失敗ログをQwenへ渡して修正・再レビューします。
+技術確認は親セルとQwenレビューが担当します。ユーザーはセル12の操作案内に沿ってふるまいを確認します。
 ''')
 code('''
 # @title 13. PRを作成/更新する（任意）
@@ -297,24 +317,32 @@ PUBLISH_PR = False # @param {type:"boolean"}
 PR_TITLE = "" # @param {type:"string"}
 PR_DESCRIPTION = "" # @param {type:"string"}
 if PUBLISH_PR:
+    require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
     assert run(["git", "branch", "--show-current"], cwd=REPO, capture=True).strip() == branch
     assert branch not in ("main", "master")
     assert json.loads(gh(["issue", "view", str(ISSUE_NUMBER), "--repo", REPOSITORY, "--json", "state"]))["state"] == "OPEN", "対象Issueが完了済みです。重複実装を提出しないでください。"
     run(["npm", "run", "check"], cwd=REPO)
     run(["npm", "run", "references:check"], cwd=REPO)
+    require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
     run(["git", "add", "--all"], cwd=REPO)
     if run(["git", "diff", "--cached", "--name-only"], cwd=REPO, capture=True).strip():
         run(["git", "commit", "-m", PR_TITLE or issue["title"]], cwd=REPO)
     run(["npm", "run", "build"], cwd=REPO)
     assert not read_json(REPO / "dist/build-info.json")["dirty"], "検査版はclean commitから作成してください"
+    require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
     run(["gh", "auth", "setup-git"], env=github_env)
     run(["git", "push", "--set-upstream", "origin", branch], cwd=REPO, env=github_env)
+    PUBLISHED_SHA = run(["git", "rev-parse", "HEAD"], cwd=REPO, capture=True).strip()
     existing = json.loads(gh(["pr", "list", "--repo", REPOSITORY, "--head", branch,
                               "--state", "open", "--json", "number,url"]))
     body = RUNTIME / "pr-body.md"
     handoff_file = REPO / ".COLAB_HANDOFF.md"
     description = PR_DESCRIPTION.strip() or (handoff_file.read_text(encoding="utf-8") if handoff_file.exists()
         else "実装エージェントの引き継ぎが未記載です。完了扱いせず、差分と未完了事項の確認が必要です。")
+    review = WORKFLOW_STATE["rounds"][-1]["review"]["report"]
+    description += "\\n\\nQwen独立レビュー: pass（別会話・読み取り専用）。\\n"
+    description += "\\n".join(f"- {item['action']} → {item['expected']}" for item in review["user_checks"])
+    description += "\\n未検査: " + " / ".join(review["unchecked"])
     body.write_text(description + f"\\n\\nRelated: #{ISSUE_NUMBER}\\n\\n検証: npm run check / npm run references:check成功。ブラウザ実操作は別途確認。\\nモデル: {MODEL_REPO} @ {MODEL_METADATA['revision']} / llama.cpp @ {LLAMA_COMMIT}\\nユーザー合格後にマージ。", encoding="utf-8")
     if existing:
         print(gh(["pr", "edit", str(existing[0]["number"]), "--repo", REPOSITORY, "--body-file", str(body)]))
@@ -322,11 +350,41 @@ if PUBLISH_PR:
         print(gh(["pr", "create", "--draft", "--repo", REPOSITORY, "--base", "main", "--head", branch,
                   "--title", PR_TITLE or issue["title"], "--body-file", str(body)]))
     checkpoint(REPO, CHECKPOINTS, {"phase": "pr-published"})
+    print("PR提出SHA:", PUBLISHED_SHA, "。セル12を再実行して、このclean版を画面で確認してください。")
 else:
     print("GitHubへの反映は行っていません。作業はDriveへ保存できます。")
 ''')
+md('''
+## 動作確認で合格した場合のみ
+PR提出後にセル12を再実行し、cleanな対象版を画面で確認してください。
+修正が必要ならセル1のUSER_FEEDBACKへ普通の言葉で記入し、セル10からやり直します。
+合格した場合だけ次のUSER_ACCEPTEDを有効にします。PRのheadと検査版SHAが同じでCI成功ならマージします。
+''')
 code('''
-# @title 14. 終了（保存してGPUを解放）
+# @title 14. ユーザー検査に合格した版をマージする（任意）
+USER_ACCEPTED = False # @param {type:"boolean"}
+if USER_ACCEPTED:
+    require_reviewed_workspace(REPO, WORKFLOW_STATE, ISSUE_NUMBER)
+    expected_sha = run(["git", "rev-parse", "HEAD"], cwd=REPO, capture=True).strip()
+    candidates = json.loads(gh(["pr", "list", "--repo", REPOSITORY, "--head", branch, "--state", "open", "--json", "number"]))
+    assert len(candidates) == 1, "対象PRを一意に確認できません。"
+    pr_number = candidates[0]["number"]
+    pr = json.loads(gh(["pr", "view", str(pr_number), "--repo", REPOSITORY,
+        "--json", "headRefOid,isDraft,statusCheckRollup"]))
+    expected_sha = require_approved_revision(REPO, WORKFLOW_STATE, ISSUE_NUMBER, PREVIEW_BUILD, PUBLISHED_SHA, pr)
+    if pr["isDraft"]: gh(["pr", "ready", str(pr_number), "--repo", REPOSITORY])
+    print(gh(["pr", "merge", str(pr_number), "--repo", REPOSITORY, "--squash", "--match-head-commit", expected_sha]))
+    merged = json.loads(gh(["pr", "view", str(pr_number), "--repo", REPOSITORY, "--json", "state"]))
+    assert merged["state"] == "MERGED", "マージ未完了です。Issueは閉じません。"
+    gh(["issue", "close", str(ISSUE_NUMBER), "--repo", REPOSITORY, "--reason", "completed",
+        "--comment", f"ユーザーがNotebookで検査合格を明示。検査対象 {expected_sha} / PR #{pr_number} をマージ済み。"])
+    checkpoint(REPO, CHECKPOINTS, {"phase": "merged", "approved_sha": expected_sha})
+    print("合格版をマージしIssueを完了しました。")
+else:
+    print("まだマージしていません。ゲームの動作確認で合格した場合だけUSER_ACCEPTED=Trueにします。")
+''')
+code('''
+# @title 15. 終了（保存してGPUを解放）
 for name in ("agent_process", "preview_process", "server_process"):
     process = globals().get(name)
     if process is not None and process.poll() is None:
@@ -337,6 +395,7 @@ print("保存・プロセス停止済み。Colabメニューでランタイム�
 md('''
 ## 再開・トラブル
 - 次回も同じDriveフォルダ・Issue番号・WORK_BRANCHで、セル1から順に実行します。
+  不具合はUSER_FEEDBACKへ操作と困った結果を記入し、セル10を再実行します。
   Driveのモデルは再ダウンロードせず、同じ版を使用します。作業差分はセル9で復元します。
 - 16GB GPUでは標準27B構成を開始しません。GPUを変更してください。
 - モデル破損が疑われる場合はREPAIR_MODEL=Trueで再実行します。
@@ -350,6 +409,7 @@ md('''
 
 参照: [モデル配布](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF) /
 [Qwen Code](https://github.com/QwenLM/qwen-code) /
+[Qwenサブエージェント](https://qwenlm.github.io/qwen-code-docs/en/users/features/sub-agents/) /
 [llama.cpp](https://github.com/ggml-org/llama.cpp/tree/master/tools/server) /
 [Colabの制限](https://research.google.com/colaboratory/faq.html)
 ''')

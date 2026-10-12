@@ -6,6 +6,8 @@
 
 [引き継ぎ](docs/project/AGENT_HANDOFF.md) は前回終了時の参考情報であり、最新状態はGitHubとソースで確認する。作業場所はremoteで照合する。このリポジトリは `rts-match-prototype` であり、旧資料の作業場所と混同しない。Issue番号だけの依頼は、ゲーム機能のマージ許可ではない。
 
+Colab/Qwenで作業する場合は [Qwen用作業指示](docs/project/QWEN_AGENT_WORKFLOW.md) に従う。実装・技術レビュー・修正・検査準備はQwenで完結させ、Codex/GPTへの依頼し直しや利用者によるコードレビューを必須にしない。Notebookの親処理が独立レビューと提出条件を管理する。
+
 ## 目的と優先順位
 
 - 新規プロジェクトとして作る。対象はブラウザの対戦本編、人間1人＋NPC2陣営の1v1v1。世界観の知識を要求しない。

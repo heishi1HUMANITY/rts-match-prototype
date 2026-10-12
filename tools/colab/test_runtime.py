@@ -162,8 +162,21 @@ class RuntimeTests(unittest.TestCase):
                 compile(source, cell["id"], "exec")
                 code.append(source)
         self.assertIn(Path(runtime.__file__).read_text(encoding="utf-8").strip(), code)
+        guide = notebook.parents[1] / "docs/project/QWEN_AGENT_WORKFLOW.md"
+        self.assertTrue(any("QWEN_WORKFLOW_INSTRUCTIONS = " + repr(guide.read_text(encoding="utf-8")) in source
+                            for source in code))
         self.assertTrue(any("RUN_AGENT = False" in source for source in code))
         self.assertTrue(any("PUBLISH_PR = False" in source for source in code))
+        self.assertTrue(any("USER_ACCEPTED = False" in source for source in code))
+
+    def test_branch_selection_resumes_without_technical_input(self):
+        related = [{"headRefName": "colab/issue-30"}, {"headRefName": "other"}]
+        self.assertEqual(runtime.choose_work_branch(30, "", "colab/issue-30", related), "colab/issue-30")
+        self.assertEqual(runtime.choose_work_branch(30, "", "", related), "colab/issue-30")
+        self.assertEqual(runtime.choose_work_branch(30, "", "", [{"headRefName": "existing-feature"}]), "existing-feature")
+        self.assertEqual(runtime.choose_work_branch(30, "", "saved-work", []), "saved-work")
+        with self.assertRaises(RuntimeError):
+            runtime.choose_work_branch(30, "", "", [{"headRefName": "a"}, {"headRefName": "b"}])
 
 
 if __name__ == "__main__":
