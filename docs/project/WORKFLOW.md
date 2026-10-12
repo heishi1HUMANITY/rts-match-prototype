@@ -10,7 +10,7 @@
 
 ## ラベルとIssue本文
 
-全Issueは次を持つ。依存関係と着手に足りない契約は本文へ書く。
+Issueの状態と種類は次のラベルで表す。gateラベルは実装Issue専用とする。依存関係と着手に足りない契約は本文へ書く。
 
 | ラベル            | 意味                                                      |
 | ----------------- | --------------------------------------------------------- |
@@ -23,7 +23,7 @@
 | status:unverified | gate:playのマージ後、CPプレイ未検証                       |
 | kind:decision     | 実装なし。ユーザーの採否判断が必要                        |
 
-flowは一つ、gateも一方だけを必須とする。flow:backlogおよび旧user-review/accepted/changes-requestedは使わない。decisionは通常gate:autoとし、判断結果を記録して閉じる。実装を伴わないdecisionにはflow:mergedを付けず、閉じた状態と判断記録を根拠にする。モデルレビューをユーザーの採否判断の代わりにしない。
+flowは一つ、実装Issueのgateは一方だけを必須とする。kind:decision / kind:checkpointにはgateラベルを付けない。flow:backlogおよび旧user-review/accepted/changes-requestedは使わない。decisionは判断結果を記録して閉じる。実装を伴わないdecisionにはflow:mergedを付けず、閉じた状態と判断記録を根拠にする。モデルレビューをユーザーの採否判断の代わりにしない。
 
 Issue本文は「目的／実装範囲／先に決める設計事項／依存・受入条件」を維持する。加えて「ユーザー検査: 要 / 不要」と理由1行、「検査シナリオID」「CP」を必須にする。操作・表示・時間/強さに触るなら検査は要（gate:play）。受入条件は「拠点にドロップした部隊が拠点セル到達でstopする」のように自動判定可能な文にし、docs/project/inspection/F0x_SCENARIOS.mdの項目番号とe2eを対応させる。
 
@@ -42,7 +42,7 @@ MilestoneにCP0、CP1、CP2…を作る。1CPは3〜5 Issue、またはgate:play
 
 Milestone自体にコメント欄がないため、各Milestoneに検査結果記録用Issueを一つ所属させ、そこでOK / NG(#番号)を記録する。これが「Milestoneコメント」の代替。自動収載対象は同じMilestoneのgate:playかつstatus:unverifiedのIssueで、閉じたIssueも含む。CP票を再生成しても人間の結果を上書きしない。
 
-同期失敗・短時間の連続マージによるイベント取りこぼしは、Checkpoint syncのworkflow_dispatchで未処理のPR番号を指定し、まずapply=falseの計画を確認してからapply=trueで復旧する。通常の初回同期はPR番号を空にする。処理済みPRのreplayはプレイ合格を取り消すため行わない。全Issueのgate判定とユーザー検査の要/不要の一致は、設計モデルが着手前に確認する。
+同期失敗・短時間の連続マージによるイベント取りこぼしは、Checkpoint syncのworkflow_dispatchで未処理のPR番号を指定し、まずapply=falseの計画を確認してからapply=trueで復旧する。通常の初回同期はPR番号を空にする。処理済みPRのreplayはプレイ合格を取り消すため行わない。実装Issueのgate判定とユーザー検査の要/不要の一致は、設計モデルが着手前に確認する。
 
 通常設定のPages URLと検査対象のbuild情報を結果Issueに記録する。CP票にcommit SHA一覧や詳細操作を詰め込まない。PRのartifactとローカル起動も利用できるようにし、URLへ接続できることを推測しない。PC/900×420、実機/エミュレーションの自動検証範囲はPRへ記録する。
 

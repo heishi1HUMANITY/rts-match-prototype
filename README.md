@@ -33,7 +33,7 @@ npm run preview
 
 GitHub CI は Windows / Linux の両方で `npm run check` を実行し、commit SHA付きのビルド成果物を保存します。PlaywrightはPCと900×420でe2eを実行し、失敗時は診断JSON・trace・画面をartifactへ保存します。mainへのpushで検証済みdistをGitHub Pagesへ配備します。PRはartifactから確認でき、外部previewサービスは使用しません。`dist/build-info.json`にはcommit、未コミット変更の有無、ルール版、状態schema版が入ります。
 
-ゲーム画面: [GitHub Pages](https://heishi1humanity.github.io/rts-match-prototype/)（初回のPages workflow成功後に利用可能）。[CP0検査票](docs/project/inspection/CP0.md) は通常設定で1試合と確認3点だけです。詳細シナリオのe2e対応状況は [e2e/README.md](e2e/README.md) を参照してください。
+ゲーム画面: [GitHub Pages](https://heishi1humanity.github.io/rts-match-prototype/)。[CP0検査票](docs/project/inspection/CP0.md) は通常設定で1試合と確認3点だけです。詳細シナリオのe2e対応状況は [e2e/README.md](e2e/README.md) を参照してください。
 
 ## G1の操作
 

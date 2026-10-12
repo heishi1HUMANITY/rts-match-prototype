@@ -42,7 +42,7 @@
 - 未実装、暫定、実際に検証した内容を区別して報告する。ゲームが遊べると未検証で宣言しない。
 - 作業単位でブランチとPRを使う。mainへのforce push、公開範囲変更、無関係な削除はしない。
 - マージDoDはWindows/Linuxの `npm run check`、該当シナリオのPlaywright CI、別会話・読み取り専用レビューモデルによる受入条件別OK/NGと根拠行のPR本文記録。`npm run references:check` も実施する。ユーザー合格はマージ条件にしない。
-- 全Issueに `gate:auto` / `gate:play` の一方、作業状態に `flow:ready` / `flow:implementing` / `flow:review` / `flow:merged` の一つを付ける。依存は本文へ書き、`flow:backlog` は使わない。`gate:play` はマージ後 `status:unverified` を付けCP検査票へ自動収載する。
+- 実装Issueに `gate:auto` / `gate:play` の一方を付ける。`kind:decision` / `kind:checkpoint` にgateラベルは付けない。各Issueの作業状態に `flow:ready` / `flow:implementing` / `flow:review` / `flow:merged` の一つを付ける。依存は本文へ書き、`flow:backlog` は使わない。`gate:play` はマージ後 `status:unverified` を付けCP検査票へ自動収載する。
 - 通常の言葉による検査・修正指示を受け付け、親がIssueへ整理する。CPは3〜5 Issue、または `gate:play` が一つ入った時点で締める。CP0の通常1試合検査が次のFへ進む前提。以後は既存の依頼範囲内でCP単位に進める。
 
 ## CP開発の役割

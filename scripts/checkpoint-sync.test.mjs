@@ -91,14 +91,58 @@ test('new play merge clears previous approval, dispatch preserves it', () => {
   decision.labels.push({ name: 'kind:decision' });
   decision.state = 'closed';
   const decisionPlan = planSync([decision], [15], { body });
-  assert.equal(decisionPlan.mutations[0].body.state, 'open');
-  assert.ok(decisionPlan.mutations[0].body.labels.includes('flow:ready'));
+  const reopened = decisionPlan.mutations.find(
+    (mutation) => mutation.body.state === 'open',
+  );
+  assert.ok(reopened.body.labels.includes('flow:ready'));
+  assert.ok(!reopened.body.labels.some((label) => label.startsWith('gate:')));
   assert.match(decisionPlan.warnings[0], /ユーザー判断/);
   assert.equal(
     decisionPlan.mutations.some((mutation) => mutation.issue === 12),
     false,
   );
   assert.throws(() => planSync([issue(15)], [15], { body: null }), /2列表/);
+});
+
+test('non-implementation issues lose gates without changing other labels or progress', () => {
+  const decision = issue(49, 'gate:auto');
+  decision.labels = [
+    { name: 'kind:decision' },
+    { name: 'gate:auto' },
+    { name: 'flow:ready' },
+    { name: 'custom:keep' },
+  ];
+  const checkpoint = issue(51);
+  checkpoint.labels = [
+    { name: 'kind:checkpoint' },
+    { name: 'gate:play' },
+    { name: 'flow:ready' },
+  ];
+  const plan = planSync(
+    [decision, checkpoint],
+    [49, 51],
+    { body },
+    {
+      newMerge: false,
+    },
+  );
+  assert.deepEqual(plan.warnings, []);
+  assert.deepEqual(plan.mutations, [
+    {
+      issue: 49,
+      body: { labels: ['kind:decision', 'flow:ready', 'custom:keep'] },
+    },
+    { issue: 51, body: { labels: ['kind:checkpoint', 'flow:ready'] } },
+  ]);
+  assert.deepEqual(
+    planSync(plan.issues, [], { body }, { newMerge: false }).mutations,
+    [],
+  );
+  for (const candidate of [decision, checkpoint]) {
+    candidate.labels.push({ name: 'flow:merged' });
+    candidate.labels.push({ name: 'status:unverified' });
+  }
+  assert.deepEqual(dispatchMergedNumbers([decision, checkpoint]), []);
 });
 
 test('dispatch includes only auto or explicitly unverified merged issues', () => {
