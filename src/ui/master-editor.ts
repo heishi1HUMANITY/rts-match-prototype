@@ -41,6 +41,66 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: '',
     help: '無効にすると、撃破された守備NPCは復活しません。',
   },
+  appearanceTick: {
+    label: '出現時刻',
+    unit: 'tick (0.1秒)',
+    help: '通常試合の開始から現地勢力が出現するまでの時間です。',
+  },
+  initialUnits: {
+    label: '初期部隊数',
+    unit: '部隊',
+    help: '出現時に配置する強襲・偵察部隊の数です。',
+  },
+  spawnIntervalTicks: {
+    label: '増援間隔',
+    unit: 'tick (0.1秒)',
+    help: '現地勢力が部隊を追加する間隔です。',
+  },
+  maxUnits: {
+    label: '部隊上限',
+    unit: '部隊',
+    help: '現地勢力が同時に保有できる部隊数です。',
+  },
+  startingSupplyCenti: {
+    label: '開始時の補給',
+    unit: '補給 ×100',
+    help: '現地勢力の初期補給です。',
+  },
+  unitCostCenti: {
+    label: '増援コスト',
+    unit: '補給 ×100',
+    help: '増援1部隊の生産に必要な補給です。',
+  },
+  growthPercentPerMinute: {
+    label: '部隊成長率',
+    unit: '%/分',
+    help: '出現後1分ごとに追加される部隊HP・攻撃力の成長率です。',
+  },
+  rescueRadius: {
+    label: '救援判断距離',
+    unit: 'セル',
+    help: '自軍拠点の近くにいる敵を救援対象とする距離です。',
+  },
+  captureRewardSupplyCenti: {
+    label: '拠点奪還報酬（補給）',
+    unit: '補給 ×100',
+    help: 'local所有拠点を初めて奪還した陣営への報酬です。',
+  },
+  captureRewardResearchCenti: {
+    label: '拠点奪還報酬（研究）',
+    unit: '研究 pt ×100',
+    help: 'local所有拠点を初めて奪還した陣営への報酬です。',
+  },
+  strongholdRewardSupplyCenti: {
+    label: '本拠討伐報酬（補給）',
+    unit: '補給 ×100',
+    help: '現地勢力の本拠を破壊した陣営への報酬です。',
+  },
+  strongholdRewardResearchCenti: {
+    label: '本拠討伐報酬（研究）',
+    unit: '研究 pt ×100',
+    help: '現地勢力の本拠を破壊した陣営への報酬です。',
+  },
   maxHp: {
     label: '最大HP',
     unit: 'HP',
@@ -242,6 +302,7 @@ function fieldsFor(rules: RulesMaster): {
     capture: '制圧',
     tickets: 'チケット',
     npc: 'NPC',
+    localFaction: '現地勢力',
   };
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
@@ -271,6 +332,7 @@ function fieldLabel(path: string): string {
     large: '大拠点',
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
+    stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
   return `${ids[parent ?? ''] ? `${ids[parent!]} · ` : ''}${base}`;
