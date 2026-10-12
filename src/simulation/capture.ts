@@ -1,5 +1,6 @@
 import type { CombatantId, MatchState } from './types';
 import { unitCapabilities } from './unit-capabilities';
+import { resetBaseToLevelOne } from './base-upgrades';
 
 function isWithinCaptureRadius(
   baseX: number,
@@ -182,9 +183,13 @@ export function advanceCapture(state: MatchState): MatchState {
         };
       }
       return {
-        ...eligibleBase,
+        ...resetBaseToLevelOne(
+          eligibleBase,
+          state.rules,
+          state.elapsedTicks,
+          0.3,
+        ),
         owner: candidate,
-        hp: Math.max(1, Math.floor(eligibleBase.maxHp * 0.3)),
         captureCandidate: null,
         captureProgressCentiTicks: 0,
         defender: null,

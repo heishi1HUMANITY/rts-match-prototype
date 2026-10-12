@@ -203,6 +203,46 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'HP/tick',
     help: '最後の被弾から1秒経過後の回復量です。',
   },
+  recoveryPerTick: {
+    label: '拠点回復量',
+    unit: 'HP/tick',
+    help: '被弾停止時間が過ぎた所有拠点の回復量です。',
+  },
+  recoveryDelayTicks: {
+    label: '被弾後の回復停止',
+    unit: 'tick (0.1秒)',
+    help: '最後の被弾から回復を再開するまでの時間です。',
+  },
+  maxHpPercent: {
+    label: '最大HP倍率',
+    unit: '%',
+    help: '強化完了後の最大HPをLv1と比べた割合です。',
+  },
+  supplyIncomePercent: {
+    label: '補給収入倍率',
+    unit: '%',
+    help: '強化完了後の補給収入をLv1と比べた割合です。',
+  },
+  researchIncomePercent: {
+    label: '研究収入倍率',
+    unit: '%',
+    help: '強化完了後の研究収入をLv1と比べた割合です。',
+  },
+  turretDamage: {
+    label: '砲座damage',
+    unit: 'HP/射撃',
+    help: '射撃間隔ごとに最も近い敵部隊へ与えるdamageです。航空部隊には半分になります。',
+  },
+  turretRange: {
+    label: '砲座射程',
+    unit: 'セル',
+    help: '拠点中心から敵部隊を攻撃できる距離です。',
+  },
+  turretIntervalTicks: {
+    label: '砲座射撃間隔',
+    unit: 'tick (0.1秒)',
+    help: '同じ部隊を連続して撃つ間隔です。',
+  },
   prerequisite: {
     label: '前提研究',
     unit: '研究ID',
@@ -326,6 +366,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    baseUpgrades: '拠点強化',
     units: '兵種',
     bases: '拠点',
     defenses: '中立守備',
@@ -365,6 +406,8 @@ function fieldsFor(rules: RulesMaster): {
           'movementDomain',
           'unlockResearchId',
           'unitKind',
+          'level2ResearchId',
+          'level3ResearchId',
         ].includes(key)
       )
         return;
@@ -420,6 +463,10 @@ function fieldLabel(path: string): string {
     'air-defense-1': '対空車両',
     'aircraft-1': '攻撃ヘリ',
     'naval-1': '哨戒艇',
+    'base-development-1': '拠点整備',
+    'base-development-2': '要塞化',
+    level2: 'Lv2',
+    level3: 'Lv3',
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
@@ -437,9 +484,15 @@ function fieldLabel(path: string): string {
       'upkeep-reduction': '維持費減額',
       'crossing-unlock': '渡河解放（数値なし）',
       'unit-unlock': '兵種解放（数値なし）',
+      'base-upgrade-max': '強化上限レベル',
     };
     return `${ids[researchId] ?? researchId} · ${effectNames[effect?.id ?? ''] ?? '効果値'}`;
   }
+  const upgradePath = path.match(
+    /^baseUpgrades\.kinds\.(hq|outpost|medium|large)\.(level2|level3)\.(.+)$/,
+  );
+  if (upgradePath)
+    return `${ids[upgradePath[1]!] ?? upgradePath[1]} ${ids[upgradePath[2]!] ?? upgradePath[2]} · ${FIELD_META[upgradePath[3] ?? '']?.label ?? upgradePath[3]}`;
   return `${ids[parent ?? ''] ? `${ids[parent!]} · ` : ''}${base}`;
 }
 

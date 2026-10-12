@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'baseUpgrades',
     'units',
     'bases',
     'defenses',
@@ -107,6 +108,7 @@ export function validateRules(input: unknown): ValidationResult {
               'upkeep-reduction',
               'crossing-unlock',
               'unit-unlock',
+              'base-upgrade-max',
             ].includes(String(entry.id))
           )
             issues.push({
@@ -276,6 +278,7 @@ export function validateRules(input: unknown): ValidationResult {
                       'upkeep-reduction',
                       'crossing-unlock',
                       'unit-unlock',
+                      'base-upgrade-max',
                     ]
                   : [
                       'firepower-1',
@@ -288,6 +291,8 @@ export function validateRules(input: unknown): ValidationResult {
                       'maintenance-1',
                       'survey-1',
                       'survey-2',
+                      'base-development-1',
+                      'base-development-2',
                       'artillery-1',
                       'air-defense-1',
                       'aircraft-1',
@@ -445,7 +450,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 6 &&
       input.masterSchemaVersion !== 7 &&
       input.masterSchemaVersion !== 8 &&
-      input.masterSchemaVersion !== 9)
+      input.masterSchemaVersion !== 9 &&
+      input.masterSchemaVersion !== 10)
   )
     return {
       ok: false,
@@ -525,11 +531,18 @@ export function validateEnvelope(
         ok: false,
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
-    if (!Object.hasOwn(candidateRules, 'localFaction'))
-      candidateRules = {
-        ...candidateRules,
+    let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (!Object.hasOwn(migrationCandidate, 'localFaction'))
+      migrationCandidate = {
+        ...migrationCandidate,
         localFaction: DEFAULT_RULES.localFaction,
       };
+    if (!Object.hasOwn(migrationCandidate, 'baseUpgrades'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        baseUpgrades: DEFAULT_RULES.baseUpgrades,
+      };
+    candidateRules = migrationCandidate;
   }
   if (
     input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
@@ -550,7 +563,8 @@ export function validateEnvelope(
       oldDefinitions &&
       input.masterSchemaVersion !== 7 &&
       input.masterSchemaVersion !== 8 &&
-      input.masterSchemaVersion !== 9
+      input.masterSchemaVersion !== 9 &&
+      input.masterSchemaVersion !== 10
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {

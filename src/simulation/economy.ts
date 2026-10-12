@@ -1,5 +1,6 @@
 import type { CombatantId, MatchState } from './types';
 import { researchEffectValue } from './research';
+import { upgradedIncome } from './base-upgrades';
 
 /** Applies income from surviving owned bases and upkeep for surviving units. */
 export function applyEconomyTick(state: MatchState): MatchState {
@@ -22,8 +23,19 @@ export function applyEconomyTick(state: MatchState): MatchState {
     const supplyBonus = faction
       ? researchEffectValue(faction, state.rules, 'supply-income-bonus')
       : 0;
-    entry.supply += stats.supplyIncomeCentiPerTick + supplyBonus;
-    entry.research += stats.researchIncomeCentiPerTick;
+    entry.supply +=
+      upgradedIncome(
+        base,
+        stats.supplyIncomeCentiPerTick,
+        state.rules,
+        'supply',
+      ) + supplyBonus;
+    entry.research += upgradedIncome(
+      base,
+      stats.researchIncomeCentiPerTick,
+      state.rules,
+      'research',
+    );
   }
   for (const unit of state.units) {
     if (unit.hp <= 0) continue;

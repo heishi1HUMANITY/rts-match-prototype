@@ -96,6 +96,9 @@ function buildBases(rules: RulesMaster): BaseState[] {
       owner,
       hp: rules.bases[kind].maxHp,
       maxHp: rules.bases[kind].maxHp,
+      level: 1,
+      upgradeJob: null,
+      lastDamagedTick: 0,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
       defender:
@@ -268,6 +271,23 @@ function configuredFixture(
       faction.id === 'A'
         ? { ...faction, supplyCenti: 50_000, researchCenti: 20_000 }
         : faction,
+    );
+  } else if (scenarioId === 'f10-base-upgrades') {
+    factions = factions.map((faction) =>
+      faction.id === 'A'
+        ? {
+            ...faction,
+            supplyCenti: 500_000,
+            completedResearchIds: [
+              ...faction.completedResearchIds,
+              'base-development-1',
+              'base-development-2',
+            ],
+          }
+        : faction,
+    );
+    bases = bases.map((base) =>
+      base.id === 'OUT-01' ? { ...base, owner: 'A', defender: null } : base,
     );
   }
   return { ...state, factions, units, bases };

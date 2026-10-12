@@ -24,10 +24,36 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 10 as const;
-export const RULES_VERSION = 'f08-v3' as const;
+export const MASTER_SCHEMA_VERSION = 11 as const;
+export const RULES_VERSION = 'f10-v1' as const;
+
+export interface BaseUpgradeTier {
+  readonly costCenti: number;
+  readonly buildTicks: number;
+  readonly maxHpPercent: number;
+  readonly supplyIncomePercent: number;
+  readonly researchIncomePercent: number;
+  /** Damage dealt by one shot every turretIntervalTicks. */
+  readonly turretDamage: number;
+  readonly turretRange: number;
+  readonly turretIntervalTicks: number;
+}
+
+export interface BaseUpgradeRules {
+  readonly recoveryPerTick: number;
+  readonly recoveryDelayTicks: number;
+  readonly level2ResearchId: string;
+  readonly level3ResearchId: string;
+  readonly kinds: Readonly<
+    Record<
+      BaseKind,
+      { readonly level2: BaseUpgradeTier; readonly level3: BaseUpgradeTier }
+    >
+  >;
+}
 
 export interface RulesMaster {
+  readonly baseUpgrades: BaseUpgradeRules;
   readonly units: Readonly<
     Record<
       UnitKind,
@@ -152,6 +178,102 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  baseUpgrades: {
+    recoveryPerTick: 1,
+    recoveryDelayTicks: 10,
+    level2ResearchId: 'base-development-1',
+    level3ResearchId: 'base-development-2',
+    kinds: {
+      hq: {
+        level2: {
+          costCenti: 60_000,
+          buildTicks: 600,
+          maxHpPercent: 130,
+          supplyIncomePercent: 125,
+          researchIncomePercent: 125,
+          turretDamage: 25,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+        level3: {
+          costCenti: 120_000,
+          buildTicks: 900,
+          maxHpPercent: 160,
+          supplyIncomePercent: 150,
+          researchIncomePercent: 150,
+          turretDamage: 50,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+      },
+      outpost: {
+        level2: {
+          costCenti: 30_000,
+          buildTicks: 450,
+          maxHpPercent: 130,
+          supplyIncomePercent: 130,
+          researchIncomePercent: 130,
+          turretDamage: 12,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+        level3: {
+          costCenti: 60_000,
+          buildTicks: 750,
+          maxHpPercent: 160,
+          supplyIncomePercent: 160,
+          researchIncomePercent: 160,
+          turretDamage: 25,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+      },
+      medium: {
+        level2: {
+          costCenti: 50_000,
+          buildTicks: 600,
+          maxHpPercent: 130,
+          supplyIncomePercent: 130,
+          researchIncomePercent: 130,
+          turretDamage: 20,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+        level3: {
+          costCenti: 100_000,
+          buildTicks: 900,
+          maxHpPercent: 160,
+          supplyIncomePercent: 160,
+          researchIncomePercent: 160,
+          turretDamage: 40,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+      },
+      large: {
+        level2: {
+          costCenti: 80_000,
+          buildTicks: 600,
+          maxHpPercent: 130,
+          supplyIncomePercent: 130,
+          researchIncomePercent: 130,
+          turretDamage: 30,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+        level3: {
+          costCenti: 160_000,
+          buildTicks: 900,
+          maxHpPercent: 160,
+          supplyIncomePercent: 160,
+          researchIncomePercent: 160,
+          turretDamage: 60,
+          turretRange: 6,
+          turretIntervalTicks: 10,
+        },
+      },
+    },
+  },
   units: Object.fromEntries(
     (Object.keys(UNIT_STATS) as (keyof typeof UNIT_STATS)[]).map((kind) => {
       const stats = UNIT_STATS[kind];

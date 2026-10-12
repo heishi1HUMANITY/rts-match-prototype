@@ -131,6 +131,11 @@ function activate(state: MatchState): MatchState {
 
 /** Applies the local faction's scheduled arrival and deterministic recruitment. */
 export function advanceLocalFaction(state: MatchState): MatchState {
+  if (
+    state.scenarioId !== 'standard' &&
+    state.scenarioId !== 'f06-local-faction'
+  )
+    return state;
   if (!state.localFaction.active) {
     return state.elapsedTicks >= state.rules.localFaction.appearanceTick
       ? activate(state)

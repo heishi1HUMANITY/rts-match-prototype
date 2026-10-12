@@ -419,6 +419,10 @@ const handleClick = (event: MouseEvent): void => {
   }
   const action =
     target.closest<HTMLButtonElement>('[data-action]')?.dataset.action;
+  if (action === 'upgrade-base') {
+    runtime.dispatch({ type: 'upgrade-base', baseId: hud.selectedBaseId });
+    return;
+  }
   if (action === 'start') {
     input.reset();
     runtime.dispatch({ type: 'start' });

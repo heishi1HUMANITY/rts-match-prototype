@@ -10,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 16 as const;
+export const SCHEMA_VERSION = 17 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -281,6 +281,22 @@ export const RESEARCH_DEFINITIONS: Readonly<
     exclusiveWith: [],
     effects: [{ id: 'unit-unlock', value: 0, unitKind: 'patrolBoat' }],
   },
+  'base-development-1': {
+    domain: 'engineering',
+    stage: 1,
+    costCenti: 6_000,
+    prerequisites: [],
+    exclusiveWith: [],
+    effects: [{ id: 'base-upgrade-max', value: 2 }],
+  },
+  'base-development-2': {
+    domain: 'engineering',
+    stage: 2,
+    costCenti: 10_000,
+    prerequisites: ['base-development-1'],
+    exclusiveWith: [],
+    effects: [{ id: 'base-upgrade-max', value: 3 }],
+  },
 };
 
 export const BASE_CELLS: readonly {
@@ -368,4 +384,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f05-neutral-defense',
   'f06-local-faction',
   'f08-unit-domains',
+  'f10-base-upgrades',
 ];

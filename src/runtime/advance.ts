@@ -15,7 +15,8 @@ function enablesBots(state: MatchState): boolean {
     state.scenarioId === 'f04-crossing' ||
     state.scenarioId === 'f05-neutral-defense' ||
     state.scenarioId === 'f06-local-faction' ||
-    state.scenarioId === 'f08-unit-domains'
+    state.scenarioId === 'f08-unit-domains' ||
+    state.scenarioId === 'f10-base-upgrades'
   )
     return false;
   return state.scenarioId === 'standard' || state.scenarioId.startsWith('g3-');

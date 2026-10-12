@@ -98,7 +98,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 10,
+        masterSchemaVersion: 11,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -126,7 +126,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 10,
+        masterSchemaVersion: 11,
         revision: 10,
         rules: {
           defenses: {
@@ -189,7 +189,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(10);
+    expect(loaded.envelope.masterSchemaVersion).toBe(11);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -262,5 +262,42 @@ describe('F17 browser master store', () => {
       'naval-1',
     );
     expect(loaded.envelope.rules.research.definitions['naval-1']).toBeDefined();
+  });
+
+  it('migrates schema 10 rules and adds F10 defaults without dropping edited values', () => {
+    const storage = new MemoryStorage();
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.baseUpgrades;
+    delete legacy.research.definitions['base-development-1'];
+    delete legacy.research.definitions['base-development-2'];
+    legacy.bases.outpost.supplyIncomeCentiPerTick = 27;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 10, revision: 31, rules: legacy }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.envelope).toMatchObject({
+      masterSchemaVersion: 11,
+      revision: 31,
+      rules: {
+        bases: { outpost: { supplyIncomeCentiPerTick: 27 } },
+        baseUpgrades: { recoveryPerTick: 1, recoveryDelayTicks: 10 },
+        research: {
+          definitions: {
+            'base-development-1': {
+              effects: [{ id: 'base-upgrade-max', value: 2 }],
+            },
+            'base-development-2': {
+              effects: [{ id: 'base-upgrade-max', value: 3 }],
+            },
+          },
+        },
+      },
+    });
   });
 });
