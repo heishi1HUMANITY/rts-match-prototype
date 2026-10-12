@@ -114,13 +114,15 @@ code('''
 import secrets, socket, urllib.error
 if "server_process" in globals() and server_process.poll() is None:
     stop_owned_process(server_process)
-with socket.socket() as test_socket:
-    test_socket.bind(("127.0.0.1", 8080))
+LOCAL_LLM_PORT = select_local_port()
+LOCAL_LLM_BASE_URL = f"http://127.0.0.1:{LOCAL_LLM_PORT}"
+os.environ["LOCAL_LLM_BASE_URL"] = LOCAL_LLM_BASE_URL
+print("モデルAPI起動中:", LOCAL_LLM_BASE_URL, flush=True)
 LOCAL_LLM_API_KEY = secrets.token_urlsafe(32)
 server_log = open(RUNTIME / "llama-server.log", "w", encoding="utf-8")
 server_process = subprocess.Popen([
     str(SERVER_BINARY), "--model", str(MODEL_PATH), "--alias", "qwen-local",
-    "--host", "127.0.0.1", "--port", "8080", "--api-key", LOCAL_LLM_API_KEY,
+    "--host", "127.0.0.1", "--port", str(LOCAL_LLM_PORT), "--api-key", LOCAL_LLM_API_KEY,
     "--n-gpu-layers", "99", "--ctx-size", str(CONTEXT_SIZE), "--parallel", "1",
     "--jinja", "--reasoning-format", "deepseek", "--reasoning-budget", "2048",
     "--chat-template-kwargs", json.dumps({"enable_thinking": True, "reasoning_effort": "medium"}),
@@ -130,7 +132,7 @@ while True:
     if server_process.poll() is not None:
         raise RuntimeError("モデル起動失敗。次の診断セルでログを確認してください。")
     try:
-        request = urllib.request.Request("http://127.0.0.1:8080/health", headers={"Authorization": "Bearer " + LOCAL_LLM_API_KEY})
+        request = urllib.request.Request(LOCAL_LLM_BASE_URL + "/health", headers={"Authorization": "Bearer " + LOCAL_LLM_API_KEY})
         with urllib.request.urlopen(request, timeout=5) as response:
             if response.status == 200: break
     except (urllib.error.URLError, TimeoutError):
@@ -149,7 +151,7 @@ print((RUNTIME / "llama-server.log").read_text(errors="replace")[-5000:].replace
 code('''
 # @title 8. ツール呼び出しの動作確認
 def model_request(payload):
-    request = urllib.request.Request("http://127.0.0.1:8080/v1/chat/completions",
+    request = urllib.request.Request(LOCAL_LLM_BASE_URL + "/v1/chat/completions",
         data=json.dumps({"model": "qwen-local", **payload}).encode(),
         headers={"Content-Type": "application/json", "Authorization": "Bearer " + LOCAL_LLM_API_KEY})
     with urllib.request.urlopen(request, timeout=300) as response:

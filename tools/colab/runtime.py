@@ -6,6 +6,8 @@ from contextlib import contextmanager
 import hashlib
 import json
 import os
+import socket
+import errno
 from pathlib import Path, PurePosixPath
 import re
 import shutil
@@ -316,11 +318,23 @@ def restore_checkpoint(destination, repo, remote):
     return metadata
 
 
+def select_local_port(preferred=8080):
+    """Use an available loopback port without stopping another service."""
+    with socket.socket() as probe:
+        try:
+            probe.bind(("127.0.0.1", preferred))
+        except OSError as error:
+            if error.errno != errno.EADDRINUSE:
+                raise
+            probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
 def agent_settings(context_size, reviewer=False):
     settings = {
         "security": {"auth": {"selectedType": "openai"}},
         "model": {"name": "qwen-local"},
-        "modelProviders": {"openai": [{"id": "qwen-local", "baseUrl": "http://127.0.0.1:8080/v1",
+        "modelProviders": {"openai": [{"id": "qwen-local", "baseUrl": os.environ.get("LOCAL_LLM_BASE_URL", "http://127.0.0.1:8080") + "/v1",
             "envKey": "LOCAL_LLM_API_KEY", "generationConfig": {"contextWindowSize": context_size,
             "timeout": 600000, "samplingParams": {"temperature": 1.0, "top_p": 0.95, "max_tokens": 4096}}}]},
         "context": {"fileName": ["AGENTS.md", "QWEN.md"]},

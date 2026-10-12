@@ -16,6 +16,20 @@ import runtime
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_busy_port_is_preserved_and_both_agent_roles_use_selected_api(self):
+        with runtime.socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            busy_port = occupied.getsockname()[1]
+            selected = runtime.select_local_port(busy_port)
+            self.assertNotEqual(selected, busy_port)
+            with runtime.socket.socket() as connection:
+                connection.connect(("127.0.0.1", busy_port))
+            with patch.dict(runtime.os.environ, {"LOCAL_LLM_BASE_URL": f"http://127.0.0.1:{selected}"}):
+                for reviewer in (False, True):
+                    settings = runtime.agent_settings(16384, reviewer)
+                    self.assertEqual(settings["modelProviders"]["openai"][0]["baseUrl"], f"http://127.0.0.1:{selected}/v1")
+
     def test_child_output_is_forwarded_to_notebook_and_failures_are_not_hidden(self):
         output = io.StringIO()
         with redirect_stdout(output):
