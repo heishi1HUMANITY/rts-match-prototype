@@ -60,9 +60,9 @@ test('G1-10 / G1-11: seed changes only after valid apply', async ({ page }) => {
   await seed.fill('-1');
   await page.getByRole('button', { name: '適用してリセット' }).click();
   await expect(seed).toHaveAttribute('aria-invalid', 'true');
-  await expect(page.getByRole('status')).toContainText('seedは');
+  await expect(page.locator('.status[role="status"]')).toContainText('seedは');
   await seed.fill('43');
   await page.getByRole('button', { name: '適用してリセット' }).click();
-  await expect(page.getByRole('status')).toContainText('seed 43');
+  await expect(page.locator('.status[role="status"]')).toContainText('seed 43');
   await expect(seed).not.toHaveAttribute('aria-invalid');
 });
