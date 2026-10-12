@@ -8,6 +8,7 @@ import {
 import { createMatch } from '../simulation/match';
 import { cloneRules } from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
+import { MASTER_SCHEMA_VERSION, RULES_VERSION } from '../simulation/rules';
 import type { RulesMaster } from '../simulation/rules';
 import { advanceMatch } from './advance';
 import type { MatchState, ScenarioId } from '../simulation/types';
@@ -20,8 +21,8 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 9;
-  readonly rulesVersion: 'f04-v1';
+  readonly schemaVersion: 11;
+  readonly rulesVersion: typeof RULES_VERSION;
   readonly rules: RulesMaster;
   readonly rulesContentId: string;
   readonly scenarioId: ScenarioId;
@@ -47,7 +48,7 @@ export function rulesContentId(rules: RulesMaster): string {
     hash ^= BigInt(text.charCodeAt(index));
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
-  return `f03-${hash.toString(16).padStart(16, '0')}`;
+  return `f05-${hash.toString(16).padStart(16, '0')}`;
 }
 
 export function replay(input: ReplayInput): {
@@ -60,7 +61,7 @@ export function replay(input: ReplayInput): {
 } {
   if (
     input.schemaVersion !== SCHEMA_VERSION ||
-    input.rulesVersion !== 'f04-v1' ||
+    input.rulesVersion !== RULES_VERSION ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -125,8 +126,8 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
-    schemaVersion: 9,
-    rulesVersion: 'f04-v1',
+    schemaVersion: SCHEMA_VERSION,
+    rulesVersion: RULES_VERSION,
     rules: snapshot.state.rules,
     rulesContentId: rulesContentId(snapshot.state.rules),
     scenarioId: snapshot.state.scenarioId,
@@ -146,13 +147,13 @@ export function createDiagnostic(
   return {
     build,
     rules: {
-      rulesVersion: 'f04-v1',
+      rulesVersion: RULES_VERSION,
       schemaVersion: SCHEMA_VERSION,
       width: MAP_WIDTH,
       height: MAP_HEIGHT,
       tickDurationMs: TICK_DURATION_MS,
       rulesContentId: rulesContentId(snapshot.state.rules),
-      masterSchemaVersion: 3,
+      masterSchemaVersion: MASTER_SCHEMA_VERSION,
       rules: cloneRules(snapshot.state.rules),
     },
     seed: snapshot.state.seed,

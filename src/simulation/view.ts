@@ -40,6 +40,8 @@ function baseViews(
         owner: factionId,
         hp: base.hp,
         maxHp: base.maxHp,
+        defenderHp: base.defender?.hp ?? null,
+        defenderMaxHp: base.defender?.maxHp ?? null,
         captureCandidate: base.captureCandidate,
         captureTicks: base.captureTicks,
       };
@@ -53,6 +55,8 @@ function baseViews(
         owner: base.owner,
         hp: base.hp,
         maxHp: base.maxHp,
+        defenderHp: base.defender?.hp ?? null,
+        defenderMaxHp: base.defender?.maxHp ?? null,
         captureCandidate: base.captureCandidate,
         captureTicks: base.captureTicks,
       };
@@ -64,6 +68,8 @@ function baseViews(
         id: base.id,
         kind: base.kind,
         cell: { ...base.cell },
+        defenderHp: null,
+        defenderMaxHp: null,
       };
     }
     return {
@@ -75,6 +81,8 @@ function baseViews(
       hp: memory.hp,
       seenTick: memory.seenTick,
       selfReportedLost: memory.selfReportedLost,
+      defenderHp: memory.defenderHp,
+      defenderMaxHp: memory.defenderMaxHp,
     };
   });
 }

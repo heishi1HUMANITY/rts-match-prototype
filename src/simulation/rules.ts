@@ -18,8 +18,8 @@ import {
 } from './config';
 import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 3 as const;
-export const RULES_VERSION = 'f04-v1' as const;
+export const MASTER_SCHEMA_VERSION = 5 as const;
+export const RULES_VERSION = 'f05-v2' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -49,6 +49,27 @@ export interface RulesMaster {
       }
     >
   >;
+  readonly defenses: {
+    readonly respawnEnabled: boolean;
+    readonly outpost: {
+      readonly maxHp: number;
+      readonly baseDamage: number;
+      readonly range: number;
+      readonly respawnTicks: number;
+    };
+    readonly medium: {
+      readonly maxHp: number;
+      readonly baseDamage: number;
+      readonly range: number;
+      readonly respawnTicks: number;
+    };
+    readonly large: {
+      readonly maxHp: number;
+      readonly baseDamage: number;
+      readonly range: number;
+      readonly respawnTicks: number;
+    };
+  };
   readonly research: {
     readonly baseIncomeCentiPerTick: number;
     readonly definitions: Readonly<
@@ -150,6 +171,12 @@ export const DEFAULT_RULES: RulesMaster = {
       researchIncomeCentiPerTick: 20,
       ticketWeight: 3,
     },
+  },
+  defenses: {
+    respawnEnabled: true,
+    outpost: { maxHp: 60, baseDamage: 1, range: 2, respawnTicks: 300 },
+    medium: { maxHp: 100, baseDamage: 2, range: 3, respawnTicks: 300 },
+    large: { maxHp: 160, baseDamage: 3, range: 3, respawnTicks: 300 },
   },
   research: {
     baseIncomeCentiPerTick: BASE_RESEARCH_INCOME_CENTI_PER_TICK,

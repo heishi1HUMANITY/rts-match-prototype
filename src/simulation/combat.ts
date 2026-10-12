@@ -9,9 +9,10 @@ import {
   isUnitVisibleToFaction,
 } from './visibility';
 import type { BaseState, FactionId, MatchState, UnitState } from './types';
+import { unitCapabilities } from './unit-capabilities';
 
 interface Target {
-  readonly kind: 'unit' | 'base' | 'crossing';
+  readonly kind: 'unit' | 'defender' | 'base' | 'crossing';
   readonly id: string;
   readonly distanceSquared: number;
 }
@@ -48,7 +49,10 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   const range = state.rules.units[attacker.kind].range;
   const rangeSquared = (1024 * range) ** 2;
   const preferred = visibleMarchCombatTarget(state, attacker);
-  if (preferred?.kind === 'unit') {
+  if (
+    preferred?.kind === 'unit' &&
+    unitCapabilities(attacker.kind).attackTargets.includes('unit')
+  ) {
     const target = state.units.find(({ id }) => id === preferred.id);
     if (target !== undefined) {
       return {
@@ -65,6 +69,22 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   } else if (preferred?.kind === 'base') {
     const base = state.bases.find(({ id }) => id === preferred.id);
     if (base !== undefined) {
+      if (base.defender && base.defender.hp > 0) {
+        if (!unitCapabilities(attacker.kind).attackTargets.includes('defender'))
+          return null;
+        return {
+          kind: 'defender',
+          id: base.id,
+          distanceSquared: distanceSquared(
+            x2,
+            y2,
+            1024 * base.cell.x + 512,
+            1024 * base.cell.y + 512,
+          ),
+        };
+      }
+      if (!unitCapabilities(attacker.kind).attackTargets.includes('base'))
+        return null;
       return {
         kind: 'base',
         id: base.id,
@@ -78,6 +98,9 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     }
   }
   const units = state.units
+    .filter(() =>
+      unitCapabilities(attacker.kind).attackTargets.includes('unit'),
+    )
     .filter(
       (target) => target.factionId !== attacker.factionId && target.hp > 0,
     )
@@ -99,10 +122,37 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     .filter(({ distanceSquared: distance }) => distance <= rangeSquared)
     .sort(compareTarget);
   if (units[0]) return units[0];
+  const defenders = state.bases
+    .filter((base) => base.owner === null && (base.defender?.hp ?? 0) > 0)
+    .filter((base) => baseIsVisible(state, base, attacker.factionId))
+    .map(
+      (base): Target => ({
+        kind: 'defender',
+        id: base.id,
+        distanceSquared: distanceSquared(
+          x2,
+          y2,
+          1024 * base.cell.x + 512,
+          1024 * base.cell.y + 512,
+        ),
+      }),
+    )
+    .filter(({ distanceSquared: distance }) => distance <= rangeSquared)
+    .sort(compareTarget);
+  if (
+    defenders[0] &&
+    unitCapabilities(attacker.kind).attackTargets.includes('defender')
+  )
+    return defenders[0];
   const bases = state.bases
+    .filter(() =>
+      unitCapabilities(attacker.kind).attackTargets.includes('base'),
+    )
     .filter(
       (base) =>
-        base.owner !== null && base.owner !== attacker.factionId && base.hp > 0,
+        ((base.owner !== null && base.owner !== attacker.factionId) ||
+          (base.owner === null && base.defender?.hp === 0)) &&
+        base.hp > 0,
     )
     .filter((base) => baseIsVisible(state, base, attacker.factionId))
     .map(
@@ -122,30 +172,32 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   if (bases[0]) return bases[0];
 
   return (
-    activeCrossings(state)
-      .filter((crossing) => crossing.owner !== attacker.factionId)
-      .filter((crossing) =>
-        crossing.cells.some((cell) =>
-          isCellVisibleToFaction(state, cell, attacker.factionId),
-        ),
-      )
-      .map((crossing): Target => {
-        const center =
-          crossing.cells[Math.floor(crossing.cells.length / 2)] ??
-          crossing.bankA;
-        return {
-          kind: 'crossing',
-          id: crossing.id,
-          distanceSquared: distanceSquared(
-            x2,
-            y2,
-            1024 * center.x + 512,
-            1024 * center.y + 512,
-          ),
-        };
-      })
-      .filter(({ distanceSquared: distance }) => distance <= rangeSquared)
-      .sort(compareTarget)[0] ?? null
+    (unitCapabilities(attacker.kind).attackTargets.includes('crossing')
+      ? activeCrossings(state)
+          .filter((crossing) => crossing.owner !== attacker.factionId)
+          .filter((crossing) =>
+            crossing.cells.some((cell) =>
+              isCellVisibleToFaction(state, cell, attacker.factionId),
+            ),
+          )
+          .map((crossing): Target => {
+            const center =
+              crossing.cells[Math.floor(crossing.cells.length / 2)] ??
+              crossing.bankA;
+            return {
+              kind: 'crossing',
+              id: crossing.id,
+              distanceSquared: distanceSquared(
+                x2,
+                y2,
+                1024 * center.x + 512,
+                1024 * center.y + 512,
+              ),
+            };
+          })
+          .filter(({ distanceSquared: distance }) => distance <= rangeSquared)
+          .sort(compareTarget)[0]
+      : undefined) ?? null
   );
 }
 
@@ -153,6 +205,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
 export function resolveCombat(state: MatchState): MatchState {
   const snapshot = state;
   const unitDamage = new Map<string, number>();
+  const defenderDamage = new Map<string, number>();
   const baseDamage = new Map<string, number>();
   const crossingDamage = new Map<string, Map<FactionId, number>>();
   for (const attacker of snapshot.units) {
@@ -167,6 +220,11 @@ export function resolveCombat(state: MatchState): MatchState {
       (faction ? firepowerBonus(faction, snapshot.rules) : 0);
     if (target.kind === 'unit') {
       unitDamage.set(target.id, (unitDamage.get(target.id) ?? 0) + damage);
+    } else if (target.kind === 'defender') {
+      defenderDamage.set(
+        target.id,
+        (defenderDamage.get(target.id) ?? 0) + damage,
+      );
     } else if (target.kind === 'base') {
       baseDamage.set(target.id, (baseDamage.get(target.id) ?? 0) + damage);
     } else {
@@ -178,6 +236,43 @@ export function resolveCombat(state: MatchState): MatchState {
       );
       crossingDamage.set(target.id, byFaction);
     }
+  }
+
+  // Garrison attacks use the same pre-damage snapshot as faction units.
+  for (const base of snapshot.bases) {
+    if (
+      base.kind === 'hq' ||
+      base.owner !== null ||
+      !base.defender ||
+      base.defender.hp <= 0
+    )
+      continue;
+    const defense = snapshot.rules.defenses[base.kind];
+    const target = snapshot.units
+      .filter((unit) => unit.hp > 0)
+      .map((unit) => ({
+        unit,
+        distanceSquared: distanceSquared(
+          1024 * base.cell.x + 512,
+          1024 * base.cell.y + 512,
+          getUnitPositionX1024(unit),
+          getUnitPositionY1024(unit),
+        ),
+      }))
+      .filter(
+        ({ distanceSquared: distance }) =>
+          distance <= (1024 * defense.range) ** 2,
+      )
+      .sort((a, b) => {
+        if (a.distanceSquared !== b.distanceSquared)
+          return a.distanceSquared - b.distanceSquared;
+        return a.unit.id < b.unit.id ? -1 : a.unit.id > b.unit.id ? 1 : 0;
+      })[0]?.unit;
+    if (target)
+      unitDamage.set(
+        target.id,
+        (unitDamage.get(target.id) ?? 0) + defense.baseDamage,
+      );
   }
 
   let unitLosses = new Map<FactionId, number>();
@@ -197,18 +292,34 @@ export function resolveCombat(state: MatchState): MatchState {
 
   const destroyedHqs = new Set<FactionId>();
   const bases = snapshot.bases.map((base) => {
+    const defenderHit = defenderDamage.get(base.id) ?? 0;
+    const defender =
+      base.defender && defenderHit > 0
+        ? { ...base.defender, hp: Math.max(0, base.defender.hp - defenderHit) }
+        : base.defender;
     const damage = baseDamage.get(base.id) ?? 0;
-    if (damage <= 0 || base.hp <= 0) return base;
+    if (damage <= 0 || base.hp <= 0)
+      return defender === base.defender ? base : { ...base, defender };
     const hp = Math.max(0, base.hp - damage);
-    if (hp > 0) return { ...base, hp };
+    if (hp > 0) return { ...base, hp, defender };
     if (base.kind === 'hq') {
       if (base.homeFactionId) destroyedHqs.add(base.homeFactionId);
       return { ...base, hp: 0, captureCandidate: null, captureTicks: 0 };
     }
     return {
       ...base,
+      hp: base.owner !== null ? base.maxHp : hp,
+      defender:
+        base.owner !== null && snapshot.rules.defenses.respawnEnabled
+          ? {
+              hp: snapshot.rules.defenses[base.kind].maxHp,
+              maxHp: snapshot.rules.defenses[base.kind].maxHp,
+              disabledTicks: 0,
+            }
+          : base.owner !== null
+            ? null
+            : defender,
       owner: null,
-      hp: 0,
       captureCandidate: null,
       captureTicks: 0,
     };

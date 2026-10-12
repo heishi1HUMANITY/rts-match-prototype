@@ -1,4 +1,5 @@
 import type { FactionId, MatchState } from './types';
+import { unitCapabilities } from './unit-capabilities';
 
 function isWithinCaptureRadius(
   baseX: number,
@@ -42,14 +43,14 @@ function currentUnitPosition(unit: MatchState['units'][number]): {
 /** Advances neutral outpost control after combat using surviving units only. */
 export function advanceCapture(state: MatchState): MatchState {
   const bases = state.bases.map((base) => {
-    if (base.kind === 'hq' || base.owner !== null || base.hp !== 0) {
+    if (base.kind === 'hq' || base.owner !== null) {
       if (base.captureCandidate === null && base.captureTicks === 0)
         return base;
       return { ...base, captureCandidate: null, captureTicks: 0 };
     }
     const present = new Set<FactionId>();
     for (const unit of state.units) {
-      if (unit.hp <= 0) continue;
+      if (unit.hp <= 0 || !unitCapabilities(unit.kind).canCaptureBase) continue;
       const position = currentUnitPosition(unit);
       if (
         isWithinCaptureRadius(
@@ -63,24 +64,80 @@ export function advanceCapture(state: MatchState): MatchState {
         present.add(unit.factionId);
       }
     }
-    if (present.size !== 1) {
+    if (base.defender && base.defender.hp > 0) {
       return base.captureCandidate === null && base.captureTicks === 0
         ? base
         : { ...base, captureCandidate: null, captureTicks: 0 };
     }
+    let eligibleBase = base;
+    if (base.defender && base.defender.hp === 0) {
+      if (!state.rules.defenses.respawnEnabled) {
+        if (
+          base.defender.disabledTicks === 0 &&
+          base.captureCandidate === null &&
+          base.captureTicks === 0
+        )
+          return base;
+        return {
+          ...base,
+          captureCandidate: null,
+          captureTicks: 0,
+          defender: { ...base.defender, disabledTicks: 0 },
+        };
+      }
+      if (present.size === 0) {
+        const disabledTicks = base.defender.disabledTicks + 1;
+        if (disabledTicks >= state.rules.defenses[base.kind].respawnTicks) {
+          const maxHp = state.rules.defenses[base.kind].maxHp;
+          return {
+            ...base,
+            hp: base.maxHp,
+            captureCandidate: null,
+            captureTicks: 0,
+            defender: { hp: maxHp, maxHp, disabledTicks: 0 },
+          };
+        }
+        return {
+          ...base,
+          captureCandidate: null,
+          captureTicks: 0,
+          defender: { ...base.defender, disabledTicks },
+        };
+      }
+      if (base.defender.disabledTicks > 0)
+        eligibleBase = {
+          ...base,
+          defender: { ...base.defender, disabledTicks: 0 },
+        };
+    }
+    if (eligibleBase.hp !== 0) {
+      return eligibleBase.captureCandidate === null &&
+        eligibleBase.captureTicks === 0
+        ? eligibleBase
+        : { ...eligibleBase, captureCandidate: null, captureTicks: 0 };
+    }
+    if (present.size !== 1) {
+      return eligibleBase.captureCandidate === null &&
+        eligibleBase.captureTicks === 0
+        ? eligibleBase
+        : { ...eligibleBase, captureCandidate: null, captureTicks: 0 };
+    }
     const candidate = [...present][0]!;
     const captureTicks =
-      base.captureCandidate === candidate ? base.captureTicks + 1 : 1;
+      eligibleBase.captureCandidate === candidate
+        ? eligibleBase.captureTicks + 1
+        : 1;
     if (captureTicks >= state.rules.capture.requiredTicks) {
       return {
-        ...base,
+        ...eligibleBase,
         owner: candidate,
-        hp: state.rules.bases[base.kind].maxHp,
+        hp: Math.max(1, Math.floor(eligibleBase.maxHp * 0.3)),
         captureCandidate: null,
         captureTicks: 0,
+        defender: null,
       };
     }
-    return { ...base, captureCandidate: candidate, captureTicks };
+    return { ...eligibleBase, captureCandidate: candidate, captureTicks };
   });
   if (bases.every((base, index) => base === state.bases[index])) return state;
   return { ...state, bases };

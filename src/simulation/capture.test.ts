@@ -6,10 +6,18 @@ import type { MatchState, UnitState } from './types';
 function withUnits(state: MatchState, units: UnitState[]): MatchState {
   return { ...state, units };
 }
+function unguarded(state: MatchState, id = 'OUT-02'): MatchState {
+  return {
+    ...state,
+    bases: state.bases.map((base) =>
+      base.id === id ? { ...base, hp: 0, defender: null } : base,
+    ),
+  };
+}
 
 describe('outpost capture', () => {
   it('requires 30 uninterrupted ticks and captures on the threshold tick', () => {
-    let state = createMatch(42);
+    let state = unguarded(createMatch(42));
     const unit = {
       ...state.units.find(({ id }) => id === 'A-01')!,
       cell: { x: 20, y: 20 },
@@ -26,14 +34,15 @@ describe('outpost capture', () => {
     state = advanceCapture(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: 'A',
-      hp: state.rules.bases.large.maxHp,
+      hp: Math.floor(state.rules.bases.large.maxHp * 0.3),
+      defender: null,
       captureCandidate: null,
       captureTicks: 0,
     });
   });
 
   it('resets progress for no occupants and for two or three competing factions', () => {
-    let state = createMatch(42);
+    let state = unguarded(createMatch(42));
     const a = {
       ...state.units.find(({ id }) => id === 'A-01')!,
       cell: { x: 20, y: 20 },
@@ -68,7 +77,7 @@ describe('outpost capture', () => {
   });
 
   it('starts a changed sole candidate at one tick and ignores dead units', () => {
-    let state = createMatch(42);
+    let state = unguarded(createMatch(42));
     const baseIndex = state.bases.findIndex(({ id }) => id === 'OUT-02');
     const bases = state.bases.map((base, index) =>
       index === baseIndex
@@ -93,7 +102,7 @@ describe('outpost capture', () => {
   });
 
   it('uses inclusive radius-one boundaries with doubled positions', () => {
-    let state = createMatch(42);
+    let state = unguarded(createMatch(42));
     const atBoundary = {
       ...state.units.find(({ id }) => id === 'A-01')!,
       cell: { x: 21, y: 20 },

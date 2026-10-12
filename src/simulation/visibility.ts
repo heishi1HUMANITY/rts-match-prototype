@@ -138,6 +138,8 @@ function memoryFromVisible(
     hp: base.hp,
     seenTick: tick,
     selfReportedLost: false,
+    defenderHp: base.defender?.hp ?? 0,
+    defenderMaxHp: base.defender?.maxHp ?? 0,
   };
 }
 

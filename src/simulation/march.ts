@@ -1,4 +1,5 @@
 import { findPath } from './pathfinding';
+import { unitCapabilities } from './unit-capabilities';
 import { knownActiveCrossings } from './crossings';
 import {
   getUnitPositionX1024,
@@ -77,7 +78,7 @@ function routeTo(
   const origin = edge ?? unit.cell;
   const route = findPath(state.map, origin, destination, {
     factionId: unit.factionId,
-    domain: 'land',
+    domain: unitCapabilities(unit.kind).movementDomain,
     crossings: knownActiveCrossings(state, unit.factionId),
     unitKind: unit.kind,
     allowBlockedStart: true,

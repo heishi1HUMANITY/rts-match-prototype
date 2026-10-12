@@ -133,6 +133,8 @@ describe('faction visibility and view isolation', () => {
       id: 'OUT-01',
       kind: 'outpost',
       cell: { x: 18, y: 17 },
+      defenderHp: null,
+      defenderMaxHp: null,
     });
     expect('owner' in unseen).toBe(false);
   });

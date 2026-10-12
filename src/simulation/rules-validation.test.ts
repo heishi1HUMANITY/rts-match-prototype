@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES } from './rules';
+import { DEFAULT_RULES, MASTER_SCHEMA_VERSION } from './rules';
 import { validateEnvelope, validateRules } from './rules-validation';
 
 describe('F03 rules validation', () => {
@@ -53,6 +53,38 @@ describe('F03 rules validation', () => {
     );
   });
 
+  it('requires positive whole-tick defender stats in the master', () => {
+    const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    invalid.defenses.large.respawnTicks = 0;
+    invalid.defenses.medium.baseDamage = 1.5;
+    const result = validateRules(invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.map(({ key }) => key)).toEqual(
+      expect.arrayContaining([
+        'rules.defenses.large.respawnTicks',
+        'rules.defenses.medium.baseDamage',
+      ]),
+    );
+  });
+
+  it('requires the garrison respawn setting to be a boolean', () => {
+    const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    invalid.defenses.respawnEnabled = 'false';
+    const result = validateRules(invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.map(({ key }) => key)).toContain(
+      'rules.defenses.respawnEnabled',
+    );
+  });
+
   it('requires a supported master envelope version and exact fields', () => {
     expect(
       validateEnvelope({
@@ -63,11 +95,63 @@ describe('F03 rules validation', () => {
     ).toBe(false);
     expect(
       validateEnvelope({
-        masterSchemaVersion: 3,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 0,
         rules: DEFAULT_RULES,
         extra: true,
       }).ok,
     ).toBe(false);
+  });
+
+  it('migrates a validated schema 3 master without losing its prior values', () => {
+    const v3Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v3Rules.defenses;
+    v3Rules.units.assault.baseDamage = 7;
+    const result = validateEnvelope({
+      masterSchemaVersion: 3,
+      revision: 12,
+      rules: v3Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 12,
+        rules: {
+          units: { assault: { baseDamage: 7 } },
+          defenses: DEFAULT_RULES.defenses,
+        },
+      },
+    });
+  });
+
+  it('migrates schema 4 defense values and enables the prior respawn behavior', () => {
+    const v4Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v4Rules.defenses.respawnEnabled;
+    v4Rules.defenses.outpost.respawnTicks = 525;
+    const result = validateEnvelope({
+      masterSchemaVersion: 4,
+      revision: 17,
+      rules: v4Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 17,
+        rules: {
+          defenses: {
+            respawnEnabled: true,
+            outpost: { respawnTicks: 525 },
+          },
+        },
+      },
+    });
   });
 });

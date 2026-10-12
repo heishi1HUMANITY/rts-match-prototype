@@ -57,9 +57,10 @@ describe('simultaneous combat target selection', () => {
     expect(destroyed.bases.find(({ id }) => id === 'HQ-A')?.hp).toBe(300);
     expect(destroyed.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 0,
+      hp: 300,
       captureCandidate: null,
       captureTicks: 0,
+      defender: { hp: 160, maxHp: 160 },
     });
 
     state = {
@@ -114,9 +115,10 @@ describe('simultaneous combat target selection', () => {
     expect(next.units.some(({ id }) => id === 'A-02')).toBe(false);
     expect(next.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 0,
+      hp: 300,
       captureCandidate: null,
       captureTicks: 0,
+      defender: { hp: 160, maxHp: 160 },
     });
   });
 

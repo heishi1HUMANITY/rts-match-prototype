@@ -16,7 +16,7 @@ ui / render / ai → simulation。simulation は他の層をimportしない。
 - ui: 開始、HUD、研究、生産、結果、ガイド。入力をcommandへ変換。
 - assets: 安定キーのmanifest。artwork原本と配信ファイルを分離。
 
-G1の移動を維持し、G2の状態・視界・戦略ループ契約は [G2_DESIGN.md](preparation/G2_DESIGN.md) と [DECISIONS.md](DECISIONS.md) のD025以降を参照する。createMatch(seed,{scenarioId,rules})はschemaVersion=9のready状態、seed付き地形・港・渡河予定地、3陣営・拠点・渡河設備状態と陣営別知識を生成し、その試合の不変RulesMaster snapshotを保持する。
+G1の移動を維持し、G2の状態・視界・戦略ループ契約は [G2_DESIGN.md](preparation/G2_DESIGN.md) と [DECISIONS.md](DECISIONS.md) のD025以降を参照する。createMatch(seed,{scenarioId,rules})はschemaVersion=11のready状態、seed付き地形・港・渡河予定地、3陣営・拠点・中立守備・渡河設備状態と陣営別知識を生成し、その試合の不変RulesMaster snapshotを保持する。
 
 simulationの共通commandと固定tickをruntimeが進め、通常のonChange/onFrameは自軍FactionViewだけをHUD/renderへ渡す。経路プレビューはruntime.previewMoveの純粋照会、全MatchState取得は明示された開発用診断とテストの経路に限定する。NPC方針と勝敗は [G3_DESIGN.md](preparation/G3_DESIGN.md) に従う。runtime/advanceが陣営別viewからNPC commandを生成し、simulationへ適用する。診断replayも同じadvanceを使い、人間履歴とNPCの自動再生成を二重適用しない。
 
@@ -29,7 +29,7 @@ simulationの共通commandと固定tickをruntimeが進め、通常のonChange/o
 同じseedとcommand列から同じ結果を得られることを検証する。
 
 保存・リプレイは初期必須ではないが、状態はJSON化可能に保つ。
-現在のMatchStateはschemaVersion=9、rules f04-v1。schema1〜v8からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioと検証済みRulesMaster content IDを要求する。マスタschemaは3。マスタの編集・保存は進行中MatchStateへ影響せず、リプレイは診断JSONの完全snapshotを注入する。以後スキーマを変更するときも互換性の扱いを明示する。
+現在のMatchStateはschemaVersion=11、rules f05-v2。schema1〜v10からの読込みは提供せず、診断リプレイは同じschema/rules/scenarioと検証済みRulesMaster content IDを要求する。マスタschemaは5。schema3/4の保存マスタは既存値を維持して新しい守備復活設定を有効にする。マスタの編集・保存は進行中MatchStateへ影響せず、リプレイは診断JSONの完全snapshotを注入する。以後スキーマを変更するときも互換性の扱いを明示する。
 
 ## 入力とカメラ
 

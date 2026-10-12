@@ -1,5 +1,9 @@
 import type { MasterEnvelope, RulesMaster } from '../simulation/rules';
-import { cloneRules, DEFAULT_RULES } from '../simulation/rules';
+import {
+  cloneRules,
+  DEFAULT_RULES,
+  MASTER_SCHEMA_VERSION,
+} from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
 import type { ValidationIssue } from '../simulation/rules-validation';
 import { rulesContentId } from '../runtime/diagnostics';
@@ -32,15 +36,20 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  respawnEnabled: {
+    label: '守備NPCの復活',
+    unit: '',
+    help: '無効にすると、撃破された守備NPCは復活しません。',
+  },
   maxHp: {
     label: '最大HP',
     unit: 'HP',
-    help: '新規作成される部隊・拠点に適用します。',
+    help: '新規作成される部隊・拠点・守備に適用します。',
   },
   baseDamage: {
     label: '基本攻撃力',
     unit: 'damage/tick',
-    help: '1tickごとの攻撃力です。',
+    help: '守備または部隊の1tickごとの攻撃力です。',
   },
   range: { label: '攻撃射程', unit: 'セル', help: '円形の攻撃範囲です。' },
   vision: { label: '視界', unit: 'セル', help: '円形の視界範囲です。' },
@@ -154,6 +163,11 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'セル',
     help: '拠点を制圧できる範囲です。',
   },
+  respawnTicks: {
+    label: '守備復活時間',
+    unit: 'tick (0.1秒)',
+    help: '制圧可能な部隊が範囲にいない間、守備撃破後に復活するまでの時間です。',
+  },
   updateIntervalTicks: {
     label: '更新間隔',
     unit: 'tick (0.1秒)',
@@ -219,6 +233,7 @@ function fieldsFor(rules: RulesMaster): {
   const labels: Record<string, string> = {
     units: '兵種',
     bases: '拠点',
+    defenses: '中立守備',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',
     crossings: '渡河設備',
@@ -323,7 +338,14 @@ export function createMasterEditor(
       const name = document.createElement('strong');
       name.textContent = fieldLabel(field.path);
       const detail = document.createElement('small');
-      detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${String(getPath(DEFAULT_RULES, field.path))}`;
+      const standardValue = getPath(DEFAULT_RULES, field.path);
+      const standardLabel =
+        typeof standardValue === 'boolean'
+          ? standardValue
+            ? '有効'
+            : '無効'
+          : String(standardValue);
+      detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${standardLabel}`;
       const input =
         field.path.endsWith('.prerequisite') ||
         field.path.endsWith('.unlocksCrossing')
@@ -331,10 +353,15 @@ export function createMasterEditor(
           : document.createElement('input');
       input.dataset.masterPath = field.path;
       if (input instanceof HTMLInputElement) {
-        input.type = 'number';
-        input.step = '1';
-        input.value = String(field.value);
-        input.inputMode = 'numeric';
+        if (typeof field.value === 'boolean') {
+          input.type = 'checkbox';
+          input.checked = field.value;
+        } else {
+          input.type = 'number';
+          input.step = '1';
+          input.value = String(field.value);
+          input.inputMode = 'numeric';
+        }
       } else {
         input.innerHTML = field.path.endsWith('.unlocksCrossing')
           ? '<option value="">なし</option><option value="bridge-2">橋 II</option><option value="bridge-3">橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>'
@@ -358,9 +385,11 @@ export function createMasterEditor(
     >('[data-master-path]')) {
       const value =
         input instanceof HTMLInputElement
-          ? input.value === ''
-            ? ''
-            : Number(input.value)
+          ? input.type === 'checkbox'
+            ? input.checked
+            : input.value === ''
+              ? ''
+              : Number(input.value)
           : input.value || null;
       setPath(next, input.dataset.masterPath!, value);
     }
@@ -473,7 +502,7 @@ export function createMasterEditor(
       if (!valid.ok) return;
       const json = JSON.stringify(
         {
-          masterSchemaVersion: 3,
+          masterSchemaVersion: MASTER_SCHEMA_VERSION,
           revision: savedEnvelope.revision,
           rules: valid.rules,
         },

@@ -53,12 +53,12 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F04 · 渡河設備</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F05 · 中立守備</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
         <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -209,7 +209,7 @@ export function updateHud(
     );
   text(
     '.scenario-badge',
-    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
   for (const kind of ['assault', 'scout'] as const) {
     const stats = view.rules.units[kind];
@@ -257,7 +257,7 @@ export function updateHud(
   }
   text(
     '[data-capture-help]',
-    `中立拠点は半径${view.rules.capture.radius}に自軍だけが${seconds(view.rules.capture.requiredTicks)}いると制圧。敵所有なら先にHPを0にします。`,
+    `中立拠点は守備を撃破し、拠点HPを0にしてから半径${view.rules.capture.radius}へ自軍だけが${seconds(view.rules.capture.requiredTicks)}いると制圧できます。`,
   );
   text(
     '[data-resources]',
@@ -571,9 +571,9 @@ export function updateHud(
     if (base.visibility === 'unknown')
       detail = `${location}\n未観測：所有・HPは不明`;
     else if (base.visibility === 'remembered')
-      detail = `${location}\n最終観測 TICK ${base.seenTick}：${base.owner ?? '中立'} / HP${base.hp}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
+      detail = `${location}\n最終観測 TICK ${base.seenTick}：${base.owner ?? '中立'} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
     else
-      detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/${view.rules.capture.requiredTicks}` : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
+      detail = `${location}\n所有：${base.owner ?? '中立'} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureTicks}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${view.rules.bases[base.kind].supplyIncomeCentiPerTick / 10}/秒 · 研究 +${view.rules.bases[base.kind].researchIncomeCentiPerTick / 10}/秒` : ''}`;
   }
   text('.base-detail', detail);
   const dialog =

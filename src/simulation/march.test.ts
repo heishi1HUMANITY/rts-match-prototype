@@ -412,6 +412,19 @@ describe('deterministic march updates', () => {
     state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
+      hp: 100,
+      defender: { hp: state.rules.defenses.outpost.maxHp },
+    });
+    for (let tick = 0; tick < state.rules.defenses.outpost.maxHp / 2; tick += 1)
+      state = stepMatch(state);
+    expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
+      owner: null,
+      hp: 100,
+      defender: { hp: 0 },
+    });
+    for (let tick = 0; tick < 50; tick += 1) state = stepMatch(state);
+    expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
+      owner: null,
       hp: 0,
       captureCandidate: 'A',
       captureTicks: 1,
@@ -419,7 +432,7 @@ describe('deterministic march updates', () => {
     for (let tick = 0; tick < 30; tick += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
-      hp: 100,
+      hp: 30,
       captureCandidate: null,
       captureTicks: 0,
     });

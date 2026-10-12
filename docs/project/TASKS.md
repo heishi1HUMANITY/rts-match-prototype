@@ -109,11 +109,11 @@ T301とT302はG2の状態契約が安定していれば並列化できる。合�
 
 ## 最小試作に続くゲームプレイ全体
 
-2026-10-11ユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F17で追跡する。建築・中立NPCを後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
+2026-10-11以降のユーザー指示により、必要機能は [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) と [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) / F01〜F18で追跡する。建築・中立NPC・自部隊の拠点駐留を後続Issueなしで対象外にしない。複数部隊一括操作 #13、対象追跡 #14 を先行する。G4の最終合格にはこの拡張全体に対応したUI・ガイド・通常通しプレイが必要。
 
 ## 共通の技術検証
 
-F01/#13はユーザー合格・PR #31マージ済み。複数選択、一括移動/停止、部隊ごとの経路と拒否表示を用意し、[F01画面確認手順](inspection/F01_SCENARIOS.md)に沿って確認する。F02/#14は `feature/f02-target-march` で対象追跡を実装し、[F02画面確認手順](inspection/F02_SCENARIOS.md)で検査する。次はF17/#30のマスタ管理とする。
+F01/#13はユーザー合格・PR #31マージ済み。複数選択、一括移動/停止、部隊ごとの経路と拒否表示を用意し、[F01画面確認手順](inspection/F01_SCENARIOS.md)に沿って確認する。F02/#14は `feature/f02-target-march` で対象追跡を実装し、[F02画面確認手順](inspection/F02_SCENARIOS.md)で検査する。F18/#39の駐留機能はF05合格とF08の兵種契約後に進める。
 
 各Gでnpm run check、npm run references:check、Windows/Linux CI、実ブラウザ操作を実施する。
 ルール変更には意味のある再現テストを追加し、900×420とPCの結果と検査対象commitを残す。

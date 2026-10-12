@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
   const rootKeys = [
     'units',
     'bases',
+    'defenses',
     'research',
     'crossings',
     'match',
@@ -80,7 +81,14 @@ export function validateRules(input: unknown): ValidationResult {
       const actual = value[key];
       const fieldPath = `${path}.${key}`;
       if (isRecord(expected)) output[key] = walk(actual, expected, fieldPath);
-      else {
+      else if (typeof expected === 'boolean') {
+        if (typeof actual !== 'boolean')
+          issues.push({
+            key: fieldPath,
+            message: '有効/無効を指定してください',
+          });
+        output[key] = typeof actual === 'boolean' ? actual : expected;
+      } else {
         const allowedNull = expected === null;
         if (allowedNull && (actual === null || typeof actual === 'string'))
           output[key] = actual;
@@ -199,10 +207,12 @@ export function validateEnvelope(
     Object.keys(input).some(
       (key) => !['masterSchemaVersion', 'revision', 'rules'].includes(key),
     ) ||
-    input.masterSchemaVersion !== MASTER_SCHEMA_VERSION ||
     !isInteger(input.revision) ||
     input.revision < 0 ||
-    !('rules' in input)
+    !('rules' in input) ||
+    (input.masterSchemaVersion !== MASTER_SCHEMA_VERSION &&
+      input.masterSchemaVersion !== 3 &&
+      input.masterSchemaVersion !== 4)
   )
     return {
       ok: false,
@@ -213,7 +223,45 @@ export function validateEnvelope(
         },
       ],
     };
-  const result = validateRules(input.rules);
+  let candidateRules = input.rules;
+  if (input.masterSchemaVersion === 3) {
+    if (!isRecord(input.rules) || Object.hasOwn(input.rules, 'defenses'))
+      return {
+        ok: false,
+        issues: [
+          {
+            key: 'masterSchemaVersion',
+            message: 'schema 3の設定形式として認識できません',
+          },
+        ],
+      };
+    // Preserve schema 3 settings and add F05's rules with current defaults.
+    candidateRules = { ...input.rules, defenses: DEFAULT_RULES.defenses };
+  } else if (input.masterSchemaVersion === 4) {
+    if (
+      !isRecord(input.rules) ||
+      !isRecord(input.rules.defenses) ||
+      Object.hasOwn(input.rules.defenses, 'respawnEnabled')
+    )
+      return {
+        ok: false,
+        issues: [
+          {
+            key: 'masterSchemaVersion',
+            message: 'schema 4の設定形式として認識できません',
+          },
+        ],
+      };
+    // Preserve schema 4 settings and enable the prior respawn behavior.
+    candidateRules = {
+      ...input.rules,
+      defenses: {
+        ...input.rules.defenses,
+        respawnEnabled: DEFAULT_RULES.defenses.respawnEnabled,
+      },
+    };
+  }
+  const result = validateRules(candidateRules);
   return result.ok
     ? {
         ok: true,
