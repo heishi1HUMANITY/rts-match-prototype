@@ -25,7 +25,7 @@ import type {
 } from './types';
 
 export const MASTER_SCHEMA_VERSION = 12 as const;
-export const RULES_VERSION = 'f19-v1' as const;
+export const RULES_VERSION = 'f21-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;

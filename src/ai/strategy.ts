@@ -63,12 +63,14 @@ function researchCommand(view: FactionView): Command | undefined {
   if (faction.activeResearch !== null) return undefined;
   const order = Object.entries(view.rules.research.definitions)
     .sort(([idA, a], [idB, b]) => {
-      const priority = (id: string): number =>
-        id === 'firepower-1' ? 0 : id === 'survey-1' ? 1 : 2;
+      const priority = (definition: typeof a): number =>
+        definition.effects.some((effect) => effect.id === 'damage-bonus')
+          ? 0
+          : definition.effects.some((effect) => effect.id === 'vision-bonus')
+            ? 1
+            : 2;
       return (
-        priority(idA) - priority(idB) ||
-        a.stage - b.stage ||
-        idA.localeCompare(idB)
+        a.stage - b.stage || priority(a) - priority(b) || idA.localeCompare(idB)
       );
     })
     .map(([id]) => id as ResearchId);

@@ -68,7 +68,7 @@ const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
 const baseOwnerName = (owner: BaseOwnerId | null): string =>
   owner === 'local' ? '● 現地勢力' : (owner ?? '中立');
 const researchName = (id: ResearchId, view?: FactionView): string =>
-  ({
+  Object.entries({
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
     'bridge-2': '架橋 II',
@@ -85,7 +85,7 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'naval-1': '哨戒艇',
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
-  })[id] ??
+  }).find(([key]) => key === id)?.[1] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
     : id);
@@ -212,8 +212,18 @@ function productionReason(
   if (view.phase === 'finished') return '試合は終了しました';
   if (view.phase !== 'running') return '開始・再開後に操作できます';
   const stats = view.rules.units[kind];
-  if (!isUnitUnlocked(view.ownFaction, view.rules, kind))
-    return `研究「${stats.unlockResearchId ? researchName(stats.unlockResearchId, view) : '兵種解放'}」が必要です`;
+  if (!isUnitUnlocked(view.ownFaction, view.rules, kind)) {
+    const candidates = Object.entries(view.rules.research.definitions)
+      .filter(([, definition]) =>
+        definition.effects.some(
+          (effect) => effect.id === 'unit-unlock' && effect.unitKind === kind,
+        ),
+      )
+      .map(([id]) => researchName(id, view));
+    return candidates.length
+      ? `研究「${candidates.join(' / ')}」のいずれかが必要です`
+      : 'この兵種を解放する研究が登録されていません';
+  }
   if (stats.movementDomain === 'water') {
     if (
       !view.map.ports?.some(
@@ -799,12 +809,19 @@ export function updateHud(
         } else {
           const targetLevel = (level + 1) as 2 | 3;
           const tier = baseUpgradeTier(base.kind, targetLevel, view.rules);
-          const requiredResearch =
-            targetLevel === 2
-              ? view.rules.baseUpgrades.level2ResearchId
-              : view.rules.baseUpgrades.level3ResearchId;
           if (maximumBaseLevel(own, view.rules) < targetLevel) {
-            upgradeReason = `研究「${researchName(requiredResearch, view)}」が必要です`;
+            const candidates = Object.entries(view.rules.research.definitions)
+              .filter(([, definition]) =>
+                definition.effects.some(
+                  (effect) =>
+                    effect.id === 'base-upgrade-max' &&
+                    effect.value >= targetLevel,
+                ),
+              )
+              .map(([id]) => researchName(id, view));
+            upgradeReason = candidates.length
+              ? `研究「${candidates.join(' / ')}」のいずれかが必要です`
+              : `Lv${targetLevel}を解放する研究が登録されていません`;
           } else if (base.hp <= 0 || view.phase !== 'running') {
             upgradeReason = '試合開始後、稼働中の拠点を強化できます';
           } else if (own.supplyCenti < tier.costCenti) {

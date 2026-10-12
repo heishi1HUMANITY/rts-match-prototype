@@ -1,3 +1,11 @@
+import { createMatch } from '../simulation/match';
+import { applyCommand } from '../simulation/commands';
+import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
+import { maximumBaseLevel } from '../simulation/base-upgrades';
+import { replay, rulesContentId } from './diagnostics';
+import { SCHEMA_VERSION } from '../simulation/config';
+import { RULES_VERSION } from '../simulation/rules';
+import type { CommandEntry } from './controller';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES } from '../simulation/rules';
 import { MasterStore, type StorageLike } from './master-store';
@@ -370,4 +378,137 @@ describe('F17 browser master store', () => {
       },
     });
   });
+});
+
+describe('F21 master imports', () => {
+  it('keeps variable IDs and intentional removals in schema11 migration and schema12 roundtrip', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete rules.research.definitions['survey-2'];
+    rules.research.definitions['custom-power'] = {
+      ...rules.research.definitions['firepower-1'],
+      costCenti: 1234,
+    };
+    const store = new MasterStore(new MemoryStorage());
+    expect(
+      store.importJson(
+        JSON.stringify({ masterSchemaVersion: 11, revision: 12, rules }),
+      ).ok,
+    ).toBe(true);
+    const result = store.load();
+    expect(result.ok).toBe(true);
+    expect(
+      result.envelope.rules.research.definitions['custom-power']?.costCenti,
+    ).toBe(1234);
+    expect(
+      Object.hasOwn(result.envelope.rules.research.definitions, 'survey-2'),
+    ).toBe(false);
+    const exported = store.exportJson();
+    expect(exported.ok).toBe(true);
+    if (exported.ok)
+      expect(
+        new MasterStore(new MemoryStorage()).importJson(exported.json).ok,
+      ).toBe(true);
+  });
+  it('rejects duplicate research JSON keys and retains the stored bytes', () => {
+    const storage = new MemoryStorage();
+    const store = new MasterStore(storage);
+    expect(store.saveRules(DEFAULT_RULES).ok).toBe(true);
+    const before = storage.getItem('rts-match-prototype.master.v1');
+    const exported = store.exportJson();
+    if (!exported.ok) throw new Error('export failed');
+    const json = exported.json.replace(
+      '"definitions": {',
+      '"definitions": {"firepower-1": {},',
+    );
+    expect(store.importJson(json)).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_JSON' },
+    });
+    expect(storage.getItem('rts-match-prototype.master.v1')).toBe(before);
+  });
+});
+
+it('applies custom-ID effects and replays the old snapshot after a different master is saved', () => {
+  const rules = structuredClone(DEFAULT_RULES);
+  const custom = {
+    ...rules,
+    match: { ...rules.match, initialResearchCenti: 1000 },
+    research: {
+      ...rules.research,
+      definitions: {
+        ...rules.research.definitions,
+        'custom-effects': {
+          domain: 'power' as const,
+          stage: 1,
+          costCenti: 123,
+          prerequisites: [],
+          exclusiveWith: [],
+          effects: [
+            { id: 'damage-bonus' as const, value: 7 },
+            { id: 'vision-bonus' as const, value: 2 },
+            { id: 'supply-income-bonus' as const, value: 4 },
+            { id: 'upkeep-reduction' as const, value: 3 },
+            {
+              id: 'unit-unlock' as const,
+              value: 0,
+              unitKind: 'artillery' as const,
+            },
+            { id: 'base-upgrade-max' as const, value: 3 },
+          ],
+        },
+      },
+    },
+  };
+  const store = new MasterStore(new MemoryStorage());
+  expect(store.saveRules(custom).ok).toBe(true);
+  let state = createMatch(42, {
+    scenarioId: 'standard',
+    rules: store.load().envelope.rules,
+  });
+  const history: CommandEntry[] = [];
+  for (const command of [
+    { type: 'start' as const },
+    { type: 'start-research' as const, researchId: 'custom-effects' },
+  ]) {
+    const result = applyCommand(state, 'A', command);
+    expect(result.ok).toBe(true);
+    history.push({
+      seq: history.length + 1,
+      actor: 'A',
+      command,
+      summary: '',
+      tickBefore: 0,
+      ok: result.ok,
+    });
+    state = result.state;
+  }
+  const faction = state.factions.find(({ id }) => id === 'A')!;
+  expect(faction.researchCenti).toBe(877);
+  expect(faction.completedResearchIds).toContain('custom-effects');
+  expect(researchEffectValue(faction, state.rules, 'damage-bonus')).toBe(7);
+  expect(researchEffectValue(faction, state.rules, 'vision-bonus')).toBe(2);
+  expect(researchEffectValue(faction, state.rules, 'supply-income-bonus')).toBe(
+    4,
+  );
+  expect(researchEffectValue(faction, state.rules, 'upkeep-reduction')).toBe(3);
+  expect(isUnitUnlocked(faction, state.rules, 'artillery')).toBe(true);
+  expect(maximumBaseLevel(faction, state.rules)).toBe(3);
+  const before = structuredClone(state);
+  expect(store.saveRules(DEFAULT_RULES).ok).toBe(true);
+  expect(state).toEqual(before);
+  expect(
+    replay({
+      schemaVersion: SCHEMA_VERSION,
+      rulesVersion: RULES_VERSION,
+      rules: state.rules,
+      rulesContentId: rulesContentId(state.rules),
+      scenarioId: state.scenarioId,
+      seed: state.seed,
+      history,
+      finalTick: 0,
+    }).state,
+  ).toEqual(before);
 });

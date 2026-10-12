@@ -4,11 +4,48 @@ import {
   beginCrossingDismantle,
   advanceCrossings,
   activeCrossings,
+  crossingResearchComplete,
 } from './crossings';
 import { createMatch } from './match';
 import { findPath } from './pathfinding';
 
 describe('crossing construction', () => {
+  it('accepts any completed custom node granting the same crossing tier', () => {
+    const state = createMatch(42);
+    const rules = {
+      ...state.rules,
+      research: {
+        ...state.rules.research,
+        definitions: {
+          ...state.rules.research.definitions,
+          'custom-bridge': {
+            domain: 'engineering' as const,
+            stage: 1,
+            costCenti: 100,
+            prerequisites: [],
+            exclusiveWith: [],
+            effects: [
+              {
+                id: 'crossing-unlock' as const,
+                value: 0,
+                crossingTier: 'bridge-2' as const,
+              },
+            ],
+          },
+        },
+      },
+    };
+    expect(
+      crossingResearchComplete(
+        { completedResearchIds: ['custom-bridge'] },
+        rules,
+        'bridge-2',
+      ),
+    ).toBe(true);
+    expect(
+      crossingResearchComplete({ completedResearchIds: [] }, rules, 'bridge-2'),
+    ).toBe(false);
+  });
   it('charges once, pauses when the assault leaves, then completes and opens a route', () => {
     let state = createMatch(42, { scenarioId: 'f04-crossing' });
     const faction = state.factions.find(({ id }) => id === 'A')!;
