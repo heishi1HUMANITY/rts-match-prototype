@@ -263,11 +263,17 @@ function configuredFixture(
         ? { ...base, owner: 'local', hp: base.maxHp, defender: null }
         : base,
     );
+  } else if (scenarioId === 'f08-unit-domains') {
+    factions = factions.map((faction) =>
+      faction.id === 'A'
+        ? { ...faction, supplyCenti: 50_000, researchCenti: 20_000 }
+        : faction,
+    );
   }
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v10 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-versioned match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},

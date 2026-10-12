@@ -106,10 +106,30 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'HP',
     help: '新規作成される部隊・拠点・守備に適用します。',
   },
-  baseDamage: {
-    label: '基本攻撃力',
+  damageVsLand: {
+    label: '対陸damage',
     unit: 'damage/tick',
-    help: '守備または部隊の1tickごとの攻撃力です。',
+    help: '陸上兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsAir: {
+    label: '対空damage',
+    unit: 'damage/tick',
+    help: '航空兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsWater: {
+    label: '対艦damage',
+    unit: 'damage/tick',
+    help: '水上兵種へ与える1tickごとのdamageです。0は攻撃不可。',
+  },
+  damageVsStructure: {
+    label: '対構造物damage',
+    unit: 'damage/tick',
+    help: '守備・拠点・渡河設備・現地本拠へ与えるdamageです。0は攻撃不可。',
+  },
+  lossTicketsCenti: {
+    label: '損失ticket',
+    unit: 'ticket ×100',
+    help: 'この兵種を失った陣営のticket減少量です。',
   },
   range: { label: '攻撃射程', unit: 'セル', help: '円形の攻撃範囲です。' },
   vision: { label: '視界', unit: 'セル', help: '円形の視界範囲です。' },
@@ -312,6 +332,7 @@ function fieldsFor(rules: RulesMaster): {
     }
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       const key = path.split('.').at(-1)!;
+      if (path.startsWith('units.') && key === 'baseDamage') return;
       if (
         [
           'domain',
@@ -320,6 +341,9 @@ function fieldsFor(rules: RulesMaster): {
           'exclusiveWith',
           'id',
           'crossingTier',
+          'movementDomain',
+          'unlockResearchId',
+          'unitKind',
         ].includes(key)
       )
         return;
@@ -328,10 +352,14 @@ function fieldsFor(rules: RulesMaster): {
       );
       if (
         unlockValue &&
-        getPath(
-          rules,
-          `research.definitions.${unlockValue[1]}.effects.${unlockValue[2]}.id`,
-        ) === 'crossing-unlock'
+        ['crossing-unlock', 'unit-unlock'].includes(
+          String(
+            getPath(
+              rules,
+              `research.definitions.${unlockValue[1]}.effects.${unlockValue[2]}.id`,
+            ),
+          ),
+        )
       )
         return;
       result.push({ group, path, value });
@@ -353,6 +381,10 @@ function fieldLabel(path: string): string {
   const ids: Record<string, string> = {
     assault: '強襲',
     scout: '偵察',
+    artillery: '自走砲',
+    antiAir: '対空車両',
+    helicopter: '攻撃ヘリ',
+    patrolBoat: '哨戒艇',
     hq: '首都',
     outpost: '小拠点',
     medium: '中拠点',
@@ -363,6 +395,10 @@ function fieldLabel(path: string): string {
     'maintenance-1': '兵站・維持 I',
     'survey-1': '情報・測量 I',
     'survey-2': '情報・測量 II',
+    'artillery-1': '自走砲',
+    'air-defense-1': '対空車両',
+    'aircraft-1': '攻撃ヘリ',
+    'naval-1': '哨戒艇',
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
@@ -379,6 +415,7 @@ function fieldLabel(path: string): string {
       'supply-income-bonus': '拠点補給収入',
       'upkeep-reduction': '維持費減額',
       'crossing-unlock': '渡河解放（数値なし）',
+      'unit-unlock': '兵種解放（数値なし）',
     };
     return `${ids[researchId] ?? researchId} · ${effectNames[effect?.id ?? ''] ?? '効果値'}`;
   }

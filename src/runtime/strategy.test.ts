@@ -128,16 +128,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f09-v1',
-      schemaVersion: 13,
+      rulesVersion: 'f08-v1',
+      schemaVersion: 14,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 13,
-        rulesVersion: 'f09-v1',
+        schemaVersion: 14,
+        rulesVersion: 'f08-v1',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 7,
+        masterSchemaVersion: 8,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -196,8 +196,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 13 as const,
-      rulesVersion: 'f09-v1' as const,
+      schemaVersion: 14 as const,
+      rulesVersion: 'f08-v1' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };

@@ -60,6 +60,47 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
   };
 }
 
+function recoverNearHeadquarters(
+  state: MatchState,
+  beforeCombat: MatchState,
+): MatchState {
+  if (state.elapsedTicks % 10 !== 0) return state;
+  const damagedThisTick = new Set(
+    beforeCombat.units.flatMap((unit) => {
+      const after = state.units.find(({ id }) => id === unit.id);
+      return after && after.hp < unit.hp ? [unit.id] : [];
+    }),
+  );
+  let changed = false;
+  const units = state.units.map((unit) => {
+    if (
+      damagedThisTick.has(unit.id) ||
+      unit.hp >= unit.maxHp ||
+      unit.path.length > 0
+    )
+      return unit;
+    const hq = state.bases.find(
+      (base) =>
+        base.kind === 'hq' &&
+        base.homeFactionId === unit.factionId &&
+        base.hp > 0,
+    );
+    if (
+      !hq ||
+      Math.abs(unit.cell.x - hq.cell.x) + Math.abs(unit.cell.y - hq.cell.y) > 3
+    )
+      return unit;
+    const hp = Math.min(
+      unit.maxHp,
+      unit.hp + Math.max(1, Math.ceil((unit.maxHp * 4) / 100)),
+    );
+    if (hp === unit.hp) return unit;
+    changed = true;
+    return { ...unit, hp };
+  });
+  return changed ? { ...state, units } : state;
+}
+
 function revalidateRoutes(state: MatchState): MatchState {
   let changed = false;
   const units = state.units.map((unit) => {
@@ -106,6 +147,7 @@ export function stepMatch(state: MatchState): MatchState {
   next = { ...next, units: next.units.map((unit) => stepUnit(unit, next)) };
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
+  next = recoverNearHeadquarters(next, beforeCombat);
   next = advanceCapture(next);
   next = applyEconomyTick(next);
   next = advanceResearch(next);

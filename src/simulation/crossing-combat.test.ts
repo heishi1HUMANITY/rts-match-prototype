@@ -8,7 +8,7 @@ function crossingFight(includeC: boolean) {
   const site = state.map.crossingSites!.find(
     ({ id }) => id === 'CROSS-RING-SE',
   )!;
-  const damage = state.rules.units.assault.baseDamage;
+  const damage = state.rules.units.assault.damageVsStructure;
   state = {
     ...state,
     units: state.units

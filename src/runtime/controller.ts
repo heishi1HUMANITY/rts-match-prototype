@@ -565,6 +565,8 @@ export function rejectMessage(reason: RejectCode): string {
     BASE_NOT_FOUND: '拠点が見つかりません',
     JOB_NOT_FOUND: '生産予約が見つかりません',
     INVALID_UNIT_KIND: '兵種が正しくありません',
+    RESEARCH_REQUIRED: '必要な兵種解放研究が完了していません',
+    PORT_UNAVAILABLE: '自陣の稼働中の港がありません',
     RESEARCH_NOT_FOUND: '研究が見つかりません',
     HQ_UNAVAILABLE: '首都が破壊されているため生産できません',
     INSUFFICIENT_SUPPLY: '補給が不足しています',

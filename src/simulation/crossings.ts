@@ -15,9 +15,9 @@ import type { FactionState } from './types';
 export const CROSSING_ALLOWED_UNIT_KINDS: Readonly<
   Record<CrossingSite['tier'], readonly UnitKind[]>
 > = {
-  'bridge-1': ['assault', 'scout'],
-  'bridge-2': ['assault', 'scout'],
-  'bridge-3': ['assault', 'scout'],
+  'bridge-1': ['assault', 'scout', 'artillery', 'antiAir'],
+  'bridge-2': ['assault', 'scout', 'artillery', 'antiAir'],
+  'bridge-3': ['assault', 'scout', 'artillery', 'antiAir'],
   'ropeway-1': ['scout'],
   'ropeway-2': ['scout'],
 };

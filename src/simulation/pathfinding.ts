@@ -38,6 +38,7 @@ export function findPath(
     return null;
   }
   if (from.x === to.x && from.y === to.y) return [];
+  if (options.domain === 'air') return linePath(from, to);
 
   const startIndex = from.y * map.width + from.x;
   const targetIndex = to.y * map.width + to.x;
@@ -78,4 +79,29 @@ export function findPath(
   }
   reversed.reverse();
   return reversed;
+}
+
+/** Deterministic integer Bresenham path for aircraft; both endpoints are excluded/included as usual. */
+function linePath(from: Cell, to: Cell): readonly Cell[] {
+  const points: Cell[] = [];
+  let x = from.x;
+  let y = from.y;
+  const dx = Math.abs(to.x - from.x);
+  const sx = from.x < to.x ? 1 : -1;
+  const dy = -Math.abs(to.y - from.y);
+  const sy = from.y < to.y ? 1 : -1;
+  let error = dx + dy;
+  while (x !== to.x || y !== to.y) {
+    const twice = 2 * error;
+    if (twice >= dy) {
+      error += dy;
+      x += sx;
+    }
+    if (twice <= dx) {
+      error += dx;
+      y += sy;
+    }
+    points.push({ x, y });
+  }
+  return points;
 }

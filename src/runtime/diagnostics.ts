@@ -21,7 +21,7 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 13;
+  readonly schemaVersion: typeof SCHEMA_VERSION;
   readonly rulesVersion: typeof RULES_VERSION;
   readonly rules: RulesMaster;
   readonly rulesContentId: string;

@@ -18,8 +18,15 @@ export type ScenarioId =
   | 'f02-pursuit'
   | 'f04-crossing'
   | 'f05-neutral-defense'
-  | 'f06-local-faction';
-export type UnitKind = 'assault' | 'scout';
+  | 'f06-local-faction'
+  | 'f08-unit-domains';
+export type UnitKind =
+  | 'assault'
+  | 'scout'
+  | 'artillery'
+  | 'antiAir'
+  | 'helicopter'
+  | 'patrolBoat';
 export type CrossingTierId =
   | 'bridge-1'
   | 'bridge-2'
@@ -38,11 +45,13 @@ export type ResearchEffectId =
   | 'vision-bonus'
   | 'supply-income-bonus'
   | 'upkeep-reduction'
-  | 'crossing-unlock';
+  | 'crossing-unlock'
+  | 'unit-unlock';
 export interface ResearchEffect {
   readonly id: ResearchEffectId;
   readonly value: number;
   readonly crossingTier?: CrossingTierId;
+  readonly unitKind?: UnitKind;
 }
 export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
 export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
@@ -256,7 +265,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 13;
+  readonly schemaVersion: 14;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -458,6 +467,8 @@ export type RejectCode =
   | 'FACTION_ELIMINATED'
   | 'TARGET_NOT_FOUND'
   | 'INVALID_TARGET'
+  | 'RESEARCH_REQUIRED'
+  | 'PORT_UNAVAILABLE'
   | 'CROSSING_NOT_FOUND'
   | 'CROSSING_TAKEN'
   | 'CROSSING_BUSY'

@@ -1,6 +1,11 @@
 import type { MovementDomain, UnitKind } from './types';
 
-export type CombatTargetKind = 'unit' | 'defender' | 'base' | 'crossing';
+export type CombatTargetKind =
+  | 'unit'
+  | 'defender'
+  | 'base'
+  | 'crossing'
+  | 'stronghold';
 
 export interface UnitCapabilities {
   readonly movementDomain: MovementDomain;
@@ -19,6 +24,26 @@ const CAPABILITIES: Readonly<Record<UnitKind, UnitCapabilities>> = {
     movementDomain: 'land',
     attackTargets: ['unit', 'defender', 'base', 'crossing'],
     canCaptureBase: true,
+  },
+  artillery: {
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+  },
+  antiAir: {
+    movementDomain: 'land',
+    attackTargets: ['unit', 'defender', 'base', 'crossing'],
+    canCaptureBase: true,
+  },
+  helicopter: {
+    movementDomain: 'air',
+    attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+    canCaptureBase: false,
+  },
+  patrolBoat: {
+    movementDomain: 'water',
+    attackTargets: ['unit', 'defender', 'base', 'crossing', 'stronghold'],
+    canCaptureBase: false,
   },
 };
 

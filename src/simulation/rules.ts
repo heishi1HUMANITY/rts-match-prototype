@@ -18,8 +18,8 @@ import {
 } from './config';
 import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 7 as const;
-export const RULES_VERSION = 'f09-v1' as const;
+export const MASTER_SCHEMA_VERSION = 8 as const;
+export const RULES_VERSION = 'f08-v1' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -27,13 +27,19 @@ export interface RulesMaster {
       UnitKind,
       {
         readonly maxHp: number;
-        readonly baseDamage: number;
         readonly range: number;
         readonly vision: number;
         readonly costCenti: number;
         readonly buildTicks: number;
         readonly upkeepCentiPerTick: number;
         readonly moveTicksPerCell: number;
+        readonly movementDomain: 'land' | 'air' | 'water';
+        readonly damageVsLand: number;
+        readonly damageVsAir: number;
+        readonly damageVsWater: number;
+        readonly damageVsStructure: number;
+        readonly lossTicketsCenti: number;
+        readonly unlockResearchId: string | null;
       }
     >
   >;
@@ -137,28 +143,35 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
-  units: {
-    assault: {
-      maxHp: UNIT_STATS.assault.maxHp,
-      baseDamage: UNIT_STATS.assault.baseDamage,
-      range: UNIT_STATS.assault.range,
-      vision: UNIT_STATS.assault.vision,
-      costCenti: UNIT_STATS.assault.costCenti,
-      buildTicks: UNIT_STATS.assault.buildTicks,
-      upkeepCentiPerTick: UNIT_STATS.assault.upkeepCenti,
-      moveTicksPerCell: MOVE_TICKS_PER_CELL,
-    },
-    scout: {
-      maxHp: UNIT_STATS.scout.maxHp,
-      baseDamage: UNIT_STATS.scout.baseDamage,
-      range: UNIT_STATS.scout.range,
-      vision: UNIT_STATS.scout.vision,
-      costCenti: UNIT_STATS.scout.costCenti,
-      buildTicks: UNIT_STATS.scout.buildTicks,
-      upkeepCentiPerTick: UNIT_STATS.scout.upkeepCenti,
-      moveTicksPerCell: MOVE_TICKS_PER_CELL,
-    },
-  },
+  units: Object.fromEntries(
+    (Object.keys(UNIT_STATS) as (keyof typeof UNIT_STATS)[]).map((kind) => {
+      const stats = UNIT_STATS[kind];
+      return [
+        kind,
+        {
+          maxHp: stats.maxHp,
+          range: stats.range,
+          vision: stats.vision,
+          costCenti: stats.costCenti,
+          buildTicks: stats.buildTicks,
+          upkeepCentiPerTick: stats.upkeepCenti,
+          moveTicksPerCell:
+            kind === 'helicopter'
+              ? 1
+              : kind === 'artillery'
+                ? 3
+                : MOVE_TICKS_PER_CELL,
+          movementDomain: stats.movementDomain,
+          damageVsLand: stats.damageVsLand,
+          damageVsAir: stats.damageVsAir,
+          damageVsWater: stats.damageVsWater,
+          damageVsStructure: stats.damageVsStructure,
+          lossTicketsCenti: stats.lossTicketsCenti,
+          unlockResearchId: stats.unlockResearchId,
+        },
+      ];
+    }),
+  ) as RulesMaster['units'],
   bases: {
     hq: { ...BASE_STATS.hq, ticketWeight: 0 },
     outpost: { ...BASE_STATS.outpost, ticketWeight: 1 },

@@ -7,7 +7,7 @@ import type {
   UnitKind,
 } from '../simulation/types';
 import { crossingResearchComplete } from '../simulation/crossings';
-import { researchEffectValue } from '../simulation/research';
+import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
 
 export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
 export interface HudElements {
@@ -30,8 +30,32 @@ export interface HudElements {
   selectedBaseId: string;
   multiSelect: boolean;
 }
+const UNIT_KINDS: readonly UnitKind[] = [
+  'assault',
+  'scout',
+  'artillery',
+  'antiAir',
+  'helicopter',
+  'patrolBoat',
+];
 const kindName = (kind: UnitKind): string =>
-  kind === 'assault' ? '強襲' : '偵察';
+  ({
+    assault: '強襲',
+    scout: '偵察',
+    artillery: '自走砲',
+    antiAir: '対空車両',
+    helicopter: '攻撃ヘリ',
+    patrolBoat: '哨戒艇',
+  })[kind];
+const kindGlyph = (kind: UnitKind): string =>
+  ({
+    assault: '強',
+    scout: '偵',
+    artillery: '砲',
+    antiAir: '空',
+    helicopter: 'ヘ',
+    patrolBoat: '艇',
+  })[kind];
 const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
   kind === 'hq'
     ? '首都'
@@ -54,6 +78,10 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'maintenance-1': '維持効率 I',
     'survey-1': '測量 I',
     'survey-2': '広域観測 II',
+    'artillery-1': '自走砲',
+    'air-defense-1': '対空車両',
+    'aircraft-1': '攻撃ヘリ',
+    'naval-1': '哨戒艇',
   })[id] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
@@ -62,6 +90,7 @@ const effectLabel = (effect: {
   id: string;
   value: number;
   crossingTier?: string;
+  unitKind?: string;
 }): string => {
   switch (effect.id) {
     case 'damage-bonus':
@@ -74,6 +103,8 @@ const effectLabel = (effect: {
       return `維持費 -${effect.value} centi/tick/部隊`;
     case 'crossing-unlock':
       return `${effect.crossingTier ? crossingName(effect.crossingTier) : '渡河'}を解放`;
+    case 'unit-unlock':
+      return `${effect.unitKind ? kindName(effect.unitKind as UnitKind) : '兵種'}を解放`;
     default:
       return '未対応の効果';
   }
@@ -88,12 +119,12 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F06 · 現地勢力</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F08 · 6兵種</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span><span data-local-status aria-live="polite" style="max-width:230px;color:#59636c;font:600 9px/1.2 system-ui,sans-serif;white-space:normal"></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
-        <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+      <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -101,8 +132,7 @@ export function createHud(app: HTMLElement): HudElements {
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
-          <div class="action-card"><button data-produce="assault">強襲を生産</button><small data-unit-details="assault"></small><span data-production-reason="assault"></span></div>
-          <div class="action-card"><button data-produce="scout">偵察を生産</button><small data-unit-details="scout"></small><span data-production-reason="scout"></span></div>
+          <label>生産場所 <select data-production-site aria-label="部隊の生産場所"></select></label><div class="production-options"></div>
           <h3>生産キュー</h3><div class="production-queue"></div>
         </section>
         <section data-panel="research" hidden><button data-action="bank-research">指定解除・バンクする</button><p>選択中の研究にポイントを充填。必要量で完了。指定しない間はバンクします。切替・解除でも充填済みポイントは残ります。</p>
@@ -168,15 +198,31 @@ export function setHudPanel(
         String(panel === (name === 'bases' ? 'base' : name)),
       );
 }
-function productionReason(view: FactionView, kind: UnitKind): string | null {
+function productionReason(
+  view: FactionView,
+  kind: UnitKind,
+  siteId: string,
+): string | null {
   if (view.ownFaction.eliminatedAtTick !== null) return '脱落 · 観戦中';
   if (view.phase === 'finished') return '試合は終了しました';
   if (view.phase !== 'running') return '開始・再開後に操作できます';
-  const hq = view.bases.find(
-    (base) => base.id === `HQ-${view.viewerFactionId}`,
-  );
-  if (hq?.visibility !== 'owned' || hq.hp <= 0)
-    return '首都が破壊されているため生産できません';
+  const stats = view.rules.units[kind];
+  if (!isUnitUnlocked(view.ownFaction, view.rules, kind))
+    return `研究「${stats.unlockResearchId ? researchName(stats.unlockResearchId, view) : '兵種解放'}」が必要です`;
+  if (stats.movementDomain === 'water') {
+    if (
+      !view.map.ports?.some(
+        (port) => port.id === siteId && port.factionId === view.viewerFactionId,
+      )
+    )
+      return '自陣の港を選んでください';
+  } else {
+    const hq = view.bases.find(
+      (base) => base.id === siteId && base.kind === 'hq',
+    );
+    if (hq?.visibility !== 'owned' || hq.hp <= 0)
+      return '稼働中の首都を選んでください';
+  }
   if (
     view.ownUnits.length + view.ownFaction.productionJobs.length >=
     view.rules.limits.unitsPerFaction
@@ -186,7 +232,7 @@ function productionReason(view: FactionView, kind: UnitKind): string | null {
     view.ownFaction.productionJobs.length >= view.rules.limits.productionQueue
   )
     return `予約は${view.rules.limits.productionQueue}件までです`;
-  return view.ownFaction.supplyCenti < view.rules.units[kind].costCenti
+  return view.ownFaction.supplyCenti < stats.costCenti
     ? '補給が不足しています'
     : null;
 }
@@ -264,15 +310,14 @@ export function updateHud(
   }
   text(
     '.scenario-badge',
-    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId === 'f06-local-faction' ? '現地勢力' : view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${view.scenarioId === 'standard' ? '通常設定 · NPC2陣営' : `検査：${view.scenarioId === 'f06-local-faction' ? '現地勢力' : view.scenarioId === 'f08-unit-domains' ? '6兵種・陸空水' : view.scenarioId}${view.scenarioId.startsWith('g2-') || view.scenarioId === 'f02-pursuit' || view.scenarioId === 'f05-neutral-defense' || view.scenarioId === 'f08-unit-domains' ? ' · NPC停止' : ''}`} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
   );
-  for (const kind of ['assault', 'scout'] as const) {
+  for (const kind of UNIT_KINDS) {
     const stats = view.rules.units[kind];
-    const detail =
-      kind === 'assault'
-        ? `補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 射程${stats.range}`
-        : `補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 視界${stats.vision}`;
-    text(`[data-unit-details="${kind}"]`, detail);
+    const detail = `${stats.movementDomain === 'land' ? '陸' : stats.movementDomain === 'air' ? '空' : '水'} · 補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 射程${stats.range} · 視界${stats.vision}`;
+    const selector = `[data-unit-details="${kind}"]`;
+    const details = elements.root.querySelector<HTMLElement>(selector);
+    if (details) details.textContent = detail;
   }
   const researchIds = Object.keys(
     view.rules.research.definitions,
@@ -441,10 +486,62 @@ export function updateHud(
   );
   text(
     '.production-summary',
-    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限6 · 首都で直列生産`,
+    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限${view.rules.limits.unitsPerFaction} · 首都/港で直列生産`,
   );
-  for (const kind of ['assault', 'scout'] as const) {
-    const reason = productionReason(view, kind);
+  const siteSelect = elements.root.querySelector<HTMLSelectElement>(
+    '[data-production-site]',
+  )!;
+  const sites = [
+    {
+      id: `HQ-${view.viewerFactionId}`,
+      label: `首都 HQ-${view.viewerFactionId}`,
+    },
+    ...(view.map.ports ?? [])
+      .filter((port) => port.factionId === view.viewerFactionId)
+      .map((port) => ({ id: port.id, label: `港 ${port.id}` })),
+  ];
+  if (siteSelect.dataset.sites !== sites.map(({ id }) => id).join('|')) {
+    const selected = siteSelect.value;
+    siteSelect.replaceChildren(
+      ...sites.map(({ id, label }) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = label;
+        return option;
+      }),
+    );
+    siteSelect.dataset.sites = sites.map(({ id }) => id).join('|');
+    if (sites.some(({ id }) => id === selected)) siteSelect.value = selected;
+  }
+  if (!siteSelect.value && sites[0]) siteSelect.value = sites[0].id;
+  const productionHost = elements.root.querySelector<HTMLElement>(
+    '.production-options',
+  )!;
+  if (productionHost.dataset.kinds !== UNIT_KINDS.join('|')) {
+    productionHost.dataset.kinds = UNIT_KINDS.join('|');
+    productionHost.replaceChildren(
+      ...UNIT_KINDS.map((kind) => {
+        const card = document.createElement('div');
+        card.className = 'action-card';
+        const button = document.createElement('button');
+        button.dataset.produce = kind;
+        button.textContent = `${kindGlyph(kind)} ${kindName(kind)}を生産`;
+        const detail = document.createElement('small');
+        detail.dataset.unitDetails = kind;
+        const reason = document.createElement('span');
+        reason.dataset.productionReason = kind;
+        card.append(button, detail, reason);
+        return card;
+      }),
+    );
+  }
+  for (const kind of UNIT_KINDS) {
+    const reason = productionReason(view, kind, siteSelect.value);
+    const stats = view.rules.units[kind];
+    elements.root.querySelector<HTMLElement>(
+      `[data-unit-details="${kind}"]`,
+    )!.textContent =
+      `${stats.movementDomain === 'land' ? '陸' : stats.movementDomain === 'air' ? '空' : '水'} · 補給${amount(stats.costCenti)} · ${seconds(stats.buildTicks)} · HP${stats.maxHp} · 射程${stats.range} · 視界${stats.vision}`;
     elements.root.querySelector<HTMLButtonElement>(
       `[data-produce="${kind}"]`,
     )!.disabled = reason !== null || snapshot.contextLost;

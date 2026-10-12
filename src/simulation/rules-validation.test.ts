@@ -193,7 +193,14 @@ describe('F03 rules validation', () => {
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 12,
         rules: {
-          units: { assault: { baseDamage: 7 } },
+          units: {
+            assault: {
+              damageVsLand: 7,
+              damageVsAir: 7,
+              damageVsWater: 7,
+              damageVsStructure: 7,
+            },
+          },
           defenses: DEFAULT_RULES.defenses,
         },
       },
