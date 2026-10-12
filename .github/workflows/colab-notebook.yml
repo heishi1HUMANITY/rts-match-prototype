@@ -1,0 +1,29 @@
+name: Colab notebook
+on:
+  pull_request:
+    paths:
+      - 'notebooks/**'
+      - 'tools/colab/**'
+      - '.github/workflows/colab-notebook.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'notebooks/**'
+      - 'tools/colab/**'
+      - '.github/workflows/colab-notebook.yml'
+permissions:
+  contents: read
+jobs:
+  notebook:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '${{ matrix.python }}'
+      - run: python tools/colab/build_notebook.py
+      - run: git diff --exit-code -- notebooks/RTS_Qwen_Colab.ipynb
+      - run: python -m unittest discover -s tools/colab -p 'test_*.py'

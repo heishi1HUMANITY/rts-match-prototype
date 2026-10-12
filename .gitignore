@@ -8,6 +8,7 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+__pycache__/
 *Zone.Identifier*
 # Historical captures stay local; see docs/project/REFERENCES.md.
 /docs/video/
