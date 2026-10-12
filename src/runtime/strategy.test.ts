@@ -42,6 +42,46 @@ function running(scenario: ScenarioId) {
 }
 
 describe('G2 presentation and diagnostic boundaries', () => {
+  it('applies saved HP percent only to a new match and replays actual captures', () => {
+    const { runtime, advance } = running('f19-capture');
+    const edited = {
+      ...DEFAULT_RULES,
+      capture: { ...DEFAULT_RULES.capture, restoredHpPercent: 50 },
+    };
+    expect(runtime.snapshot().state.rules.capture.restoredHpPercent).toBe(30);
+    runtime.reset(42, 'f19-capture', edited);
+    edited.capture.restoredHpPercent = 100;
+    expect(runtime.snapshot().state.rules.capture.restoredHpPercent).toBe(50);
+    runtime.dispatch({ type: 'start' });
+    advance(1); // first frame establishes the clock after reset
+    advance(30);
+    const snapshot = runtime.snapshot();
+    const captured = snapshot.state.bases.filter((base) =>
+      ['OUT-03', 'MID-02', 'OUT-02'].includes(base.id),
+    );
+    expect(
+      captured.map(({ owner, hp, maxHp }) => ({ owner, hp, maxHp })),
+    ).toEqual([
+      { owner: 'A', hp: 150, maxHp: 300 },
+      { owner: 'A', hp: 50, maxHp: 100 },
+      { owner: 'A', hp: 90, maxHp: 180 },
+    ]);
+    expect(() => assertReplayMatches(snapshot)).not.toThrow();
+    const diagnostic = createDiagnostic(snapshot, {
+      commit: 'test',
+      dirty: false,
+      rulesVersion: 'f19-v1',
+      schemaVersion: 17,
+    });
+    expect(diagnostic).toMatchObject({
+      rules: {
+        masterSchemaVersion: 12,
+        rules: { capture: { restoredHpPercent: 50 } },
+      },
+    });
+    runtime.stopLoop();
+  });
+
   it('replays pursuit after movement, pause, stop and reset through the live runtime', () => {
     const { runtime, advance } = running('f02-pursuit');
     runtime.selectAll();
@@ -128,16 +168,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'cp0-npc-v1',
+      rulesVersion: 'f19-v1',
       schemaVersion: 17,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
         schemaVersion: 17,
-        rulesVersion: 'cp0-npc-v1',
+        rulesVersion: 'f19-v1',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 11,
+        masterSchemaVersion: 12,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -197,7 +237,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       history: [],
       finalTick: 0,
       schemaVersion: 17 as const,
-      rulesVersion: 'cp0-npc-v1' as const,
+      rulesVersion: 'f19-v1' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -206,6 +246,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, rulesVersion: 'g3-v1' } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        ...input,
+        rulesVersion: 'cp0-npc-v1',
+      } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 4 } as unknown as typeof input),

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { advanceCapture } from './capture';
 import { createMatch } from './match';
 import type { MatchState, UnitState } from './types';
+import { DEFAULT_RULES } from './rules';
 
 function withUnits(state: MatchState, units: UnitState[]): MatchState {
   return { ...state, units };
@@ -16,6 +17,76 @@ function unguarded(state: MatchState, id = 'OUT-02'): MatchState {
 }
 
 describe('outpost capture', () => {
+  it.each([
+    ['outpost', 100],
+    ['medium', 180],
+    ['large', 300],
+  ] as const)(
+    'restores the configured percentage for %s bases',
+    (kind, maxHp) => {
+      for (const percent of [1, 30, 50, 100]) {
+        const state = createMatch(42, {
+          rules: {
+            ...DEFAULT_RULES,
+            capture: { ...DEFAULT_RULES.capture, restoredHpPercent: percent },
+          },
+        });
+        const target = state.bases.find((base) => base.kind === kind)!;
+        const capturing: MatchState = {
+          ...state,
+          units: [{ ...state.units[0]!, cell: target.cell }],
+          bases: state.bases.map((base) =>
+            base.id === target.id
+              ? {
+                  ...base,
+                  owner: null,
+                  hp: 0,
+                  defender: null,
+                  captureCandidate: 'A',
+                  captureProgressCentiTicks:
+                    state.rules.capture.requiredTicks * 100 - 100,
+                }
+              : base,
+          ),
+        };
+        expect(
+          advanceCapture(capturing).bases.find((base) => base.id === target.id),
+        ).toMatchObject({
+          owner: 'A',
+          maxHp,
+          hp: Math.floor((maxHp * percent) / 100),
+        });
+      }
+    },
+  );
+
+  it('rounds fractional HP down and retains positive HP for small edited bases', () => {
+    for (const maxHp of [1, 101]) {
+      const state = createMatch(42, {
+        rules: {
+          ...DEFAULT_RULES,
+          bases: {
+            ...DEFAULT_RULES.bases,
+            large: { ...DEFAULT_RULES.bases.large, maxHp },
+          },
+          capture: {
+            ...DEFAULT_RULES.capture,
+            restoredHpPercent: 30,
+            requiredTicks: 1,
+          },
+        },
+      });
+      const base = state.bases.find(({ kind }) => kind === 'large')!;
+      const capturing: MatchState = {
+        ...unguarded(state, base.id),
+        units: [{ ...state.units[0]!, cell: base.cell }],
+      };
+      expect(
+        advanceCapture(capturing).bases.find(({ id }) => id === base.id),
+      ).toMatchObject({ owner: 'A', hp: maxHp === 1 ? 1 : 30 });
+    }
+  });
+
   it('requires 30 uninterrupted ticks and captures on the threshold tick', () => {
     let state = unguarded(createMatch(42));
     const unit = {

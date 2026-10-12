@@ -31,6 +31,22 @@ function legacyResearchDefinitions() {
 }
 
 describe('F03 rules validation', () => {
+  it.each([0, -1, 101, 50.5, NaN, Infinity, -Infinity])(
+    'rejects invalid capture HP percent %s',
+    (restoredHpPercent) => {
+      const result = validateRules({
+        ...DEFAULT_RULES,
+        capture: { ...DEFAULT_RULES.capture, restoredHpPercent },
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({ key: 'rules.capture.restoredHpPercent' }),
+        ]),
+      });
+    },
+  );
+
   it('returns a detached canonical default-shaped snapshot', () => {
     const result = validateRules(DEFAULT_RULES);
     expect(result.ok).toBe(true);

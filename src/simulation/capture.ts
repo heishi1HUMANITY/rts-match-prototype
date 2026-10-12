@@ -187,7 +187,15 @@ export function advanceCapture(state: MatchState): MatchState {
           eligibleBase,
           state.rules,
           state.elapsedTicks,
-          0.3,
+          0,
+        ),
+        hp: Math.max(
+          1,
+          Math.floor(
+            (state.rules.bases[base.kind].maxHp *
+              state.rules.capture.restoredHpPercent) /
+              100,
+          ),
         ),
         owner: candidate,
         captureCandidate: null,

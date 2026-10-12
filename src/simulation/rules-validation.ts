@@ -240,16 +240,19 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
-          const max = fieldPath.endsWith('captureEfficiencyPercent')
-            ? 1_000
-            : fieldPath.endsWith('timeLimitTicks')
-              ? 100_000_000
-              : fieldPath.endsWith('moveTicksPerCell') ||
-                  fieldPath.endsWith('decisionIntervalTicks') ||
-                  fieldPath.endsWith('updateIntervalTicks') ||
-                  fieldPath.endsWith('requiredTicks')
-                ? 10_000
-                : 1_000_000_000;
+          const max =
+            fieldPath === 'rules.capture.restoredHpPercent'
+              ? 100
+              : fieldPath.endsWith('captureEfficiencyPercent')
+                ? 1_000
+                : fieldPath.endsWith('timeLimitTicks')
+                  ? 100_000_000
+                  : fieldPath.endsWith('moveTicksPerCell') ||
+                      fieldPath.endsWith('decisionIntervalTicks') ||
+                      fieldPath.endsWith('updateIntervalTicks') ||
+                      fieldPath.endsWith('requiredTicks')
+                    ? 10_000
+                    : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -451,7 +454,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 7 &&
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
-      input.masterSchemaVersion !== 10)
+      input.masterSchemaVersion !== 10 &&
+      input.masterSchemaVersion !== 11)
   )
     return {
       ok: false,
@@ -532,6 +536,14 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (isRecord(migrationCandidate.capture))
+      migrationCandidate = {
+        ...migrationCandidate,
+        capture: {
+          restoredHpPercent: DEFAULT_RULES.capture.restoredHpPercent,
+          ...migrationCandidate.capture,
+        },
+      };
     if (!Object.hasOwn(migrationCandidate, 'localFaction'))
       migrationCandidate = {
         ...migrationCandidate,
@@ -564,7 +576,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 7 &&
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
-      input.masterSchemaVersion !== 10
+      input.masterSchemaVersion !== 10 &&
+      input.masterSchemaVersion !== 11
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {

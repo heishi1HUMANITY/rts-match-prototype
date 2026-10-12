@@ -385,4 +385,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f06-local-faction',
   'f08-unit-domains',
   'f10-base-upgrades',
+  'f19-capture',
 ];

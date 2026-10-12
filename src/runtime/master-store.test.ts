@@ -48,6 +48,76 @@ function legacyResearchDefinitions() {
 }
 
 describe('F17 browser master store', () => {
+  it('migrates schema 11 capture settings without dropping saved edits', () => {
+    const storage = new MemoryStorage();
+    const { restoredHpPercent: _removed, ...capture } = DEFAULT_RULES.capture;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({
+        masterSchemaVersion: 11,
+        revision: 42,
+        rules: {
+          ...DEFAULT_RULES,
+          capture: { ...capture, requiredTicks: 57 },
+          npc: { ...DEFAULT_RULES.npc, decisionIntervalTicks: 60 },
+        },
+      }),
+    );
+    expect(new MasterStore(storage).load()).toMatchObject({
+      ok: true,
+      source: 'storage',
+      envelope: {
+        masterSchemaVersion: 12,
+        revision: 42,
+        rules: {
+          capture: { requiredTicks: 57, restoredHpPercent: 30 },
+          npc: { decisionIntervalTicks: 60 },
+        },
+      },
+    });
+  });
+
+  it('round-trips capture HP percent and rejects bad saves/imports without overwriting bytes', () => {
+    const storage = new MemoryStorage();
+    const store = new MasterStore(storage);
+    const rules = {
+      ...DEFAULT_RULES,
+      capture: { ...DEFAULT_RULES.capture, restoredHpPercent: 50 },
+    };
+    expect(store.saveRules(rules).ok).toBe(true);
+    const savedBytes = storage.getItem('rts-match-prototype.master.v1');
+    const exported = store.exportJson();
+    expect(exported.ok).toBe(true);
+    if (!exported.ok) return;
+    expect(
+      new MasterStore(new MemoryStorage()).importJson(exported.json),
+    ).toMatchObject({
+      ok: true,
+      envelope: { rules: { capture: { restoredHpPercent: 50 } } },
+    });
+    for (const restoredHpPercent of [0, 101, 50.5, NaN, Infinity]) {
+      const invalid = {
+        ...rules,
+        capture: { ...rules.capture, restoredHpPercent },
+      };
+      expect(store.saveRules(invalid).ok).toBe(false);
+      expect(
+        store.importJson(
+          JSON.stringify({
+            masterSchemaVersion: 12,
+            revision: 8,
+            rules: invalid,
+          }),
+        ).ok,
+      ).toBe(false);
+      expect(storage.getItem('rts-match-prototype.master.v1')).toBe(savedBytes);
+    }
+    expect(store.reset()).toMatchObject({
+      ok: true,
+      envelope: { rules: { capture: { restoredHpPercent: 30 } } },
+    });
+  });
+
   it('persists a complete validated rules envelope and round-trips portable JSON', () => {
     const storage = new MemoryStorage();
     const store = new MasterStore(storage);
@@ -98,7 +168,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 11,
+        masterSchemaVersion: 12,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -126,7 +196,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 11,
+        masterSchemaVersion: 12,
         revision: 10,
         rules: {
           defenses: {
@@ -189,7 +259,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(11);
+    expect(loaded.envelope.masterSchemaVersion).toBe(12);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -282,7 +352,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 11,
+      masterSchemaVersion: 12,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },

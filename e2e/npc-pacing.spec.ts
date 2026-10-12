@@ -27,7 +27,8 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   await saveDiagnostic(page, path);
   const diagnostic = JSON.parse(await readFile(path, 'utf8'));
   expect(diagnostic.scenarioId).toBe('standard');
-  expect(diagnostic.rules.rulesVersion).toBe('cp0-npc-v1');
+  const build = await (await page.request.get('./build-info.json')).json();
+  expect(diagnostic.rules.rulesVersion).toBe(build.rulesVersion);
   expect(diagnostic.rules.rules.npc).toMatchObject({
     decisionIntervalTicks: 30,
     maxCommandsPerDecision: 2,

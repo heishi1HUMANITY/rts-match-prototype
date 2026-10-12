@@ -272,6 +272,25 @@ function configuredFixture(
         ? { ...faction, supplyCenti: 50_000, researchCenti: 20_000 }
         : faction,
     );
+  } else if (scenarioId === 'f19-capture') {
+    const targetIds = ['OUT-03', 'MID-02', 'OUT-02'];
+    const template = units.find((unit) => unit.id === 'A-01')!;
+    units = [
+      ...units.filter((unit) => unit.factionId !== 'A'),
+      ...targetIds.map((baseId, index) => ({
+        ...template,
+        id: `A-${String(index + 1).padStart(2, '0')}`,
+        cell: { ...bases.find((base) => base.id === baseId)!.cell },
+      })),
+    ];
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, nextUnitSerial: 4 } : faction,
+    );
+    bases = bases.map((base) =>
+      targetIds.includes(base.id)
+        ? { ...base, owner: null, hp: 0, defender: null }
+        : base,
+    );
   } else if (scenarioId === 'f10-base-upgrades') {
     factions = factions.map((faction) =>
       faction.id === 'A'
