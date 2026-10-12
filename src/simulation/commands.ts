@@ -4,8 +4,8 @@ import { findPath } from './pathfinding';
 import { cancelProduction, enqueueProduction } from './production';
 import { startResearch } from './research';
 import {
-  getUnitPositionX2,
-  getUnitPositionY2,
+  getUnitPositionX1024,
+  getUnitPositionY1024,
   isCellVisibleToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
@@ -229,7 +229,7 @@ export function applyCommand(
   }
 
   if (command.type === 'stop') {
-    const stoppedPath = unit.edgeProgress === 1 ? unit.path.slice(0, 1) : [];
+    const stoppedPath = unit.edgeProgress > 0 ? unit.path.slice(0, 1) : [];
     if (
       (unit.marchOrder === undefined || unit.marchOrder === null) &&
       stoppedPath.length === unit.path.length &&
@@ -268,8 +268,8 @@ export function applyCommand(
       if (!isUnitVisibleToFaction(state, target, actor))
         return reject(state, 'TARGET_NOT_FOUND');
       lastKnownCell = {
-        x: Math.floor(getUnitPositionX2(target) / 2),
-        y: Math.floor(getUnitPositionY2(target) / 2),
+        x: Math.floor(getUnitPositionX1024(target) / 1024),
+        y: Math.floor(getUnitPositionY1024(target) / 1024),
       };
     }
     const march = advanceMarchOrder(
@@ -300,7 +300,7 @@ export function applyCommand(
     return succeed(copyWithUnit(state, unit, { ...unit, marchOrder: null }));
   }
 
-  const currentEdge = unit.edgeProgress === 1 ? unit.path[0] : undefined;
+  const currentEdge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
   const origin = currentEdge ?? unit.cell;
   const route = findPath(state.map, origin, target);
   if (route === null) return reject(state, 'UNREACHABLE');

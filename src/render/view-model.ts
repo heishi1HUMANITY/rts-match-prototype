@@ -1,4 +1,3 @@
-import { CAPTURE_TICKS_REQUIRED } from '../simulation/config';
 import type {
   BaseView,
   Cell,
@@ -46,9 +45,9 @@ function position(unit: OwnUnitView | VisibleEnemyUnitView): {
   z: number;
 } {
   if (unit.control === 'enemy')
-    return { x: unit.positionX2 / 2, z: unit.positionY2 / 2 };
+    return { x: unit.positionX1024 / 1024, z: unit.positionY1024 / 1024 };
   const next = unit.path[0];
-  const progress = unit.edgeProgress / 2;
+  const progress = unit.edgeProgress / (unit.moveTicksPerCell ?? 2);
   return {
     x:
       unit.cell.x +
@@ -100,7 +99,7 @@ export function getUnitFrames(
   });
 }
 
-export function baseLabel(base: BaseView): string {
+export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
   const kind = base.kind === 'hq' ? '首都' : '拠点';
   if (base.visibility === 'unknown') return `${kind} · 未観測`;
   if (base.visibility === 'remembered') {
@@ -110,7 +109,7 @@ export function baseLabel(base: BaseView): string {
   const capture =
     base.captureCandidate === null
       ? ''
-      : ` · ${base.captureCandidate}制圧 ${base.captureTicks}/${CAPTURE_TICKS_REQUIRED}`;
+      : ` · ${base.captureCandidate}制圧 ${base.captureTicks}/${captureRequiredTicks}`;
   return `${kind} · ${owner} HP${base.hp}/${base.maxHp}${capture}`;
 }
 

@@ -1,4 +1,3 @@
-import { RESEARCH_DEFINITIONS } from './config';
 import type {
   ActiveResearch,
   CommandResult,
@@ -7,18 +6,24 @@ import type {
   MatchState,
   ResearchId,
 } from './types';
+import { DEFAULT_RULES } from './rules';
+import type { RulesMaster } from './rules';
 
-function isResearchId(value: string): value is ResearchId {
-  return Object.prototype.hasOwnProperty.call(RESEARCH_DEFINITIONS, value);
+function isResearchId(state: MatchState, value: string): value is ResearchId {
+  return Object.prototype.hasOwnProperty.call(
+    state.rules.research.definitions,
+    value,
+  );
 }
 
 function fillSelectedResearch(
+  state: MatchState,
   faction: FactionState,
   selection: ActiveResearch | null,
 ): FactionState {
   if (selection === null) return { ...faction, activeResearch: null };
   const { researchId } = selection;
-  const definition = RESEARCH_DEFINITIONS[researchId];
+  const definition = state.rules.research.definitions[researchId];
   const progress = faction.researchProgressCenti[researchId];
   const required = Math.max(0, definition.costCenti - progress);
   const consumed = Math.min(faction.researchCenti, required);
@@ -61,7 +66,7 @@ export function startResearch(
       },
     };
   }
-  if (!isResearchId(requestedResearchId)) {
+  if (!isResearchId(state, requestedResearchId)) {
     return { ok: false, state, reason: 'RESEARCH_NOT_FOUND' };
   }
   const researchId = requestedResearchId;
@@ -71,7 +76,7 @@ export function startResearch(
   if (faction.activeResearch?.researchId === researchId) {
     return { ok: true, state };
   }
-  const definition = RESEARCH_DEFINITIONS[researchId];
+  const definition = state.rules.research.definitions[researchId];
   if (
     definition.prerequisite !== null &&
     !faction.completedResearchIds.includes(definition.prerequisite)
@@ -79,7 +84,7 @@ export function startResearch(
     return { ok: false, state, reason: 'PREREQUISITE_MISSING' };
   }
   const selection: ActiveResearch = { researchId };
-  const updatedFaction = fillSelectedResearch(faction, selection);
+  const updatedFaction = fillSelectedResearch(state, faction, selection);
   return {
     ok: true,
     state: {
@@ -98,16 +103,19 @@ export function advanceResearch(state: MatchState): MatchState {
     if (faction.eliminatedAtTick !== null) return faction;
     const active = faction.activeResearch;
     if (active === null) return faction;
-    const updated = fillSelectedResearch(faction, active);
+    const updated = fillSelectedResearch(state, faction, active);
     if (updated !== faction) changed = true;
     return updated;
   });
   return changed ? { ...state, factions } : state;
 }
 
-export function firepowerBonus(faction: FactionState): number {
+export function firepowerBonus(
+  faction: FactionState,
+  rules: RulesMaster = DEFAULT_RULES,
+): number {
   return faction.completedResearchIds.reduce(
-    (sum, id) => sum + RESEARCH_DEFINITIONS[id].damageBonus,
+    (sum, id) => sum + rules.research.definitions[id].damageBonus,
     0,
   );
 }

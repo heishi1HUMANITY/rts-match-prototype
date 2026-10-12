@@ -86,4 +86,13 @@ replayは診断に含まれるsnapshotを検証して注入し、現在のlocalS
 - ブラウザ再読込で保存値が残り、JSON書出し→標準へ戻す→import→保存→新規開始で同じ設定を復元できる。
 - PC/900×420で編集画面が操作でき、終了/リセット/管理画面開閉で盤面に誤命令が出ない。
 
+## 実装記録 2026-10-12
+
+- `src/simulation/rules.ts` のmaster schema v1 / `RulesMaster` を実装。現在存在する兵種/拠点/研究/試合開始値/上限/制圧/チケット/NPC判断の値を編集できる。100ms固定tick、40×40 map、配置、検査シナリオ、未実装機能は公開しない。
+- `rules-validation.ts` が全オブジェクトの不足/余剰キー、整数/範囲、未対応ID、研究前提参照/循環、開始部隊上限、試合収入の安全整数範囲を検証し、keyと日本語理由を返す。
+- `MatchState.rules`をschema7/rules f17-v1の各試合へclone注入。simulation・NPC・view・HUD/renderはactive snapshotを参照する。移動速度はunitごとに保存し、途中座標・視界・交戦・制圧・F02追跡・描画で1/1024セル単位の整数位置を共用する。
+- `MasterStore` は同一originのlocalStorageへrevision付きenvelopeを保存し、JSON import/exportと標準値復元を提供する。管理UIではdraft/saved/activeを別表示し、保存で現在の試合を変更しない。新規設定開始は保存snapshot、再戦はactive snapshotを使用する。
+- 診断JSONへmaster schema、完全rules snapshot、FNV-1a 64-bit content IDを記録する。replayはsnapshotをvalidatorへ通し、ID一致を確認してから実行する。
+- UIのPC/900×420操作は [F17画面確認手順](../inspection/F17_SCENARIOS.md) に記録する。F17ユーザー検査が終わるまで、実ブラウザの外観・操作性は未確認として扱う。
+
 検査票を `docs/project/inspection/F17_SCENARIOS.md` として実装結果に合わせて作り、対象SHA・CI・実検査範囲をIssue #30へ記録する。

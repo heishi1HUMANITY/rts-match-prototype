@@ -1,4 +1,3 @@
-import { PRODUCTION_QUEUE_LIMIT, UNIT_LIMIT, UNIT_STATS } from './config';
 import type {
   CommandResult,
   FactionId,
@@ -9,7 +8,7 @@ import type {
 } from './types';
 
 function isUnitKind(value: string): value is UnitKind {
-  return Object.prototype.hasOwnProperty.call(UNIT_STATS, value);
+  return value === 'assault' || value === 'scout';
 }
 
 function numberedId(factionId: FactionId, serial: number): string {
@@ -47,13 +46,16 @@ export function enqueueProduction(
   const liveCount = state.units.filter(
     (unit) => unit.factionId === actor && unit.hp > 0,
   ).length;
-  if (liveCount + faction.productionJobs.length >= UNIT_LIMIT) {
+  if (
+    liveCount + faction.productionJobs.length >=
+    state.rules.limits.unitsPerFaction
+  ) {
     return { ok: false, state, reason: 'UNIT_LIMIT' };
   }
-  if (faction.productionJobs.length >= PRODUCTION_QUEUE_LIMIT) {
+  if (faction.productionJobs.length >= state.rules.limits.productionQueue) {
     return { ok: false, state, reason: 'QUEUE_FULL' };
   }
-  const stats = UNIT_STATS[requestedKind];
+  const stats = state.rules.units[requestedKind];
   if (faction.supplyCenti < stats.costCenti) {
     return { ok: false, state, reason: 'INSUFFICIENT_SUPPLY' };
   }
@@ -184,11 +186,12 @@ export function advanceProduction(state: MatchState): MatchState {
       id: active.unitId,
       factionId: faction.id,
       kind: active.unitKind,
-      hp: UNIT_STATS[active.unitKind].maxHp,
-      maxHp: UNIT_STATS[active.unitKind].maxHp,
+      hp: next.rules.units[active.unitKind].maxHp,
+      maxHp: next.rules.units[active.unitKind].maxHp,
       cell: { x: base.cell.x, y: base.cell.y },
       path: [],
       edgeProgress: 0,
+      moveTicksPerCell: next.rules.units[active.unitKind].moveTicksPerCell,
       marchOrder: null,
     });
     return {

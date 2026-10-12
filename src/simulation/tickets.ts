@@ -2,7 +2,8 @@ import type { FactionId, MatchState } from './types';
 
 /** Applies periodic outpost-weight ticket pressure after other per-tick losses. */
 export function applyTicketTick(state: MatchState): MatchState {
-  if (state.elapsedTicks % 10 !== 0) return state;
+  if (state.elapsedTicks % state.rules.tickets.updateIntervalTicks !== 0)
+    return state;
   const alive = state.factions.filter(
     ({ eliminatedAtTick }) => eliminatedAtTick === null,
   );
@@ -16,7 +17,7 @@ export function applyTicketTick(state: MatchState): MatchState {
       aliveIds.has(base.owner) &&
       base.hp > 0
     ) {
-      weights[base.owner] += 1;
+      weights[base.owner] += state.rules.bases[base.kind].ticketWeight;
     }
   }
   return {
@@ -29,8 +30,11 @@ export function applyTicketTick(state: MatchState): MatchState {
       const penalty =
         Math.max(
           0,
-          Math.min(6, otherWeight - (alive.length - 1) * weights[faction.id]),
-        ) * 10;
+          Math.min(
+            state.rules.tickets.maximumPenaltyWeight,
+            otherWeight - (alive.length - 1) * weights[faction.id],
+          ),
+        ) * state.rules.tickets.penaltyPerWeightCenti;
       if (penalty === 0) return faction;
       return {
         ...faction,

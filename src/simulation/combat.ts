@@ -1,14 +1,9 @@
-import {
-  HQ_LOSS_TICKETS_CENTI,
-  UNIT_LOSS_TICKETS_CENTI,
-  UNIT_STATS,
-} from './config';
 import { cancelAllProductionForDestroyedHq } from './production';
 import { firepowerBonus } from './research';
 import { visibleMarchCombatTarget } from './march';
 import {
-  getUnitPositionX2,
-  getUnitPositionY2,
+  getUnitPositionX1024,
+  getUnitPositionY1024,
   isCellVisibleToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
@@ -47,10 +42,10 @@ function baseIsVisible(
 }
 
 function selectTarget(state: MatchState, attacker: UnitState): Target | null {
-  const x2 = getUnitPositionX2(attacker);
-  const y2 = getUnitPositionY2(attacker);
-  const range = UNIT_STATS[attacker.kind].range;
-  const rangeSquared = (2 * range) ** 2;
+  const x2 = getUnitPositionX1024(attacker);
+  const y2 = getUnitPositionY1024(attacker);
+  const range = state.rules.units[attacker.kind].range;
+  const rangeSquared = (1024 * range) ** 2;
   const preferred = visibleMarchCombatTarget(state, attacker);
   if (preferred?.kind === 'unit') {
     const target = state.units.find(({ id }) => id === preferred.id);
@@ -61,8 +56,8 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
         distanceSquared: distanceSquared(
           x2,
           y2,
-          getUnitPositionX2(target),
-          getUnitPositionY2(target),
+          getUnitPositionX1024(target),
+          getUnitPositionY1024(target),
         ),
       };
     }
@@ -75,8 +70,8 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
         distanceSquared: distanceSquared(
           x2,
           y2,
-          2 * base.cell.x + 1,
-          2 * base.cell.y + 1,
+          1024 * base.cell.x + 512,
+          1024 * base.cell.y + 512,
         ),
       };
     }
@@ -95,8 +90,8 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
         distanceSquared: distanceSquared(
           x2,
           y2,
-          getUnitPositionX2(target),
-          getUnitPositionY2(target),
+          getUnitPositionX1024(target),
+          getUnitPositionY1024(target),
         ),
       }),
     )
@@ -120,8 +115,8 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
           distanceSquared: distanceSquared(
             x2,
             y2,
-            2 * base.cell.x + 1,
-            2 * base.cell.y + 1,
+            1024 * base.cell.x + 512,
+            1024 * base.cell.y + 512,
           ),
         }),
       )
@@ -143,8 +138,8 @@ export function resolveCombat(state: MatchState): MatchState {
       ({ id }) => id === attacker.factionId,
     );
     const damage =
-      UNIT_STATS[attacker.kind].baseDamage +
-      (faction ? firepowerBonus(faction) : 0);
+      snapshot.rules.units[attacker.kind].baseDamage +
+      (faction ? firepowerBonus(faction, snapshot.rules) : 0);
     const damageMap = target.kind === 'unit' ? unitDamage : baseDamage;
     damageMap.set(target.id, (damageMap.get(target.id) ?? 0) + damage);
   }
@@ -189,14 +184,18 @@ export function resolveCombat(state: MatchState): MatchState {
     bases,
     factions: snapshot.factions.map((faction) => {
       const losses = unitLosses.get(faction.id) ?? 0;
-      const hqLoss = destroyedHqs.has(faction.id) ? HQ_LOSS_TICKETS_CENTI : 0;
+      const hqLoss = destroyedHqs.has(faction.id)
+        ? snapshot.rules.match.hqLossTicketsCenti
+        : 0;
       return losses === 0 && hqLoss === 0
         ? faction
         : {
             ...faction,
             ticketsCenti: Math.max(
               0,
-              faction.ticketsCenti - losses * UNIT_LOSS_TICKETS_CENTI - hqLoss,
+              faction.ticketsCenti -
+                losses * snapshot.rules.match.unitLossTicketsCenti -
+                hqLoss,
             ),
           };
     }),

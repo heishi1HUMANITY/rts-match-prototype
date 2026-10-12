@@ -1,4 +1,4 @@
-import { BASE_STATS, MAP_HEIGHT, MAP_WIDTH, UNIT_STATS } from './config';
+import { MAP_HEIGHT, MAP_WIDTH } from './config';
 import type {
   BaseState,
   FactionId,
@@ -7,27 +7,39 @@ import type {
   UnitState,
 } from './types';
 
-function unitPositionX2(unit: UnitState): number {
+const POSITION_SCALE = 1024;
+
+function unitPositionX1024(unit: UnitState): number {
   const next = unit.path[0];
   return (
-    2 * unit.cell.x +
-    1 +
-    (next ? unit.edgeProgress * (next.x - unit.cell.x) : 0)
+    POSITION_SCALE * unit.cell.x +
+    POSITION_SCALE / 2 +
+    (next
+      ? Math.round(
+          (POSITION_SCALE * unit.edgeProgress * (next.x - unit.cell.x)) /
+            (unit.moveTicksPerCell ?? 2),
+        )
+      : 0)
   );
 }
 
-function unitPositionY2(unit: UnitState): number {
+function unitPositionY1024(unit: UnitState): number {
   const next = unit.path[0];
   return (
-    2 * unit.cell.y +
-    1 +
-    (next ? unit.edgeProgress * (next.y - unit.cell.y) : 0)
+    POSITION_SCALE * unit.cell.y +
+    POSITION_SCALE / 2 +
+    (next
+      ? Math.round(
+          (POSITION_SCALE * unit.edgeProgress * (next.y - unit.cell.y)) /
+            (unit.moveTicksPerCell ?? 2),
+        )
+      : 0)
   );
 }
 
 interface SightSource {
-  readonly x2: number;
-  readonly y2: number;
+  readonly x: number;
+  readonly y: number;
   readonly radius: number;
 }
 
@@ -41,17 +53,17 @@ function sightSources(state: MatchState, factionId: FactionId): SightSource[] {
   for (const unit of state.units) {
     if (unit.factionId !== factionId || unit.hp <= 0) continue;
     sources.push({
-      x2: unitPositionX2(unit),
-      y2: unitPositionY2(unit),
-      radius: UNIT_STATS[unit.kind].vision,
+      x: unitPositionX1024(unit),
+      y: unitPositionY1024(unit),
+      radius: state.rules.units[unit.kind].vision,
     });
   }
   for (const base of state.bases) {
     if (base.owner !== factionId || base.hp <= 0) continue;
     sources.push({
-      x2: 2 * base.cell.x + 1,
-      y2: 2 * base.cell.y + 1,
-      radius: BASE_STATS[base.kind].vision,
+      x: POSITION_SCALE * base.cell.x + POSITION_SCALE / 2,
+      y: POSITION_SCALE * base.cell.y + POSITION_SCALE / 2,
+      radius: state.rules.bases[base.kind].vision,
     });
   }
   return sources;
@@ -59,17 +71,17 @@ function sightSources(state: MatchState, factionId: FactionId): SightSource[] {
 
 function isPointVisible(
   sources: readonly SightSource[],
-  x2: number,
-  y2: number,
+  x: number,
+  y: number,
 ): boolean {
-  return sources.some(({ x2: sx, y2: sy, radius }) => {
-    const dx = x2 - sx;
-    const dy = y2 - sy;
-    return dx * dx + dy * dy <= (2 * radius) ** 2;
+  return sources.some(({ x: sx, y: sy, radius }) => {
+    const dx = x - sx;
+    const dy = y - sy;
+    return dx * dx + dy * dy <= (POSITION_SCALE * radius) ** 2;
   });
 }
 
-/** Unit visibility uses the doubled-integer position, including half-cell edges. */
+/** Unit visibility uses fixed 1/1024-cell coordinates for every movement speed. */
 export function isUnitVisibleToFaction(
   state: MatchState,
   unit: UnitState,
@@ -78,8 +90,8 @@ export function isUnitVisibleToFaction(
   if (unit.hp <= 0) return false;
   return isPointVisible(
     sightSources(state, factionId),
-    unitPositionX2(unit),
-    unitPositionY2(unit),
+    unitPositionX1024(unit),
+    unitPositionY1024(unit),
   );
 }
 
@@ -91,16 +103,16 @@ export function isCellVisibleToFaction(
 ): boolean {
   return isPointVisible(
     sightSources(state, factionId),
-    2 * cell.x + 1,
-    2 * cell.y + 1,
+    POSITION_SCALE * cell.x + POSITION_SCALE / 2,
+    POSITION_SCALE * cell.y + POSITION_SCALE / 2,
   );
 }
 
-export function getUnitPositionX2(unit: UnitState): number {
-  return unitPositionX2(unit);
+export function getUnitPositionX1024(unit: UnitState): number {
+  return unitPositionX1024(unit);
 }
-export function getUnitPositionY2(unit: UnitState): number {
-  return unitPositionY2(unit);
+export function getUnitPositionY1024(unit: UnitState): number {
+  return unitPositionY1024(unit);
 }
 
 function memoryFromVisible(
@@ -127,8 +139,8 @@ function createKnowledge(
     for (let x = 0; x < MAP_WIDTH; x += 1) {
       visible[y * MAP_WIDTH + x] = isPointVisible(
         sources,
-        2 * x + 1,
-        2 * y + 1,
+        POSITION_SCALE * x + POSITION_SCALE / 2,
+        POSITION_SCALE * y + POSITION_SCALE / 2,
       );
     }
   }

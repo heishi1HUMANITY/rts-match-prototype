@@ -115,7 +115,10 @@ function discreteUnitPosition(unit: UnitState): THREE.Vector3 {
   const position = cellPosition(unit.cell, 0.17);
   const nextCell = unit.path[0];
   if (unit.edgeProgress > 0 && nextCell !== undefined) {
-    position.lerp(cellPosition(nextCell, 0.17), unit.edgeProgress / 2);
+    position.lerp(
+      cellPosition(nextCell, 0.17),
+      unit.edgeProgress / (unit.moveTicksPerCell ?? 2),
+    );
   }
   return position;
 }
@@ -800,7 +803,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
             : 1;
       objects.marker.position.copy(cellPosition(base.cell, 0.15));
       objects.marker.scale.setScalar(base.kind === 'hq' ? 1.3 : 1);
-      objects.label.textContent = baseLabel(base);
+      objects.label.textContent = baseLabel(
+        base,
+        view.rules.capture.requiredTicks,
+      );
       objects.label.dataset.visibility = base.visibility;
       objects.label.style.borderStyle =
         base.visibility === 'remembered' ? 'dashed' : 'solid';
