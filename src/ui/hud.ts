@@ -47,7 +47,7 @@ const UNIT_KINDS: readonly UnitKind[] = [
   'patrolBoat',
 ];
 const kindName = (kind: UnitKind): string =>
-  Object.entries({
+  ({
     assault: '強襲',
     scout: '偵察',
     artillery: '自走砲',
@@ -75,7 +75,7 @@ const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
 const baseOwnerName = (owner: BaseOwnerId | null): string =>
   owner === 'local' ? '● 現地勢力' : (owner ?? '中立');
 const researchName = (id: ResearchId, view?: FactionView): string =>
-  ({
+  Object.entries({
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
     'bridge-2': '架橋 II',

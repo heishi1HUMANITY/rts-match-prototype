@@ -7,16 +7,18 @@ test('F21-01 / F21-04: arbitrary research survives reload, completes and keeps t
   test.setTimeout(120_000);
   await page.goto('./');
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
-  await page.locator('[data-research-new-id]').fill('qa-power');
+  await page.locator('[data-research-new-id]').fill('constructor');
   await page.locator('[data-research-add]').click();
-  const node = page.locator('[data-research-node="qa-power"]');
+  const node = page.locator('[data-research-node="constructor"]');
   await node.locator('summary').click();
   await page
-    .locator('[data-research-path="research.definitions.qa-power.costCenti"]')
+    .locator(
+      '[data-research-path="research.definitions.constructor.costCenti"]',
+    )
     .fill('100');
   await page
     .locator(
-      '[data-research-path="research.definitions.qa-power.effects.0.value"]',
+      '[data-research-path="research.definitions.constructor.effects.0.value"]',
     )
     .fill('7');
   await page.getByRole('button', { name: '保存する', exact: true }).click();
@@ -26,9 +28,9 @@ test('F21-01 / F21-04: arbitrary research survives reload, completes and keeps t
   await page.reload();
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.getByRole('button', { name: '研究', exact: true }).click();
-  const research = page.locator('[data-research="qa-power"]');
+  const research = page.locator('[data-research="constructor"]');
   await expect(
-    page.locator('[data-research-details="qa-power"]'),
+    page.locator('[data-research-details="constructor"]'),
   ).toContainText('必要1ポイント');
   await research.click();
   await expect(research).toContainText('完了', { timeout: 15_000 });
@@ -39,18 +41,18 @@ test('F21-01 / F21-04: arbitrary research survives reload, completes and keeps t
   expect(
     before.state.factions.find((f: { id: string }) => f.id === 'A')
       .completedResearchIds,
-  ).toContain('qa-power');
-  expect(before.state.rules.research.definitions['qa-power']).toMatchObject({
+  ).toContain('constructor');
+  expect(before.state.rules.research.definitions['constructor']).toMatchObject({
     costCenti: 100,
     effects: [{ id: 'damage-bonus', value: 7 }],
   });
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
-  const reopened = page.locator('[data-research-node="qa-power"]');
+  const reopened = page.locator('[data-research-node="constructor"]');
   if ((await reopened.getAttribute('open')) === null)
     await reopened.locator('summary').click();
   await page
     .locator(
-      '[data-research-path="research.definitions.qa-power.effects.0.value"]',
+      '[data-research-path="research.definitions.constructor.effects.0.value"]',
     )
     .fill('9');
   await page.getByRole('button', { name: '保存する', exact: true }).click();
