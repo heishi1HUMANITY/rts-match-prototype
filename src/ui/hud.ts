@@ -119,7 +119,7 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F08 · 6兵種</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>1v1v1 RTS</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span><span data-local-status aria-live="polite" style="max-width:230px;color:#59636c;font:600 9px/1.2 system-ui,sans-serif;white-space:normal"></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
