@@ -212,8 +212,18 @@ function productionReason(
   if (view.phase === 'finished') return '試合は終了しました';
   if (view.phase !== 'running') return '開始・再開後に操作できます';
   const stats = view.rules.units[kind];
-  if (!isUnitUnlocked(view.ownFaction, view.rules, kind))
-    return `研究「${stats.unlockResearchId ? researchName(stats.unlockResearchId, view) : '兵種解放'}」が必要です`;
+  if (!isUnitUnlocked(view.ownFaction, view.rules, kind)) {
+    const candidates = Object.entries(view.rules.research.definitions)
+      .filter(([, definition]) =>
+        definition.effects.some(
+          (effect) => effect.id === 'unit-unlock' && effect.unitKind === kind,
+        ),
+      )
+      .map(([id]) => researchName(id, view));
+    return candidates.length
+      ? `研究「${candidates.join(' / ')}」のいずれかが必要です`
+      : 'この兵種を解放する研究が登録されていません';
+  }
   if (stats.movementDomain === 'water') {
     if (
       !view.map.ports?.some(
