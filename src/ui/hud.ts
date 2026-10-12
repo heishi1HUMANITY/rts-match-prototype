@@ -47,7 +47,7 @@ const UNIT_KINDS: readonly UnitKind[] = [
   'patrolBoat',
 ];
 const kindName = (kind: UnitKind): string =>
-  ({
+  Object.entries({
     assault: '強襲',
     scout: '偵察',
     artillery: '自走砲',
@@ -92,7 +92,7 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'naval-1': '哨戒艇',
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
-  })[id] ??
+  }).find(([key]) => key === id)?.[1] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
     : id);
@@ -233,8 +233,18 @@ function productionReason(
   if (view.phase === 'finished') return '試合は終了しました';
   if (view.phase !== 'running') return '開始・再開後に操作できます';
   const stats = view.rules.units[kind];
-  if (!isUnitUnlocked(view.ownFaction, view.rules, kind))
-    return `研究「${stats.unlockResearchId ? researchName(stats.unlockResearchId, view) : '兵種解放'}」が必要です`;
+  if (!isUnitUnlocked(view.ownFaction, view.rules, kind)) {
+    const candidates = Object.entries(view.rules.research.definitions)
+      .filter(([, definition]) =>
+        definition.effects.some(
+          (effect) => effect.id === 'unit-unlock' && effect.unitKind === kind,
+        ),
+      )
+      .map(([id]) => researchName(id, view));
+    return candidates.length
+      ? `研究「${candidates.join(' / ')}」のいずれかが必要です`
+      : 'この兵種を解放する研究が登録されていません';
+  }
   if (stats.movementDomain === 'water') {
     if (
       !view.map.ports?.some(

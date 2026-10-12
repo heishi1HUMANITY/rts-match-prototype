@@ -390,13 +390,17 @@ export function renderResearchEditor(
   const external = document.createElement('details');
   external.className = 'research-node';
   const summary = document.createElement('summary');
-  summary.textContent = '兵種・拠点強化の解放研究';
+  summary.textContent = '研究要否・旧互換参照（解放は効果で判定）';
   external.append(summary);
+  const referenceHelp = document.createElement('p');
+  referenceHelp.textContent =
+    '兵種は「研究不要」なら即解放、それ以外は対応する兵種解放効果を持つ研究のいずれかを完了すると解放します。指定IDだけでは解放しません。拠点Lvの旧互換参照も解放条件ではなく、完了した拠点強化上限効果で判定します。参照先を削除する場合はここも更新してください。';
+  external.append(referenceHelp);
   const options = ids.map((id) => [id, id] as const);
   for (const [kind, unit] of Object.entries(rules.units))
     field(
       external,
-      `${kind} の解放研究`,
+      `${kind} の研究要否・互換参照`,
       `units.${kind}.unlockResearchId`,
       select(
         [['', '研究不要'], ...options],
@@ -420,7 +424,7 @@ export function renderResearchEditor(
   for (const key of ['level2ResearchId', 'level3ResearchId'] as const)
     field(
       external,
-      key === 'level2ResearchId' ? 'Lv2解放研究' : 'Lv3解放研究',
+      key === 'level2ResearchId' ? 'Lv2の旧互換参照' : 'Lv3の旧互換参照',
       `baseUpgrades.${key}`,
       select(options, rules.baseUpgrades[key], (value) =>
         onChange(
