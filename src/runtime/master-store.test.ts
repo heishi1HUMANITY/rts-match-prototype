@@ -67,7 +67,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 12,
+        masterSchemaVersion: 13,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -104,7 +104,7 @@ describe('F17 browser master store', () => {
       expect(
         store.importJson(
           JSON.stringify({
-            masterSchemaVersion: 12,
+            masterSchemaVersion: 13,
             revision: 8,
             rules: invalid,
           }),
@@ -168,7 +168,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 12,
+        masterSchemaVersion: 13,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -196,7 +196,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 12,
+        masterSchemaVersion: 13,
         revision: 10,
         rules: {
           defenses: {
@@ -259,7 +259,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(12);
+    expect(loaded.envelope.masterSchemaVersion).toBe(13);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -352,7 +352,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 12,
+      masterSchemaVersion: 13,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },

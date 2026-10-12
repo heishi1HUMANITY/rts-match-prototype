@@ -194,7 +194,13 @@ describe('F03 rules validation', () => {
           units: {
             helicopter: {
               maxHp: 95,
-              attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+              attackTargets: [
+                'unit',
+                'defender',
+                'base',
+                'stronghold',
+                'facility',
+              ],
               canCaptureBase: false,
             },
           },
@@ -225,7 +231,7 @@ describe('F03 rules validation', () => {
         rules: {
           units: {
             helicopter: {
-              attackTargets: ['unit', 'base'],
+              attackTargets: ['unit', 'base', 'facility'],
               canCaptureBase: true,
               captureEfficiencyPercent: 100,
             },

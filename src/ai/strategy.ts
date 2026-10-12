@@ -9,6 +9,7 @@ import type {
   Command,
   FactionId,
   FactionView,
+  FacilityKind,
   MarchTarget,
   OwnedBaseView,
   OwnUnitView,
@@ -119,6 +120,93 @@ function baseUpgradeCommand(view: FactionView): Command | undefined {
   return candidate
     ? { type: 'upgrade-base', baseId: candidate.base.id }
     : undefined;
+}
+
+/** Conservative paid defenses; hidden facilities never enter this decision. */
+export function facilityConstructionCommand(
+  view: FactionView,
+): Command | undefined {
+  const own = view.facilities.filter(
+    (facility) => facility.visibility === 'owned',
+  );
+  if (own.length >= Math.min(2, view.rules.facilities.maxPerFaction))
+    return undefined;
+  const bases = view.bases.filter(
+    (base): base is OwnedBaseView =>
+      base.visibility === 'owned' && base.hp > 0 && base.upgradeJob === null,
+  );
+  const candidates = bases.sort(
+    (a, b) =>
+      Number(b.kind === 'hq') - Number(a.kind === 'hq') ||
+      a.id.localeCompare(b.id),
+  );
+  for (const base of candidates) {
+    const attached = own.filter(
+      (facility) =>
+        facility.anchor.kind === 'base' && facility.anchor.id === base.id,
+    );
+    if (attached.length >= view.rules.facilities.slotsPerAnchor) continue;
+    const nearby = view.visibleEnemies.filter(
+      (enemy) =>
+        distanceSquared(base.cell, {
+          x: enemy.positionX1024 / 1024,
+          y: enemy.positionY1024 / 1024,
+        }) <= 100,
+    );
+    const priority: FacilityKind[] = nearby.some(
+      (enemy) => view.rules.units[enemy.kind].movementDomain === 'air',
+    )
+      ? ['antiAir', 'turret', 'watchtower']
+      : nearby.length
+        ? ['turret', 'mine', 'jammer', 'watchtower']
+        : ['watchtower', 'turret'];
+    for (const kind of priority) {
+      if (attached.some((facility) => facility.kind === kind)) continue;
+      if (
+        !view.ownFaction.completedResearchIds.some((id) =>
+          view.rules.research.definitions[id]?.effects.some(
+            (effect) =>
+              effect.id === 'facility-unlock' && effect.facilityKind === kind,
+          ),
+        )
+      )
+        continue;
+      // Keep a production budget instead of spending every remaining resource.
+      if (
+        view.ownFaction.supplyCenti <
+        view.rules.facilities.definitions[kind].costCenti * 2 +
+          view.rules.units.scout.costCenti
+      )
+        continue;
+      const c = base.cell;
+      if (
+        ![
+          { x: c.x, y: c.y - 1 },
+          { x: c.x + 1, y: c.y },
+          { x: c.x, y: c.y + 1 },
+          { x: c.x - 1, y: c.y },
+        ].some(
+          (cell) =>
+            cell.x >= 0 &&
+            cell.y >= 0 &&
+            cell.x < view.map.width &&
+            cell.y < view.map.height &&
+            !view.map.blocked[cell.y * view.map.width + cell.x] &&
+            !own.some(
+              (facility) =>
+                facility.cell.x === cell.x && facility.cell.y === cell.y,
+            ),
+        )
+      )
+        continue;
+      return {
+        type: 'build-facility',
+        kind,
+        anchor: { kind: 'base', id: base.id },
+      };
+    }
+  }
+  return undefined;
 }
 
 function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
@@ -533,7 +621,7 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
   const slots: (() => Command | undefined)[] = [
     () => productionCommand(view),
     () => researchCommand(view),
-    () => baseUpgradeCommand(view),
+    () => baseUpgradeCommand(view) ?? facilityConstructionCommand(view),
     ...[...view.ownUnits]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((unit) => () => unitMoveCommand(view, unit)),

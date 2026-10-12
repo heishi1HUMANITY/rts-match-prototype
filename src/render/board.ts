@@ -1,3 +1,4 @@
+import { FACILITY_NAMES, FACILITY_GLYPHS } from '../ui/facilities';
 import * as THREE from 'three';
 import {
   baseLabel,
@@ -776,6 +777,98 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         : 'grid';
   };
 
+  const facilityObjects = new Map<
+    string,
+    {
+      marker: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+      ring: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+      label: HTMLDivElement;
+    }
+  >();
+  const facilityGeometry = ownGeometry(
+    new THREE.CylinderGeometry(0.25, 0.4, 0.5, 4),
+  );
+  const facilityRingGeometry = ownGeometry(new THREE.RingGeometry(0.98, 1, 64));
+  const syncFacilities = (view: FactionView): void => {
+    // Defense in depth: even a malformed snapshot may not reveal enemy mines.
+    const visible = view.facilities.filter(
+      (facility) =>
+        facility.kind !== 'mine' || facility.owner === view.viewerFactionId,
+    );
+    const present = new Set(visible.map((facility) => facility.id));
+    for (const [id, objects] of facilityObjects) {
+      if (present.has(id)) continue;
+      scene.remove(objects.marker, objects.ring);
+      for (const material of [objects.marker.material, objects.ring.material]) {
+        material.dispose();
+        resources.materials.delete(material);
+      }
+      objects.label.remove();
+      facilityObjects.delete(id);
+    }
+    for (const facility of visible) {
+      let objects = facilityObjects.get(facility.id);
+      if (!objects) {
+        const marker = new THREE.Mesh(
+          facilityGeometry,
+          ownMaterial(
+            new THREE.MeshBasicMaterial({
+              color: FACTIONS[facility.owner].color,
+              transparent: true,
+            }),
+          ),
+        );
+        const ring = new THREE.Mesh(
+          facilityRingGeometry,
+          ownMaterial(
+            new THREE.MeshBasicMaterial({
+              color: FACTIONS[facility.owner].color,
+              transparent: true,
+              opacity: 0.65,
+              side: THREE.DoubleSide,
+            }),
+          ),
+        );
+        ring.rotation.x = -Math.PI / 2;
+        const label = document.createElement('div');
+        label.className = 'rts-facility-label';
+        label.dataset.facilityId = facility.id;
+        labelLayer.append(label);
+        marker.renderOrder = 3;
+        ring.renderOrder = 2;
+        objects = { marker, ring, label };
+        facilityObjects.set(facility.id, objects);
+        scene.add(marker, ring);
+      }
+      const remembered = facility.visibility === 'remembered';
+      const building = facility.remainingBuildTicks > 0;
+      objects.marker.position.copy(cellPosition(facility.cell, 0.3));
+      objects.marker.scale.set(
+        1,
+        facility.kind === 'watchtower' || facility.kind === 'jammer'
+          ? 2
+          : facility.kind === 'mine'
+            ? 0.15
+            : 1,
+        1,
+      );
+      objects.marker.material.color.setHex(FACTIONS[facility.owner].color);
+      objects.marker.material.opacity = remembered ? 0.35 : building ? 0.55 : 1;
+      const radius =
+        facility.kind === 'jammer'
+          ? view.rules.facilities.definitions.jammer.jamRange
+          : facility.kind === 'mine'
+            ? view.rules.facilities.definitions.mine.range
+            : 0;
+      objects.ring.visible = !remembered && !building && radius > 0;
+      objects.ring.position.copy(cellPosition(facility.cell, 0.08));
+      objects.ring.scale.setScalar(radius);
+      objects.label.textContent = `${FACTIONS[facility.owner].symbol}${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} ${facility.hp}/${facility.maxHp}${remembered ? ` 最終T${facility.seenTick}` : building ? ` 建築${(facility.remainingBuildTicks / 10).toFixed(1)}秒` : ''}`;
+      objects.label.title = objects.label.textContent;
+      updateLabelPosition(objects.label, cellPosition(facility.cell, 0.8), -2);
+    }
+  };
+
   const baseObjects = new Map<
     string,
     {
@@ -963,6 +1056,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const path = unit.control === 'own' ? unit.path : [];
       const march = unit.control === 'own' ? unit.marchOrder : null;
       const localUnit = unit.factionId === 'local';
+      const jammed = unit.control === 'own' && unit.jammed;
       const glyph = (
         {
           assault: '強',
@@ -973,7 +1067,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           patrolBoat: '艇',
         } as const
       )[unit.kind];
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${march ? '→' : ''}\n${unit.hp}/${unit.maxHp}`;
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${march ? '→' : ''}${jammed ? '⚠妨' : ''}\n${unit.hp}/${unit.maxHp}`;
       objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
@@ -1045,6 +1139,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       occupiedLabels.push(label);
     }
     syncBases(current);
+    syncFacilities(current);
     for (const entry of mapSiteLabels) {
       if (entry.crossingId) {
         const crossing = current.crossings.find(

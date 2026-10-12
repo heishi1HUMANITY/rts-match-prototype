@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'facilities',
     'baseUpgrades',
     'units',
     'bases',
@@ -89,14 +90,17 @@ export function validateRules(input: unknown): ValidationResult {
             return defaults[0];
           }
           const unlock = entry.id === 'crossing-unlock';
+          const facilityUnlock = entry.id === 'facility-unlock';
           const unitUnlock = entry.id === 'unit-unlock';
           exactKeys(
             entry,
             unlock
               ? ['id', 'value', 'crossingTier']
-              : unitUnlock
-                ? ['id', 'value', 'unitKind']
-                : ['id', 'value'],
+              : facilityUnlock
+                ? ['id', 'value', 'facilityKind']
+                : unitUnlock
+                  ? ['id', 'value', 'unitKind']
+                  : ['id', 'value'],
             effectPath,
             issues,
           );
@@ -109,6 +113,8 @@ export function validateRules(input: unknown): ValidationResult {
               'crossing-unlock',
               'unit-unlock',
               'base-upgrade-max',
+              'facility-unlock',
+              'facility-build-speed-percent',
             ].includes(String(entry.id))
           )
             issues.push({
@@ -154,7 +160,18 @@ export function validateRules(input: unknown): ValidationResult {
               key: `${effectPath}.unitKind`,
               message: '兵種解放以外には指定できません',
             });
+          if (
+            facilityUnlock &&
+            !['turret', 'antiAir', 'mine', 'watchtower', 'jammer'].includes(
+              String(entry.facilityKind),
+            )
+          )
+            issues.push({
+              key: `${effectPath}.facilityKind`,
+              message: '未対応の施設IDです',
+            });
           return {
+            ...(facilityUnlock ? { facilityKind: entry.facilityKind } : {}),
             id: String(entry.id),
             value: isInteger(entry.value) ? entry.value : 0,
             ...(unlock && typeof entry.crossingTier === 'string'
@@ -173,6 +190,7 @@ export function validateRules(input: unknown): ValidationResult {
           'base',
           'crossing',
           'stronghold',
+          'facility',
         ];
         const targets = value.filter(
           (entry): entry is CombatTargetKind =>
@@ -231,6 +249,12 @@ export function validateRules(input: unknown): ValidationResult {
           output[key] = actual;
         } else if (!allowedNull && typeof expected === 'number') {
           const positive =
+            !(
+              fieldPath.startsWith('rules.facilities.') &&
+              (fieldPath.endsWith('.range') ||
+                fieldPath.endsWith('.vision') ||
+                fieldPath.endsWith('.jamRange'))
+            ) &&
             !fieldPath.endsWith('initialResearchCenti') &&
             !fieldPath.endsWith('damageBonus') &&
             !fieldPath.includes('damageVs') &&
@@ -282,6 +306,8 @@ export function validateRules(input: unknown): ValidationResult {
                       'crossing-unlock',
                       'unit-unlock',
                       'base-upgrade-max',
+                      'facility-unlock',
+                      'facility-build-speed-percent',
                     ]
                   : [
                       'firepower-1',
@@ -455,7 +481,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
-      input.masterSchemaVersion !== 11)
+      input.masterSchemaVersion !== 11 &&
+      input.masterSchemaVersion !== 12)
   )
     return {
       ok: false,
@@ -554,6 +581,32 @@ export function validateEnvelope(
         ...migrationCandidate,
         baseUpgrades: DEFAULT_RULES.baseUpgrades,
       };
+    if (!Object.hasOwn(migrationCandidate, 'facilities'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        facilities: DEFAULT_RULES.facilities,
+      };
+    if (isRecord(migrationCandidate.units))
+      migrationCandidate = {
+        ...migrationCandidate,
+        units: Object.fromEntries(
+          Object.entries(migrationCandidate.units).map(([key, value]) => [
+            key,
+            isRecord(value) && Array.isArray(value.attackTargets)
+              ? {
+                  ...value,
+                  attackTargets: [
+                    ...value.attackTargets,
+                    ...(value.damageVsStructure &&
+                    !value.attackTargets.includes('facility')
+                      ? ['facility']
+                      : []),
+                  ],
+                }
+              : value,
+          ]),
+        ),
+      };
     candidateRules = migrationCandidate;
   }
   if (
@@ -577,7 +630,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
-      input.masterSchemaVersion !== 11
+      input.masterSchemaVersion !== 11 &&
+      input.masterSchemaVersion !== 12
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {

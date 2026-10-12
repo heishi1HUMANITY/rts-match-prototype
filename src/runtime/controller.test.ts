@@ -3,6 +3,30 @@ import { MatchRuntime } from './controller';
 import { assertReplayMatches } from './diagnostics';
 
 describe('MatchRuntime diagnostic history', () => {
+  it('dispatches and replays facility construction through the runtime boundary', () => {
+    const runtime = new MatchRuntime(
+      { onChange: () => undefined },
+      42,
+      'f11-facilities',
+    );
+    runtime.dispatch({ type: 'start' });
+    runtime.dispatch({
+      type: 'build-facility',
+      kind: 'turret',
+      anchor: { kind: 'base', id: 'HQ-A' },
+    });
+    expect(runtime.snapshot().history.at(-1)).toMatchObject({
+      ok: true,
+      command: { type: 'build-facility' },
+    });
+    expect(runtime.snapshot().state.facilities).toHaveLength(1);
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+    runtime.dispatch({ type: 'build-facility', kind: 'turret', anchor: [] });
+    expect(runtime.snapshot().history.at(-1)).toMatchObject({
+      command: null,
+      ok: false,
+    });
+  });
   it('normalizes malformed commands and replays context-loss resume rejection', () => {
     const runtime = new MatchRuntime({ onChange: () => undefined });
     runtime.dispatch({ type: 'start', extra: true });

@@ -1,3 +1,4 @@
+import { beginFacilityBuild, FACILITY_KINDS } from './facilities';
 import { canTraverse } from './map';
 import {
   knownActiveCrossings,
@@ -19,6 +20,7 @@ import {
 import { advanceMarchOrder } from './march';
 import type {
   Cell,
+  FacilityKind,
   Command,
   CommandResult,
   FactionId,
@@ -83,6 +85,21 @@ function parseCommand(input: unknown): ParsedCommand | null {
   ) {
     return { type: input.type };
   }
+  if (
+    input.type === 'build-facility' &&
+    hasExactKeys(input, ['type', 'kind', 'anchor']) &&
+    typeof input.kind === 'string' &&
+    FACILITY_KINDS.includes(input.kind as FacilityKind) &&
+    isRecord(input.anchor) &&
+    hasExactKeys(input.anchor, ['kind', 'id']) &&
+    (input.anchor.kind === 'base' || input.anchor.kind === 'crossing') &&
+    typeof input.anchor.id === 'string'
+  )
+    return {
+      type: 'build-facility',
+      kind: input.kind as FacilityKind,
+      anchor: { kind: input.anchor.kind, id: input.anchor.id },
+    };
   if (input.type === 'stop' && hasExactKeys(input, ['type', 'unitId'])) {
     return typeof input.unitId === 'string'
       ? { type: 'stop', unitId: input.unitId }
@@ -240,6 +257,8 @@ export function applyCommand(
   ) {
     return reject(state, 'FACTION_ELIMINATED');
   }
+  if (command.type === 'build-facility')
+    return beginFacilityBuild(state, actor, command.kind, command.anchor);
   if (command.type === 'enqueue-production') {
     return enqueueProduction(state, actor, command.baseId, command.unitKind);
   }

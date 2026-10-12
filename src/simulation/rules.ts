@@ -18,14 +18,15 @@ import {
 } from './config';
 import type {
   BaseKind,
+  FacilityKind,
   CombatTargetKind,
   CrossingTierId,
   ResearchId,
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 12 as const;
-export const RULES_VERSION = 'f19-v1' as const;
+export const MASTER_SCHEMA_VERSION = 13 as const;
+export const RULES_VERSION = 'f11-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -52,7 +53,24 @@ export interface BaseUpgradeRules {
   >;
 }
 
+export interface FacilityDefinition {
+  readonly costCenti: number;
+  readonly buildTicks: number;
+  readonly maxHp: number;
+  readonly range: number;
+  readonly damageVsLand: number;
+  readonly damageVsAir: number;
+  readonly damageVsWater: number;
+  readonly attackIntervalTicks: number;
+  readonly vision: number;
+  readonly jamRange: number;
+}
 export interface RulesMaster {
+  readonly facilities: {
+    readonly slotsPerAnchor: number;
+    readonly maxPerFaction: number;
+    readonly definitions: Readonly<Record<FacilityKind, FacilityDefinition>>;
+  };
   readonly baseUpgrades: BaseUpgradeRules;
   readonly units: Readonly<
     Record<
@@ -294,7 +312,10 @@ export const DEFAULT_RULES: RulesMaster = {
                 ? 3
                 : MOVE_TICKS_PER_CELL,
           movementDomain: stats.movementDomain,
-          attackTargets: [...stats.attackTargets],
+          attackTargets: [
+            ...stats.attackTargets,
+            ...(stats.damageVsStructure > 0 ? ['facility' as const] : []),
+          ],
           canCaptureBase: stats.canCaptureBase,
           captureEfficiencyPercent: 100,
           damageVsLand: stats.damageVsLand,
@@ -382,6 +403,72 @@ export const DEFAULT_RULES: RulesMaster = {
       maxHp: 300,
       regenerationPerTick: 1,
       vision: 6,
+    },
+  },
+  facilities: {
+    slotsPerAnchor: 2,
+    maxPerFaction: 6,
+    definitions: {
+      turret: {
+        costCenti: 15000,
+        buildTicks: 300,
+        maxHp: 300,
+        range: 3,
+        damageVsLand: 25,
+        damageVsAir: 0,
+        damageVsWater: 20,
+        attackIntervalTicks: 10,
+        vision: 3,
+        jamRange: 0,
+      },
+      antiAir: {
+        costCenti: 15000,
+        buildTicks: 300,
+        maxHp: 250,
+        range: 4,
+        damageVsLand: 0,
+        damageVsAir: 50,
+        damageVsWater: 0,
+        attackIntervalTicks: 10,
+        vision: 4,
+        jamRange: 0,
+      },
+      mine: {
+        costCenti: 10000,
+        buildTicks: 200,
+        maxHp: 1,
+        range: 1,
+        damageVsLand: 120,
+        damageVsAir: 0,
+        damageVsWater: 0,
+        attackIntervalTicks: 10,
+        vision: 0,
+        jamRange: 0,
+      },
+      watchtower: {
+        costCenti: 12000,
+        buildTicks: 250,
+        maxHp: 200,
+        range: 0,
+        damageVsLand: 0,
+        damageVsAir: 0,
+        damageVsWater: 0,
+        attackIntervalTicks: 10,
+        vision: 10,
+        jamRange: 0,
+      },
+      jammer: {
+        costCenti: 18000,
+        buildTicks: 350,
+        maxHp: 220,
+        range: 0,
+        damageVsLand: 0,
+        damageVsAir: 0,
+        damageVsWater: 0,
+        attackIntervalTicks: 10,
+        vision: 0,
+        jamRange: 7,
+      },
     },
   },
   match: {

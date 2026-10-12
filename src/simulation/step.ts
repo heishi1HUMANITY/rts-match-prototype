@@ -1,3 +1,4 @@
+import { advanceFacilities, cleanupFacilities } from './facilities';
 import { advanceCapture } from './capture';
 import { resolveCombat } from './combat';
 import { applyEconomyTick } from './economy';
@@ -145,6 +146,7 @@ export function stepMatch(state: MatchState): MatchState {
   let next: MatchState = revalidateRoutes(advanceMarchOrders(initial));
   next = { ...next, elapsedTicks: initial.elapsedTicks + 1 };
   next = advanceLocalFaction(next);
+  next = advanceFacilities(next);
   next = { ...next, units: next.units.map((unit) => stepUnit(unit, next)) };
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
@@ -156,6 +158,6 @@ export function stepMatch(state: MatchState): MatchState {
   next = advanceProduction(next);
   next = applyTicketTick(next);
   next = advanceCrossings(next);
-  next = resolveMatchOutcome(next);
+  next = cleanupFacilities(resolveMatchOutcome(next));
   return { ...next, knowledge: updateFactionKnowledge(next) };
 }
