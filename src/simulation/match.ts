@@ -347,6 +347,7 @@ export function createMatch(
       map,
       units: buildUnits(rules),
       bases: buildBases(rules),
+      facilities: [],
       crossings: (map.crossingSites ?? []).map((site) => ({
         siteId: site.id,
         owner: null,
@@ -390,6 +391,29 @@ export function createMatch(
           units: [...initial.units, ...createInitialLocalUnits(initial)],
         }
       : initial;
-  const partial = { ...withLocalUnits, knowledge: [] } as MatchState;
+  const fixture =
+    scenarioId === 'f11-facilities'
+      ? {
+          ...withLocalUnits,
+          bases: withLocalUnits.bases.map((base) =>
+            ['OUT-03', 'MID-02'].includes(base.id)
+              ? { ...base, owner: 'A' as const, hp: base.maxHp, defender: null }
+              : base,
+          ),
+          factions: withLocalUnits.factions.map((f) => ({
+            ...f,
+            supplyCenti: 1000000,
+            completedResearchIds: Object.keys(
+              rules.research.definitions,
+            ).filter((id) => id !== 'facility-engineering'),
+          })),
+          rules: {
+            ...rules,
+            npc: { ...rules.npc, decisionIntervalTicks: 10000 },
+          },
+          localFaction: { ...withLocalUnits.localFaction, defeated: true },
+        }
+      : withLocalUnits;
+  const partial = { ...fixture, knowledge: [] } as MatchState;
   return { ...partial, knowledge: createInitialKnowledge(partial) };
 }

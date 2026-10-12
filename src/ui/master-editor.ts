@@ -37,6 +37,26 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  slotsPerAnchor: {
+    label: '設置先あたり施設枠',
+    unit: '枠',
+    help: '建築中も枠を使用します。',
+  },
+  maxPerFaction: {
+    label: '陣営の施設上限',
+    unit: '基',
+    help: '建築中も施設数に含みます。',
+  },
+  attackIntervalTicks: {
+    label: '施設射撃間隔',
+    unit: 'tick (0.1秒)',
+    help: '完成施設の射撃間隔です。地雷は一度だけ起爆します。',
+  },
+  jamRange: {
+    label: '妨害半径',
+    unit: 'セル',
+    help: '敵視界の半減と自軍部隊の発見抑制範囲です。',
+  },
   restoredHpPercent: {
     label: '制圧後の拠点HP率',
     unit: '%',
@@ -375,6 +395,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    facilities: '防御施設',
     baseUpgrades: '拠点強化',
     units: '兵種',
     bases: '拠点',
@@ -416,6 +437,7 @@ function fieldsFor(rules: RulesMaster): {
           'movementDomain',
           'unlockResearchId',
           'unitKind',
+          'facilityKind',
           'level2ResearchId',
           'level3ResearchId',
         ].includes(key)
@@ -426,7 +448,7 @@ function fieldsFor(rules: RulesMaster): {
       );
       if (
         unlockValue &&
-        ['crossing-unlock', 'unit-unlock'].includes(
+        ['crossing-unlock', 'unit-unlock', 'facility-unlock'].includes(
           String(
             getPath(
               rules,
@@ -453,6 +475,10 @@ function fieldLabel(path: string): string {
   const part = path.split('.').at(-1)!;
   const base = FIELD_META[part]?.label ?? part;
   const ids: Record<string, string> = {
+    turret: '砲座',
+    mine: '地雷原',
+    watchtower: '観測塔',
+    jammer: '妨害塔',
     assault: '強襲',
     scout: '偵察',
     artillery: '自走砲',
@@ -480,6 +506,17 @@ function fieldLabel(path: string): string {
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
+  const facility = path.match(/^facilities\.definitions\.([^.]+)\.([^.]+)$/);
+  if (facility) {
+    const names: Record<string, string> = {
+      turret: '砲座',
+      antiAir: '対空陣地',
+      mine: '地雷原',
+      watchtower: '観測塔',
+      jammer: '妨害塔',
+    };
+    return `${names[facility[1]!] ?? facility[1]} · ${facility[2] === 'buildTicks' ? '建築時間' : base}`;
+  }
   const effectMatch = path.match(
     /^research\.definitions\.([^.]+)\.effects\.(\d+)\.value$/,
   );
@@ -572,6 +609,21 @@ export function createMasterEditor(
         help: '試合の新しい設定に適用されます。',
         label: '',
       };
+      const detailMeta =
+        field.path.startsWith('facilities.definitions.') &&
+        field.path.split('.').at(-1)?.startsWith('damageVs')
+          ? {
+              ...meta,
+              unit: 'HP/射撃（地雷は一撃）',
+              help: '完成施設の1回の攻撃で与えるdamageです。0は攻撃不可。',
+            }
+          : field.path.startsWith('facilities.definitions.') &&
+              field.path.endsWith('.buildTicks')
+            ? {
+                ...meta,
+                help: '建築完了までの時間です。研究による建築速度の補正前の値です。',
+              }
+            : meta;
       const label = document.createElement('label');
       label.className = 'master-field';
       const name = document.createElement('strong');
@@ -584,7 +636,7 @@ export function createMasterEditor(
             ? '有効'
             : '無効'
           : String(standardValue);
-      detail.textContent = `${meta.unit}${meta.unit ? ' · ' : ''}${meta.help} 標準値: ${standardLabel}`;
+      detail.textContent = `${detailMeta.unit}${detailMeta.unit ? ' · ' : ''}${detailMeta.help} 標準値: ${standardLabel}`;
       if (Array.isArray(field.value) && field.path.endsWith('.attackTargets')) {
         const choices = [
           ['unit', '部隊'],
@@ -592,6 +644,7 @@ export function createMasterEditor(
           ['base', '拠点'],
           ['crossing', '渡河設備'],
           ['stronghold', '現地勢力本拠'],
+          ['facility', '防御施設'],
         ] as const;
         const container = document.createElement('div');
         container.className = 'master-field master-targets';

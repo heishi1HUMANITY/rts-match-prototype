@@ -7,6 +7,7 @@ import {
 } from './visibility';
 import type {
   BaseView,
+  FacilityView,
   FactionId,
   FactionKnowledge,
   FactionView,
@@ -193,6 +194,16 @@ export function getFactionView(
     .filter((unit) => unit.factionId === factionId && unit.hp > 0)
     .map((unit) => ({
       control: 'own' as const,
+      jammed: state.facilities.some(
+        (f) =>
+          f.kind === 'jammer' &&
+          f.owner !== factionId &&
+          f.hp > 0 &&
+          f.remainingBuildTicks === 0 &&
+          (getUnitPositionX1024(unit) - (f.cell.x * 1024 + 512)) ** 2 +
+            (getUnitPositionY1024(unit) - (f.cell.y * 1024 + 512)) ** 2 <=
+            (state.rules.facilities.definitions.jammer.jamRange * 1024) ** 2,
+      ),
       id: unit.id,
       factionId: unit.factionId,
       kind: unit.kind,
@@ -379,5 +390,33 @@ export function getFactionView(
     },
     bases: baseViews(state, factionId, knowledge),
     crossings: crossingViews(state, factionId, knowledge),
+    facilities: [
+      ...knowledge.facilityMemory.filter((f) => f.owner !== factionId),
+      ...state.facilities
+        .filter((f) => f.owner === factionId)
+        .map((f) => ({ ...f, seenTick: state.elapsedTicks })),
+    ].flatMap<FacilityView>((memory) => {
+      const current = state.facilities.find((f) => f.id === memory.id);
+      if (current?.owner === factionId)
+        return [
+          {
+            ...current,
+            anchor: { ...current.anchor },
+            cell: { ...current.cell },
+            visibility: 'owned' as const,
+          },
+        ];
+      if (memory.owner === factionId) return [];
+      const visible = isCellVisibleToFaction(state, memory.cell, factionId);
+      if (visible && (!current || current.kind === 'mine')) return [];
+      return [
+        {
+          ...memory,
+          anchor: { ...memory.anchor },
+          cell: { ...memory.cell },
+          visibility: visible ? ('visible' as const) : ('remembered' as const),
+        },
+      ];
+    }),
   };
 }

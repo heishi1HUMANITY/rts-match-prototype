@@ -1,3 +1,4 @@
+import { cleanupFacilities } from './facilities';
 import { cancelAllProductionForDestroyedHq } from './production';
 import { firepowerBonus } from './research';
 import { visibleMarchCombatTarget } from './march';
@@ -20,7 +21,13 @@ import { unitCapabilities } from './unit-capabilities';
 import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
 
 interface Target {
-  readonly kind: 'unit' | 'defender' | 'base' | 'crossing' | 'stronghold';
+  readonly kind:
+    | 'unit'
+    | 'defender'
+    | 'base'
+    | 'crossing'
+    | 'stronghold'
+    | 'facility';
   readonly id: string;
   readonly distanceSquared: number;
 }
@@ -206,6 +213,33 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     state.rules.units[attacker.kind].damageVsStructure > 0
   )
     return defenders[0];
+  if (
+    attacker.factionId !== 'local' &&
+    state.rules.units[attacker.kind].attackTargets.includes('facility') &&
+    state.rules.units[attacker.kind].damageVsStructure > 0
+  ) {
+    const target = state.facilities
+      .filter(
+        (f) =>
+          f.owner !== attacker.factionId &&
+          f.kind !== 'mine' &&
+          f.hp > 0 &&
+          isCellVisibleToFaction(state, f.cell, attacker.factionId),
+      )
+      .map((f) => ({
+        kind: 'facility' as const,
+        id: f.id,
+        distanceSquared: distanceSquared(
+          x2,
+          y2,
+          f.cell.x * 1024 + 512,
+          f.cell.y * 1024 + 512,
+        ),
+      }))
+      .filter((t) => t.distanceSquared <= rangeSquared)
+      .sort(compareTarget)[0];
+    if (target) return target;
+  }
   const bases = state.bases
     .filter(() =>
       unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
@@ -297,6 +331,8 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
 export function resolveCombat(state: MatchState): MatchState {
   const snapshot = state;
   const unitDamage = new Map<string, number>();
+  const facilityDamage = new Map<string, number>();
+  const activatedFacilities = new Set<string>();
   const defenderDamage = new Map<string, number>();
   const baseDamage = new Map<string, number>();
   const crossingDamage = new Map<string, Map<FactionId, number>>();
@@ -317,6 +353,11 @@ export function resolveCombat(state: MatchState): MatchState {
     );
     if (target.kind === 'unit') {
       unitDamage.set(target.id, (unitDamage.get(target.id) ?? 0) + damage);
+    } else if (target.kind === 'facility') {
+      facilityDamage.set(
+        target.id,
+        (facilityDamage.get(target.id) ?? 0) + damage,
+      );
     } else if (target.kind === 'defender') {
       defenderDamage.set(
         target.id,
@@ -342,6 +383,45 @@ export function resolveCombat(state: MatchState): MatchState {
     }
   }
 
+  for (const f of snapshot.facilities) {
+    if (f.hp <= 0 || f.remainingBuildTicks > 0) continue;
+    const d = snapshot.rules.facilities.definitions[f.kind];
+    if (snapshot.elapsedTicks - f.lastActivatedTick < d.attackIntervalTicks)
+      continue;
+    const target = snapshot.units
+      .filter((u) => u.hp > 0 && u.factionId !== f.owner)
+      .map((u) => ({
+        u,
+        domain: snapshot.rules.units[u.kind].movementDomain,
+        distance: distanceSquared(
+          f.cell.x * 1024 + 512,
+          f.cell.y * 1024 + 512,
+          getUnitPositionX1024(u),
+          getUnitPositionY1024(u),
+        ),
+      }))
+      .filter(
+        (t) =>
+          t.distance <= (d.range * 1024) ** 2 &&
+          (t.domain === 'air'
+            ? d.damageVsAir
+            : t.domain === 'water'
+              ? d.damageVsWater
+              : d.damageVsLand) > 0 &&
+          (f.kind === 'mine' || isUnitVisibleToFaction(snapshot, t.u, f.owner)),
+      )
+      .sort((a, b) => a.distance - b.distance || (a.u.id < b.u.id ? -1 : 1))[0];
+    if (!target) continue;
+    const damage =
+      target.domain === 'air'
+        ? d.damageVsAir
+        : target.domain === 'water'
+          ? d.damageVsWater
+          : d.damageVsLand;
+    unitDamage.set(target.u.id, (unitDamage.get(target.u.id) ?? 0) + damage);
+    activatedFacilities.add(f.id);
+    if (f.kind === 'mine') facilityDamage.set(f.id, f.hp);
+  }
   // Garrison attacks use the same pre-damage snapshot as faction units.
   for (const base of snapshot.bases) {
     if (
@@ -585,6 +665,18 @@ export function resolveCombat(state: MatchState): MatchState {
   let next: MatchState = {
     ...snapshot,
     units,
+    facilities: snapshot.facilities
+      .map((f) => ({
+        ...f,
+        hp: Math.max(0, f.hp - (facilityDamage.get(f.id) ?? 0)),
+        lastDamagedTick: facilityDamage.has(f.id)
+          ? snapshot.elapsedTicks
+          : f.lastDamagedTick,
+        lastActivatedTick: activatedFacilities.has(f.id)
+          ? snapshot.elapsedTicks
+          : f.lastActivatedTick,
+      }))
+      .filter((f) => f.hp > 0),
     bases,
     crossings,
     localFaction,
@@ -614,5 +706,5 @@ export function resolveCombat(state: MatchState): MatchState {
   };
   for (const factionId of destroyedHqs)
     next = cancelAllProductionForDestroyedHq(next, factionId);
-  return next;
+  return cleanupFacilities(next);
 }

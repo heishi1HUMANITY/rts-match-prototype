@@ -94,7 +94,35 @@ function sightSources(
       radius: state.rules.crossings[site.tier].vision + visionBonus,
     });
   }
-  return sources;
+  const jammers = state.facilities.filter(
+    (f) => f.kind === 'jammer' && f.hp > 0 && f.remainingBuildTicks === 0,
+  );
+  const jamCount = (x: number, y: number) =>
+    jammers.filter(
+      (f) =>
+        f.owner !== factionId &&
+        (x - (f.cell.x * 1024 + 512)) ** 2 +
+          (y - (f.cell.y * 1024 + 512)) ** 2 <=
+          (state.rules.facilities.definitions.jammer.jamRange * 1024) ** 2,
+    ).length;
+  for (const f of state.facilities)
+    if (
+      f.owner === factionId &&
+      state.rules.facilities.definitions[f.kind].vision > 0 &&
+      f.hp > 0 &&
+      f.remainingBuildTicks === 0 &&
+      (f.kind !== 'watchtower' ||
+        jamCount(f.cell.x * 1024 + 512, f.cell.y * 1024 + 512) === 0)
+    )
+      sources.push({
+        x: f.cell.x * 1024 + 512,
+        y: f.cell.y * 1024 + 512,
+        radius: state.rules.facilities.definitions[f.kind].vision + visionBonus,
+      });
+  return sources.map((source) => ({
+    ...source,
+    radius: source.radius * 0.5 ** jamCount(source.x, source.y),
+  }));
 }
 
 function isPointVisible(
@@ -116,8 +144,22 @@ export function isUnitVisibleToFaction(
   factionId: CombatantId,
 ): boolean {
   if (unit.hp <= 0) return false;
+  const concealed = state.facilities.some(
+    (f) =>
+      f.kind === 'jammer' &&
+      f.owner === unit.factionId &&
+      f.hp > 0 &&
+      f.remainingBuildTicks === 0 &&
+      (unitPositionX1024(unit) - (f.cell.x * 1024 + 512)) ** 2 +
+        (unitPositionY1024(unit) - (f.cell.y * 1024 + 512)) ** 2 <=
+        (state.rules.facilities.definitions.jammer.jamRange * 1024) ** 2,
+  );
   return isPointVisible(
-    sightSources(state, factionId),
+    sightSources(state, factionId).map((source) => ({
+      ...source,
+      radius:
+        source.radius * (concealed && unit.factionId !== factionId ? 0.5 : 1),
+    })),
     unitPositionX1024(unit),
     unitPositionY1024(unit),
   );
@@ -212,7 +254,31 @@ function createKnowledge(
       return oldCrossingMemory.get(crossing.siteId) ?? null;
     })
     .filter((memory): memory is NonNullable<typeof memory> => memory !== null);
-  return { factionId, visible, explored, baseMemory, crossingMemory };
+  const memories = new Map(
+    (previous?.facilityMemory ?? []).map((f) => [f.id, f]),
+  );
+  for (const [id, f] of memories)
+    if (visible[f.cell.y * MAP_WIDTH + f.cell.x]) memories.delete(id);
+  for (const f of state.facilities)
+    if (
+      f.owner === factionId ||
+      (f.kind !== 'mine' && visible[f.cell.y * MAP_WIDTH + f.cell.x])
+    )
+      memories.set(f.id, {
+        ...f,
+        anchor: { ...f.anchor },
+        cell: { ...f.cell },
+        seenTick: state.elapsedTicks,
+      });
+  const facilityMemory = [...memories.values()];
+  return {
+    factionId,
+    visible,
+    explored,
+    baseMemory,
+    crossingMemory,
+    facilityMemory,
+  };
 }
 
 /** Recomputes every faction's current mask and durable exploration/base memory. */

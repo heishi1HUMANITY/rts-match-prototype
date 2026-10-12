@@ -1,3 +1,4 @@
+import { FACILITY_NAMES, updateFacilitiesPanel } from './facilities';
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
 import type {
@@ -10,7 +11,13 @@ import { crossingResearchComplete } from '../simulation/crossings';
 import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
 
-export type HudPanel = 'production' | 'research' | 'base' | 'crossings' | null;
+export type HudPanel =
+  | 'production'
+  | 'research'
+  | 'base'
+  | 'crossings'
+  | 'facilities'
+  | null;
 export interface HudElements {
   readonly root: HTMLElement;
   readonly board: HTMLElement;
@@ -94,6 +101,7 @@ const effectLabel = (effect: {
   value: number;
   crossingTier?: string;
   unitKind?: string;
+  facilityKind?: string;
 }): string => {
   switch (effect.id) {
     case 'damage-bonus':
@@ -108,6 +116,10 @@ const effectLabel = (effect: {
       return `${effect.crossingTier ? crossingName(effect.crossingTier) : '渡河'}を解放`;
     case 'unit-unlock':
       return `${effect.unitKind ? kindName(effect.unitKind as UnitKind) : '兵種'}を解放`;
+    case 'facility-unlock':
+      return `${FACILITY_NAMES[effect.facilityKind as keyof typeof FACILITY_NAMES] ?? '施設'}を解放`;
+    case 'facility-build-speed-percent':
+      return `施設の建築速度 +${effect.value}%`;
     case 'base-upgrade-max':
       return `拠点をLv${effect.value}まで強化`;
     default:
@@ -129,7 +141,7 @@ export function createHud(app: HTMLElement): HudElements {
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f19-capture">検査：制圧後HP率</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f19-capture">検査：制圧後HP率</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -144,10 +156,11 @@ export function createHud(app: HTMLElement): HudElements {
           <div class="research-cards"></div>
         </section>
         <section data-panel="crossings" hidden><p>予定地は公開情報です。敵設備の所有・耐久・作業は視界内だけ更新します。</p><div class="crossing-list"></div></section>
+        <section data-panel="facilities" hidden><p>所有拠点・完成した橋/索道へ建築します。位置は自動、建築中も枠を使います。アンカーを失うと施設は消えます。</p><label>設置先 <select data-facility-anchor aria-label="施設の設置先"></select></label><p data-facility-slots></p><div class="facility-options"></div><p data-facility-status></p></section>
         <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-upgrade-reason></p><button data-action="upgrade-base">拠点を強化</button><p data-capture-help></p><button data-action="production">生産を開く</button></section>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="facilities">施設</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>`;
@@ -192,10 +205,18 @@ export function setHudPanel(
       ? '部隊生産'
       : panel === 'research'
         ? '戦力研究'
-        : panel === 'crossings'
-          ? '橋・索道'
-          : '拠点情報';
-  for (const name of ['production', 'research', 'bases', 'crossings'])
+        : panel === 'facilities'
+          ? '防御施設'
+          : panel === 'crossings'
+            ? '橋・索道'
+            : '拠点情報';
+  for (const name of [
+    'production',
+    'research',
+    'bases',
+    'crossings',
+    'facilities',
+  ])
     elements.root
       .querySelector(`[data-action="${name}"]`)
       ?.setAttribute(
@@ -640,6 +661,14 @@ export function updateHud(
     bar.value = (100 * progress) / def.costCenti;
     bar.setAttribute('aria-label', `${researchName(id)}の充填率`);
   }
+  const jammedUnits = view.ownUnits.filter((unit) => unit.jammed);
+  text(
+    '[data-facility-jam]',
+    jammedUnits.length
+      ? `妨害中：自軍${jammedUnits.length}部隊の視界が低下しています`
+      : '',
+  );
+  updateFacilitiesPanel(elements.root, view, snapshot.contextLost);
   const crossingHost =
     elements.root.querySelector<HTMLElement>('.crossing-list')!;
   const crossingIds = view.crossings.map(({ site }) => site.id);

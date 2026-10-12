@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'facilities',
     'baseUpgrades',
     'units',
     'bases',
@@ -91,14 +92,17 @@ export function validateRules(input: unknown): ValidationResult {
             return defaults[0];
           }
           const unlock = entry.id === 'crossing-unlock';
+          const facilityUnlock = entry.id === 'facility-unlock';
           const unitUnlock = entry.id === 'unit-unlock';
           exactKeys(
             entry,
             unlock
               ? ['id', 'value', 'crossingTier']
-              : unitUnlock
-                ? ['id', 'value', 'unitKind']
-                : ['id', 'value'],
+              : facilityUnlock
+                ? ['id', 'value', 'facilityKind']
+                : unitUnlock
+                  ? ['id', 'value', 'unitKind']
+                  : ['id', 'value'],
             effectPath,
             issues,
           );
@@ -111,6 +115,8 @@ export function validateRules(input: unknown): ValidationResult {
               'crossing-unlock',
               'unit-unlock',
               'base-upgrade-max',
+              'facility-unlock',
+              'facility-build-speed-percent',
             ].includes(String(entry.id))
           )
             issues.push({
@@ -126,7 +132,7 @@ export function validateRules(input: unknown): ValidationResult {
               key: `${effectPath}.value`,
               message: '0以上100000以下の整数が必要です',
             });
-          if ((unlock || unitUnlock) && entry.value !== 0)
+          if ((unlock || unitUnlock || facilityUnlock) && entry.value !== 0)
             issues.push({
               key: `${effectPath}.value`,
               message: '解放効果の値は0にしてください',
@@ -170,7 +176,18 @@ export function validateRules(input: unknown): ValidationResult {
               key: `${effectPath}.unitKind`,
               message: '兵種解放以外には指定できません',
             });
+          if (
+            facilityUnlock &&
+            !['turret', 'antiAir', 'mine', 'watchtower', 'jammer'].includes(
+              String(entry.facilityKind),
+            )
+          )
+            issues.push({
+              key: `${effectPath}.facilityKind`,
+              message: '未対応の施設IDです',
+            });
           return {
+            ...(facilityUnlock ? { facilityKind: entry.facilityKind } : {}),
             id: String(entry.id),
             value: isInteger(entry.value) ? entry.value : 0,
             ...(unlock && typeof entry.crossingTier === 'string'
@@ -189,6 +206,7 @@ export function validateRules(input: unknown): ValidationResult {
           'base',
           'crossing',
           'stronghold',
+          'facility',
         ];
         const targets = value.filter(
           (entry): entry is CombatTargetKind =>
@@ -268,6 +286,12 @@ export function validateRules(input: unknown): ValidationResult {
             actual === null || typeof actual === 'string' ? actual : expected;
         } else if (!allowedNull && typeof expected === 'number') {
           const positive =
+            !(
+              fieldPath.startsWith('rules.facilities.') &&
+              (fieldPath.endsWith('.range') ||
+                fieldPath.endsWith('.vision') ||
+                fieldPath.endsWith('.jamRange'))
+            ) &&
             !fieldPath.endsWith('initialResearchCenti') &&
             !fieldPath.endsWith('damageBonus') &&
             !fieldPath.includes('damageVs') &&
@@ -478,7 +502,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
-      input.masterSchemaVersion !== 11)
+      input.masterSchemaVersion !== 11 &&
+      input.masterSchemaVersion !== 12)
   )
     return {
       ok: false,
@@ -577,6 +602,32 @@ export function validateEnvelope(
         ...migrationCandidate,
         baseUpgrades: DEFAULT_RULES.baseUpgrades,
       };
+    if (!Object.hasOwn(migrationCandidate, 'facilities'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        facilities: DEFAULT_RULES.facilities,
+      };
+    if (isRecord(migrationCandidate.units))
+      migrationCandidate = {
+        ...migrationCandidate,
+        units: Object.fromEntries(
+          Object.entries(migrationCandidate.units).map(([key, value]) => [
+            key,
+            isRecord(value) && Array.isArray(value.attackTargets)
+              ? {
+                  ...value,
+                  attackTargets: [
+                    ...value.attackTargets,
+                    ...(value.damageVsStructure &&
+                    !value.attackTargets.includes('facility')
+                      ? ['facility']
+                      : []),
+                  ],
+                }
+              : value,
+          ]),
+        ),
+      };
     candidateRules = migrationCandidate;
   }
   if (
@@ -590,7 +641,10 @@ export function validateEnvelope(
       oldResearch && isRecord(oldResearch.definitions)
         ? oldResearch.definitions
         : null;
-    if (input.masterSchemaVersion === 11 && oldDefinitions === null)
+    if (
+      (input.masterSchemaVersion === 11 || input.masterSchemaVersion === 12) &&
+      oldDefinitions === null
+    )
       return {
         ok: false,
         issues: [
@@ -610,7 +664,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 8 &&
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
-      input.masterSchemaVersion !== 11
+      input.masterSchemaVersion !== 11 &&
+      input.masterSchemaVersion !== 12
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -662,7 +717,10 @@ export function validateEnvelope(
       }
       if (migrationIssues.length > 0)
         return { ok: false, issues: migrationIssues };
-    } else if (oldDefinitions && input.masterSchemaVersion === 11) {
+    } else if (
+      oldDefinitions &&
+      (input.masterSchemaVersion === 11 || input.masterSchemaVersion === 12)
+    ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         Object.defineProperty(converted, id, {
@@ -671,6 +729,13 @@ export function validateEnvelope(
           configurable: true,
           writable: true,
         });
+      // F21 preserves arbitrary existing nodes and deliberate removals. Only
+      // newly introduced F11 facility definitions are supplemented for both versions.
+      for (const [id, definition] of Object.entries(
+        DEFAULT_RULES.research.definitions,
+      ))
+        if (id.startsWith('facility-') && !Object.hasOwn(converted, id))
+          converted[id] = definition;
     } else if (oldDefinitions) {
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         if (Object.hasOwn(converted, id))

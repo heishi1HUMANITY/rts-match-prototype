@@ -194,7 +194,13 @@ describe('F03 rules validation', () => {
           units: {
             helicopter: {
               maxHp: 95,
-              attackTargets: ['unit', 'defender', 'base', 'stronghold'],
+              attackTargets: [
+                'unit',
+                'defender',
+                'base',
+                'stronghold',
+                'facility',
+              ],
               canCaptureBase: false,
             },
           },
@@ -225,7 +231,7 @@ describe('F03 rules validation', () => {
         rules: {
           units: {
             helicopter: {
-              attackTargets: ['unit', 'base'],
+              attackTargets: ['unit', 'base', 'facility'],
               canCaptureBase: true,
               captureEfficiencyPercent: 100,
             },
@@ -468,4 +474,66 @@ it('rejects a research-reference array even when its coercion matches a valid ID
   >;
   rules.units.assault.unlockResearchId = ['firepower-1'];
   expect(validateRules(rules).ok).toBe(false);
+});
+
+describe('F11 and F21 combined migration contract', () => {
+  it.each([11, 12])(
+    'preserves arbitrary schema %i IDs, edits and deliberate removals',
+    (version) => {
+      const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+        string,
+        any
+      >;
+      delete rules.facilities;
+      delete rules.research.definitions['survey-2'];
+      for (const id of Object.keys(rules.research.definitions))
+        if (id.startsWith('facility-')) delete rules.research.definitions[id];
+      rules.research.definitions['custom-power'] = {
+        ...rules.research.definitions['firepower-1'],
+        costCenti: 4321,
+      };
+      const result = validateEnvelope({
+        masterSchemaVersion: version,
+        revision: 7,
+        rules,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.envelope.masterSchemaVersion).toBe(13);
+      expect(
+        result.envelope.rules.research.definitions['custom-power']!.costCenti,
+      ).toBe(4321);
+      expect(
+        Object.hasOwn(result.envelope.rules.research.definitions, 'survey-2'),
+      ).toBe(false);
+      expect(
+        Object.hasOwn(
+          result.envelope.rules.research.definitions,
+          'facility-turret',
+        ),
+      ).toBe(true);
+      expect(result.envelope.rules.facilities).toEqual(
+        DEFAULT_RULES.facilities,
+      );
+    },
+  );
+  it('validates custom facility unlocks and rejects nonzero unlock values or unknown facility kinds', () => {
+    for (const effect of [
+      { id: 'facility-unlock', value: 0, facilityKind: 'jammer' },
+      { id: 'facility-unlock', value: 1, facilityKind: 'jammer' },
+      { id: 'facility-unlock', value: 0, facilityKind: 'unknown' },
+    ]) {
+      const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+        string,
+        any
+      >;
+      rules.research.definitions['custom-facility'] = {
+        ...rules.research.definitions['firepower-1'],
+        effects: [effect],
+      };
+      expect(validateRules(rules).ok).toBe(
+        effect.value === 0 && effect.facilityKind === 'jammer',
+      );
+    }
+  });
 });

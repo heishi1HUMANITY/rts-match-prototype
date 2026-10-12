@@ -14,6 +14,7 @@ import type {
   ScenarioId,
   ResearchId,
   UnitKind,
+  FacilityKind,
 } from '../simulation/types';
 import { FixedStepClock } from './clock';
 import type { RulesMaster } from '../simulation/rules';
@@ -73,6 +74,27 @@ function safeCommand(value: unknown): {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     return { command: null, summary: '不正な命令' };
   const item = value as Record<string, unknown>;
+  if (
+    item.type === 'build-facility' &&
+    typeof item.kind === 'string' &&
+    typeof item.anchor === 'object' &&
+    item.anchor !== null &&
+    !Array.isArray(item.anchor)
+  ) {
+    const anchor = item.anchor as Record<string, unknown>;
+    if (
+      (anchor.kind === 'base' || anchor.kind === 'crossing') &&
+      typeof anchor.id === 'string'
+    )
+      return {
+        command: {
+          type: 'build-facility',
+          kind: item.kind as FacilityKind,
+          anchor: { kind: anchor.kind, id: anchor.id },
+        },
+        summary: `施設建築 ${item.kind.slice(0, 32)} → ${anchor.kind}:${anchor.id.slice(0, 64)}`,
+      };
+  }
   if (
     item.type === 'enqueue-production' &&
     typeof item.baseId === 'string' &&
@@ -579,6 +601,13 @@ export function rejectMessage(reason: RejectCode): string {
     ALREADY_RESEARCHED: '完了済みの研究です',
     PREREQUISITE_MISSING: '必要な前提研究が完了していません',
     RESEARCH_EXCLUDED: '排他関係にある研究を完了済みです',
+    INVALID_FACILITY_KIND: '未対応の施設です',
+    FACILITY_ANCHOR_UNAVAILABLE:
+      '所有する生存拠点・完成渡河設備を選んでください',
+    FACILITY_LIMIT: '陣営の施設上限です',
+    FACILITY_DUPLICATE: '同じ設置先に同種施設があります',
+    FACILITY_SLOTS_FULL: '設置先の施設枠が使用中です',
+    FACILITY_NO_CELL: '施設を配置できる隣接セルがありません',
     CROSSING_NOT_FOUND: '渡河予定地が見つかりません',
     CROSSING_TAKEN: 'すでに他陣営が所有しています',
     CROSSING_BUSY: '他陣営が建設中か、別の作業中です',

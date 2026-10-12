@@ -13,6 +13,8 @@ const EFFECTS: readonly [ResearchEffectId, string][] = [
   ['crossing-unlock', '渡河解放'],
   ['unit-unlock', '兵種解放'],
   ['base-upgrade-max', '拠点強化上限'],
+  ['facility-unlock', '施設解放'],
+  ['facility-build-speed-percent', '施設建築速度加算%'],
 ];
 
 export function newResearchProblem(
@@ -263,12 +265,14 @@ export function renderResearchEditor(
             () =>
               value === 'crossing-unlock'
                 ? { id: value, value: 0, crossingTier: 'bridge-2' }
-                : value === 'unit-unlock'
-                  ? { id: value, value: 0, unitKind: 'artillery' }
-                  : {
-                      id: value as ResearchEffectId,
-                      value: value === 'base-upgrade-max' ? 2 : 1,
-                    },
+                : value === 'facility-unlock'
+                  ? { id: value, value: 0, facilityKind: 'turret' }
+                  : value === 'unit-unlock'
+                    ? { id: value, value: 0, unitKind: 'artillery' }
+                    : {
+                        id: value as ResearchEffectId,
+                        value: value === 'base-upgrade-max' ? 2 : 1,
+                      },
             true,
           ),
         ),
@@ -288,6 +292,23 @@ export function renderResearchEditor(
                 ...current,
                 crossingTier: value as NonNullable<
                   ResearchEffect['crossingTier']
+                >,
+              })),
+          ),
+        );
+      else if (effect.id === 'facility-unlock')
+        field(
+          row,
+          '対象施設',
+          `${path}.effects.${index}.facilityKind`,
+          select(
+            Object.keys(rules.facilities.definitions).map((key) => [key, key]),
+            effect.facilityKind ?? '',
+            (value) =>
+              updateEffect((current) => ({
+                ...current,
+                facilityKind: value as NonNullable<
+                  ResearchEffect['facilityKind']
                 >,
               })),
           ),

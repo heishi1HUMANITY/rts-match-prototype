@@ -10,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 17 as const;
+export const SCHEMA_VERSION = 18 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -169,6 +169,31 @@ export interface ResearchDefinition {
 export const RESEARCH_DEFINITIONS: Readonly<
   Record<string, ResearchDefinition>
 > = {
+  ...Object.fromEntries(
+    (['turret', 'antiAir', 'mine', 'watchtower', 'jammer'] as const).map(
+      (kind) => [
+        `facility-${kind.toLowerCase()}`,
+        {
+          domain: 'engineering' as const,
+          stage: 1,
+          costCenti: 3000,
+          prerequisites: [],
+          exclusiveWith: [],
+          effects: [
+            { id: 'facility-unlock' as const, value: 0, facilityKind: kind },
+          ],
+        },
+      ],
+    ),
+  ),
+  'facility-engineering': {
+    domain: 'engineering',
+    stage: 2,
+    costCenti: 6000,
+    prerequisites: ['facility-turret'],
+    exclusiveWith: [],
+    effects: [{ id: 'facility-build-speed-percent', value: 100 }],
+  },
   'firepower-1': {
     domain: 'power',
     stage: 1,
@@ -386,4 +411,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f08-unit-domains',
   'f10-base-upgrades',
   'f19-capture',
+  'f11-facilities',
 ];

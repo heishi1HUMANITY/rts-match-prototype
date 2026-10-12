@@ -21,7 +21,8 @@ export type ScenarioId =
   | 'f06-local-faction'
   | 'f08-unit-domains'
   | 'f10-base-upgrades'
-  | 'f19-capture';
+  | 'f19-capture'
+  | 'f11-facilities';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -49,12 +50,15 @@ export type ResearchEffectId =
   | 'upkeep-reduction'
   | 'crossing-unlock'
   | 'unit-unlock'
-  | 'base-upgrade-max';
+  | 'base-upgrade-max'
+  | 'facility-unlock'
+  | 'facility-build-speed-percent';
 export interface ResearchEffect {
   readonly id: ResearchEffectId;
   readonly value: number;
   readonly crossingTier?: CrossingTierId;
   readonly unitKind?: UnitKind;
+  readonly facilityKind?: FacilityKind;
 }
 export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
 export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
@@ -64,7 +68,8 @@ export type CombatTargetKind =
   | 'defender'
   | 'base'
   | 'crossing'
-  | 'stronghold';
+  | 'stronghold'
+  | 'facility';
 export type EliminationReason = 'tickets' | 'forces';
 
 export interface EliminationStatus {
@@ -280,10 +285,11 @@ export interface FactionKnowledge {
   readonly explored: readonly boolean[];
   readonly baseMemory: readonly BaseMemory[];
   readonly crossingMemory: readonly CrossingMemory[];
+  readonly facilityMemory: readonly FacilityMemory[];
 }
 
 export interface MatchState {
-  readonly schemaVersion: 17;
+  readonly schemaVersion: 18;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -296,11 +302,13 @@ export interface MatchState {
   readonly bases: readonly BaseState[];
   readonly localFaction: LocalFactionState;
   readonly crossings: readonly CrossingState[];
+  readonly facilities: readonly FacilityState[];
   readonly knowledge: readonly FactionKnowledge[];
   readonly result: MatchResult | null;
 }
 
 export interface OwnUnitView extends UnitState {
+  readonly jammed?: boolean;
   readonly control: 'own';
 }
 
@@ -401,6 +409,7 @@ export interface FactionView {
   readonly bases: readonly BaseView[];
   readonly localFaction: LocalFactionView;
   readonly crossings: readonly CrossingView[];
+  readonly facilities: readonly FacilityView[];
 }
 
 export interface LocalFactionState {
@@ -435,7 +444,43 @@ export interface LocalFactionView {
   readonly publicBaseCount: number;
 }
 
+export type FacilityKind =
+  | 'turret'
+  | 'antiAir'
+  | 'mine'
+  | 'watchtower'
+  | 'jammer';
+export interface FacilityAnchor {
+  readonly kind: 'base' | 'crossing';
+  readonly id: string;
+}
+export interface FacilityState {
+  readonly id: string;
+  readonly kind: FacilityKind;
+  readonly owner: FactionId;
+  readonly anchor: FacilityAnchor;
+  readonly slot: number;
+  readonly cell: Cell;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly remainingBuildTicks: number;
+  readonly lastDamagedTick: number;
+  readonly lastActivatedTick: number;
+}
+export interface FacilityMemory extends FacilityState {
+  readonly seenTick: number;
+}
+export interface FacilityView extends FacilityState {
+  readonly visibility: 'owned' | 'visible' | 'remembered';
+  readonly seenTick?: number;
+}
+
 export type Command =
+  | {
+      readonly type: 'build-facility';
+      readonly kind: FacilityKind;
+      readonly anchor: FacilityAnchor;
+    }
   | { readonly type: 'start' }
   | { readonly type: 'pause' }
   | { readonly type: 'resume' }
@@ -500,7 +545,13 @@ export type RejectCode =
   | 'CROSSING_NOT_OWNED'
   | 'CROSSING_NOT_ADJACENT'
   | 'CROSSING_UNIT_RESTRICTED'
-  | 'CROSSING_RESEARCH_REQUIRED';
+  | 'CROSSING_RESEARCH_REQUIRED'
+  | 'INVALID_FACILITY_KIND'
+  | 'FACILITY_ANCHOR_UNAVAILABLE'
+  | 'FACILITY_LIMIT'
+  | 'FACILITY_SLOTS_FULL'
+  | 'FACILITY_DUPLICATE'
+  | 'FACILITY_NO_CELL';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

@@ -369,6 +369,21 @@ const handleClick = (event: MouseEvent): void => {
   if (!(target instanceof HTMLElement)) return;
   const clickedButton = target.closest<HTMLButtonElement>('button');
   if (clickedButton?.disabled) return;
+  const facilityKind = clickedButton?.dataset.facilityBuild;
+  if (facilityKind !== undefined) {
+    const value =
+      hud.root.querySelector<HTMLSelectElement>('[data-facility-anchor]')
+        ?.value ?? '';
+    const colon = value.indexOf(':');
+    const kind = value.slice(0, colon);
+    if ((kind === 'base' || kind === 'crossing') && colon >= 0)
+      runtime.dispatch({
+        type: 'build-facility',
+        kind: facilityKind,
+        anchor: { kind, id: value.slice(colon + 1) },
+      });
+    return;
+  }
   const buildCrossing = clickedButton?.dataset.crossingBuild;
   const dismantleCrossing = clickedButton?.dataset.crossingDismantle;
   if (buildCrossing !== undefined || dismantleCrossing !== undefined) {
@@ -488,7 +503,8 @@ const handleClick = (event: MouseEvent): void => {
     action === 'production' ||
     action === 'research' ||
     action === 'bases' ||
-    action === 'crossings'
+    action === 'crossings' ||
+    action === 'facilities'
   ) {
     input.cancelGesture();
     const panel = action === 'bases' ? 'base' : action;
@@ -502,6 +518,13 @@ const resultDialog =
 const keepResultOpen = (event: Event): void => event.preventDefault();
 resultDialog.addEventListener('cancel', keepResultOpen);
 const handleBaseChange = (event: Event): void => {
+  if (
+    event.target instanceof HTMLSelectElement &&
+    event.target.matches('[data-facility-anchor]')
+  ) {
+    updateHud(hud, runtime.playerSnapshot());
+    return;
+  }
   if (
     event.target instanceof HTMLSelectElement &&
     event.target.matches('[data-base-select]')
