@@ -29,7 +29,7 @@ function baseViews(
   const memories = new Map(
     knowledge.baseMemory.map((memory) => [memory.baseId, memory]),
   );
-  return state.bases.map((base): BaseView => {
+  const views = state.bases.map((base): BaseView => {
     const cellIndex = base.cell.y * MAP_WIDTH + base.cell.x;
     if (base.owner === factionId) {
       return {
@@ -85,6 +85,31 @@ function baseViews(
       defenderMaxHp: memory.defenderMaxHp,
     };
   });
+  if (
+    (state.localFaction.active || state.localFaction.defeated) &&
+    (state.localFaction.defeated ||
+      isCellVisibleToFaction(
+        state,
+        state.localFaction.stronghold.cell,
+        factionId,
+      ))
+  ) {
+    const stronghold = state.localFaction.stronghold;
+    views.push({
+      visibility: 'visible',
+      id: stronghold.id,
+      kind: 'hq',
+      cell: { ...stronghold.cell },
+      owner: 'local',
+      hp: state.localFaction.defeated ? 0 : stronghold.hp,
+      maxHp: stronghold.maxHp,
+      defenderHp: null,
+      defenderMaxHp: null,
+      captureCandidate: null,
+      captureTicks: 0,
+    });
+  }
+  return views;
 }
 
 function crossingViews(
@@ -294,6 +319,60 @@ export function getFactionView(
     },
     ownUnits,
     visibleEnemies,
+    localFaction: {
+      active: state.localFaction.active,
+      defeated: state.localFaction.defeated,
+      stronghold: {
+        visibility: state.localFaction.defeated
+          ? 'destroyed'
+          : !state.localFaction.active ||
+              !isCellVisibleToFaction(
+                state,
+                state.localFaction.stronghold.cell,
+                factionId,
+              )
+            ? 'hidden'
+            : 'visible',
+        id: state.localFaction.stronghold.id,
+        cell:
+          state.localFaction.defeated ||
+          isCellVisibleToFaction(
+            state,
+            state.localFaction.stronghold.cell,
+            factionId,
+          )
+            ? { ...state.localFaction.stronghold.cell }
+            : null,
+        hp:
+          state.localFaction.active &&
+          isCellVisibleToFaction(
+            state,
+            state.localFaction.stronghold.cell,
+            factionId,
+          )
+            ? state.localFaction.stronghold.hp
+            : state.localFaction.defeated
+              ? 0
+              : null,
+        maxHp:
+          state.localFaction.active &&
+          isCellVisibleToFaction(
+            state,
+            state.localFaction.stronghold.cell,
+            factionId,
+          )
+            ? state.localFaction.stronghold.maxHp
+            : state.localFaction.defeated
+              ? state.localFaction.stronghold.maxHp
+              : null,
+      },
+      visibleUnitCount: visibleEnemies.filter(
+        (unit) => unit.factionId === 'local',
+      ).length,
+      publicBaseCount: state.bases.filter(
+        (base) => base.owner === 'local' && base.kind !== 'hq',
+      ).length,
+    },
     bases: baseViews(state, factionId, knowledge),
     crossings: crossingViews(state, factionId, knowledge),
   };

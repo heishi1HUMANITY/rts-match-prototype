@@ -390,7 +390,7 @@ export function canTraverse(
   if (domain === 'water') return kind === 'river';
   const crossing = options.crossings?.find(
     (entry) =>
-      entry.owner === options.factionId &&
+      (entry.owner === options.factionId || options.factionId === 'local') &&
       (options.unitKind === undefined ||
         entry.allowedUnitKinds.includes(options.unitKind)) &&
       entry.cells.some(({ x, y }) => x === cell.x && y === cell.y),

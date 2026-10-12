@@ -4,6 +4,7 @@ import { getFactionView } from '../simulation/view';
 import { stepMatch } from '../simulation/step';
 import { updateFactionKnowledge } from '../simulation/visibility';
 import { decideBotCommands } from '../ai/strategy';
+import { advanceLocalFactionOrders } from '../ai/local-faction';
 import type { FactionId, MatchState } from '../simulation/types';
 
 const BOT_FACTIONS: readonly FactionId[] = ['B', 'C'];
@@ -12,7 +13,8 @@ function enablesBots(state: MatchState): boolean {
   if (
     state.scenarioId === 'f02-pursuit' ||
     state.scenarioId === 'f04-crossing' ||
-    state.scenarioId === 'f05-neutral-defense'
+    state.scenarioId === 'f05-neutral-defense' ||
+    state.scenarioId === 'f06-local-faction'
   )
     return false;
   return state.scenarioId === 'standard' || state.scenarioId.startsWith('g3-');
@@ -36,27 +38,28 @@ export function advanceMatch(state: MatchState): MatchState {
     resolved === state
       ? state
       : { ...resolved, knowledge: updateFactionKnowledge(resolved) };
-  if (
-    enablesBots(prepared) &&
-    prepared.elapsedTicks % prepared.rules.npc.decisionIntervalTicks === 0
-  ) {
+  if (prepared.elapsedTicks % prepared.rules.npc.decisionIntervalTicks === 0) {
     // Both views must describe the same pre-command world. In particular, B's
     // command must not affect information available to C at this boundary.
-    const decisions = BOT_FACTIONS.map((factionId) => {
-      const faction = prepared.factions.find((entry) => entry.id === factionId);
-      if (
-        !faction ||
-        faction.controller !== 'bot' ||
-        faction.eliminatedAtTick !== null ||
-        faction.ticketsCenti <= 0
-      ) {
-        return { factionId, commands: [] as const };
-      }
-      return {
-        factionId,
-        commands: decideBotCommands(getFactionView(prepared, factionId)),
-      };
-    });
+    const decisions = (enablesBots(prepared) ? BOT_FACTIONS : []).map(
+      (factionId) => {
+        const faction = prepared.factions.find(
+          (entry) => entry.id === factionId,
+        );
+        if (
+          !faction ||
+          faction.controller !== 'bot' ||
+          faction.eliminatedAtTick !== null ||
+          faction.ticketsCenti <= 0
+        ) {
+          return { factionId, commands: [] as const };
+        }
+        return {
+          factionId,
+          commands: decideBotCommands(getFactionView(prepared, factionId)),
+        };
+      },
+    );
 
     for (const { factionId, commands } of decisions) {
       for (const command of commands) {
@@ -64,6 +67,7 @@ export function advanceMatch(state: MatchState): MatchState {
         if (result.ok) prepared = result.state;
       }
     }
+    prepared = advanceLocalFactionOrders(prepared);
   }
   return stepMatch(prepared);
 }

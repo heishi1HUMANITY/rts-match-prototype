@@ -2,7 +2,7 @@ import { canTraverse } from './map';
 import type {
   ActiveCrossing,
   Cell,
-  FactionId,
+  CombatantId,
   GridMap,
   MovementDomain,
   UnitKind,
@@ -21,7 +21,7 @@ export function findPath(
   from: Cell,
   to: Cell,
   options: {
-    readonly factionId?: FactionId;
+    readonly factionId?: CombatantId;
     readonly domain?: MovementDomain;
     readonly crossings?: readonly ActiveCrossing[];
     readonly unitKind?: UnitKind;

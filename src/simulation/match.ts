@@ -11,6 +11,7 @@ import type { RulesMaster } from './rules';
 import { createMap } from './map';
 import { findPath } from './pathfinding';
 import { createInitialKnowledge } from './visibility';
+import { createInitialLocalUnits } from './local-faction';
 import type {
   BaseState,
   Cell,
@@ -246,6 +247,22 @@ function configuredFixture(
     factions = factions.map((faction) =>
       faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
     );
+  } else if (scenarioId === 'f06-local-faction') {
+    units = units.map((unit) =>
+      unit.id === 'A-01'
+        ? { ...unit, cell: { x: 18, y: 20 } }
+        : unit.id === 'A-02'
+          ? { ...unit, cell: { x: 18, y: 19 } }
+          : unit,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
+    );
+    bases = bases.map((base) =>
+      base.id === 'OUT-02'
+        ? { ...base, owner: 'local', hp: base.maxHp, defender: null }
+        : base,
+    );
   }
   return { ...state, factions, units, bases };
 }
@@ -293,9 +310,41 @@ export function createMatch(
         lastDamagedTick: -1,
         job: null,
       })),
+      localFaction: {
+        active: scenarioId === 'f06-local-faction',
+        defeated: false,
+        appearedAtTick: scenarioId === 'f06-local-faction' ? 0 : null,
+        nextSpawnTick:
+          scenarioId === 'f06-local-faction'
+            ? rules.localFaction.spawnIntervalTicks
+            : null,
+        rosterIndex:
+          scenarioId === 'f06-local-faction'
+            ? rules.localFaction.initialUnits
+            : 0,
+        stronghold: {
+          id: 'LOCAL-HQ',
+          cell: { x: 20, y: 23 },
+          hp:
+            scenarioId === 'f06-local-faction'
+              ? rules.localFaction.strongholdMaxHp
+              : 0,
+          maxHp: rules.localFaction.strongholdMaxHp,
+        },
+        supplyCenti: rules.localFaction.startingSupplyCenti,
+        conqueredBaseIds: [],
+        rewardedBaseIds: [],
+      },
     },
     scenarioId,
   );
-  const partial = { ...initial, knowledge: [] } as MatchState;
+  const withLocalUnits =
+    scenarioId === 'f06-local-faction'
+      ? {
+          ...initial,
+          units: [...initial.units, ...createInitialLocalUnits(initial)],
+        }
+      : initial;
+  const partial = { ...withLocalUnits, knowledge: [] } as MatchState;
   return { ...partial, knowledge: createInitialKnowledge(partial) };
 }

@@ -67,7 +67,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 5,
+        masterSchemaVersion: 6,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -94,7 +94,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 5,
+        masterSchemaVersion: 6,
         revision: 10,
         rules: {
           defenses: {

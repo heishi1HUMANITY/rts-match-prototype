@@ -74,7 +74,10 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
   const units =
     newlyEliminated.size === 0
       ? state.units
-      : state.units.filter((unit) => !newlyEliminated.has(unit.factionId));
+      : state.units.filter(
+          (unit) =>
+            unit.factionId === 'local' || !newlyEliminated.has(unit.factionId),
+        );
   const bases =
     newlyEliminated.size === 0
       ? state.bases
@@ -85,7 +88,9 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
               ? { ...base, hp: 0, captureCandidate: null, captureTicks: 0 }
               : base;
           }
-          return base.owner !== null && newlyEliminated.has(base.owner)
+          return base.owner !== null &&
+            base.owner !== 'local' &&
+            newlyEliminated.has(base.owner)
             ? {
                 ...base,
                 owner: null,

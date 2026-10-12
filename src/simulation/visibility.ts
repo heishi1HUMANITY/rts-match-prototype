@@ -1,7 +1,7 @@
 import { MAP_HEIGHT, MAP_WIDTH } from './config';
 import type {
   BaseState,
-  FactionId,
+  CombatantId,
   FactionKnowledge,
   MatchState,
   UnitState,
@@ -43,9 +43,16 @@ interface SightSource {
   readonly radius: number;
 }
 
-function sightSources(state: MatchState, factionId: FactionId): SightSource[] {
+function sightSources(
+  state: MatchState,
+  factionId: CombatantId,
+): SightSource[] {
   if (
-    state.factions.find(({ id }) => id === factionId)?.eliminatedAtTick !== null
+    (factionId === 'local' &&
+      (!state.localFaction.active || state.localFaction.defeated)) ||
+    (factionId !== 'local' &&
+      state.factions.find(({ id }) => id === factionId)?.eliminatedAtTick !==
+        null)
   ) {
     return [];
   }
@@ -98,7 +105,7 @@ function isPointVisible(
 export function isUnitVisibleToFaction(
   state: MatchState,
   unit: UnitState,
-  factionId: FactionId,
+  factionId: CombatantId,
 ): boolean {
   if (unit.hp <= 0) return false;
   return isPointVisible(
@@ -112,7 +119,7 @@ export function isUnitVisibleToFaction(
 export function isCellVisibleToFaction(
   state: MatchState,
   cell: { readonly x: number; readonly y: number },
-  factionId: FactionId,
+  factionId: CombatantId,
 ): boolean {
   return isPointVisible(
     sightSources(state, factionId),
@@ -145,7 +152,7 @@ function memoryFromVisible(
 
 function createKnowledge(
   state: MatchState,
-  factionId: FactionId,
+  factionId: CombatantId,
   previous?: FactionKnowledge,
 ): FactionKnowledge {
   const sources = sightSources(state, factionId);
@@ -204,17 +211,24 @@ function createKnowledge(
 export function updateFactionKnowledge(
   state: MatchState,
 ): readonly FactionKnowledge[] {
-  return state.factions.map((faction) => {
+  const factions = state.factions.map((faction) => {
     const previous = state.knowledge?.find(
       (entry) => entry.factionId === faction.id,
     );
     return createKnowledge(state, faction.id, previous);
   });
+  const localPrevious = state.knowledge?.find(
+    (entry) => entry.factionId === 'local',
+  );
+  return [...factions, createKnowledge(state, 'local', localPrevious)];
 }
 
 /** Builds initial tick-zero knowledge without requiring a partially built state. */
 export function createInitialKnowledge(
   state: MatchState,
 ): readonly FactionKnowledge[] {
-  return state.factions.map((faction) => createKnowledge(state, faction.id));
+  return [
+    ...state.factions.map((faction) => createKnowledge(state, faction.id)),
+    createKnowledge(state, 'local'),
+  ];
 }

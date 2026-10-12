@@ -21,7 +21,7 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 11;
+  readonly schemaVersion: 12;
   readonly rulesVersion: typeof RULES_VERSION;
   readonly rules: RulesMaster;
   readonly rulesContentId: string;
@@ -48,7 +48,7 @@ export function rulesContentId(rules: RulesMaster): string {
     hash ^= BigInt(text.charCodeAt(index));
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
-  return `f05-${hash.toString(16).padStart(16, '0')}`;
+  return `f06-${hash.toString(16).padStart(16, '0')}`;
 }
 
 export function replay(input: ReplayInput): {

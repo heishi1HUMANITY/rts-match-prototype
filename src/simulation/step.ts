@@ -15,6 +15,7 @@ import {
 import { canTraverse } from './map';
 import { findPath } from './pathfinding';
 import { unitCapabilities } from './unit-capabilities';
+import { advanceLocalFaction } from './local-faction';
 import type { MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
@@ -101,6 +102,7 @@ export function stepMatch(state: MatchState): MatchState {
   if (initial.phase === 'finished') return initial;
   let next: MatchState = revalidateRoutes(advanceMarchOrders(initial));
   next = { ...next, elapsedTicks: initial.elapsedTicks + 1 };
+  next = advanceLocalFaction(next);
   next = { ...next, units: next.units.map((unit) => stepUnit(unit, next)) };
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));

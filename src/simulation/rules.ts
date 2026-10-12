@@ -18,8 +18,8 @@ import {
 } from './config';
 import type { BaseKind, CrossingTierId, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 5 as const;
-export const RULES_VERSION = 'f05-v2' as const;
+export const MASTER_SCHEMA_VERSION = 6 as const;
+export const RULES_VERSION = 'f06-v1' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -122,6 +122,21 @@ export interface RulesMaster {
     readonly decisionIntervalTicks: number;
     readonly defenseAttentionRadius: number;
     readonly maxCommandsPerDecision: number;
+  };
+  readonly localFaction: {
+    readonly appearanceTick: number;
+    readonly strongholdMaxHp: number;
+    readonly initialUnits: number;
+    readonly spawnIntervalTicks: number;
+    readonly maxUnits: number;
+    readonly startingSupplyCenti: number;
+    readonly unitCostCenti: number;
+    readonly growthPercentPerMinute: number;
+    readonly rescueRadius: number;
+    readonly captureRewardSupplyCenti: number;
+    readonly captureRewardResearchCenti: number;
+    readonly strongholdRewardSupplyCenti: number;
+    readonly strongholdRewardResearchCenti: number;
   };
 }
 
@@ -253,6 +268,21 @@ export const DEFAULT_RULES: RulesMaster = {
     decisionIntervalTicks: 10,
     defenseAttentionRadius: 10,
     maxCommandsPerDecision: 8,
+  },
+  localFaction: {
+    appearanceTick: 300,
+    strongholdMaxHp: 2_500,
+    initialUnits: 2,
+    spawnIntervalTicks: 450,
+    maxUnits: 8,
+    startingSupplyCenti: 12_000,
+    unitCostCenti: 6_000,
+    growthPercentPerMinute: 8,
+    rescueRadius: 10,
+    captureRewardSupplyCenti: 15_000,
+    captureRewardResearchCenti: 3_000,
+    strongholdRewardSupplyCenti: 40_000,
+    strongholdRewardResearchCenti: 10_000,
   },
 };
 

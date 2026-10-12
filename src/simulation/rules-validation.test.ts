@@ -85,6 +85,29 @@ describe('F03 rules validation', () => {
     );
   });
 
+  it('rejects impossible local-faction limits, appearance and overflow growth', () => {
+    const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    invalid.localFaction.initialUnits = 9;
+    invalid.localFaction.maxUnits = 8;
+    invalid.match.timeLimitTicks = 100_000_000;
+    invalid.localFaction.appearanceTick = invalid.match.timeLimitTicks + 1;
+    invalid.localFaction.growthPercentPerMinute = 1_000_000_000;
+    invalid.units.assault.maxHp = 1_000_000_000;
+    const result = validateRules(invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues.map(({ key }) => key)).toEqual(
+      expect.arrayContaining([
+        'rules.localFaction.initialUnits',
+        'rules.localFaction.appearanceTick',
+        'rules.localFaction.growthPercentPerMinute',
+      ]),
+    );
+  });
+
   it('requires a supported master envelope version and exact fields', () => {
     expect(
       validateEnvelope({
@@ -151,6 +174,27 @@ describe('F03 rules validation', () => {
             outpost: { respawnTicks: 525 },
           },
         },
+      },
+    });
+  });
+
+  it('adds F06 defaults when upgrading a schema 5 master', () => {
+    const v5Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v5Rules.localFaction;
+    const result = validateEnvelope({
+      masterSchemaVersion: 5,
+      revision: 21,
+      rules: v5Rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 21,
+        rules: { localFaction: DEFAULT_RULES.localFaction },
       },
     });
   });

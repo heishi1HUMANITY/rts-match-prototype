@@ -5,6 +5,7 @@ import type {
   BaseView,
   ActiveCrossing,
   Cell,
+  CombatantId,
   Command,
   FactionId,
   FactionView,
@@ -14,8 +15,6 @@ import type {
   ResearchId,
   VisibleEnemyUnitView,
 } from '../simulation/types';
-
-const FACTIONS: readonly FactionId[] = ['A', 'B', 'C'];
 
 function distanceSquared(a: Cell, b: Cell): number {
   const dx = a.x - b.x;
@@ -31,7 +30,7 @@ function endpoint(unit: OwnUnitView): Cell | undefined {
   return unit.path[unit.path.length - 1];
 }
 
-function baseKnownOwner(base: BaseView): FactionId | null | undefined {
+function baseKnownOwner(base: BaseView): CombatantId | null | undefined {
   return base.visibility === 'unknown' ? undefined : base.owner;
 }
 
@@ -45,8 +44,14 @@ function isLiveKnownBase(base: BaseView): boolean {
   return base.hp > 0;
 }
 
-function factionOrderDistance(a: FactionId, b: FactionId): number {
-  return FACTIONS.indexOf(a) - FACTIONS.indexOf(b);
+function factionOrderDistance(a: CombatantId, b: CombatantId): number {
+  const order: Record<CombatantId, number> = {
+    A: 0,
+    B: 1,
+    C: 2,
+    local: 3,
+  };
+  return order[a] - order[b];
 }
 
 function researchCommand(view: FactionView): Command | undefined {
@@ -128,7 +133,7 @@ function nearestReachableGoal(
     .map((base) => ({
       base,
       route: findPath(view.map, from, base.cell, {
-        factionId: unit.factionId,
+        factionId: view.viewerFactionId,
         domain: unitCapabilities(unit.kind).movementDomain,
         crossings: knownActiveCrossings(view),
         unitKind: unit.kind,
@@ -170,7 +175,7 @@ function crossingConstructionCommand(
       const paths = [site.bankA, site.bankB].map((bank) => ({
         bank,
         route: findPath(view.map, currentCell(unit), bank, {
-          factionId: unit.factionId,
+          factionId: view.viewerFactionId,
           domain: unitCapabilities(unit.kind).movementDomain,
           crossings: knownActiveCrossings(view),
           unitKind: unit.kind,
@@ -318,7 +323,7 @@ function unitMoveCommand(
       ? null
       : proposedDefense &&
           findPath(view.map, currentCell(unit), proposedDefense.cell, {
-            factionId: unit.factionId,
+            factionId: view.viewerFactionId,
             domain: unitCapabilities(unit.kind).movementDomain,
             crossings: knownActiveCrossings(view),
             unitKind: unit.kind,

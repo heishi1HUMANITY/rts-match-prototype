@@ -290,12 +290,21 @@ export function applyCommand(
     let initialStatus: 'tracking' | 'searching' = 'tracking';
     if (command.target.kind === 'base') {
       const base = state.bases.find(({ id }) => id === command.target.id);
-      if (base === undefined) return reject(state, 'TARGET_NOT_FOUND');
-      lastKnownCell = base.cell;
-      if (!isCellVisibleToFaction(state, base.cell, actor)) {
+      const stronghold =
+        command.target.id === state.localFaction.stronghold.id &&
+        state.localFaction.active &&
+        !state.localFaction.defeated
+          ? state.localFaction.stronghold
+          : undefined;
+      const cell = base?.cell ?? stronghold?.cell;
+      if (cell === undefined) return reject(state, 'TARGET_NOT_FOUND');
+      if (stronghold && !isCellVisibleToFaction(state, cell, actor))
+        return reject(state, 'TARGET_NOT_FOUND');
+      lastKnownCell = cell;
+      if (!isCellVisibleToFaction(state, cell, actor)) {
         const memory = state.knowledge
           .find(({ factionId }) => factionId === actor)
-          ?.baseMemory.find(({ baseId }) => baseId === base.id);
+          ?.baseMemory.find(({ baseId }) => baseId === base?.id);
         lastSeenTick = memory?.seenTick ?? -1;
         initialStatus = 'searching';
       }

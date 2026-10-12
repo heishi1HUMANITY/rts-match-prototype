@@ -183,7 +183,7 @@ input = new CanvasInput(
         ) {
           runtime.select(null);
           runtime.notify(
-            '敵陣営は操作できません。自軍の部隊を選択してください。',
+            '敵陣営・現地勢力は操作できません。自軍の部隊を選択してください。',
           );
           return { kind: 'enemy' };
         }

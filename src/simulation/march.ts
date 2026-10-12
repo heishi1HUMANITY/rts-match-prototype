@@ -144,16 +144,31 @@ function updateOrder(state: MatchState, unit: UnitState): UnitState {
     }
   } else {
     const base = state.bases.find(({ id }) => id === order.target.id);
-    if (base !== undefined) {
-      destination = base.cell;
-      lastKnownCell = base.cell;
-      targetVisible = isCellVisibleToFaction(state, base.cell, unit.factionId);
+    const stronghold =
+      order.target.id === state.localFaction.stronghold.id &&
+      state.localFaction.active &&
+      !state.localFaction.defeated
+        ? state.localFaction.stronghold
+        : undefined;
+    const targetCell = base?.cell ?? stronghold?.cell;
+    if (targetCell !== undefined) {
+      destination = targetCell;
+      lastKnownCell = targetCell;
+      targetVisible = isCellVisibleToFaction(state, targetCell, unit.factionId);
       if (targetVisible) {
         lastSeenTick = state.elapsedTicks;
         visibleEnemyBase =
-          base.owner !== null && base.owner !== unit.factionId && base.hp > 0;
+          stronghold !== undefined ||
+          (base !== undefined &&
+            base.owner !== null &&
+            base.owner !== unit.factionId &&
+            base.hp > 0);
         actionableBase =
-          base.owner === unit.factionId || base.owner === null || base.hp <= 0;
+          stronghold === undefined &&
+          base !== undefined &&
+          (base.owner === unit.factionId ||
+            base.owner === null ||
+            base.hp === 0);
       }
     }
   }
@@ -291,9 +306,24 @@ export function visibleMarchCombatTarget(
       : null;
   }
   const base = state.bases.find(({ id }) => id === order.target.id);
+  const stronghold =
+    order.target.id === state.localFaction.stronghold.id &&
+    state.localFaction.active &&
+    !state.localFaction.defeated
+      ? state.localFaction.stronghold
+      : undefined;
+  if (
+    stronghold &&
+    attacker.factionId !== 'local' &&
+    stronghold.hp > 0 &&
+    isCellVisibleToFaction(state, stronghold.cell, attacker.factionId) &&
+    inBaseRange(state, attacker, stronghold.cell)
+  )
+    return order.target;
   return base !== undefined &&
     base.owner !== null &&
     base.owner !== attacker.factionId &&
+    base !== undefined &&
     base.hp > 0 &&
     isCellVisibleToFaction(state, base.cell, attacker.factionId) &&
     inBaseRange(state, attacker, base.cell)

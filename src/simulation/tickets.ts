@@ -14,6 +14,7 @@ export function applyTicketTick(state: MatchState): MatchState {
     if (
       base.kind !== 'hq' &&
       base.owner !== null &&
+      base.owner !== 'local' &&
       aliveIds.has(base.owner) &&
       base.hp > 0
     ) {

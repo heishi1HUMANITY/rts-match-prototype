@@ -47,13 +47,13 @@ describe('faction visibility and view isolation', () => {
   it('initializes all faction masks and exploration at tick zero with inclusive doubled-radius boundaries', () => {
     const match = createMatch(42);
     expect(match.knowledge.map((entry) => entry.visible.length)).toEqual([
-      1600, 1600, 1600,
+      1600, 1600, 1600, 1600,
     ]);
     expect(match.knowledge.map((entry) => entry.explored.length)).toEqual([
-      1600, 1600, 1600,
+      1600, 1600, 1600, 1600,
     ]);
     expect(match.knowledge.map((entry) => entry.visible.some(Boolean))).toEqual(
-      [true, true, true],
+      [true, true, true, false],
     );
 
     const factionA = match.knowledge.find(

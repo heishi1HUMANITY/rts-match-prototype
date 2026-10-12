@@ -8,11 +8,18 @@ import {
   isCellVisibleToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
-import type { BaseState, FactionId, MatchState, UnitState } from './types';
+import type {
+  BaseState,
+  CombatantId,
+  FactionId,
+  MatchState,
+  UnitState,
+} from './types';
+import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
 
 interface Target {
-  readonly kind: 'unit' | 'defender' | 'base' | 'crossing';
+  readonly kind: 'unit' | 'defender' | 'base' | 'crossing' | 'stronghold';
   readonly id: string;
   readonly distanceSquared: number;
 }
@@ -38,7 +45,7 @@ function compareTarget(a: Target, b: Target): number {
 function baseIsVisible(
   state: MatchState,
   base: BaseState,
-  factionId: FactionId,
+  factionId: CombatantId,
 ): boolean {
   return isCellVisibleToFaction(state, base.cell, factionId);
 }
@@ -171,6 +178,27 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     .sort(compareTarget);
   if (bases[0]) return bases[0];
 
+  const stronghold = state.localFaction.stronghold;
+  const strongholdDistance = distanceSquared(
+    x2,
+    y2,
+    1024 * stronghold.cell.x + 512,
+    1024 * stronghold.cell.y + 512,
+  );
+  if (
+    attacker.factionId !== 'local' &&
+    state.localFaction.active &&
+    !state.localFaction.defeated &&
+    stronghold.hp > 0 &&
+    strongholdDistance <= rangeSquared &&
+    isCellVisibleToFaction(state, stronghold.cell, attacker.factionId)
+  )
+    return {
+      kind: 'stronghold',
+      id: LOCAL_STRONGHOLD_ID,
+      distanceSquared: strongholdDistance,
+    };
+
   return (
     (unitCapabilities(attacker.kind).attackTargets.includes('crossing')
       ? activeCrossings(state)
@@ -208,6 +236,7 @@ export function resolveCombat(state: MatchState): MatchState {
   const defenderDamage = new Map<string, number>();
   const baseDamage = new Map<string, number>();
   const crossingDamage = new Map<string, Map<FactionId, number>>();
+  const strongholdDamage = new Map<FactionId, number>();
   for (const attacker of snapshot.units) {
     if (attacker.hp <= 0) continue;
     const target = selectTarget(snapshot, attacker);
@@ -215,9 +244,13 @@ export function resolveCombat(state: MatchState): MatchState {
     const faction = snapshot.factions.find(
       ({ id }) => id === attacker.factionId,
     );
-    const damage =
+    const rawDamage =
       snapshot.rules.units[attacker.kind].baseDamage +
       (faction ? firepowerBonus(faction, snapshot.rules) : 0);
+    const damage = Math.max(
+      1,
+      Math.floor((rawDamage * (attacker.growthCenti ?? 10_000)) / 10_000),
+    );
     if (target.kind === 'unit') {
       unitDamage.set(target.id, (unitDamage.get(target.id) ?? 0) + damage);
     } else if (target.kind === 'defender') {
@@ -227,7 +260,14 @@ export function resolveCombat(state: MatchState): MatchState {
       );
     } else if (target.kind === 'base') {
       baseDamage.set(target.id, (baseDamage.get(target.id) ?? 0) + damage);
+    } else if (target.kind === 'stronghold') {
+      if (attacker.factionId !== 'local')
+        strongholdDamage.set(
+          attacker.factionId,
+          (strongholdDamage.get(attacker.factionId) ?? 0) + damage,
+        );
     } else {
+      if (attacker.factionId === 'local') continue;
       const byFaction =
         crossingDamage.get(target.id) ?? new Map<FactionId, number>();
       byFaction.set(
@@ -276,12 +316,12 @@ export function resolveCombat(state: MatchState): MatchState {
   }
 
   let unitLosses = new Map<FactionId, number>();
-  const units = snapshot.units
+  let units = snapshot.units
     .map((unit) => {
       const damage = unitDamage.get(unit.id) ?? 0;
       if (damage <= 0) return unit;
       const hp = Math.max(0, unit.hp - damage);
-      if (hp === 0)
+      if (hp === 0 && unit.factionId !== 'local')
         unitLosses.set(
           unit.factionId,
           (unitLosses.get(unit.factionId) ?? 0) + 1,
@@ -291,7 +331,7 @@ export function resolveCombat(state: MatchState): MatchState {
     .filter(({ hp }) => hp > 0);
 
   const destroyedHqs = new Set<FactionId>();
-  const bases = snapshot.bases.map((base) => {
+  let bases = snapshot.bases.map((base) => {
     const defenderHit = defenderDamage.get(base.id) ?? 0;
     const defender =
       base.defender && defenderHit > 0
@@ -320,10 +360,66 @@ export function resolveCombat(state: MatchState): MatchState {
             ? null
             : defender,
       owner: null,
+      conqueredFromLocal:
+        base.owner === 'local' || base.conqueredFromLocal === true,
       captureCandidate: null,
       captureTicks: 0,
     };
   });
+
+  let localFaction = snapshot.localFaction;
+  const strongholdHit = [...strongholdDamage.values()].reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+  let strongholdWinner: FactionId | null = null;
+  if (
+    strongholdHit > 0 &&
+    snapshot.localFaction.active &&
+    !snapshot.localFaction.defeated
+  ) {
+    const hp = Math.max(0, snapshot.localFaction.stronghold.hp - strongholdHit);
+    if (hp === 0) {
+      const ranked = [...strongholdDamage.entries()].sort(
+        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+      );
+      const first = ranked[0];
+      const tied = first !== undefined && ranked[1]?.[1] === first[1];
+      if (first && !tied) strongholdWinner = first[0];
+      localFaction = {
+        ...snapshot.localFaction,
+        active: false,
+        defeated: true,
+        nextSpawnTick: null,
+        stronghold: { ...snapshot.localFaction.stronghold, hp: 0 },
+      };
+      units = units.filter((unit) => unit.factionId !== 'local');
+      bases = bases.map((base) =>
+        base.owner === 'local' && base.kind !== 'hq'
+          ? {
+              ...base,
+              owner: null,
+              hp: base.maxHp,
+              defender: snapshot.rules.defenses.respawnEnabled
+                ? {
+                    hp: snapshot.rules.defenses[base.kind].maxHp,
+                    maxHp: snapshot.rules.defenses[base.kind].maxHp,
+                    disabledTicks: 0,
+                  }
+                : null,
+              captureCandidate: null,
+              captureTicks: 0,
+              conqueredFromLocal: true,
+            }
+          : base,
+      );
+    } else {
+      localFaction = {
+        ...snapshot.localFaction,
+        stronghold: { ...snapshot.localFaction.stronghold, hp },
+      };
+    }
+  }
 
   const crossings = snapshot.crossings.map((crossing) => {
     const byFaction = crossingDamage.get(crossing.siteId);
@@ -369,15 +465,27 @@ export function resolveCombat(state: MatchState): MatchState {
     units,
     bases,
     crossings,
+    localFaction,
     factions: snapshot.factions.map((faction) => {
+      const killReward = faction.id === strongholdWinner;
       const losses = unitLosses.get(faction.id) ?? 0;
       const hqLoss = destroyedHqs.has(faction.id)
         ? snapshot.rules.match.hqLossTicketsCenti
         : 0;
-      return losses === 0 && hqLoss === 0
+      return losses === 0 && hqLoss === 0 && !killReward
         ? faction
         : {
             ...faction,
+            supplyCenti:
+              faction.supplyCenti +
+              (killReward
+                ? snapshot.rules.localFaction.strongholdRewardSupplyCenti
+                : 0),
+            researchCenti:
+              faction.researchCenti +
+              (killReward
+                ? snapshot.rules.localFaction.strongholdRewardResearchCenti
+                : 0),
             ticketsCenti: Math.max(
               0,
               faction.ticketsCenti -
