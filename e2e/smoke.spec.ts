@@ -8,7 +8,7 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('./');
   const tick = page.locator('.tick-readout');
   const board = page.locator('.board-host canvas');
   await expect(tick).toHaveText('TICK 0 · READY');
@@ -54,7 +54,7 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
 });
 
 test('G1-10 / G1-11: seed changes only after valid apply', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByText('検査設定', { exact: true }).click();
   const seed = page.getByRole('spinbutton', { name: '試合seed' });
   await seed.fill('-1');

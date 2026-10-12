@@ -20,7 +20,8 @@
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run test:flow && npm run build",
+    "test:flow": "node --test scripts/checkpoint-sync.test.mjs",
     "references:check": "node scripts/check-references.mjs"
   },
   "devDependencies": {

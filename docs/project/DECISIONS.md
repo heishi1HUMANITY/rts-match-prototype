@@ -93,3 +93,14 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 - D052: F08 / Issue #20で現行2兵種を維持し、自走砲・対空車両・攻撃ヘリ・哨戒艇を追加する。各分野stage 1のunit-unlock研究を設ける。現tickへの新しい性能は[F08設計](preparation/F08_DESIGN.md)の表を暫定採用し、旧80座標/毎秒damageは直移植しない。陸は既存通行、空は地形を無視した直線、水は河川セルのみ。港で艇を生産し、全領域は非戦闘時にHQ近傍で回復可能。攻撃可能Entity種類、拠点制圧可否と効率を兵種別RulesMaster設定にする。対空対象優先、対象行列、移動中攻撃、兵種別損失ticketをMatchStateへ接続する。RulesMaster schema10 / MatchState schema16 / f08-v3。値と標準試合の出現感はF16で再調整する。
 - D053: F08の各兵種へ攻撃対象Entity集合（unit/defender/base/crossing/stronghold）、`canCaptureBase`、`captureEfficiencyPercent`を持たせ、RulesMaster編集・保存・検証・MatchState snapshotから戦闘/制圧判定まで一貫して読む。効率は100%を標準として部隊ごとの百分率を加算し、0〜1000%を許容する。旧schema 9以前の保存値は明示migrationで維持し、新設定は既定プロフィールで補う。攻撃対象に含めてもtarget damageが0なら攻撃不可。制圧フラグがfalseなら効率にかかわらず拠点所有を変えない。診断はf08-v3 / schema16として区別する。
 - D054: F10 / Issue #22で拠点をLv1〜3へ強化可能にする。レベル別研究で上限を解放し、開始時に補給を支払い、固定tickで進捗する。強化完了時はHP比率を維持。所有喪失・中立化時はLv1/基準最大HP/30%HPへ戻し、未完了jobは返金なしで破棄する。砲座は最寄りの敵部隊をIDで決定的に選び、航空へのdamageを半減（切上げ）する。被弾停止後の自動回復と、HP/収入/砲座/所要時間の暫定値を[設計書](preparation/F10_DESIGN.md)へ記録。拠点強化設定をRulesMaster schema11、MatchState schema17 / `f10-v1`へ追加しschema10 masterは明示移行する。数値はF16で再調整する。
+
+## 2026-10-12: チェックポイント検査へ移行
+
+ユーザーの開発フロー修正指示によりD011〜D013とD022の検査・配備方針を更新する。
+
+- 進捗の唯一の正は全体Issue #12の「マージ済み」「プレイ検証済み」。過去のマージ許可を通常1試合の検査完了へ読み替えない。
+- Windows/Linux check、該当シナリオe2e、別会話・読み取り専用モデルの受入条件別OK/NGをマージ条件にする。修正は最大2巡、残るNGはflow:reviewで停止する。
+- gate:auto / gate:playを全Issueへ付け、ユーザー検査はマージ後のCPで実施する。CPは3〜5 Issueまたはgate:playが1つで締める。CP0は既存マージ済み機能をまとめて確認する移行例外。
+- main pushの検証済みdistをPagesへ自動配備し、PRはビルドartifactを残す。リポジトリの公開範囲は変更しない。配布対象はdistのみ。
+- GitHub Milestoneにコメント機能がないため、所属するCP記録Issueへ「OK / NG(Issue番号)」を記録し、#12へ結果を反映する。
+- 採否未決のF07/F16は実装とdecisionを分離する。ユーザーの採否判断とCP0検査結果は代行しない。

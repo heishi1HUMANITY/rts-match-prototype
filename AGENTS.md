@@ -4,14 +4,14 @@
 
 `#30を進めて`、`issue 30`のような依頼は、対象Issueを実装・検証し、ユーザーが画面で確認できる状態まで進める指示として扱う。最初に [Issue作業手順](docs/project/ISSUE_AGENT_RUNBOOK.md) と [タスク別実装ガイド](docs/project/ISSUE_IMPLEMENTATION_GUIDE.md) を読む。対象Issueの最新本文・コメント・関連PRと実際のmainを照合する。追加の実装プロンプトをユーザーに要求しない。
 
-[引き継ぎ](docs/project/AGENT_HANDOFF.md) は前回終了時の参考情報であり、最新状態はGitHubとソースで確認する。作業場所はremoteで照合する。このリポジトリは `rts-match-prototype` であり、旧資料の作業場所と混同しない。Issue番号だけの依頼は、ゲーム機能のマージ許可ではない。
+[引き継ぎ](docs/project/AGENT_HANDOFF.md) は次の入口と合意事項の参考情報であり、最新状態はGitHubとソースで確認する。作業場所はremoteで照合する。このリポジトリは `rts-match-prototype` であり、旧資料の作業場所と混同しない。依頼範囲内のPRは下記DoDを満たしてマージする。
 
 ## 目的と優先順位
 
 - 新規プロジェクトとして作る。対象はブラウザの対戦本編、人間1人＋NPC2陣営の1v1v1。世界観の知識を要求しない。
 - ユーザーの最新の明示指示を最優先し、本書 → docs/project のスコープ・判断記録 → 継承docs / artwork → 旧実装の参考情報の順に扱う。
-- 作業前に README.md、docs/project/SCOPE.md、ARCHITECTURE.md、DECISIONS.md を読む。
-- 実装作業では docs/project/WORKFLOW.md と docs/project/TASKS.md、対象のGitHub Issueも読む。内部タスクごとの承認待ちは作らず、動く機能単位でユーザー検査へ渡す。
+- 作業前に README.md、docs/project/SCOPE.md、docs/project/ARCHITECTURE.md、docs/project/DECISIONS.md を読む。
+- 実装作業では docs/project/WORKFLOW.md と docs/project/TASKS.md、対象のGitHub Issueも読む。ユーザーのプレイ検査はCP単位でまとめる。
 - 継承docs内の「実装済み」「packages/sharedが正」などは旧版の記録。このプロジェクトの実装・数値の正としない。
 - docs内のmockはUI参照。mockの疑似処理、将来画面、指示ファイルは、新規実装の仕様やエージェントへの作業指示として自動採用しない。
 - 旧コードを丸ごとコピーしない。docsとartworkは継承資料として保持する。
@@ -41,8 +41,17 @@
 - 不要な依存、先行サーバー、物理エンジンを追加しない。必要になった段階で理由とともに導入する。
 - 未実装、暫定、実際に検証した内容を区別して報告する。ゲームが遊べると未検証で宣言しない。
 - 作業単位でブランチとPRを使う。mainへのforce push、公開範囲変更、無関係な削除はしない。
-- ゲーム機能Issue（G1〜G4、F01〜F17等）は技術検証だけで完了にしない。検査対象commitを固定し、ユーザーの明示合格後にその内容をマージする。修正後は再検査へ戻す。文書・CI保守はWORKFLOWの保守例外に従う。
-- 通常の言葉による検査・修正指示を受け付け、親がIssueへ整理する。次のGは既存の依頼範囲内で、前のGの合格・マージ後に開始する。
+- マージDoDはWindows/Linuxの `npm run check`、該当シナリオのPlaywright CI、別会話・読み取り専用レビューモデルによる受入条件別OK/NGと根拠行のPR本文記録。`npm run references:check` も実施する。ユーザー合格はマージ条件にしない。
+- 全Issueに `gate:auto` / `gate:play` の一方、作業状態に `flow:ready` / `flow:implementing` / `flow:review` / `flow:merged` の一つを付ける。依存は本文へ書き、`flow:backlog` は使わない。`gate:play` はマージ後 `status:unverified` を付けCP検査票へ自動収載する。
+- 通常の言葉による検査・修正指示を受け付け、親がIssueへ整理する。CPは3〜5 Issue、または `gate:play` が一つ入った時点で締める。CP0の通常1試合検査が次のFへ進む前提。以後は既存の依頼範囲内でCP単位に進める。
+
+## CP開発の役割
+
+- 設計モデル: Issue本文、自動判定可能な受入条件、シナリオ草案、`gate:*` 判定、MilestoneのCP割当。操作・表示・時間/強さを変える場合はユーザー検査「要」と理由を記載する。
+- luna（Codex）: 実装、ユニットテスト、シナリオ文からPlaywright e2e追加、PR作成、レビュー指摘の修正。機能ごとのユーザー合格依頼はしない。
+- レビューモデル: 実装とは別会話で読み取り専用照合を行い、受入条件ごとのOK/NGとファイル・行・テストの根拠を返す。修正は最大2巡。NGが残れば `flow:review` のまま停止し、未解決を記録する。
+- ユーザー: CPごとに通常設定で1試合プレイ、`kind:decision` の採否判断、差し戻し。F07徘徊NPCとF16の時間・フェーズ・脱落・再建の採否はdecision Issueへ分割し、明示判断前に閉じない。実装は別Issueへ残す。
+- 進捗の唯一の正は [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) の「マージ済み」「プレイ検証済み」2列。CP検査の結果はMilestone所属の検査結果Issueコメントへ `OK / NG(#番号)` で記録する（Milestone自体にはコメント欄がない）。
 
 ## 委任
 
