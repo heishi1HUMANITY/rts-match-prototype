@@ -4,11 +4,14 @@
 
 - repository: `heishi1HUMANITY/rts-match-prototype`。`git remote -v` で作業場所を照合する。
 - 進捗の唯一の正は [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) の「マージ済み」「プレイ検証済み」。状態やcommit SHAを文書に複製しない。
+- 最初に[役割と引き継ぎ契約](ROLE_HANDOFF.md)を読み、設計担当かGPT-6 luna実装担当かを確認する。設計担当の交代・会話再開でも役割をリセットしない。
 - [WORKFLOW](WORKFLOW.md) → [Issue作業手順](ISSUE_AGENT_RUNBOOK.md) → 対象Issueの最新本文・コメント・関連PR・mainを確認する。
 - 次のCPと依存順は#12と対象Issueの最新本文で確認する。CP0のユーザー結果が出るまで次のF実装を開始しない。
 - localhostのプロセス存続を推測せず、必要なら `npm ci` → `npm run build` → `npm run preview` で起動する。
 
 ## 合意事項
+
+- 設計担当は詳細設計・Issue・受入条件・シナリオ草案・引き継ぎまで。実装・テスト・実行検証・PR対応はGPT-6 luna（`gpt-6-luna`）。設計担当の自力実装、親モデル継承の子への実装委任、luna切替不能時の代行は行わない。運用文書の明示依頼は文書範囲だけ編集・PR対応できる。
 
 - ユーザーはCPごとに通常設定で1試合と確認3点を検査する。機能ごとの合格要求はしない。自動検証と独立モデルレビューを通したPRはユーザー合格前にマージできる。
 - `gate:play` はマージ後も `status:unverified` としてCPへ載せる。CIやモデルのOKをユーザープレイ合格へ読み替えない。

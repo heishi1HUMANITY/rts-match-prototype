@@ -2,6 +2,10 @@
 
 進め方は [WORKFLOW](docs/project/WORKFLOW.md)、機能契約は [TASKS](docs/project/TASKS.md)、進捗の唯一の正は [Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12)。ユーザーのプレイ検査はCP単位とし、機能PRのマージにユーザー合格を要求しない。
 
+## モデル別の担当
+
+[役割と引き継ぎ契約](docs/project/ROLE_HANDOFF.md)を開始時と担当交代時に確認する。設計担当は設計・Issue・引き継ぎまで、GPT-6 luna（`gpt-6-luna`）は実装・テスト・実行検証・PR対応を担当する。上位モデルや親モデルを継承した子による実装代行はしない。明示依頼された運用文書の改定は設計担当が文書範囲でPR対応できる。
+
 ## 作業開始
 
 1. README / AGENTS と docs/project のスコープ・構成・判断を読む。
