@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect, saveDiagnostic } from './fixtures';
 
+// Two real diagnostic downloads plus a page reload exercise storage/replay.
+// Software WebGL on CI can take longer than the default 30-second test budget.
+test.setTimeout(90_000);
+
 for (const percent of [30, 50]) {
   test(`F19-01 / F19-02 / F19-04: ${percent}% captures all base sizes with saved snapshot`, async ({
     page,
