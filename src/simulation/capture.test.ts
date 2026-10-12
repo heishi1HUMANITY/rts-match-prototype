@@ -26,7 +26,7 @@ describe('outpost capture', () => {
     state = advanceCapture(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: 'A',
-      hp: 100,
+      hp: state.rules.bases.large.maxHp,
       captureCandidate: null,
       captureTicks: 0,
     });

@@ -73,8 +73,8 @@ describe('G2 fixed-tick integration', () => {
       captureTicks: 0,
     });
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
-      supplyCenti: 20_980,
-      researchCenti: 70,
+      supplyCenti: 21_580,
+      researchCenti: 370,
     });
   });
 
@@ -211,7 +211,7 @@ describe('G2 fixed-tick integration', () => {
       hp: 0,
     });
     expect(state.factions.find(({ id }) => id === 'B')).toMatchObject({
-      supplyCenti: 11_000,
+      supplyCenti: 11_020,
       productionJobs: [],
       ticketsCenti: 90_000,
     });

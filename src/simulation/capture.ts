@@ -42,7 +42,7 @@ function currentUnitPosition(unit: MatchState['units'][number]): {
 /** Advances neutral outpost control after combat using surviving units only. */
 export function advanceCapture(state: MatchState): MatchState {
   const bases = state.bases.map((base) => {
-    if (base.kind !== 'outpost' || base.owner !== null || base.hp !== 0) {
+    if (base.kind === 'hq' || base.owner !== null || base.hp !== 0) {
       if (base.captureCandidate === null && base.captureTicks === 0)
         return base;
       return { ...base, captureCandidate: null, captureTicks: 0 };
@@ -75,7 +75,7 @@ export function advanceCapture(state: MatchState): MatchState {
       return {
         ...base,
         owner: candidate,
-        hp: state.rules.bases.outpost.maxHp,
+        hp: state.rules.bases[base.kind].maxHp,
         captureCandidate: null,
         captureTicks: 0,
       };

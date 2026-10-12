@@ -1,123 +1,280 @@
 import {
-  BLOCKED_CELL_PERCENT,
+  BASE_CELLS,
   INITIAL_UNIT_PLACEMENTS,
-  ISOLATED_CELL,
   MAP_HEIGHT,
   MAP_WIDTH,
 } from './config';
 import { createRandom } from './random';
-import type { Cell, GridMap } from './types';
+import type {
+  ActiveCrossing,
+  Cell,
+  GridMap,
+  MovementDomain,
+  TerrainKind,
+} from './types';
 
 const indexOf = (x: number, y: number): number => y * MAP_WIDTH + x;
+const inBounds = (x: number, y: number): boolean =>
+  x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT;
 
-function isInBounds(x: number, y: number): boolean {
-  return x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT;
-}
+const PORTS = [
+  {
+    id: 'PORT-A',
+    factionId: 'A' as const,
+    cell: { x: 15, y: 25 },
+    shore: { x: 14, y: 26 },
+  },
+  {
+    id: 'PORT-B',
+    factionId: 'B' as const,
+    cell: { x: 25, y: 25 },
+    shore: { x: 26, y: 26 },
+  },
+  {
+    id: 'PORT-C',
+    factionId: 'C' as const,
+    cell: { x: 20, y: 13 },
+    shore: { x: 20, y: 12 },
+  },
+] as const;
 
-function reserveCells(): Uint8Array {
-  const reserved = new Uint8Array(MAP_WIDTH * MAP_HEIGHT);
-  const reserve = (x: number, y: number): void => {
-    if (isInBounds(x, y)) reserved[indexOf(x, y)] = 1;
-  };
-
-  // Outer rim.
-  for (let x = 0; x < MAP_WIDTH; x += 1) {
-    reserve(x, 0);
-    reserve(x, MAP_HEIGHT - 1);
-  }
+function createTerrain(): { terrain: TerrainKind[]; levels: number[] } {
+  const terrain = new Array<TerrainKind>(MAP_WIDTH * MAP_HEIGHT).fill('land');
+  const levels = new Array<number>(terrain.length).fill(0);
   for (let y = 0; y < MAP_HEIGHT; y += 1) {
-    reserve(0, y);
-    reserve(MAP_WIDTH - 1, y);
-  }
-
-  // Keep each spawn and its Chebyshev-radius-two neighborhood clear.
-  for (const { cell } of INITIAL_UNIT_PLACEMENTS) {
-    for (let y = cell.y - 2; y <= cell.y + 2; y += 1) {
-      for (let x = cell.x - 2; x <= cell.x + 2; x += 1) reserve(x, y);
-    }
-  }
-
-  for (let i = 0; i < MAP_WIDTH; i += 1) {
-    reserve(20, i);
-    reserve(i, 20);
-  }
-
-  // The test island and its one-cell exterior are fixed.
-  for (let y = 8; y <= 12; y += 1) {
-    for (let x = 28; x <= 32; x += 1) reserve(x, y);
-  }
-  return reserved;
-}
-
-function addFixedIsland(blocked: boolean[]): void {
-  for (let y = ISOLATED_CELL.y - 1; y <= ISOLATED_CELL.y + 1; y += 1) {
-    for (let x = ISOLATED_CELL.x - 1; x <= ISOLATED_CELL.x + 1; x += 1) {
-      if (x !== ISOLATED_CELL.x || y !== ISOLATED_CELL.y) {
-        blocked[indexOf(x, y)] = true;
+    for (let x = 0; x < MAP_WIDTH; x += 1) {
+      const dx = x + 0.5 - 20;
+      const dy = y + 0.5 - 20;
+      const radius = Math.hypot(dx, dy);
+      const index = indexOf(x, y);
+      // A closed multi-cell river ring ensures the central island is unreachable on foot.
+      if (radius >= 6.2 && radius <= 8.0) {
+        terrain[index] = 'river';
+        levels[index] = 1;
+        continue;
+      }
+      // Three short boundary rivers split the outer approaches. They stop short
+      // of the capitals so the starting land component remains playable.
+      if (radius > 8 && radius < 15) {
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const normalized = (angle + 360) % 360;
+        const boundary = [0, 120, 240].some((bearing) => {
+          const difference = Math.abs(normalized - bearing);
+          const wrapped = Math.min(difference, 360 - difference);
+          return wrapped < 2.2;
+        });
+        if (boundary) {
+          terrain[index] = 'river';
+          levels[index] = radius < 11 ? 2 : 3;
+          continue;
+        }
+      }
+      // Mountain ridges flank the ring. A few gaps remain as named crossing
+      // anchors for future ropeways.
+      if (radius >= 8 && radius <= 9.2) {
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const normalized = (angle + 360) % 360;
+        const ridge = [55, 175, 295].some((bearing) => {
+          const difference = Math.abs(normalized - bearing);
+          return Math.min(difference, 360 - difference) < 6;
+        });
+        if (ridge) {
+          terrain[index] = 'mountain';
+          levels[index] = 1;
+        }
+      }
+      if (radius >= 16.4 && radius <= 17.2 && (x === 20 || y === 20)) {
+        terrain[index] = 'mountain';
+        levels[index] = 2;
       }
     }
   }
+  // Ports occupy a river tile beside a land cell, as a future water spawn.
+  for (const port of PORTS) {
+    terrain[indexOf(port.cell.x, port.cell.y)] = 'river';
+    levels[indexOf(port.cell.x, port.cell.y)] = 1;
+    terrain[indexOf(port.shore.x, port.shore.y)] = 'riverbank';
+    levels[indexOf(port.shore.x, port.shore.y)] = 0;
+  }
+  return { terrain, levels };
 }
 
-function allWalkableCellsReachable(blocked: readonly boolean[]): boolean {
-  const startIndex = indexOf(20, 20);
+function isLandTerrain(kind: TerrainKind | undefined): boolean {
+  return kind === undefined || kind === 'land' || kind === 'riverbank';
+}
+
+function landReachable(
+  blocked: readonly boolean[],
+  terrain: readonly TerrainKind[],
+  origin: Cell,
+): boolean[] {
   const seen = new Uint8Array(blocked.length);
   const queue = new Int32Array(blocked.length);
   let head = 0;
   let tail = 0;
-  if (blocked[startIndex]) return false;
-  seen[startIndex] = 1;
-  queue[tail++] = startIndex;
-
+  const start = indexOf(origin.x, origin.y);
+  seen[start] = 1;
+  queue[tail++] = start;
   while (head < tail) {
-    const index = queue[head++];
-    if (index === undefined) continue;
+    const index = queue[head++]!;
     const x = index % MAP_WIDTH;
     const y = Math.floor(index / MAP_WIDTH);
-    const neighbors = [
+    for (const [nx, ny] of [
       [x, y - 1],
       [x + 1, y],
       [x, y + 1],
       [x - 1, y],
-    ] as const;
-    for (const [nx, ny] of neighbors) {
-      if (!isInBounds(nx, ny)) continue;
+    ] as const) {
+      if (!inBounds(nx, ny)) continue;
       const next = indexOf(nx, ny);
-      if (blocked[next] || seen[next]) continue;
+      if (seen[next] || blocked[next] || !isLandTerrain(terrain[next]))
+        continue;
       seen[next] = 1;
       queue[tail++] = next;
     }
   }
+  return Array.from(seen, Boolean);
+}
 
-  for (let index = 0; index < blocked.length; index += 1) {
-    if (index === indexOf(ISOLATED_CELL.x, ISOLATED_CELL.y)) continue;
-    if (!blocked[index] && !seen[index]) return false;
-  }
-  return true;
+function crossingSites() {
+  return [
+    {
+      id: 'CROSS-RING-N',
+      kind: 'bridge' as const,
+      bankA: { x: 20, y: 11 },
+      bankB: { x: 20, y: 14 },
+      cells: [
+        { x: 20, y: 12 },
+        { x: 20, y: 13 },
+      ],
+    },
+    {
+      id: 'CROSS-RING-SE',
+      kind: 'bridge' as const,
+      bankA: { x: 28, y: 20 },
+      bankB: { x: 25, y: 20 },
+      cells: [
+        { x: 27, y: 20 },
+        { x: 26, y: 20 },
+      ],
+    },
+    {
+      id: 'CROSS-RING-SW',
+      kind: 'bridge' as const,
+      bankA: { x: 12, y: 20 },
+      bankB: { x: 15, y: 20 },
+      cells: [
+        { x: 13, y: 20 },
+        { x: 14, y: 20 },
+      ],
+    },
+    {
+      id: 'CROSS-MTN-E',
+      kind: 'ropeway' as const,
+      bankA: { x: 24, y: 26 },
+      bankB: { x: 26, y: 26 },
+      cells: [{ x: 25, y: 26 }],
+    },
+  ];
 }
 
 export function createMap(seed: number): GridMap {
   const random = createRandom(seed);
-  const blocked = new Array<boolean>(MAP_WIDTH * MAP_HEIGHT).fill(false);
-  addFixedIsland(blocked);
-  const reserved = reserveCells();
-
-  // The RNG advances exactly once for every unreserved cell in row-major order.
-  for (let y = 0; y < MAP_HEIGHT; y += 1) {
-    for (let x = 0; x < MAP_WIDTH; x += 1) {
-      const index = indexOf(x, y);
-      if (reserved[index]) continue;
-      const candidate = random.nextUint32() % 100 < BLOCKED_CELL_PERCENT;
-      if (!candidate) continue;
-      blocked[index] = true;
-      if (!allWalkableCellsReachable(blocked)) blocked[index] = false;
+  const { terrain, levels } = createTerrain();
+  const plannedCrossings = crossingSites();
+  // Keep a land apron around every capital spawn.
+  for (const { cell } of INITIAL_UNIT_PLACEMENTS) {
+    for (let y = cell.y - 1; y <= cell.y + 1; y += 1) {
+      for (let x = cell.x - 1; x <= cell.x + 1; x += 1) {
+        if (!inBounds(x, y)) continue;
+        terrain[indexOf(x, y)] = 'land';
+        levels[indexOf(x, y)] = 0;
+      }
     }
   }
-
-  return { width: MAP_WIDTH, height: MAP_HEIGHT, blocked };
+  for (const { cell } of BASE_CELLS) {
+    terrain[indexOf(cell.x, cell.y)] = 'land';
+    levels[indexOf(cell.x, cell.y)] = 0;
+  }
+  const blocked = terrain.map((kind) => !isLandTerrain(kind));
+  const protectedCells = new Set<string>();
+  for (const { cell } of INITIAL_UNIT_PLACEMENTS) {
+    for (let y = cell.y - 2; y <= cell.y + 2; y += 1)
+      for (let x = cell.x - 2; x <= cell.x + 2; x += 1)
+        protectedCells.add(`${x},${y}`);
+  }
+  for (const base of BASE_CELLS.filter(({ factionId }) => factionId !== null)) {
+    const spawn = INITIAL_UNIT_PLACEMENTS.find(
+      (placement) => placement.factionId === base.factionId,
+    )!.cell;
+    for (
+      let y = Math.min(spawn.y, base.cell.y);
+      y <= Math.max(spawn.y, base.cell.y);
+      y += 1
+    ) {
+      for (
+        let x = Math.min(spawn.x, base.cell.x);
+        x <= Math.max(spawn.x, base.cell.x);
+        x += 1
+      ) {
+        protectedCells.add(`${x},${y}`);
+      }
+    }
+  }
+  for (const { cell } of BASE_CELLS) {
+    protectedCells.add(`${cell.x},${cell.y}`);
+  }
+  for (const port of PORTS) {
+    protectedCells.add(`${port.cell.x},${port.cell.y}`);
+    protectedCells.add(`${port.shore.x},${port.shore.y}`);
+  }
+  for (const crossing of plannedCrossings) {
+    for (const cell of [crossing.bankA, crossing.bankB])
+      protectedCells.add(`${cell.x},${cell.y}`);
+  }
+  const initialReachable = landReachable(
+    blocked,
+    terrain,
+    INITIAL_UNIT_PLACEMENTS[0]!.cell,
+  );
+  for (let y = 1; y < MAP_HEIGHT - 1; y += 1) {
+    for (let x = 1; x < MAP_WIDTH - 1; x += 1) {
+      const index = indexOf(x, y);
+      if (!initialReachable[index] || protectedCells.has(`${x},${y}`)) continue;
+      if (terrain[index] !== 'land') continue;
+      if (random.nextUint32() % 100 >= 7) continue;
+      blocked[index] = true;
+      const reachable = landReachable(
+        blocked,
+        terrain,
+        INITIAL_UNIT_PLACEMENTS[0]!.cell,
+      );
+      const required = [
+        ...INITIAL_UNIT_PLACEMENTS.map(({ cell }) => cell),
+        ...BASE_CELLS.filter(({ factionId }) => factionId !== null).map(
+          ({ cell }) => cell,
+        ),
+      ];
+      if (required.some((cell) => !reachable[indexOf(cell.x, cell.y)]))
+        blocked[index] = false;
+    }
+  }
+  return {
+    width: MAP_WIDTH,
+    height: MAP_HEIGHT,
+    terrain,
+    terrainLevel: levels,
+    crossingSites: plannedCrossings,
+    ports: PORTS.map((port) => ({
+      ...port,
+      cell: { ...port.cell },
+      shore: { ...port.shore },
+    })),
+    blocked,
+  };
 }
 
-export function isCellBlocked(map: GridMap, cell: Cell): boolean {
+export function terrainAt(map: GridMap, cell: Cell): TerrainKind | null {
   if (
     !Number.isInteger(cell.x) ||
     !Number.isInteger(cell.y) ||
@@ -125,18 +282,59 @@ export function isCellBlocked(map: GridMap, cell: Cell): boolean {
     cell.y < 0 ||
     cell.x >= map.width ||
     cell.y >= map.height
-  ) {
-    return true;
-  }
-  return map.blocked[cell.y * map.width + cell.x] ?? true;
+  )
+    return null;
+  return (
+    map.terrain?.[cell.y * map.width + cell.x] ??
+    (map.blocked[cell.y * map.width + cell.x] ? 'mountain' : 'land')
+  );
 }
 
-/** Flood fill from (20,20), excluding the intentionally isolated test cell. */
+export function isCellBlocked(map: GridMap, cell: Cell): boolean {
+  return !canTraverse(map, cell, { domain: 'land' });
+}
+
+export function canTraverse(
+  map: GridMap,
+  cell: Cell,
+  options: {
+    readonly domain?: MovementDomain;
+    readonly factionId?: string;
+    readonly crossings?: readonly ActiveCrossing[];
+  } = {},
+): boolean {
+  if (
+    !Number.isInteger(cell.x) ||
+    !Number.isInteger(cell.y) ||
+    cell.x < 0 ||
+    cell.y < 0 ||
+    cell.x >= map.width ||
+    cell.y >= map.height
+  )
+    return false;
+  const index = cell.y * map.width + cell.x;
+  if (index >= map.blocked.length) return false;
+  const kind = terrainAt(map, cell);
+  const domain = options.domain ?? 'land';
+  if (domain === 'air') return true;
+  const crossing = options.crossings?.find(
+    (entry) =>
+      entry.complete &&
+      entry.owner === options.factionId &&
+      entry.cells.some(({ x, y }) => x === cell.x && y === cell.y),
+  );
+  if (crossing) return true;
+  if (domain === 'water') return kind === 'river';
+  return isLandTerrain(kind ?? undefined) && !map.blocked[index];
+}
+
+/** Flood fill over land, useful for validating local access without crossing islands. */
 export function getReachableCells(map: GridMap): ReadonlySet<string> {
   const seen = new Set<number>();
   const queue: number[] = [];
-  const start = 20 * map.width + 20;
-  if (isCellBlocked(map, { x: 20, y: 20 })) return new Set();
+  const origin = INITIAL_UNIT_PLACEMENTS[0]!.cell;
+  const start = origin.y * map.width + origin.x;
+  if (isCellBlocked(map, origin)) return new Set();
   seen.add(start);
   queue.push(start);
   const directions = [
@@ -146,8 +344,7 @@ export function getReachableCells(map: GridMap): ReadonlySet<string> {
     [-1, 0],
   ] as const;
   for (let head = 0; head < queue.length; head += 1) {
-    const index = queue[head];
-    if (index === undefined) continue;
+    const index = queue[head]!;
     const x = index % map.width;
     const y = Math.floor(index / map.width);
     for (const [dx, dy] of directions) {
@@ -159,7 +356,6 @@ export function getReachableCells(map: GridMap): ReadonlySet<string> {
       queue.push(next);
     }
   }
-  seen.delete(ISOLATED_CELL.y * map.width + ISOLATED_CELL.x);
   return new Set(
     [...seen].map(
       (index) => `${index % map.width},${Math.floor(index / map.width)}`,

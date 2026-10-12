@@ -94,7 +94,13 @@ function nearestReachableGoal(
 ): BaseView | undefined {
   const from = currentCell(unit);
   return candidates
-    .map((base) => ({ base, route: findPath(view.map, from, base.cell) }))
+    .map((base) => ({
+      base,
+      route: findPath(view.map, from, base.cell, {
+        factionId: unit.factionId,
+        domain: 'land',
+      }),
+    }))
     .filter(
       (entry): entry is { base: BaseView; route: readonly Cell[] } =>
         entry.route !== null,
@@ -200,7 +206,7 @@ function unitMoveCommand(
 ): Command | undefined {
   const factionId = view.viewerFactionId;
   const outposts = view.bases.filter(
-    (base) => base.kind === 'outpost' && !isOwnBase(base, factionId),
+    (base) => base.kind !== 'hq' && !isOwnBase(base, factionId),
   );
   const hqs = view.bases.filter(
     (base) =>
@@ -215,7 +221,10 @@ function unitMoveCommand(
     proposedDefense === null
       ? null
       : proposedDefense &&
-          findPath(view.map, currentCell(unit), proposedDefense.cell)
+          findPath(view.map, currentCell(unit), proposedDefense.cell, {
+            factionId: unit.factionId,
+            domain: 'land',
+          })
         ? proposedDefense
         : undefined;
   if (defense === null) return undefined;

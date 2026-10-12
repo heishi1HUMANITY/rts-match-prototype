@@ -146,7 +146,9 @@ describe('V06 view-only render frames', () => {
       kind: 'outpost' as const,
       cell: { x: 20, y: 20 },
     };
-    expect(baseLabel({ ...base, visibility: 'unknown' })).toBe('拠点 · 未観測');
+    expect(baseLabel({ ...base, visibility: 'unknown' })).toBe(
+      '小拠点 · 未観測',
+    );
     const remembered = baseLabel({
       ...base,
       visibility: 'remembered',

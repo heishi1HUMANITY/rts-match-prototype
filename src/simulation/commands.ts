@@ -302,7 +302,10 @@ export function applyCommand(
 
   const currentEdge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
   const origin = currentEdge ?? unit.cell;
-  const route = findPath(state.map, origin, target);
+  const route = findPath(state.map, origin, target, {
+    factionId: unit.factionId,
+    domain: 'land',
+  });
   if (route === null) return reject(state, 'UNREACHABLE');
 
   const path = currentEdge === undefined ? route : [currentEdge, ...route];

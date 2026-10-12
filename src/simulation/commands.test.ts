@@ -112,8 +112,8 @@ describe('shared command validation', () => {
 
     for (const [target, reason] of [
       [{ x: -1, y: 33 }, 'OUT_OF_BOUNDS'],
-      [{ x: 29, y: 9 }, 'BLOCKED'],
-      [{ x: 30, y: 10 }, 'UNREACHABLE'],
+      [{ x: 20, y: 13 }, 'BLOCKED'],
+      [{ x: 20, y: 20 }, 'UNREACHABLE'],
     ] as const) {
       const result = issueMove(state, target);
       expect(result).toEqual({ ok: false, state, reason });

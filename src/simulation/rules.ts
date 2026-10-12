@@ -17,8 +17,8 @@ import {
 } from './config';
 import type { BaseKind, ResearchId, UnitKind } from './types';
 
-export const MASTER_SCHEMA_VERSION = 1 as const;
-export const RULES_VERSION = 'f17-v1' as const;
+export const MASTER_SCHEMA_VERSION = 2 as const;
+export const RULES_VERSION = 'f03-v1' as const;
 
 export interface RulesMaster {
   readonly units: Readonly<
@@ -121,6 +121,20 @@ export const DEFAULT_RULES: RulesMaster = {
   bases: {
     hq: { ...BASE_STATS.hq, ticketWeight: 0 },
     outpost: { ...BASE_STATS.outpost, ticketWeight: 1 },
+    medium: {
+      maxHp: 180,
+      vision: 5,
+      supplyIncomeCentiPerTick: 30,
+      researchIncomeCentiPerTick: 15,
+      ticketWeight: 2,
+    },
+    large: {
+      maxHp: 300,
+      vision: 6,
+      supplyIncomeCentiPerTick: 40,
+      researchIncomeCentiPerTick: 20,
+      ticketWeight: 3,
+    },
   },
   research: {
     baseIncomeCentiPerTick: BASE_RESEARCH_INCOME_CENTI_PER_TICK,

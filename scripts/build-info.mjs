@@ -21,7 +21,7 @@ try {
 } catch {
   // A source archive can still build, but cannot claim an identified clean revision.
 }
-const info = { commit, dirty, rulesVersion: 'f17-v1', schemaVersion: 7 };
+const info = { commit, dirty, rulesVersion: 'f03-v1', schemaVersion: 8 };
 const json = JSON.stringify(info, null, 2) + '\n';
 if (process.argv.includes('--write')) {
   mkdirSync(join(projectRoot, 'dist'), { recursive: true });

@@ -174,6 +174,29 @@ export function getFactionView(
     map: {
       width: state.map.width,
       height: state.map.height,
+      ...(state.map.terrain ? { terrain: [...state.map.terrain] } : {}),
+      ...(state.map.terrainLevel
+        ? { terrainLevel: [...state.map.terrainLevel] }
+        : {}),
+      ...(state.map.crossingSites
+        ? {
+            crossingSites: state.map.crossingSites.map((site) => ({
+              ...site,
+              bankA: { ...site.bankA },
+              bankB: { ...site.bankB },
+              cells: site.cells.map((cell) => ({ ...cell })),
+            })),
+          }
+        : {}),
+      ...(state.map.ports
+        ? {
+            ports: state.map.ports.map((port) => ({
+              ...port,
+              cell: { ...port.cell },
+              shore: { ...port.shore },
+            })),
+          }
+        : {}),
       blocked: [...state.map.blocked],
     },
     ticketsCenti: Object.fromEntries(

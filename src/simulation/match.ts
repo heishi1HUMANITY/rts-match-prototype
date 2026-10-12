@@ -116,6 +116,17 @@ function buildUnits(rules: RulesMaster): UnitState[] {
   }));
 }
 
+function scenarioMap(seed: number, scenarioId: ScenarioId) {
+  const map = createMap(seed);
+  if (scenarioId !== 'f02-pursuit' && scenarioId !== 'g2-combat') return map;
+  return {
+    ...map,
+    terrain: new Array(map.width * map.height).fill('land'),
+    terrainLevel: new Array(map.width * map.height).fill(0),
+    blocked: new Array(map.width * map.height).fill(false),
+  };
+}
+
 function configuredFixture(
   state: Omit<MatchState, 'knowledge'>,
   scenarioId: ScenarioId,
@@ -197,7 +208,7 @@ function configuredFixture(
   return { ...state, factions, units, bases };
 }
 
-/** Creates a fresh schema-v6 match using deterministic map and scenario fixtures. */
+/** Creates a fresh schema-v8 match using deterministic map and scenario fixtures. */
 export function createMatch(
   seed: number,
   options: CreateMatchOptions = {},
@@ -228,7 +239,7 @@ export function createMatch(
       factions: freshFactions(rules),
       phase: 'ready',
       result: null,
-      map: createMap(seed),
+      map: scenarioMap(seed, scenarioId),
       units: buildUnits(rules),
       bases: buildBases(rules),
     },
