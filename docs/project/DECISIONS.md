@@ -100,7 +100,7 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 
 - 進捗の唯一の正は全体Issue #12の「マージ済み」「プレイ検証済み」。過去のマージ許可を通常1試合の検査完了へ読み替えない。
 - Windows/Linux check、該当シナリオe2e、別会話・読み取り専用モデルの受入条件別OK/NGをマージ条件にする。修正は最大2巡、残るNGはflow:reviewで停止する。
-- gate:auto / gate:playを全Issueへ付け、ユーザー検査はマージ後のCPで実施する。CPは3〜5 Issueまたはgate:playが1つで締める。CP0は既存マージ済み機能をまとめて確認する移行例外。
+- gate:auto / gate:playを実装Issueへ付け、ユーザー検査はマージ後のCPで実施する。2026-10-12の仕上げ指示でkind:decision / kind:checkpointをgate対象から除外する。CPは3〜5 Issueまたはgate:playが1つで締める。CP0は既存マージ済み機能をまとめて確認する移行例外。
 - main pushの検証済みdistをPagesへ自動配備し、PRはビルドartifactを残す。リポジトリの公開範囲は変更しない。配布対象はdistのみ。
 - GitHub Milestoneにコメント機能がないため、所属するCP記録Issueへ「OK / NG(Issue番号)」を記録し、#12へ結果を反映する。
 - 採否未決のF07/F16は実装とdecisionを分離する。ユーザーの採否判断とCP0検査結果は代行しない。

@@ -1,7 +1,7 @@
 name: 採否判断
 description: 実装せずユーザーの採否を決める
 title: '[decision] '
-labels: ['kind:decision', 'flow:ready', 'gate:auto']
+labels: ['kind:decision', 'flow:ready']
 body:
   - type: textarea
     id: purpose

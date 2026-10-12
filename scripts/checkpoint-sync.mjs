@@ -175,7 +175,20 @@ export function planSync(
   const merged = new Set();
   const requested = new Set(mergedNumbers);
   const invalidatePlay = new Set();
-  const updated = issues.map((issue) => {
+  const classified = issues.map((issue) => {
+    const labels = issue.labels.map((label) => label.name);
+    if (
+      !labels.some((label) =>
+        ['kind:decision', 'kind:checkpoint'].includes(label),
+      )
+    )
+      return issue;
+    const desired = labels.filter((label) => !label.startsWith('gate:'));
+    if (desired.length !== labels.length)
+      mutations.push({ issue: issue.number, body: { labels: desired } });
+    return { ...issue, labels: desired.map((name) => ({ name })) };
+  });
+  const updated = classified.map((issue) => {
     if (!requested.has(issue.number)) return issue;
     const labels = issue.labels.map((label) => label.name);
     if (labels.includes('kind:decision')) {
@@ -197,6 +210,7 @@ export function planSync(
       }
       return issue;
     }
+    if (labels.includes('kind:checkpoint')) return issue;
     if (
       labels.filter((label) => label.startsWith('gate:')).length !== 1 ||
       !labels.some((label) => label === 'gate:auto' || label === 'gate:play')
@@ -240,6 +254,8 @@ export function dispatchMergedNumbers(issues) {
     .filter((issue) => {
       const labels = issue.labels.map((label) => label.name);
       return (
+        !labels.includes('kind:decision') &&
+        !labels.includes('kind:checkpoint') &&
         labels.includes('flow:merged') &&
         (labels.includes('gate:auto') || labels.includes('status:unverified'))
       );
@@ -319,9 +335,7 @@ function main() {
         body,
         title: `${cp.title}: プレイ検査記録`,
         milestone: cp.number,
-        ...(!existing
-          ? { labels: ['kind:checkpoint', 'gate:auto', 'flow:ready'] }
-          : {}),
+        ...(!existing ? { labels: ['kind:checkpoint', 'flow:ready'] } : {}),
       },
     });
   }

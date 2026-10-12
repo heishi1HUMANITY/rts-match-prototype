@@ -6,7 +6,7 @@
 
 1. README / AGENTS と docs/project のスコープ・構成・判断を読む。
 2. Issue本文の目的、実装範囲、先に決める設計事項、依存・自動判定できる受入条件を照合する。
-3. ユーザー検査の要/不要と理由、gate:auto/play、シナリオID、CP Milestoneを記録する。
+3. 実装Issueにはユーザー検査の要/不要と理由、gate:auto/play、シナリオID、CP Milestoneを記録する。kind:decision / kind:checkpointにgateラベルは付けない。
 4. mainから短命ブランチを作り、npm ciでlockfileと同じ依存を入れる。
 
 ゲーム処理、描画、UIを分け、小さい縦切りで接続する。ルールの採用理由・暫定性はDECISIONSへ残し、seed付きテストを追加する。lunaの各機能PRでSCENARIOSの項目をPlaywright e2eにし、シナリオIDをテスト名へ含める。

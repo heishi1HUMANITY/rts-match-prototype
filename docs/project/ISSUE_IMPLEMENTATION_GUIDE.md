@@ -5,7 +5,7 @@
 ## 着手と完了の扱い
 
 1. `AGENTS.md`、`README.md`、[SCOPE](SCOPE.md)、[ARCHITECTURE](ARCHITECTURE.md)、[DECISIONS](DECISIONS.md)、[WORKFLOW](WORKFLOW.md)、[TASKS](TASKS.md)、対象Issueを読む。作業差分を確認し、ユーザーの変更を保全する。
-2. 対象Issue本文の依存がmainにあるか確認する。全Issueへgate:auto/playの一方とflow状態、ユーザー検査の要/不要・理由、シナリオID、CPを記録する。CP0完了前は次のF実装へ進まない。未充足なら独立設計は進め、不足する先行契約を報告する。依頼済み範囲をDoDでマージし、機能ごとのユーザー合格は求めない。
+2. 対象Issue本文の依存がmainにあるか確認する。実装Issueへgate:auto/playの一方とflow状態、ユーザー検査の要/不要・理由、シナリオID、CPを記録する。kind:decision / kind:checkpointにはgateラベルを付けない。CP0完了前は次のF実装へ進まない。未充足なら独立設計は進め、不足する先行契約を報告する。依頼済み範囲をDoDでマージし、機能ごとのユーザー合格は求めない。
 3. `docs/project/preparation/Fxx_DESIGN.md`などに、データ、command検証、tick内の順序、視界、NPC、UI、検査シナリオを具体化してから実装する。通常の技術選択・データ構造・暫定調整値はエージェントが決め、理由と暫定性を記録する。ユーザーに設計書やコードの技術レビューを要求しない。
 4. 採用/除外、通常試合の長さ、再建・脱落条件など、ユーザー体験や依頼範囲を実質的に変える判断だけは、比較できるふるまい案を示して方針を確認する。それ以外の内部タスクごとの承認待ちは作らない。
 5. ルール・UI・B/C・視界・診断を揃え、受入条件を自動判定できる文へ具体化する。各機能PRでSCENARIOSの項目をPlaywright e2e化しCIで成功させる。`npm run check`のWindows/Linux CI、`npm run references:check`、実ブラウザ900×420/PCを確認する。未検証はそのまま記録する。
