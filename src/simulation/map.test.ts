@@ -1,66 +1,107 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BASE_CELLS,
   INITIAL_UNIT_PLACEMENTS,
-  ISOLATED_CELL,
   MAP_HEIGHT,
   MAP_WIDTH,
 } from './config';
-import { createMap, getReachableCells, isCellBlocked } from './map';
+import {
+  canTraverse,
+  createMap,
+  getReachableCells,
+  isCellBlocked,
+  terrainAt,
+} from './map';
+import { findPath } from './pathfinding';
 
-const seeds = [0, 42, 43, 0xffffffff];
-const mapFingerprints = new Map<number, number>([
-  [0, 0x97309721],
-  [42, 0x4b33b75c],
-  [43, 0x386ee5e6],
-  [0xffffffff, 0x57a32972],
-]);
-
-describe('seeded map generation', () => {
-  it.each(seeds)(
-    'reproduces the map and preserves connectivity for seed %s',
+describe('seeded terrain map generation', () => {
+  it.each([0, 42, 43, 0xffffffff])(
+    'reproduces geography and local access for seed %s',
     (seed) => {
       const map = createMap(seed);
-      let fingerprint = 0x811c9dc5;
-      for (const blocked of map.blocked) {
-        fingerprint =
-          Math.imul(fingerprint ^ Number(blocked), 0x01000193) >>> 0;
-      }
-      expect(fingerprint).toBe(mapFingerprints.get(seed));
       expect(map).toEqual(createMap(seed));
       expect(map.width).toBe(MAP_WIDTH);
       expect(map.height).toBe(MAP_HEIGHT);
       expect(map.blocked).toHaveLength(MAP_WIDTH * MAP_HEIGHT);
+      expect(map.terrain).toHaveLength(MAP_WIDTH * MAP_HEIGHT);
+      expect(map.terrainLevel).toHaveLength(MAP_WIDTH * MAP_HEIGHT);
+      expect(map.crossingSites?.length).toBeGreaterThan(0);
+      expect(map.ports).toHaveLength(3);
 
       const reachable = getReachableCells(map);
-      for (let y = 0; y < map.height; y += 1) {
-        for (let x = 0; x < map.width; x += 1) {
-          const cell = { x, y };
-          if (isCellBlocked(map, cell)) continue;
-          if (x === ISOLATED_CELL.x && y === ISOLATED_CELL.y) continue;
-          expect(reachable.has(`${x},${y}`)).toBe(true);
-        }
-      }
       for (const placement of INITIAL_UNIT_PLACEMENTS) {
         expect(isCellBlocked(map, placement.cell)).toBe(false);
         expect(reachable.has(`${placement.cell.x},${placement.cell.y}`)).toBe(
           true,
         );
       }
+      for (const base of BASE_CELLS.filter(
+        ({ factionId }) => factionId !== null,
+      )) {
+        expect(isCellBlocked(map, base.cell)).toBe(false);
+        expect(reachable.has(`${base.cell.x},${base.cell.y}`)).toBe(true);
+      }
+      const homeDistances = (['A', 'B', 'C'] as const).map((factionId) => {
+        const spawn = INITIAL_UNIT_PLACEMENTS.find(
+          (placement) => placement.factionId === factionId,
+        )!.cell;
+        const home = BASE_CELLS.find(
+          (base) => base.id === `HOME-${factionId}`,
+        )!.cell;
+        return findPath(map, spawn, home)!.length;
+      });
+      expect(Math.max(...homeDistances) - Math.min(...homeDistances)).toBe(0);
+      expect(terrainAt(map, { x: 20, y: 20 })).toBe('land');
+      expect(reachable.has('20,20')).toBe(false);
+      expect(
+        map.ports?.every(
+          ({ cell, shore }) =>
+            terrainAt(map, cell) === 'river' &&
+            terrainAt(map, shore) === 'riverbank',
+        ),
+      ).toBe(true);
+      expect(canTraverse(map, { x: 20, y: 20 }, { domain: 'air' })).toBe(true);
     },
   );
 
-  it('keeps the isolated inspection cell and its eight blockers fixed', () => {
+  it('distinguishes land, river, mountain, air and water travel', () => {
     const map = createMap(42);
-    expect(isCellBlocked(map, ISOLATED_CELL)).toBe(false);
-    for (let y = ISOLATED_CELL.y - 1; y <= ISOLATED_CELL.y + 1; y += 1) {
-      for (let x = ISOLATED_CELL.x - 1; x <= ISOLATED_CELL.x + 1; x += 1) {
-        if (x === ISOLATED_CELL.x && y === ISOLATED_CELL.y) continue;
-        expect(isCellBlocked(map, { x, y })).toBe(true);
-      }
+    const river = map.terrain!.findIndex((kind) => kind === 'river');
+    const mountain = map.terrain!.findIndex((kind) => kind === 'mountain');
+    const riverCell = {
+      x: river % MAP_WIDTH,
+      y: Math.floor(river / MAP_WIDTH),
+    };
+    const mountainCell = {
+      x: mountain % MAP_WIDTH,
+      y: Math.floor(mountain / MAP_WIDTH),
+    };
+    expect(canTraverse(map, riverCell, { domain: 'land' })).toBe(false);
+    expect(canTraverse(map, riverCell, { domain: 'water' })).toBe(true);
+    expect(canTraverse(map, mountainCell, { domain: 'land' })).toBe(false);
+    expect(canTraverse(map, mountainCell, { domain: 'water' })).toBe(false);
+    expect(canTraverse(map, mountainCell, { domain: 'air' })).toBe(true);
+    const ports = map.ports!;
+    for (const port of ports) {
+      expect(
+        findPath(map, ports[0]!.cell, port.cell, { domain: 'water' }),
+      ).not.toBeNull();
     }
+    const crossing = map.crossingSites![1]!;
+    const pathWithoutRights = findPath(map, crossing.bankA, crossing.bankB);
+    expect(pathWithoutRights).toBeNull();
     expect(
-      getReachableCells(map).has(`${ISOLATED_CELL.x},${ISOLATED_CELL.y}`),
-    ).toBe(false);
+      findPath(map, crossing.bankA, crossing.bankB, {
+        factionId: 'A',
+        crossings: [{ ...crossing, owner: 'A', complete: true }],
+      }),
+    ).not.toBeNull();
+    expect(
+      findPath(map, crossing.bankA, crossing.bankB, {
+        factionId: 'B',
+        crossings: [{ ...crossing, owner: 'A', complete: true }],
+      }),
+    ).toBeNull();
   });
 
   it('rejects invalid seeds', () => {

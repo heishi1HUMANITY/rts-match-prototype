@@ -1,5 +1,11 @@
-import { isCellBlocked } from './map';
-import type { Cell, GridMap } from './types';
+import { canTraverse } from './map';
+import type {
+  ActiveCrossing,
+  Cell,
+  FactionId,
+  GridMap,
+  MovementDomain,
+} from './types';
 
 const DIRECTIONS = [
   { x: 0, y: -1 },
@@ -13,13 +19,18 @@ export function findPath(
   map: GridMap,
   from: Cell,
   to: Cell,
+  options: {
+    readonly factionId?: FactionId;
+    readonly domain?: MovementDomain;
+    readonly crossings?: readonly ActiveCrossing[];
+  } = {},
 ): readonly Cell[] | null {
   if (
     map.width <= 0 ||
     map.height <= 0 ||
     map.blocked.length !== map.width * map.height ||
-    isCellBlocked(map, from) ||
-    isCellBlocked(map, to)
+    !canTraverse(map, from, options) ||
+    !canTraverse(map, to, options)
   ) {
     return null;
   }
@@ -44,7 +55,7 @@ export function findPath(
       const nextX = x + direction.x;
       const nextY = y + direction.y;
       const nextCell = { x: nextX, y: nextY };
-      if (isCellBlocked(map, nextCell)) continue;
+      if (!canTraverse(map, nextCell, options)) continue;
       const nextIndex = nextY * map.width + nextX;
       if (visited[nextIndex]) continue;
       visited[nextIndex] = 1;

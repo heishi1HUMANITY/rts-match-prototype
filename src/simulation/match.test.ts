@@ -4,9 +4,9 @@ import { createMap, isCellBlocked } from './map';
 import { createMatch } from './match';
 
 describe('initial match contract', () => {
-  it('creates schema-v7 ready state with three factions, typed units, and bases', () => {
+  it('creates schema-v8 ready state with three factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(7);
+    expect(match.schemaVersion).toBe(8);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -23,7 +23,7 @@ describe('initial match contract', () => {
     expect(match.phase).toBe('ready');
     expect(match.elapsedTicks).toBe(0);
     expect(match.units).toHaveLength(6);
-    expect(match.bases).toHaveLength(6);
+    expect(match.bases).toHaveLength(12);
     expect(match.knowledge).toHaveLength(3);
     expect(
       match.units.map(

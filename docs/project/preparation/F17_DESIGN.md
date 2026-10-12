@@ -106,4 +106,8 @@ replayは診断に含まれるsnapshotを検証して注入し、現在のlocalS
 - 診断JSONへmaster schema、完全rules snapshot、FNV-1a 64-bit content IDを記録する。replayはsnapshotをvalidatorへ通し、ID一致を確認してから実行する。
 - UIのPC/900×420操作は [F17画面確認手順](../inspection/F17_SCENARIOS.md) に記録する。F17ユーザー検査が終わるまで、実ブラウザの外観・操作性は未確認として扱う。
 
+## F03拡張 2026-10-12
+
+F03で拠点規模を導入し、RulesMasterはschema2へ拡張する。small/outpost・medium・largeの既定値は `docs/project/preparation/F03_DESIGN.md` の表に記録し、試合開始時snapshotへ含める。F03実装後の現行状態schema/rulesは8 / `f03-v1`。F17 v1記録はPR #34時点の履歴である。
+
 検査票を `docs/project/inspection/F17_SCENARIOS.md` として実装結果に合わせて作り、対象SHA・CI・実検査範囲をIssue #30へ記録する。

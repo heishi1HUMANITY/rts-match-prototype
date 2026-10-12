@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES } from './rules';
 import { validateEnvelope, validateRules } from './rules-validation';
 
-describe('F17 rules validation', () => {
+describe('F03 rules validation', () => {
   it('returns a detached canonical default-shaped snapshot', () => {
     const result = validateRules(DEFAULT_RULES);
     expect(result.ok).toBe(true);
@@ -56,14 +56,14 @@ describe('F17 rules validation', () => {
   it('requires a supported master envelope version and exact fields', () => {
     expect(
       validateEnvelope({
-        masterSchemaVersion: 2,
+        masterSchemaVersion: 1,
         revision: 0,
         rules: DEFAULT_RULES,
       }).ok,
     ).toBe(false);
     expect(
       validateEnvelope({
-        masterSchemaVersion: 1,
+        masterSchemaVersion: 2,
         revision: 0,
         rules: DEFAULT_RULES,
         extra: true,

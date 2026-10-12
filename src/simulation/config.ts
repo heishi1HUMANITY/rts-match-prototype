@@ -7,7 +7,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 7 as const;
+export const SCHEMA_VERSION = 8 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -92,9 +92,15 @@ export const BASE_CELLS: readonly {
   { id: 'HQ-A', kind: 'hq', cell: { x: 6, y: 34 }, factionId: 'A' },
   { id: 'HQ-B', kind: 'hq', cell: { x: 33, y: 34 }, factionId: 'B' },
   { id: 'HQ-C', kind: 'hq', cell: { x: 20, y: 5 }, factionId: 'C' },
-  { id: 'OUT-01', kind: 'outpost', cell: { x: 20, y: 12 }, factionId: null },
-  { id: 'OUT-02', kind: 'outpost', cell: { x: 20, y: 20 }, factionId: null },
+  { id: 'HOME-A', kind: 'outpost', cell: { x: 6, y: 29 }, factionId: 'A' },
+  { id: 'HOME-B', kind: 'outpost', cell: { x: 33, y: 29 }, factionId: 'B' },
+  { id: 'HOME-C', kind: 'outpost', cell: { x: 20, y: 10 }, factionId: 'C' },
+  { id: 'OUT-01', kind: 'outpost', cell: { x: 18, y: 17 }, factionId: null },
+  { id: 'OUT-02', kind: 'large', cell: { x: 20, y: 20 }, factionId: null },
   { id: 'OUT-03', kind: 'outpost', cell: { x: 20, y: 28 }, factionId: null },
+  { id: 'MID-01', kind: 'medium', cell: { x: 29, y: 19 }, factionId: null },
+  { id: 'MID-02', kind: 'medium', cell: { x: 14, y: 28 }, factionId: null },
+  { id: 'MID-03', kind: 'medium', cell: { x: 14, y: 12 }, factionId: null },
 ];
 
 export const BASE_STATS: Readonly<
@@ -120,9 +126,19 @@ export const BASE_STATS: Readonly<
     supplyIncomeCentiPerTick: 20,
     researchIncomeCentiPerTick: 10,
   },
+  medium: {
+    maxHp: 180,
+    vision: 5,
+    supplyIncomeCentiPerTick: 30,
+    researchIncomeCentiPerTick: 15,
+  },
+  large: {
+    maxHp: 300,
+    vision: 6,
+    supplyIncomeCentiPerTick: 40,
+    researchIncomeCentiPerTick: 20,
+  },
 };
-
-export const ISOLATED_CELL: Cell = { x: 30, y: 10 };
 
 export const INITIAL_UNIT_PLACEMENTS: readonly {
   readonly id: string;

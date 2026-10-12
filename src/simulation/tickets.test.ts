@@ -37,18 +37,9 @@ describe('periodic ticket pressure', () => {
     const equal = {
       ...state,
       bases: state.bases.map((base) =>
-        base.kind === 'outpost'
-          ? {
-              ...base,
-              owner:
-                base.id === 'OUT-01'
-                  ? ('A' as const)
-                  : base.id === 'OUT-02'
-                    ? ('B' as const)
-                    : ('C' as const),
-              hp: 100,
-            }
-          : base,
+        base.id.startsWith('HOME-')
+          ? { ...base, owner: base.id.slice(-1) as 'A' | 'B' | 'C', hp: 100 }
+          : { ...base, owner: null, hp: 0 },
       ),
     };
     expect(

@@ -232,6 +232,56 @@ summary:focus-visible {
   font-size: 9px;
   pointer-events: none;
 }
+.mini-map {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  right: 10px;
+  width: clamp(82px, 17vw, 150px);
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid #56616a;
+  border-radius: 4px;
+  background: #dce4d2;
+  box-shadow: 0 2px 8px #17222c35;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.terrain-legend {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  left: 10px;
+  padding: 5px 7px;
+  border: 1px solid #dce0e3;
+  border-radius: 4px;
+  background: #ffffffed;
+  color: #39464b;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.rts-map-site-label {
+  position: absolute;
+  padding: 2px 4px;
+  border: 1px solid #44525a;
+  border-radius: 3px;
+  color: #18252c;
+  background: #fffedee8;
+  font:
+    700 9px/1.2 system-ui,
+    sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.rts-map-site-label.port-site {
+  border-color: #27677d;
+}
+.rts-map-site-label.crossing-site {
+  border-style: dashed;
+  border-color: #9c7724;
+}
 .bottom-bar {
   display: flex;
   align-items: center;
@@ -967,6 +1017,87 @@ select:focus-visible {
   min-height: 44px;
 }
 @media (max-height: 500px) {
+  html,
+  body,
+  #app {
+    min-height: 0;
+  }
+  .game-shell,
+  .g2-shell {
+    grid-template-rows: 42px minmax(0, 1fr) 84px;
+  }
+  .topbar {
+    gap: 5px;
+    padding: 0 8px;
+  }
+  .brand-mark {
+    width: 24px;
+    height: 24px;
+  }
+  .brand small {
+    display: none;
+  }
+  .top-actions button,
+  .test-settings summary {
+    min-height: 34px;
+    padding: 0 6px;
+  }
+  .bottom-bar,
+  .g2-shell .bottom-bar {
+    padding: 3px 8px;
+  }
+  .g2-shell .bottom-bar {
+    gap: 2px;
+  }
+  .resource-strip {
+    flex-basis: 34px;
+    min-height: 34px;
+    gap: 6px;
+  }
+  .resource-strip > strong {
+    font-size: 10px;
+  }
+  .resource-strip > span {
+    font-size: 8px;
+  }
+  .resource-strip .bottom-actions button,
+  .selection-controls button,
+  .unit-card {
+    min-height: 34px;
+  }
+  .unit-strip {
+    gap: 5px;
+  }
+  .selection-controls {
+    flex-basis: 136px;
+  }
+  .g2-shell .selection-summary {
+    width: 104px;
+    min-width: 104px;
+  }
+  .g2-shell .unit-card {
+    min-height: 34px;
+    min-width: 68px;
+    padding: 2px 5px;
+  }
+  .g2-shell .status-stack {
+    max-width: 132px;
+  }
+  .board-hint {
+    display: none;
+  }
+  .terrain-legend {
+    top: 6px;
+    left: 6px;
+    max-width: calc(100% - 132px);
+    padding: 3px 5px;
+    font-size: 8px;
+  }
+  .mini-map {
+    top: 6px;
+    right: 6px;
+    width: clamp(76px, 15vh, 112px);
+  }
   .result-dialog {
     padding: 14px 20px;
   }

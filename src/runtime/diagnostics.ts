@@ -20,8 +20,8 @@ export interface BuildInfo {
   readonly schemaVersion: number;
 }
 export interface ReplayInput {
-  readonly schemaVersion: 7;
-  readonly rulesVersion: 'f17-v1';
+  readonly schemaVersion: 8;
+  readonly rulesVersion: 'f03-v1';
   readonly rules: RulesMaster;
   readonly rulesContentId: string;
   readonly scenarioId: ScenarioId;
@@ -47,7 +47,7 @@ export function rulesContentId(rules: RulesMaster): string {
     hash ^= BigInt(text.charCodeAt(index));
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
-  return `f17-${hash.toString(16).padStart(16, '0')}`;
+  return `f03-${hash.toString(16).padStart(16, '0')}`;
 }
 
 export function replay(input: ReplayInput): {
@@ -60,7 +60,7 @@ export function replay(input: ReplayInput): {
 } {
   if (
     input.schemaVersion !== SCHEMA_VERSION ||
-    input.rulesVersion !== 'f17-v1' ||
+    input.rulesVersion !== 'f03-v1' ||
     !Number.isInteger(input.seed) ||
     input.seed < 0 ||
     input.seed > 0xffff_ffff ||
@@ -125,8 +125,8 @@ export function replay(input: ReplayInput): {
 
 export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
   const result = replay({
-    schemaVersion: 7,
-    rulesVersion: 'f17-v1',
+    schemaVersion: 8,
+    rulesVersion: 'f03-v1',
     rules: snapshot.state.rules,
     rulesContentId: rulesContentId(snapshot.state.rules),
     scenarioId: snapshot.state.scenarioId,
@@ -146,13 +146,13 @@ export function createDiagnostic(
   return {
     build,
     rules: {
-      rulesVersion: 'f17-v1',
+      rulesVersion: 'f03-v1',
       schemaVersion: SCHEMA_VERSION,
       width: MAP_WIDTH,
       height: MAP_HEIGHT,
       tickDurationMs: TICK_DURATION_MS,
       rulesContentId: rulesContentId(snapshot.state.rules),
-      masterSchemaVersion: 1,
+      masterSchemaVersion: 2,
       rules: cloneRules(snapshot.state.rules),
     },
     seed: snapshot.state.seed,

@@ -100,7 +100,14 @@ export function getUnitFrames(
 }
 
 export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
-  const kind = base.kind === 'hq' ? '首都' : '拠点';
+  const kind =
+    base.kind === 'hq'
+      ? '首都'
+      : base.kind === 'medium'
+        ? '中拠点'
+        : base.kind === 'large'
+          ? '大拠点'
+          : '小拠点';
   if (base.visibility === 'unknown') return `${kind} · 未観測`;
   if (base.visibility === 'remembered') {
     return `${kind} · ${base.owner ?? '中立'} HP${base.hp} · T${base.seenTick}の観測${base.selfReportedLost ? '・喪失報告' : ''}`;

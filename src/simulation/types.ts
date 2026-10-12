@@ -15,7 +15,9 @@ export type ScenarioId =
   | 'f02-pursuit';
 export type UnitKind = 'assault' | 'scout';
 export type ResearchId = 'firepower-1' | 'firepower-2';
-export type BaseKind = 'hq' | 'outpost';
+export type BaseKind = 'hq' | 'outpost' | 'medium' | 'large';
+export type TerrainKind = 'land' | 'riverbank' | 'river' | 'mountain';
+export type MovementDomain = 'land' | 'air' | 'water';
 export type EliminationReason = 'tickets' | 'forces';
 
 export interface EliminationStatus {
@@ -43,8 +45,35 @@ export interface Cell {
 export interface GridMap {
   readonly width: number;
   readonly height: number;
-  /** Row-major; true means terrain blocks movement. */
+  /** Row-major terrain classes. */
+  readonly terrain?: readonly TerrainKind[];
+  /** Row-major river/mountain levels; zero for other cells. */
+  readonly terrainLevel?: readonly number[];
+  /** Public F04 construction anchors; these do not grant passage by themselves. */
+  readonly crossingSites?: readonly CrossingSite[];
+  readonly ports?: readonly PortSite[];
+  /** Row-major compatibility mirror: land-blocked cells. */
   readonly blocked: readonly boolean[];
+}
+
+export interface PortSite {
+  readonly id: string;
+  readonly factionId: FactionId;
+  readonly cell: Cell;
+  readonly shore: Cell;
+}
+
+export interface CrossingSite {
+  readonly id: string;
+  readonly kind: 'bridge' | 'ropeway';
+  readonly bankA: Cell;
+  readonly bankB: Cell;
+  readonly cells: readonly Cell[];
+}
+
+export interface ActiveCrossing extends CrossingSite {
+  readonly owner: FactionId;
+  readonly complete: boolean;
 }
 
 export interface ProductionJob {
@@ -135,7 +164,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 7;
+  readonly schemaVersion: 8;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;

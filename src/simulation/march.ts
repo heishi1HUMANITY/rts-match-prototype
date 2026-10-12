@@ -74,7 +74,10 @@ function routeTo(
 ): readonly Cell[] | null {
   const edge = currentEdge(unit);
   const origin = edge ?? unit.cell;
-  const route = findPath(state.map, origin, destination);
+  const route = findPath(state.map, origin, destination, {
+    factionId: unit.factionId,
+    domain: 'land',
+  });
   if (route === null) return null;
   return edge === undefined ? route : [edge, ...route];
 }

@@ -50,6 +50,12 @@ function issueMarch(
 function flatState(state: MatchState): MatchState {
   return {
     ...state,
+    map: {
+      ...state.map,
+      terrain: new Array(state.map.width * state.map.height).fill('land'),
+      terrainLevel: new Array(state.map.width * state.map.height).fill(0),
+      blocked: new Array(state.map.width * state.map.height).fill(false),
+    },
     units: state.units.map((entry) => ({
       ...entry,
       path: [],
@@ -389,29 +395,29 @@ describe('deterministic march updates', () => {
     state = onlyUnits(state, ['A-01']);
     state = replaceUnit(state, 'A-01', {
       ...unit(state, 'A-01'),
-      cell: { x: 21, y: 20 },
+      cell: { x: 21, y: 28 },
       hp: 1000,
       maxHp: 1000,
     });
     state = {
       ...state,
       bases: state.bases.map((base) =>
-        base.id === 'OUT-02' ? { ...base, owner: 'B' as const, hp: 1 } : base,
+        base.id === 'OUT-03' ? { ...base, owner: 'B' as const, hp: 1 } : base,
       ),
     };
-    const accepted = issueMarch(state, { kind: 'base', id: 'OUT-02' });
+    const accepted = issueMarch(state, { kind: 'base', id: 'OUT-03' });
     if (!accepted.ok) throw new Error('visible enemy base should be accepted');
     state = accepted.state;
 
     state = stepMatch(state);
-    expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
+    expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
       hp: 0,
       captureCandidate: 'A',
       captureTicks: 1,
     });
     for (let tick = 0; tick < 30; tick += 1) state = stepMatch(state);
-    expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
+    expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
       hp: 100,
       captureCandidate: null,
@@ -419,7 +425,7 @@ describe('deterministic march updates', () => {
     });
     expect(unit(state, 'A-01').marchOrder?.target).toEqual({
       kind: 'base',
-      id: 'OUT-02',
+      id: 'OUT-03',
     });
     expect(unit(state, 'A-01').marchOrder?.status).toBe('arrived');
     expect(unit(state, 'A-01').path).toEqual([]);

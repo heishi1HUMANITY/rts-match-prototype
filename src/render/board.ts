@@ -7,8 +7,9 @@ import {
   placeUnitLabel,
   type GroupMovePreview,
 } from './view-model';
-import { ISOLATED_CELL, MAP_HEIGHT, MAP_WIDTH } from '../simulation/config';
+import { MAP_HEIGHT, MAP_WIDTH } from '../simulation/config';
 import { isCellBlocked } from '../simulation/map';
+import { terrainAt } from '../simulation/map';
 import type {
   Cell,
   GridMap,
@@ -499,32 +500,21 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     return objects;
   };
 
-  const inspectionLabel = document.createElement('div');
-  inspectionLabel.className = 'rts-inspection-label';
-  inspectionLabel.textContent = '検査用孤立セル (30, 10)';
-  Object.assign(inspectionLabel.style, {
-    position: 'absolute',
-    padding: '2px 5px',
-    border: '1px solid #525a60',
-    borderRadius: '3px',
-    color: '#24282b',
-    background: 'rgba(255,255,255,0.94)',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-    font: '600 11px/1.2 system-ui, sans-serif',
-    whiteSpace: 'nowrap',
-    transform: 'translate(-50%, -100%)',
-  });
-  inspectionLabel.setAttribute('aria-label', '検査用孤立セル 30, 10');
-  labelLayer.append(inspectionLabel);
-
   let mapMesh: THREE.InstancedMesh | null = null;
+  let mapSiteLabels: { readonly cell: Cell; readonly label: HTMLDivElement }[] =
+    [];
   let renderedMap: GridMap | null = null;
   const installMap = (map: GridMap): void => {
     if (
       renderedMap !== null &&
       renderedMap.width === map.width &&
       renderedMap.height === map.height &&
-      renderedMap.blocked.every((value, index) => value === map.blocked[index])
+      renderedMap.blocked.every(
+        (value, index) => value === map.blocked[index],
+      ) &&
+      renderedMap.terrain?.every(
+        (value, index) => value === map.terrain?.[index],
+      )
     )
       return;
     if (mapMesh !== null) {
@@ -546,13 +536,34 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       }
     }
     mapMesh = null;
+    for (const entry of mapSiteLabels) entry.label.remove();
+    mapSiteLabels = [];
+    for (const port of map.ports ?? []) {
+      const label = document.createElement('div');
+      label.className = 'rts-map-site-label port-site';
+      label.textContent = '⚓ 港';
+      label.setAttribute('aria-label', `公開港 ${port.id}`);
+      labelLayer.append(label);
+      mapSiteLabels.push({ cell: port.cell, label });
+    }
+    for (const site of map.crossingSites ?? []) {
+      const label = document.createElement('div');
+      label.className = 'rts-map-site-label crossing-site';
+      label.textContent = site.kind === 'bridge' ? '⇄ 渡河予定' : '↗ 索道予定';
+      label.setAttribute(
+        'aria-label',
+        `公開${site.kind === 'bridge' ? '橋' : '索道'}予定地 ${site.id}`,
+      );
+      labelLayer.append(label);
+      mapSiteLabels.push({ cell: site.bankA, label });
+    }
     renderedMap = map;
     let count = 0;
     for (const blocked of map.blocked) if (blocked) count += 1;
     if (count === 0) return;
     const geometry = ownGeometry(new THREE.BoxGeometry(0.84, 0.42, 0.84));
     const material = ownMaterial(
-      new THREE.MeshStandardMaterial({ color: 0x696f6a, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
     );
     mapMesh = new THREE.InstancedMesh(geometry, material, count);
     mapMesh.name = 'obstacles';
@@ -561,11 +572,29 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     for (let y = 0; y < map.height; y += 1) {
       for (let x = 0; x < map.width; x += 1) {
         if (!isCellBlocked(map, { x, y })) continue;
-        matrix.makeTranslation(x + 0.5, 0.22, y + 0.5);
+        const kind = terrainAt(map, { x, y });
+        const height =
+          kind === 'mountain' ? 0.9 : kind === 'river' ? 0.1 : 0.42;
+        const color =
+          kind === 'river'
+            ? 0x3f9bb4
+            : kind === 'riverbank'
+              ? 0xb49c69
+              : kind === 'mountain'
+                ? 0x69756c
+                : 0x59615f;
+        matrix.compose(
+          new THREE.Vector3(x + 0.5, height / 2, y + 0.5),
+          new THREE.Quaternion(),
+          new THREE.Vector3(0.84, height, 0.84),
+        );
         mapMesh.setMatrixAt(instance++, matrix);
+        mapMesh.setColorAt(instance - 1, new THREE.Color(color));
       }
     }
     mapMesh.instanceMatrix.needsUpdate = true;
+    if (mapMesh.instanceColor !== null)
+      mapMesh.instanceColor.needsUpdate = true;
     mapMesh.computeBoundingSphere();
     scene.add(mapMesh);
   };
@@ -739,7 +768,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     element.style.left = `${x}px`;
     element.style.top = `${y}px`;
     element.style.display =
-      scratchVector.z < -1 || scratchVector.z > 1 ? 'none' : 'grid';
+      element.hidden || scratchVector.z < -1 || scratchVector.z > 1
+        ? 'none'
+        : 'grid';
   };
 
   const baseObjects = new Map<
@@ -802,7 +833,15 @@ export function createBoardView(options: BoardViewOptions): BoardView {
             ? 0.3
             : 1;
       objects.marker.position.copy(cellPosition(base.cell, 0.15));
-      objects.marker.scale.setScalar(base.kind === 'hq' ? 1.3 : 1);
+      objects.marker.scale.setScalar(
+        base.kind === 'hq'
+          ? 1.5
+          : base.kind === 'large'
+            ? 1.3
+            : base.kind === 'medium'
+              ? 1.1
+              : 0.9,
+      );
       objects.label.textContent = baseLabel(
         base,
         view.rules.capture.requiredTicks,
@@ -810,6 +849,15 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.label.dataset.visibility = base.visibility;
       objects.label.style.borderStyle =
         base.visibility === 'remembered' ? 'dashed' : 'solid';
+      objects.label.hidden = base.visibility === 'unknown';
+      objects.label.setAttribute(
+        'aria-hidden',
+        String(base.visibility === 'unknown'),
+      );
+      objects.label.setAttribute(
+        'aria-label',
+        `${baseLabel(base, view.rules.capture.requiredTicks)}（拠点の種類と位置は公開）`,
+      );
       updateLabelPosition(objects.label, cellPosition(base.cell, 0.3), -18);
     }
   };
@@ -818,7 +866,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   const fogMaterial = ownMaterial(
     new THREE.MeshBasicMaterial({
       transparent: true,
-      opacity: 0.76,
+      opacity: 0.24,
       depthTest: false,
       depthWrite: false,
       side: THREE.DoubleSide,
@@ -982,9 +1030,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       occupiedLabels.push(label);
     }
     syncBases(current);
+    for (const entry of mapSiteLabels)
+      updateLabelPosition(entry.label, cellPosition(entry.cell, 0.05), -3);
     syncFog(current);
     refreshMovePreview();
-    updateLabelPosition(inspectionLabel, cellPosition(ISOLATED_CELL, 0.03), -3);
     if (!contextLost) renderer.render(scene, camera);
   };
 

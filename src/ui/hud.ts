@@ -25,6 +25,14 @@ export interface HudElements {
 }
 const kindName = (kind: UnitKind): string =>
   kind === 'assault' ? '強襲' : '偵察';
+const baseKindName = (kind: FactionView['bases'][number]['kind']): string =>
+  kind === 'hq'
+    ? '首都'
+    : kind === 'medium'
+      ? '中拠点'
+      : kind === 'large'
+        ? '大拠点'
+        : '小拠点';
 const researchName = (id: ResearchId): string =>
   id === 'firepower-1' ? '戦力研究 I' : '戦力研究 II';
 const amount = (n: number): string =>
@@ -35,7 +43,7 @@ export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F02 · 対象への進軍</small></div></div>
+      <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>F03 · 地形と拠点</small></div></div>
       <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
@@ -45,7 +53,7 @@ export function createHud(app: HTMLElement): HudElements {
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
-    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
+    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
           <div class="action-card"><button data-produce="assault">強襲を生産</button><small data-unit-details="assault"></small><span data-production-reason="assault"></span></div>
@@ -144,6 +152,10 @@ export function updateHud(
   const text = (selector: string, value: string): void => {
     elements.root.querySelector<HTMLElement>(selector)!.textContent = value;
   };
+  drawMiniMap(
+    elements.root.querySelector<HTMLCanvasElement>('.mini-map'),
+    view,
+  );
   if (elements.seed.dataset.syncedSeed !== String(view.seed)) {
     elements.seed.value = String(view.seed);
     elements.seed.dataset.syncedSeed = String(view.seed);
@@ -400,7 +412,7 @@ export function updateHud(
     for (const base of view.bases) {
       const option = document.createElement('option');
       option.value = base.id;
-      option.textContent = `${base.kind === 'hq' ? '首都' : '拠点'} ${base.id}`;
+      option.textContent = `${baseKindName(base.kind)} ${base.id}`;
       selector.append(option);
     }
   selector.value = elements.selectedBaseId;
@@ -470,5 +482,89 @@ export function updateHud(
   } else if (dialog.open) {
     dialog.close();
     elements.start.focus();
+  }
+}
+
+function drawMiniMap(
+  canvas: HTMLCanvasElement | null,
+  view: FactionView,
+): void {
+  if (canvas === null) return;
+  try {
+    const context = canvas.getContext('2d');
+    if (context === null) return;
+    const cellWidth = canvas.width / view.map.width;
+    const cellHeight = canvas.height / view.map.height;
+    for (let y = 0; y < view.map.height; y += 1) {
+      for (let x = 0; x < view.map.width; x += 1) {
+        const index = y * view.map.width + x;
+        const kind =
+          view.map.terrain?.[index] ??
+          (view.map.blocked[index] ? 'mountain' : 'land');
+        context.fillStyle =
+          kind === 'river'
+            ? '#398da6'
+            : kind === 'riverbank'
+              ? '#b6a16f'
+              : kind === 'mountain' || view.map.blocked[index]
+                ? '#68736b'
+                : '#aebf92';
+        context.fillRect(
+          x * cellWidth,
+          y * cellHeight,
+          cellWidth + 0.2,
+          cellHeight + 0.2,
+        );
+      }
+    }
+    for (const port of view.map.ports ?? []) {
+      context.fillStyle = '#173f57';
+      context.fillRect(port.cell.x * cellWidth, port.cell.y * cellHeight, 3, 3);
+    }
+    for (const site of view.map.crossingSites ?? []) {
+      context.fillStyle = site.kind === 'bridge' ? '#f4d35e' : '#f28f3b';
+      context.fillRect(
+        site.bankA.x * cellWidth,
+        site.bankA.y * cellHeight,
+        3,
+        3,
+      );
+    }
+    for (const base of view.bases) {
+      context.fillStyle =
+        base.visibility === 'unknown'
+          ? '#70777b'
+          : base.owner === 'A'
+            ? '#e47a2f'
+            : base.owner === 'B'
+              ? '#2d9fc5'
+              : base.owner === 'C'
+                ? '#d8ad24'
+                : '#70777b';
+      context.beginPath();
+      context.arc(
+        (base.cell.x + 0.5) * cellWidth,
+        (base.cell.y + 0.5) * cellHeight,
+        base.kind === 'large' ? 3 : base.kind === 'medium' ? 2.5 : 2,
+        0,
+        Math.PI * 2,
+      );
+      context.fill();
+    }
+    context.fillStyle = '#fff';
+    for (const unit of view.ownUnits) {
+      context.fillRect(unit.cell.x * cellWidth, unit.cell.y * cellHeight, 2, 2);
+    }
+    context.fillStyle = '#a71818';
+    for (const enemy of view.visibleEnemies) {
+      context.fillRect(
+        (enemy.positionX1024 / 1024) * cellWidth,
+        (enemy.positionY1024 / 1024) * cellHeight,
+        2,
+        2,
+      );
+    }
+  } catch {
+    // Canvas rendering can be unavailable in test DOMs; the game view remains usable.
   }
 }

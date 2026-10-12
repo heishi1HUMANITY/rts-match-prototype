@@ -235,7 +235,9 @@ function fieldLabel(path: string): string {
     assault: '強襲',
     scout: '偵察',
     hq: '首都',
-    outpost: '前哨拠点',
+    outpost: '小拠点',
+    medium: '中拠点',
+    large: '大拠点',
     'firepower-1': '戦力研究 I',
     'firepower-2': '戦力研究 II',
   };
@@ -452,7 +454,7 @@ export function createMasterEditor(
       if (!valid.ok) return;
       const json = JSON.stringify(
         {
-          masterSchemaVersion: 1,
+          masterSchemaVersion: 2,
           revision: savedEnvelope.revision,
           rules: valid.rules,
         },

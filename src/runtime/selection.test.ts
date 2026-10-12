@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ISOLATED_CELL } from '../simulation/config';
 import { MatchRuntime } from './controller';
 import { assertReplayMatches } from './diagnostics';
 
@@ -181,7 +180,7 @@ describe('runtime group selection and orders', () => {
   it('deduplicates IDs, records unreachable/blocked/unknown rejects, and explains empty groups', () => {
     const runtime = runtimeFor();
     runtime.dispatch({ type: 'start' });
-    const result = runtime.groupMove(ISOLATED_CELL, [
+    const result = runtime.groupMove({ x: 20, y: 20 }, [
       'missing',
       'A-02',
       'B-01',

@@ -43,8 +43,8 @@ describe('G2 integer economy', () => {
   it('accrues HQ income minus surviving unit upkeep exactly in centi', () => {
     let state = runningMatch();
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
-    expect(faction(state).supplyCenti).toBe(20_320);
-    expect(faction(state).researchCenti).toBe(20);
+    expect(faction(state).supplyCenti).toBe(20_520);
+    expect(faction(state).researchCenti).toBe(120);
 
     const outpost = state.bases.find(({ id }) => id === 'OUT-03');
     if (outpost === undefined) throw new Error('missing outpost');
@@ -55,9 +55,9 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(owned);
-    expect(faction(next).supplyCenti).toBe(20_372);
-    expect(faction(next).researchCenti).toBe(32);
-    expect(faction(owned).supplyCenti).toBe(20_320);
+    expect(faction(next).supplyCenti).toBe(20_592);
+    expect(faction(next).researchCenti).toBe(142);
+    expect(faction(owned).supplyCenti).toBe(20_520);
   });
 
   it('clamps upkeep at zero without creating supply or damaging units', () => {
@@ -69,7 +69,7 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(withoutHq);
-    expect(faction(next).supplyCenti).toBe(0);
+    expect(faction(next).supplyCenti).toBe(12);
     expect(next.units).toBe(withoutHq.units);
   });
 });
@@ -477,19 +477,19 @@ describe('G2 research', () => {
     });
     state = accepted(state, { type: 'start-research', researchId: null });
     state = applyEconomyTick(state);
-    expect(faction(state).researchCenti).toBe(2);
+    expect(faction(state).researchCenti).toBe(12);
     state = accepted(state, {
       type: 'start-research',
       researchId: 'firepower-2',
     });
     expect(faction(state)).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_002 },
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_012 },
       activeResearch: { researchId: 'firepower-2' },
     });
     state = accepted(state, { type: 'start-research', researchId: null });
     expect(faction(state)).toMatchObject({
-      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_002 },
+      researchProgressCenti: { 'firepower-1': 6_000, 'firepower-2': 8_012 },
       activeResearch: null,
     });
   });
@@ -506,14 +506,14 @@ describe('G2 research', () => {
       ),
     };
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
-    expect(faction(state).researchCenti).toBe(20);
+    expect(faction(state).researchCenti).toBe(120);
     expect(faction(state).researchProgressCenti).toEqual({
       'firepower-1': 0,
       'firepower-2': 0,
     });
     for (const id of ['A', 'B', 'C'] as const) {
       const current = state.factions.find((entry) => entry.id === id)!;
-      expect(current.researchCenti).toBe(20);
+      expect(current.researchCenti).toBe(120);
     }
   });
 
@@ -526,7 +526,7 @@ describe('G2 research', () => {
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
     state = advanceResearch(state);
     expect(faction(state)).toMatchObject({
-      researchCenti: 18,
+      researchCenti: 118,
       researchProgressCenti: { 'firepower-1': 6_000 },
       activeResearch: null,
       completedResearchIds: ['firepower-1'],

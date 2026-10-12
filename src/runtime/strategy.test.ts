@@ -128,16 +128,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f17-v1',
-      schemaVersion: 7,
+      rulesVersion: 'f03-v1',
+      schemaVersion: 8,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 7,
-        rulesVersion: 'f17-v1',
+        schemaVersion: 8,
+        rulesVersion: 'f03-v1',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 1,
+        masterSchemaVersion: 2,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -196,8 +196,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 7 as const,
-      rulesVersion: 'f17-v1' as const,
+      schemaVersion: 8 as const,
+      rulesVersion: 'f03-v1' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -234,21 +234,21 @@ describe('G2 presentation and diagnostic boundaries', () => {
     advance(50);
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 100 },
+      researchProgressCenti: { 'firepower-1': 600 },
       activeResearch: { researchId: 'firepower-1' },
     });
     runtime.dispatch({ type: 'start-research', researchId: null });
     advance(50);
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
-      researchCenti: 100,
-      researchProgressCenti: { 'firepower-1': 100 },
+      researchCenti: 600,
+      researchProgressCenti: { 'firepower-1': 600 },
       activeResearch: null,
     });
     runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
     runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 200 },
+      researchProgressCenti: { 'firepower-1': 1_200 },
     });
     runtime.dispatch({ type: 'pause' });
     advance(10);
@@ -256,7 +256,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       runtime.playerSnapshot().view.ownFaction.researchProgressCenti[
         'firepower-1'
       ],
-    ).toBe(200);
+    ).toBe(1_200);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });
@@ -353,8 +353,8 @@ describe('G3 zero-tick result diagnostics', () => {
         createDiagnostic(runtime.snapshot(), {
           commit: 'test',
           dirty: false,
-          rulesVersion: 'f17-v1',
-          schemaVersion: 7,
+          rulesVersion: 'f03-v1',
+          schemaVersion: 8,
         }),
       ).not.toThrow();
       runtime.stopLoop();

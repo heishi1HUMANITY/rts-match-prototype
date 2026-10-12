@@ -158,8 +158,10 @@ export function validateRules(input: unknown): ValidationResult {
   const product =
     rules.match.timeLimitTicks *
     (rules.research.baseIncomeCentiPerTick +
-      rules.bases.hq.researchIncomeCentiPerTick +
-      rules.bases.outpost.researchIncomeCentiPerTick);
+      Object.values(rules.bases).reduce(
+        (sum, base) => sum + base.researchIncomeCentiPerTick,
+        0,
+      ));
   if (!Number.isSafeInteger(product))
     issues.push({
       key: 'rules.match.timeLimitTicks',

@@ -12,7 +12,7 @@ export function applyTicketTick(state: MatchState): MatchState {
   const weights: Record<FactionId, number> = { A: 0, B: 0, C: 0 };
   for (const base of state.bases) {
     if (
-      base.kind === 'outpost' &&
+      base.kind !== 'hq' &&
       base.owner !== null &&
       aliveIds.has(base.owner) &&
       base.hp > 0
