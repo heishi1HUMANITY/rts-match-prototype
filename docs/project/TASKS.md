@@ -20,7 +20,7 @@ G1〜G4は機能の区分で、ユーザー合格をマージ条件にする区�
 
 ブランチ例: gate/g1-map-movement。前提: M0。主な編集範囲: src/simulation、src/render、src/ui、src/main.ts、必要な設定・テスト・docs/project。
 
-実装前の具体設計は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md)、lunaへの段階別指示は [G1_LUNA_INSTRUCTIONS.md](G1_LUNA_INSTRUCTIONS.md) を参照。設計準備は実装完了を意味しない。
+実装前の具体設計は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md) を参照。段階別の実装指示は履歴資料として保持し、現行手順には使用しない。設計準備は実装完了を意味しない。
 
 | ID   | 実装内容                                    | 依存           | 技術的な完了条件                                                                                 |
 | ---- | ------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |

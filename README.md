@@ -1,6 +1,6 @@
 # RTS Match Prototype
 
-依頼はIssue番号だけで開始できます。運用は [WORKFLOW](docs/project/WORKFLOW.md)、方針は [AGENTS.md](AGENTS.md)。マージ条件はCI成功とユーザーのApprove。プレイ検査はCPごとに1試合で、確認3点を OK / NG で返します。
+依頼はIssue番号だけで開始できます。運用は [WORKFLOW](docs/project/WORKFLOW.md)、方針は [AGENTS.md](AGENTS.md)。マージ条件はCI成功後にユーザーがPRをマージすること。プレイ検査はCPごとに1試合で、確認3点を OK / NG で返します。
 
 ブラウザの対戦本編を新規に作るプロジェクト。目標は **プレイヤー1人＋NPC2人の 1v1v1** を、世界観の知識なしで開始・操作・終了・再戦できること。
 
@@ -51,7 +51,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
-- [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md) / [lunaへの実装指示](docs/project/G1_LUNA_INSTRUCTIONS.md): 盤面・移動・入力・検査の契約
+- [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md): 盤面・移動・入力・検査の契約
 - [G3設計](docs/project/preparation/G3_DESIGN.md): NPCの情報制約・脱落・順位・再戦の契約
 - [G2の設計](docs/project/preparation/G2_DESIGN.md): 実装時にmainの契約と照合する設計資料
 - [AGENTS.md](AGENTS.md): エージェントの作業方針

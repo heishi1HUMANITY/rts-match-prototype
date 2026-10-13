@@ -31,7 +31,11 @@ function issue(number, gate = 'gate:play') {
   return {
     number,
     title: `feature ${number}`,
-    labels: [{ name: gate }, { name: 'flow:review' }, { name: 'kind:feature' }],
+    labels: [
+      { name: gate },
+      { name: 'custom:preserve' },
+      { name: 'kind:feature' },
+    ],
     milestone: { number: 1, title: 'CP1' },
   };
 }
@@ -41,10 +45,16 @@ test('a merge transitions only linked issues and invalidates play verification',
   assert.deepEqual(plan.mutations[0], {
     issue: 15,
     body: {
-      labels: ['gate:play', 'kind:feature', 'flow:merged', 'status:unverified'],
+      labels: [
+        'gate:play',
+        'custom:preserve',
+        'kind:feature',
+        'flow:merged',
+        'status:unverified',
+      ],
     },
   });
-  assert.equal(plan.issues[1].labels[1].name, 'flow:review');
+  assert.equal(plan.issues[1].labels[1].name, 'custom:preserve');
   assert.equal(
     planSync(plan.issues, [15], { body: plan.mutations[1].body.body }).mutations
       .length,
@@ -95,7 +105,7 @@ test('new play merge clears previous approval, dispatch preserves it', () => {
   const reopened = decisionPlan.mutations.find(
     (mutation) => mutation.body.state === 'open',
   );
-  assert.ok(reopened.body.labels.includes('flow:ready'));
+  assert.ok(!reopened.body.labels.some((label) => label.startsWith('flow:')));
   assert.ok(!reopened.body.labels.some((label) => label.startsWith('gate:')));
   assert.match(decisionPlan.warnings[0], /ユーザー判断/);
   assert.equal(
@@ -103,6 +113,12 @@ test('new play merge clears previous approval, dispatch preserves it', () => {
     false,
   );
   assert.throws(() => planSync([issue(15)], [15], { body: null }), /2列表/);
+});
+
+test('decision issues receive no flow label from the template', () => {
+  const template = readFileSync('.github/ISSUE_TEMPLATE/decision.yml', 'utf8');
+  assert.match(template, /^labels: \['kind:decision'\]$/m);
+  assert.doesNotMatch(template.match(/^labels:.*$/m)?.[0] ?? '', /flow:/);
 });
 
 test('non-implementation issues lose gates without changing other labels or progress', () => {
@@ -131,9 +147,9 @@ test('non-implementation issues lose gates without changing other labels or prog
   assert.deepEqual(plan.mutations, [
     {
       issue: 49,
-      body: { labels: ['kind:decision', 'flow:ready', 'custom:keep'] },
+      body: { labels: ['kind:decision', 'custom:keep'] },
     },
-    { issue: 51, body: { labels: ['kind:checkpoint', 'flow:ready'] } },
+    { issue: 51, body: { labels: ['kind:checkpoint'] } },
   ]);
   assert.deepEqual(
     planSync(plan.issues, [], { body }, { newMerge: false }).mutations,

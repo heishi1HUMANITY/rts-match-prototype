@@ -1,5 +1,7 @@
 # lunaへのG1実装指示
 
+> 履歴資料（2026-10-11）。この文書の委任手順・必読一覧は現行運用ではありません。現行手順は [WORKFLOW](WORKFLOW.md) を参照してください。
+
 2026-10-11。親がLunaへ渡す段階別の指示。実際の実装・検証・検査の状態はIssue #2で管理する。
 
 対象: [G1 Issue #2](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/2)。実装の正は [G1_IMPLEMENTATION_DESIGN.md](G1_IMPLEMENTATION_DESIGN.md)。

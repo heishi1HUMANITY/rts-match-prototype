@@ -6,8 +6,8 @@
 
 | 担当                                 | 行うこと                                                                                            |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| 実装モデル GPT-6 luna (`gpt-6-luna`) | Issueの設計判断、実装、テスト、PR作成、Approve後のマージ、ラベルと#12の更新、CP票の案内             |
-| ユーザー                             | kind:decision の採否、PRのApprove、CPごとの通常1試合                                                |
+| 実装モデル GPT-6 luna (`gpt-6-luna`) | Issueの設計判断、実装、テスト、PR作成、CP票の案内                                                   |
+| ユーザー                             | kind:decision の採否、CI成功後のPRマージ、CPごとの通常1試合                                         |
 | 上位モデル                           | read-onlyプロファイル。decisionの選択肢整理やNGの切り分けの相談だけ。編集・実装・テスト実行をしない |
 
 独立した会話によるレビュー、設計→実装の引き継ぎ文書、着手記録は廃止した（2026-10-13、DECISIONS参照）。
@@ -18,19 +18,21 @@
 
 ## ラベル
 
-| ラベル            | 意味                                      |
-| ----------------- | ----------------------------------------- |
-| flow:ready        | 未着手。依存待ちは本文に明記              |
-| flow:implementing | 実装・修正中（PR作成〜Approve待ちを含む） |
-| flow:merged       | 実装がmainへマージ済み                    |
-| gate:auto         | CIとApproveで閉じてよい                   |
-| gate:play         | マージ後のCPでユーザーが1試合検査         |
-| status:unverified | gate:play のマージ後、CPプレイ未検証      |
-| kind:decision     | 実装なし。ユーザーの採否判断が必要        |
-| kind:checkpoint   | CPプレイ検査結果の記録Issue               |
-| kind:gate         | G1〜G4の旧区切り。新規には使わない        |
+| ラベル            | 意味                                             |
+| ----------------- | ------------------------------------------------ |
+| flow:ready        | 未着手。依存待ちは本文に明記                     |
+| flow:implementing | 実装・修正中（PR作成〜ユーザーマージ待ちを含む） |
+| flow:merged       | 実装がmainへマージ済み                           |
+| gate:auto         | CI成功後のユーザーマージで閉じてよい             |
+| gate:play         | マージ後のCPでユーザーが1試合検査                |
+| status:unverified | gate:play のマージ後、CPプレイ未検証             |
+| kind:decision     | 実装なし。ユーザーの採否判断が必要               |
+| kind:checkpoint   | CPプレイ検査結果の記録Issue                      |
+| kind:gate         | G1〜G4の旧区切り。新規には使わない               |
 
 実装Issueは flow を一つ、gate を一方だけ付ける。kind:decision / kind:checkpoint / #12 には flow と gate を付けない。レビュー待ち状態専用の旧フローラベルは使わない。
+
+マージ後の flow:merged、gate:play の status:unverified、#12 の「マージ済み」列は同期処理が更新する。手動で更新するのは、ユーザーのCP検査結果を受けた「プレイ検証済み」列と status:unverified の解除だけ。
 
 ## Issue本文
 
@@ -41,9 +43,9 @@
 1. CIの checks (ubuntu-latest / windows-latest) と e2e が最終headで成功。
 2. 本文に「Closes #番号」（kind:decision は除く）。
 3. ルール変更にはユニットテスト、UI変更には既存スモークe2eの成功。調整したい数値はマスタから変更可能にする。
-4. ユーザーがGitHub上でApproveする。実装モデルはApprove前にマージしない。
+4. CI成功後、ユーザーがGitHub上でPRをマージする。PR作成者がリポジトリ所有者と同じアカウントの場合も、マージ操作がユーザー承認の記録になる。
 
-Approve後は実装モデルがマージし、ブランチを削除する。別会話レビュー、修正巡数、照合表は不要。PR本文は「目的 / Closes / 変更した数値・暫定値 / 未検証」の4項目だけ。
+マージ後のflowと#12のマージ済み列は同期処理が更新し、実装モデルはマージしない。別会話レビュー、修正巡数、照合表は不要。PR本文は「目的 / Closes / 変更した数値・暫定値 / 未検証」の4項目だけ。
 
 ## CPと検査
 

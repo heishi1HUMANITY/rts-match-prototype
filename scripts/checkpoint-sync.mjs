@@ -218,7 +218,14 @@ export function planSync(
       )
     )
       return issue;
-    const desired = labels.filter((label) => !label.startsWith('gate:'));
+    const nonImplementation = labels.some((label) =>
+      ['kind:decision', 'kind:checkpoint'].includes(label),
+    );
+    const desired = labels.filter(
+      (label) =>
+        !label.startsWith('gate:') &&
+        (!nonImplementation || !label.startsWith('flow:')),
+    );
     if (desired.length !== labels.length)
       mutations.push({ issue: issue.number, body: { labels: desired } });
     return { ...issue, labels: desired.map((name) => ({ name })) };
@@ -232,7 +239,6 @@ export function planSync(
           `#${issue.number}: decision採否はマージから推測できません。再開しユーザー判断を待ちます`,
         );
         const desired = labels.filter((label) => !label.startsWith('flow:'));
-        desired.push('flow:ready');
         mutations.push({
           issue: issue.number,
           body: { state: 'open', labels: desired },
