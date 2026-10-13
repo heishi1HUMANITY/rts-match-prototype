@@ -808,16 +808,19 @@ export function updateHud(
   upgradeButton.disabled = true;
   upgradeButton.textContent = '拠点を強化';
   garrisonButton.hidden = base?.visibility !== 'owned';
+  const selectedCanGarrison =
+    selectedUnits.length > 0 &&
+    selectedUnits.every((unit) => view.rules.units[unit.kind].canGarrison);
   garrisonButton.disabled =
     base?.visibility !== 'owned' ||
-    !view.rules.garrisonEnabled ||
-    selectedUnits.length === 0 ||
+    !selectedCanGarrison ||
     view.phase !== 'running' ||
     snapshot.contextLost ||
     own.eliminatedAtTick !== null;
-  garrisonButton.textContent = view.rules.garrisonEnabled
-    ? '選択部隊を駐留'
-    : '駐留・防衛はマスタで無効';
+  garrisonButton.textContent =
+    selectedUnits.length > 0 && !selectedCanGarrison
+      ? '選択部隊に駐留不可の兵種があります'
+      : '選択部隊を駐留';
   if (base) {
     const location = `${base.id} (${base.cell.x},${base.cell.y})`;
     if (base.visibility === 'unknown')
@@ -881,7 +884,7 @@ export function updateHud(
       }
     }
   }
-  if (base?.visibility === 'owned' && view.rules.garrisonEnabled) {
+  if (base?.visibility === 'owned') {
     const garrison = view.ownUnits.filter(
       (unit) => unit.garrisonedAtBaseId === base.id,
     );
@@ -893,8 +896,6 @@ export function updateHud(
             `${unit.id} ${kindName(unit.kind)} HP${unit.hp}/${unit.maxHp}`,
         )
         .join('、')}`;
-  } else if (base?.visibility === 'owned') {
-    detail += '\n駐留・防衛：無効';
   }
   text('.base-detail', detail);
   text('[data-upgrade-reason]', upgradeReason);

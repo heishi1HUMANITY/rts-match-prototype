@@ -111,7 +111,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
       const garrison = state.units
         .filter(
           (unit) =>
-            state.rules.garrisonEnabled &&
+            state.rules.units[unit.kind].canGarrison &&
             unit.garrisonedAtBaseId === base.id &&
             unit.factionId !== attacker.factionId &&
             unit.hp > 0 &&

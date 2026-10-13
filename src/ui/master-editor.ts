@@ -212,12 +212,12 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   garrisonCapacity: {
     label: '拠点駐留上限',
     unit: '部隊',
-    help: '拠点に駐留できる陸上部隊数です。',
+    help: '拠点に駐留できる部隊数です。兵種ごとの駐留可否は兵種マスタで設定します。',
   },
-  garrisonEnabled: {
-    label: '駐留・防衛を有効にする',
+  canGarrison: {
+    label: '拠点に駐留・防衛できる',
     unit: '',
-    help: '無効にすると、部隊の拠点駐留と駐留部隊による防衛を停止します。',
+    help: 'この兵種が所有拠点に駐留し、攻撃時に防衛部隊として扱われるかを設定します。',
   },
   damageBonus: {
     label: '攻撃力上昇',
@@ -409,7 +409,6 @@ function fieldsFor(rules: RulesMaster): {
     baseUpgrades: '拠点強化',
     units: '兵種',
     bases: '拠点',
-    garrisonEnabled: '拠点駐留・防衛',
     defenses: '中立守備',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',

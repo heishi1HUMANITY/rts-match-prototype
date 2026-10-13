@@ -135,7 +135,6 @@ function revalidateRoutes(state: MatchState): MatchState {
 }
 
 function garrisonArrivals(before: MatchState, after: MatchState): MatchState {
-  if (!after.rules.garrisonEnabled) return after;
   const baseCounts = new Map<string, number>();
   for (const unit of after.units)
     if (unit.garrisonedAtBaseId)
@@ -165,7 +164,7 @@ function garrisonArrivals(before: MatchState, after: MatchState): MatchState {
       );
       if (
         !base ||
-        unitCapabilities(unit.kind, after.rules).movementDomain !== 'land' ||
+        !after.rules.units[unit.kind].canGarrison ||
         (baseCounts.get(base.id) ?? 0) >=
           after.rules.bases[base.kind].garrisonCapacity
       )

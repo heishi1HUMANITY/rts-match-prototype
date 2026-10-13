@@ -18,10 +18,17 @@ function unit(state: MatchState, id: string): UnitState {
 }
 
 describe('F18 base garrisons', () => {
-  it('disables the garrison command and automatic parking when the master switch is off', () => {
+  it('disables garrison command and automatic parking per unit kind', () => {
+    const rules = {
+      ...structuredClone(DEFAULT_RULES),
+      units: {
+        ...structuredClone(DEFAULT_RULES.units),
+        assault: { ...DEFAULT_RULES.units.assault, canGarrison: false },
+      },
+    };
     const initial = createMatch(42, {
       scenarioId: 'f18-garrison',
-      rules: { ...structuredClone(DEFAULT_RULES), garrisonEnabled: false },
+      rules,
     });
     const hq = initial.bases.find(({ id }) => id === 'HQ-A')!;
     const requestState = withUnits(initial, [
@@ -77,6 +84,33 @@ describe('F18 base garrisons', () => {
       ),
     ).toBe(false);
     expect(stepMatch(next)).toEqual(stepMatch(structuredClone(next)));
+  });
+
+  it('allows a helicopter to garrison when its unit master setting is enabled', () => {
+    const rules = {
+      ...structuredClone(DEFAULT_RULES),
+      units: {
+        ...structuredClone(DEFAULT_RULES.units),
+        helicopter: { ...DEFAULT_RULES.units.helicopter, canGarrison: true },
+      },
+    };
+    const initial = createMatch(42, { scenarioId: 'f18-garrison', rules });
+    const hq = initial.bases.find(({ id }) => id === 'HQ-A')!;
+    const helicopter = {
+      ...unit(initial, 'A-01'),
+      kind: 'helicopter' as const,
+    };
+    const state = withUnits(initial, [
+      { ...helicopter, cell: { ...hq.cell }, path: [], moveTarget: null },
+    ]);
+    const result = applyCommand(state, 'A', {
+      type: 'garrison',
+      unitId: helicopter.id,
+      baseId: hq.id,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      expect(unit(result.state, helicopter.id).garrisonedAtBaseId).toBe(hq.id);
   });
 
   it('rejects full, enemy-owned, and non-ground garrison requests without mutating state', () => {
@@ -141,7 +175,7 @@ describe('F18 base garrisons', () => {
         unitId: 'A-01',
         baseId: 'HQ-A',
       }),
-    ).toMatchObject({ ok: false, reason: 'GARRISON_NOT_ALLOWED' });
+    ).toMatchObject({ ok: false, reason: 'GARRISON_DISABLED' });
   });
 
   it('clears the garrison slot on a move order and allows another unit to occupy it', () => {
@@ -206,7 +240,13 @@ describe('F18 base garrisons', () => {
   it('does not treat a parked unit as base defense while garrison is disabled', () => {
     const initial = createMatch(42, {
       scenarioId: 'f18-garrison',
-      rules: { ...structuredClone(DEFAULT_RULES), garrisonEnabled: false },
+      rules: {
+        ...structuredClone(DEFAULT_RULES),
+        units: {
+          ...structuredClone(DEFAULT_RULES.units),
+          assault: { ...DEFAULT_RULES.units.assault, canGarrison: false },
+        },
+      },
     });
     const hq = initial.bases.find(({ id }) => id === 'HQ-A')!;
     const defender = {

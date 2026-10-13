@@ -244,11 +244,9 @@ function garrisonReject(
   unit: UnitState,
   baseId: string,
 ): RejectCode | null {
-  if (!state.rules.garrisonEnabled) return 'GARRISON_DISABLED';
+  if (!state.rules.units[unit.kind].canGarrison) return 'GARRISON_DISABLED';
   const base = state.bases.find(({ id }) => id === baseId);
   if (!base || base.owner !== actor) return null;
-  if (unitCapabilities(unit.kind, state.rules).movementDomain !== 'land')
-    return 'GARRISON_NOT_ALLOWED';
   const alreadyAssigned =
     unit.garrisonedAtBaseId === baseId ||
     (unit.moveTarget?.x === base.cell.x && unit.moveTarget?.y === base.cell.y);

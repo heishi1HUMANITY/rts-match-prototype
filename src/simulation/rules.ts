@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 15 as const;
-export const RULES_VERSION = 'f18-v2' as const;
+export const MASTER_SCHEMA_VERSION = 16 as const;
+export const RULES_VERSION = 'f18-v3' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -72,7 +72,6 @@ export interface RulesMaster {
     readonly definitions: Readonly<Record<FacilityKind, FacilityDefinition>>;
   };
   readonly baseUpgrades: BaseUpgradeRules;
-  readonly garrisonEnabled: boolean;
   readonly units: Readonly<
     Record<
       UnitKind,
@@ -85,6 +84,7 @@ export interface RulesMaster {
         readonly upkeepCentiPerTick: number;
         readonly moveTicksPerCell: number;
         readonly movementDomain: 'land' | 'air' | 'water';
+        readonly canGarrison: boolean;
         readonly attackTargets: readonly CombatTargetKind[];
         readonly canCaptureBase: boolean;
         readonly captureEfficiencyPercent: number;
@@ -199,7 +199,6 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
-  garrisonEnabled: true,
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,
@@ -315,6 +314,7 @@ export const DEFAULT_RULES: RulesMaster = {
                 ? 3
                 : MOVE_TICKS_PER_CELL,
           movementDomain: stats.movementDomain,
+          canGarrison: stats.movementDomain === 'land',
           attackTargets: [
             ...stats.attackTargets,
             ...(stats.damageVsStructure > 0 ? ['facility' as const] : []),
