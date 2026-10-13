@@ -16,8 +16,13 @@ test('F18-01: garrison a selected unit from the base panel and verify arrival st
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.locator('[data-unit="A-01"]').click();
   await page.getByRole('button', { name: '拠点', exact: true }).click();
-  await expect(page.locator('[data-action="garrison"]')).toBeEnabled();
-  await page.locator('[data-action="garrison"]').click();
+  const garrison = page.locator('[data-action="garrison"]');
+  await expect(garrison).toBeEnabled();
+  await page
+    .locator('.strategy-panel')
+    .evaluate((panel) => (panel.scrollTop = panel.scrollHeight));
+  await expect(garrison).toBeInViewport();
+  await garrison.click();
   await expect(page.locator('.tick-readout')).toHaveText(
     /TICK [2-9]\d* · RUNNING/,
     { timeout: 15_000 },
