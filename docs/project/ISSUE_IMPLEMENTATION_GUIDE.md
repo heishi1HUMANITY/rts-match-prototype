@@ -1,15 +1,8 @@
 # Issue番号から進める実装ガイド
 
-ユーザーが「#15を進めて」のように番号だけを指定した場合の実装入口。対象Issueの最新本文・コメントと最新のユーザー指示を読み、この文書の対応節から、[役割と引き継ぎ契約](ROLE_HANDOFF.md)に従う。設計担当は設計判断と引き継ぎまで、GPT-6 luna実装担当は実装、検証、画面検査への引き渡しまで進める。以下の実装・検証手順は実装担当専用である。これは未実装機能の作業計画であり、ここに書いた型・command案が既に存在するという意味ではない。
-
-## 着手と完了の扱い
-
-1. `AGENTS.md`、`README.md`、[SCOPE](SCOPE.md)、[ARCHITECTURE](ARCHITECTURE.md)、[DECISIONS](DECISIONS.md)、[WORKFLOW](WORKFLOW.md)、[TASKS](TASKS.md)、対象Issueを読む。作業差分を確認し、ユーザーの変更を保全する。
-2. 対象Issue本文の依存がmainにあるか確認する。実装Issueへgate:auto/playの一方とflow状態、ユーザー検査の要/不要・理由、シナリオID、CPを記録する。kind:decision / kind:checkpointにはgateラベルを付けない。CP0完了前は次のF実装へ進まない。未充足なら独立設計は進め、不足する先行契約を報告する。依頼済み範囲をDoDでマージし、機能ごとのユーザー合格は求めない。
-3. `docs/project/preparation/Fxx_DESIGN.md`などに、データ、command検証、tick内の順序、視界、NPC、UI、検査シナリオを具体化してから実装する。通常の技術選択・データ構造・暫定調整値はエージェントが決め、理由と暫定性を記録する。ユーザーに設計書やコードの技術レビューを要求しない。
-4. 採用/除外、通常試合の長さ、再建・脱落条件など、ユーザー体験や依頼範囲を実質的に変える判断だけは、比較できるふるまい案を示して方針を確認する。それ以外の内部タスクごとの承認待ちは作らない。
-5. ルール・UI・B/C・視界・診断を揃え、受入条件を自動判定できる文へ具体化する。各機能PRでSCENARIOSの項目をPlaywright e2e化しCIで成功させる。`npm run check`のWindows/Linux CI、`npm run references:check`、実ブラウザ900×420/PCを確認する。未検証はそのまま記録する。
-6. 別会話・読み取り専用レビューモデルが固定headの受入条件を照合し、条件別OK/NGと根拠行をPR本文へ貼る。修正は最大2巡、残るNGはflow:reviewで停止。DoD成功後にマージし、gate:playはstatus:unverifiedを付けCP票へ自動収載する。ユーザーにはCPごとの通常1試合・確認3点・既知未検証だけを渡す。
+対象Issueの番号から該当節を読む。
+運用と DoD は [WORKFLOW](WORKFLOW.md)。
+ここに書いた型・command案は新設候補で、既存APIではない。
 
 ## 実装基準と共通契約
 

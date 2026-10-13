@@ -39,9 +39,9 @@ body:
     id: inspection
     attributes:
       label: 検査シナリオID
-      description: docs/project/inspection/F0x_SCENARIOS.mdの項目番号。非該当は理由を記載
+      description: 任意。inspection/Fxx_SCENARIOS.md を作る場合の項目番号
     validations:
-      required: true
+      required: false
   - type: dropdown
     id: inspection_required
     attributes:

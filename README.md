@@ -1,6 +1,6 @@
 # RTS Match Prototype
 
-エージェントへの依頼は **「#30を進めて」** のようにIssue番号だけで開始できます。[共通の作業手順](docs/project/ISSUE_AGENT_RUNBOOK.md)、[各Issueの実装ガイド](docs/project/ISSUE_IMPLEMENTATION_GUIDE.md)、[引き継ぎ](docs/project/AGENT_HANDOFF.md) を入口に、[役割と引き継ぎ契約](docs/project/ROLE_HANDOFF.md)に従い、設計担当は詳細設計と引き継ぎまで、GPT-6 luna実装担当は実装・自動検証・PR対応を進めます。設計担当のまま実装へ進みません。独立モデルレビューは別会話で行います。ユーザーのプレイ検査はマージ後のチェックポイント（CP）で1試合ずつ行います。結果は「CP0 OK」または「CP0 NG（Issue番号と困ったふるまい）」で伝えてください。
+依頼はIssue番号だけで開始できます。運用は [WORKFLOW](docs/project/WORKFLOW.md)、方針は [AGENTS.md](AGENTS.md)。マージ条件はCI成功後にユーザーがPRをマージすること。プレイ検査はCPごとに1試合で、確認3点を OK / NG で返します。
 
 ブラウザの対戦本編を新規に作るプロジェクト。目標は **プレイヤー1人＋NPC2人の 1v1v1** を、世界観の知識なしで開始・操作・終了・再戦できること。
 
@@ -51,7 +51,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
-- [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md) / [lunaへの実装指示](docs/project/G1_LUNA_INSTRUCTIONS.md): 盤面・移動・入力・検査の契約
+- [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md): 盤面・移動・入力・検査の契約
 - [G3設計](docs/project/preparation/G3_DESIGN.md): NPCの情報制約・脱落・順位・再戦の契約
 - [G2の設計](docs/project/preparation/G2_DESIGN.md): 実装時にmainの契約と照合する設計資料
 - [AGENTS.md](AGENTS.md): エージェントの作業方針

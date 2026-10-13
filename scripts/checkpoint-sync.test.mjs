@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {
   checkpointBody,
+  carriedIssues,
   dispatchMergedNumbers,
   findCheckpoint,
   planSync,
@@ -30,7 +31,11 @@ function issue(number, gate = 'gate:play') {
   return {
     number,
     title: `feature ${number}`,
-    labels: [{ name: gate }, { name: 'flow:review' }, { name: 'kind:feature' }],
+    labels: [
+      { name: gate },
+      { name: 'custom:preserve' },
+      { name: 'kind:feature' },
+    ],
     milestone: { number: 1, title: 'CP1' },
   };
 }
@@ -40,10 +45,16 @@ test('a merge transitions only linked issues and invalidates play verification',
   assert.deepEqual(plan.mutations[0], {
     issue: 15,
     body: {
-      labels: ['gate:play', 'kind:feature', 'flow:merged', 'status:unverified'],
+      labels: [
+        'gate:play',
+        'custom:preserve',
+        'kind:feature',
+        'flow:merged',
+        'status:unverified',
+      ],
     },
   });
-  assert.equal(plan.issues[1].labels[1].name, 'flow:review');
+  assert.equal(plan.issues[1].labels[1].name, 'custom:preserve');
   assert.equal(
     planSync(plan.issues, [15], { body: plan.mutations[1].body.body }).mutations
       .length,
@@ -94,7 +105,7 @@ test('new play merge clears previous approval, dispatch preserves it', () => {
   const reopened = decisionPlan.mutations.find(
     (mutation) => mutation.body.state === 'open',
   );
-  assert.ok(reopened.body.labels.includes('flow:ready'));
+  assert.ok(!reopened.body.labels.some((label) => label.startsWith('flow:')));
   assert.ok(!reopened.body.labels.some((label) => label.startsWith('gate:')));
   assert.match(decisionPlan.warnings[0], /ユーザー判断/);
   assert.equal(
@@ -102,6 +113,12 @@ test('new play merge clears previous approval, dispatch preserves it', () => {
     false,
   );
   assert.throws(() => planSync([issue(15)], [15], { body: null }), /2列表/);
+});
+
+test('decision issues receive no flow label from the template', () => {
+  const template = readFileSync('.github/ISSUE_TEMPLATE/decision.yml', 'utf8');
+  assert.match(template, /^labels: \['kind:decision'\]$/m);
+  assert.doesNotMatch(template.match(/^labels:.*$/m)?.[0] ?? '', /flow:/);
 });
 
 test('non-implementation issues lose gates without changing other labels or progress', () => {
@@ -130,9 +147,9 @@ test('non-implementation issues lose gates without changing other labels or prog
   assert.deepEqual(plan.mutations, [
     {
       issue: 49,
-      body: { labels: ['kind:decision', 'flow:ready', 'custom:keep'] },
+      body: { labels: ['kind:decision', 'custom:keep'] },
     },
-    { issue: 51, body: { labels: ['kind:checkpoint', 'flow:ready'] } },
+    { issue: 51, body: { labels: ['kind:checkpoint'] } },
   ]);
   assert.deepEqual(
     planSync(plan.issues, [], { body }, { newMerge: false }).mutations,
@@ -161,6 +178,42 @@ test('dispatch includes only auto or explicitly unverified merged issues', () =>
   );
 });
 
+test('closed play issues carry to the lowest numbered open CP', () => {
+  const closedCp = { number: 1, title: 'CP0', state: 'closed' };
+  const openCp1 = { number: 2, title: 'CP1', state: 'open' };
+  const openCp3 = { number: 3, title: 'CP3', state: 'open' };
+  const carried = issue(19);
+  carried.milestone = closedCp;
+  carried.labels.push({ name: 'status:unverified' });
+  const stillOpen = issue(20);
+  stillOpen.milestone = openCp1;
+  stillOpen.labels.push({ name: 'status:unverified' });
+  const decision = issue(21);
+  decision.milestone = closedCp;
+  decision.labels.push(
+    { name: 'status:unverified' },
+    { name: 'kind:decision' },
+  );
+  const checkpoint = issue(22);
+  checkpoint.milestone = closedCp;
+  checkpoint.labels.push(
+    { name: 'status:unverified' },
+    { name: 'kind:checkpoint' },
+  );
+  const earlierIssue = issue(18);
+  earlierIssue.milestone = closedCp;
+  earlierIssue.labels.push({ name: 'status:unverified' });
+  const result = carriedIssues(
+    [carried, stillOpen, decision, checkpoint, earlierIssue],
+    [openCp3, closedCp, openCp1],
+  );
+  assert.equal(result.target, openCp1);
+  assert.deepEqual(
+    result.carried.map((candidate) => candidate.number),
+    [18, 19],
+  );
+});
+
 test('checkpoint has one match, exactly three checks and pending features', () => {
   const template = readFileSync(
     'docs/project/inspection/CP_TEMPLATE.md',
@@ -177,6 +230,18 @@ test('checkpoint has one match, exactly three checks and pending features', () =
   assert.ok(sheet.includes('https://example.github.io/repo/build-info.json'));
   assert.ok(sheet.indexOf('- #15:') > sheet.indexOf('## 既知の未検証'));
   assert.ok(checkpointBody('CP0', [], template, url).includes('- なし'));
+  assert.equal(
+    checkpointBody('CP0', [issue(15)], template, url, []),
+    checkpointBody('CP0', [issue(15)], template, url),
+  );
+  const carriedSheet = checkpointBody('CP1', [issue(15)], template, url, [
+    issue(19),
+  ]);
+  assert.ok(
+    carriedSheet.includes(
+      '- #15: feature 15\n\n持ち越し（前のCPで未検証のまま閉じた機能）:\n- #19: feature 19',
+    ),
+  );
   assert.throws(
     () => checkpointBody('CP0', [], '# CP0\n\n## 既知の未検証', url),
     /3見出し/,
