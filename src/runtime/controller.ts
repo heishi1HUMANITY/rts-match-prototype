@@ -148,6 +148,19 @@ function safeCommand(value: unknown): {
       summary: `stop ${item.unitId.slice(0, 64)}`,
     };
   if (
+    item.type === 'garrison' &&
+    typeof item.unitId === 'string' &&
+    typeof item.baseId === 'string'
+  )
+    return {
+      command: {
+        type: 'garrison',
+        unitId: item.unitId.slice(0, 64),
+        baseId: item.baseId.slice(0, 64),
+      },
+      summary: `駐留 ${item.unitId.slice(0, 64)} → ${item.baseId.slice(0, 64)}`,
+    };
+  if (
     item.type === 'march' &&
     typeof item.unitId === 'string' &&
     typeof item.target === 'object' &&
@@ -344,6 +357,13 @@ export class MatchRuntime {
     return this.dispatchBatch('march', unitIds, target);
   }
 
+  groupGarrison(
+    baseId: string,
+    unitIds: readonly string[] = this.selectedUnitIds,
+  ): BatchCommandResult {
+    return this.dispatchBatch('garrison', unitIds, baseId);
+  }
+
   groupStop(
     unitIds: readonly string[] = this.selectedUnitIds,
   ): BatchCommandResult {
@@ -473,9 +493,9 @@ export class MatchRuntime {
   }
 
   private dispatchBatch(
-    type: 'move' | 'stop' | 'march',
+    type: 'move' | 'stop' | 'march' | 'garrison',
     unitIds: readonly string[],
-    target?: Cell | MarchTarget,
+    target?: Cell | MarchTarget | string,
   ): BatchCommandResult {
     const ids = uniqueSortedIds(unitIds);
     if (ids.length === 0) {
@@ -493,7 +513,9 @@ export class MatchRuntime {
           ? { type, unitId, target: target as Cell }
           : type === 'march'
             ? { type, unitId, target: target as MarchTarget }
-            : { type, unitId };
+            : type === 'garrison'
+              ? { type, unitId, baseId: target as string }
+              : { type, unitId };
       const result = this.dispatchCommand(input);
       if (result.ok) accepted.push(unitId);
       else rejected.push({ unitId, reason: result.reason });
@@ -605,6 +627,9 @@ export function rejectMessage(reason: RejectCode): string {
     FACILITY_ANCHOR_UNAVAILABLE:
       '所有する生存拠点・完成渡河設備を選んでください',
     FACILITY_LIMIT: '陣営の施設上限です',
+    GARRISON_FULL: 'この拠点の駐留上限です',
+    GARRISON_DISABLED: 'この兵種はマスタ設定で駐留・防衛が無効です',
+    GARRISON_NOT_OWNED: '自軍所有の拠点だけ駐留できます',
     FACILITY_DUPLICATE: '同じ設置先に同種施設があります',
     FACILITY_SLOTS_FULL: '設置先の施設枠が使用中です',
     FACILITY_NO_CELL: '施設を配置できる隣接セルがありません',
@@ -624,7 +649,7 @@ function uniqueSortedIds(unitIds: readonly string[]): string[] {
 }
 
 function batchMessage(
-  type: 'move' | 'stop' | 'march',
+  type: 'move' | 'stop' | 'march' | 'garrison',
   accepted: readonly string[],
   rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
 ): string {
@@ -633,7 +658,9 @@ function batchMessage(
       ? '移動指示'
       : type === 'march'
         ? '追跡/進軍指示'
-        : '停止指示';
+        : type === 'garrison'
+          ? '駐留指示'
+          : '停止指示';
   const prefix = `${accepted.length}部隊に${acceptedLabel}`;
   if (rejected.length === 0) return prefix;
   const details = rejected

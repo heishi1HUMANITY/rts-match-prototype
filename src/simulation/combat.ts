@@ -109,6 +109,44 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   } else if (preferred?.kind === 'base') {
     const base = state.bases.find(({ id }) => id === preferred.id);
     if (base !== undefined) {
+      const garrison = state.units
+        .filter(
+          (unit) =>
+            state.rules.units[unit.kind].canGarrison &&
+            unit.garrisonedAtBaseId === base.id &&
+            unit.factionId !== attacker.factionId &&
+            unit.hp > 0 &&
+            unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
+              'unit',
+            ) &&
+            damageAgainst(state, attacker, {
+              kind: 'unit',
+              id: unit.id,
+              distanceSquared: 0,
+            }) > 0 &&
+            isUnitVisibleToFaction(state, unit, attacker.factionId),
+        )
+        .map((unit) => ({
+          unit,
+          distanceSquared: distanceSquared(
+            x2,
+            y2,
+            getUnitPositionX1024(unit),
+            getUnitPositionY1024(unit),
+          ),
+        }))
+        .filter(({ distanceSquared: distance }) => distance <= rangeSquared)
+        .sort(
+          (a, b) =>
+            a.distanceSquared - b.distanceSquared ||
+            (a.unit.id < b.unit.id ? -1 : a.unit.id > b.unit.id ? 1 : 0),
+        )[0];
+      if (garrison)
+        return {
+          kind: 'unit',
+          id: garrison.unit.id,
+          distanceSquared: garrison.distanceSquared,
+        };
       if (base.defender && base.defender.hp > 0) {
         if (
           unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
@@ -592,6 +630,18 @@ export function resolveCombat(state: MatchState): MatchState {
       snapshot.elapsedTicks,
       base.owner !== null ? 1 : 0,
     );
+  });
+  units = units.map((unit) => {
+    if (!unit.garrisonedAtBaseId) return unit;
+    const oldBase = snapshot.bases.find(
+      ({ id }) => id === unit.garrisonedAtBaseId,
+    );
+    const newBase = bases.find(({ id }) => id === unit.garrisonedAtBaseId);
+    return oldBase &&
+      newBase &&
+      (newBase.owner !== oldBase.owner || newBase.hp === 0)
+      ? { ...unit, garrisonedAtBaseId: null }
+      : unit;
   });
 
   let localFaction = snapshot.localFaction;

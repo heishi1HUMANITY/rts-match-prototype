@@ -304,9 +304,10 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('ticketWeight');
           const isSupplyLinePercent =
             fieldPath.startsWith('rules.supplyLines.');
-          const max =
-            isSupplyLinePercent ||
-            fieldPath === 'rules.capture.restoredHpPercent'
+          const max = fieldPath.endsWith('.garrisonCapacity')
+            ? 64
+            : isSupplyLinePercent ||
+                fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
               : fieldPath.endsWith('captureEfficiencyPercent')
                 ? 1_000
@@ -513,7 +514,9 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
       input.masterSchemaVersion !== 12 &&
-      input.masterSchemaVersion !== 13)
+      input.masterSchemaVersion !== 13 &&
+      input.masterSchemaVersion !== 14 &&
+      input.masterSchemaVersion !== 15)
   )
     return {
       ok: false,
@@ -594,6 +597,43 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (input.masterSchemaVersion === 15) {
+      const oldEnabled = migrationCandidate.garrisonEnabled !== false;
+      const { garrisonEnabled: _legacy, ...withoutLegacy } = migrationCandidate;
+      migrationCandidate = { ...withoutLegacy };
+      if (isRecord(migrationCandidate.units))
+        migrationCandidate = {
+          ...migrationCandidate,
+          units: Object.fromEntries(
+            Object.entries(migrationCandidate.units).map(([kind, value]) => [
+              kind,
+              {
+                ...(isRecord(value) ? value : {}),
+                canGarrison:
+                  oldEnabled &&
+                  DEFAULT_RULES.units[kind as keyof typeof DEFAULT_RULES.units]
+                    ?.canGarrison === true,
+              },
+            ]),
+          ),
+        };
+    }
+    if (isRecord(migrationCandidate.bases))
+      migrationCandidate = {
+        ...migrationCandidate,
+        bases: Object.fromEntries(
+          Object.entries(DEFAULT_RULES.bases).map(([kind, defaults]) => [
+            kind,
+            {
+              ...defaults,
+              ...(isRecord(migrationCandidate.bases) &&
+              isRecord(migrationCandidate.bases[kind])
+                ? migrationCandidate.bases[kind]
+                : {}),
+            },
+          ]),
+        ),
+      };
     if (isRecord(migrationCandidate.capture))
       migrationCandidate = {
         ...migrationCandidate,
@@ -683,7 +723,9 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
       input.masterSchemaVersion !== 12 &&
-      input.masterSchemaVersion !== 13
+      input.masterSchemaVersion !== 13 &&
+      input.masterSchemaVersion !== 14 &&
+      input.masterSchemaVersion !== 15
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -739,7 +781,9 @@ export function validateEnvelope(
       oldDefinitions &&
       (input.masterSchemaVersion === 11 ||
         input.masterSchemaVersion === 12 ||
-        input.masterSchemaVersion === 13)
+        input.masterSchemaVersion === 13 ||
+        input.masterSchemaVersion === 14 ||
+        input.masterSchemaVersion === 15)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))
