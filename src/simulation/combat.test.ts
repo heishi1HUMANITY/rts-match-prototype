@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { applyCommand } from './commands';
 import { createMatch } from './match';
 import { resolveCombat } from './combat';
 import type { MatchState, UnitState } from './types';
@@ -54,10 +55,10 @@ describe('simultaneous combat target selection', () => {
       ),
     };
     const destroyed = resolveCombat(state);
-    expect(destroyed.bases.find(({ id }) => id === 'HQ-A')?.hp).toBe(300);
+    expect(destroyed.bases.find(({ id }) => id === 'HQ-A')?.hp).toBe(1200);
     expect(destroyed.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 300,
+      hp: 800,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
       defender: { hp: 160, maxHp: 160 },
@@ -115,7 +116,7 @@ describe('simultaneous combat target selection', () => {
     expect(next.units.some(({ id }) => id === 'A-02')).toBe(false);
     expect(next.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 300,
+      hp: 800,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
       defender: { hp: 160, maxHp: 160 },
@@ -126,15 +127,16 @@ describe('simultaneous combat target selection', () => {
     let state = createMatch(42);
     const first = {
       ...state.units.find(({ id }) => id === 'A-01')!,
-      cell: { x: 32, y: 33 },
+      cell: { x: 27, y: 33 },
     };
     const second = {
       ...state.units.find(({ id }) => id === 'A-02')!,
-      cell: { x: 32, y: 34 },
+      cell: { x: 28, y: 32 },
     };
     state = removeAllBut(state, [first, second]);
     state = {
       ...state,
+      elapsedTicks: 1200,
       bases: state.bases.map((base) =>
         base.id === 'HQ-B' ? { ...base, hp: 1 } : base,
       ),
@@ -279,5 +281,56 @@ describe('simultaneous combat target selection', () => {
     expect(
       state.units.filter(({ id }) => id === 'A-01' || id === 'B-01'),
     ).toHaveLength(0);
+  });
+
+  it('protects HQs from attack and damage during hqProtectionTicks and enables damage afterward', () => {
+    let state = createMatch(42);
+    state = {
+      ...state,
+      phase: 'running',
+    };
+    const hqB = state.bases.find(({ id }) => id === 'HQ-B')!;
+    expect(hqB.hp).toBe(1200);
+
+    // Place an assault unit right next to HQ-B
+    const attacker: UnitState = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: hqB.cell.x - 1, y: hqB.cell.y },
+      attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+    };
+    state = removeAllBut(state, [attacker]);
+
+    // During protection (elapsedTicks < 1200), HQ cannot be targeted by auto-attack or march
+    state = { ...state, elapsedTicks: 100 };
+    const marchCmd = applyCommand(state, 'A', {
+      type: 'march',
+      unitId: 'A-01',
+      target: { kind: 'base', id: 'HQ-B' },
+    });
+    expect(marchCmd).toMatchObject({ ok: false, reason: 'HQ_PROTECTED' });
+
+    // Combat resolution: attacker should remain idle because HQ is protected
+    const afterCombatProtected = resolveCombat(state);
+    expect(
+      afterCombatProtected.units.find(({ id }) => id === 'A-01')?.attack?.phase,
+    ).toBe('idle');
+    expect(afterCombatProtected.bases.find(({ id }) => id === 'HQ-B')?.hp).toBe(
+      1200,
+    );
+
+    // After protection expires (elapsedTicks >= 1200), HQ can be attacked and damaged
+    state = { ...state, elapsedTicks: 1200 };
+    const marchCmdExpired = applyCommand(state, 'A', {
+      type: 'march',
+      unitId: 'A-01',
+      target: { kind: 'base', id: 'HQ-B' },
+    });
+    expect(marchCmdExpired.ok).toBe(true);
+    if (!marchCmdExpired.ok) return;
+
+    state = resolveCombat(marchCmdExpired.state);
+    const updatedHq = state.bases.find(({ id }) => id === 'HQ-B')!;
+    expect(updatedHq.hp).toBeLessThan(1200);
+    expect(updatedHq.hp).toBe(1180); // deals 20 structure damage
   });
 });

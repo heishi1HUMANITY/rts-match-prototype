@@ -158,3 +158,7 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 ## 2026-10-13: 攻撃間隔と構えの共通プロファイル化
 
 - D057: #28 (F16 PR 1/4) で部隊・守備・砲座・施設の攻撃を共通の攻撃プロファイル（windupTicks, intervalTicks, canAttackWhileMoving）に一本化。強襲HP200/攻20/間10tick（約10秒交戦）、砲兵構え15tick/間30tick（移動撃ち不可）等の新標準値を設定。MatchState schema 20、RulesMaster schema 17、rules f16-v1へ移行し、schema 16マスタは明示移行で補完。
+
+## 2026-10-14: マップ境界・首都等距離・首都保護・首都陥落即脱落
+
+- D058: #28 (F16 PR 2/4) でマップ境界川による完全分断とB2渡河回廊の対称等距離配置（全首都間最短36歩）を保証。HQ HP 1200、拠点HP（outpost 300 / medium 500 / large 800）。開始1200 ticks（2分）の首都保護（無敵、march拒否、UIカウントダウン表示）と、保護終了後の首都陥落による即脱落（部隊・施設除去、拠点中立化）。RulesMaster schema 18、MatchState schema 21、rules f16-v2。

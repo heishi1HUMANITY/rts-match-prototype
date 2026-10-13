@@ -187,7 +187,7 @@ describe('F08 unit domains and roles', () => {
               path: [],
             }
           : unit.id === 'A-02'
-            ? { ...unit, cell: { x: 6, y: 34 }, hp: 50, path: [] }
+            ? { ...unit, cell: { x: 5, y: 21 }, hp: 50, path: [] }
             : unit,
       ),
     };

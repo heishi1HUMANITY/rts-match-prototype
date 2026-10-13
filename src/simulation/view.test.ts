@@ -59,9 +59,9 @@ describe('faction visibility and view isolation', () => {
     const factionA = match.knowledge.find(
       ({ factionId }) => factionId === 'A',
     )!;
-    // The A scout is centered at (15,67): x=15 is exactly 8 cells away.
-    expect(factionA.visible[33 * 40 + 15]).toBe(true);
-    expect(factionA.visible[33 * 40 + 16]).toBe(false);
+    // The A scout is centered at (6, 21): x=14 is exactly 8 cells away.
+    expect(factionA.visible[21 * 40 + 14]).toBe(true);
+    expect(factionA.visible[21 * 40 + 15]).toBe(false);
   });
 
   it('uses half-cell doubled coordinates to reveal enemies at exact and outside sight radii', () => {
@@ -69,29 +69,29 @@ describe('faction visibility and view isolation', () => {
     const scout = state.units.find(({ id }) => id === 'A-02')!;
     const exact = {
       ...state.units.find(({ id }) => id === 'B-01')!,
-      cell: { x: 15, y: 33 },
+      cell: { x: 14, y: 21 },
       path: [],
       edgeProgress: 0 as const,
     };
-    const outside = { ...exact, cell: { x: 16, y: 33 } };
+    const outside = { ...exact, cell: { x: 15, y: 21 } };
     const withExact = withState(state, {
       units: [...state.units.filter(({ id }) => id !== exact.id), exact],
     });
     const withOutside = withState(state, {
       units: [...state.units.filter(({ id }) => id !== outside.id), outside],
     });
-    expect(getUnitPositionX1024(scout)).toBe(7680);
-    expect(getUnitPositionY1024(scout)).toBe(34304);
+    expect(getUnitPositionX1024(scout)).toBe(6656);
+    expect(getUnitPositionY1024(scout)).toBe(22016);
     expect(isUnitVisibleToFaction(withExact, exact, 'A')).toBe(true);
     expect(isUnitVisibleToFaction(withOutside, outside, 'A')).toBe(false);
 
     const halfway = {
       ...exact,
-      cell: { x: 14, y: 33 },
-      path: [{ x: 15, y: 33 }],
+      cell: { x: 13, y: 21 },
+      path: [{ x: 14, y: 21 }],
       edgeProgress: 1 as const,
     };
-    expect(getUnitPositionX1024(halfway)).toBe(15360);
+    expect(getUnitPositionX1024(halfway)).toBe(14336);
     expect(
       isUnitVisibleToFaction(
         withState(state, { units: [scout, halfway] }),
@@ -106,7 +106,7 @@ describe('faction visibility and view isolation', () => {
     const a = state.units.find(({ id }) => id === 'A-01')!;
     const enemy = {
       ...state.units.find(({ id }) => id === 'B-01')!,
-      cell: { x: 10, y: 33 },
+      cell: { x: 8, y: 20 },
     };
     let next: MatchState = withState(state, { units: [a, enemy] });
     next = { ...next, knowledge: updateFactionKnowledge(next) };

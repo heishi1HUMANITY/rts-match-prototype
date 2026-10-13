@@ -71,7 +71,7 @@ export type CombatTargetKind =
   | 'crossing'
   | 'stronghold'
   | 'facility';
-export type EliminationReason = 'tickets' | 'forces';
+export type EliminationReason = 'tickets' | 'hq' | 'forces';
 
 export interface EliminationStatus {
   readonly eliminatedAtTick: number | null;
@@ -307,7 +307,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 20;
+  readonly schemaVersion: 21;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -578,7 +578,8 @@ export type RejectCode =
   | 'GARRISON_NOT_OWNED'
   | 'FACILITY_SLOTS_FULL'
   | 'FACILITY_DUPLICATE'
-  | 'FACILITY_NO_CELL';
+  | 'FACILITY_NO_CELL'
+  | 'HQ_PROTECTED';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

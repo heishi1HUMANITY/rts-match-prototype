@@ -70,7 +70,7 @@ describe('F18 base garrisons', () => {
     let next = result.state;
     for (let i = 0; i < 2; i += 1) next = stepMatch(next);
     expect(unit(next, 'A-01')).toMatchObject({
-      cell: { x: 6, y: 34 },
+      cell: { x: 5, y: 20 },
       path: [],
       garrisonedAtBaseId: 'HQ-A',
     });
@@ -222,7 +222,7 @@ describe('F18 base garrisons', () => {
       },
       {
         ...unit(initial, 'B-01'),
-        cell: { x: 6, y: 33 },
+        cell: { x: 6, y: 20 },
         marchOrder: {
           target: { kind: 'base' as const, id: 'HQ-A' },
           lastKnownCell: { ...hq.cell },
@@ -242,6 +242,10 @@ describe('F18 base garrisons', () => {
       scenarioId: 'f18-garrison',
       rules: {
         ...structuredClone(DEFAULT_RULES),
+        match: {
+          ...structuredClone(DEFAULT_RULES.match),
+          hqProtectionTicks: 0,
+        },
         units: {
           ...structuredClone(DEFAULT_RULES.units),
           assault: { ...DEFAULT_RULES.units.assault, canGarrison: false },
@@ -256,7 +260,7 @@ describe('F18 base garrisons', () => {
     };
     const attacker = {
       ...unit(initial, 'B-01'),
-      cell: { x: hq.cell.x, y: hq.cell.y - 1 },
+      cell: { x: hq.cell.x + 1, y: hq.cell.y },
       marchOrder: {
         target: { kind: 'base' as const, id: 'HQ-A' },
         lastKnownCell: { ...hq.cell },

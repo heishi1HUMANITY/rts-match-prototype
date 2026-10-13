@@ -640,6 +640,7 @@ export function rejectMessage(reason: RejectCode): string {
     CROSSING_NOT_ADJACENT: '端点に隣接する部隊が必要です',
     CROSSING_UNIT_RESTRICTED: 'この部隊では建設できません',
     CROSSING_RESEARCH_REQUIRED: '必要な工兵研究が完了していません',
+    HQ_PROTECTED: '首都保護期間中のため攻撃・進軍できません',
   };
   return messages[reason];
 }

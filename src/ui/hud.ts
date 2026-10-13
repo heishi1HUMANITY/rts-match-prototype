@@ -1,4 +1,5 @@
 import { FACILITY_NAMES, updateFacilitiesPanel } from './facilities';
+import { updateTicketsHud } from './tickets';
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
 import type {
@@ -318,6 +319,7 @@ export function updateHud(
     selectedUnits.length > 1 ? `${selectedUnits.length}部隊を停止` : '部隊停止';
   elements.clear.disabled = !canSelect || selectedUnits.length === 0;
   elements.status.textContent = snapshot.message;
+  updateTicketsHud(elements, snapshot);
   text('.tick-readout', `TICK ${view.tick} · ${view.phase.toUpperCase()}`);
   for (const id of ['A', 'B', 'C'] as const)
     text(
@@ -939,7 +941,7 @@ export function updateHud(
                 ? '■'
                 : '⬡';
           row.className = `legend-${standing.factionId.toLowerCase()}`;
-          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都・全部隊喪失'}）`}`;
+          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都陥落'}）`}`;
           return row;
         }),
       );

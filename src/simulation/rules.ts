@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 17 as const;
-export const RULES_VERSION = 'f16-v1' as const;
+export const MASTER_SCHEMA_VERSION = 18 as const;
+export const RULES_VERSION = 'f16-v2' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -173,6 +173,7 @@ export interface RulesMaster {
     readonly initialTicketsCenti: number;
     readonly unitLossTicketsCenti: number;
     readonly hqLossTicketsCenti: number;
+    readonly hqProtectionTicks: number;
   };
   readonly limits: {
     readonly unitsPerFaction: number;
@@ -379,22 +380,8 @@ export const DEFAULT_RULES: RulesMaster = {
   bases: {
     hq: { ...BASE_STATS.hq, ticketWeight: 0, garrisonCapacity: 2 },
     outpost: { ...BASE_STATS.outpost, ticketWeight: 1, garrisonCapacity: 1 },
-    medium: {
-      maxHp: 180,
-      vision: 5,
-      supplyIncomeCentiPerTick: 30,
-      researchIncomeCentiPerTick: 15,
-      ticketWeight: 2,
-      garrisonCapacity: 2,
-    },
-    large: {
-      maxHp: 300,
-      vision: 6,
-      supplyIncomeCentiPerTick: 40,
-      researchIncomeCentiPerTick: 20,
-      ticketWeight: 3,
-      garrisonCapacity: 3,
-    },
+    medium: { ...BASE_STATS.medium, ticketWeight: 2, garrisonCapacity: 2 },
+    large: { ...BASE_STATS.large, ticketWeight: 3, garrisonCapacity: 3 },
   },
   defenses: {
     respawnEnabled: true,
@@ -567,6 +554,7 @@ export const DEFAULT_RULES: RulesMaster = {
     initialTicketsCenti: INITIAL_TICKETS_CENTI,
     unitLossTicketsCenti: UNIT_LOSS_TICKETS_CENTI,
     hqLossTicketsCenti: HQ_LOSS_TICKETS_CENTI,
+    hqProtectionTicks: 1200,
   },
   limits: {
     unitsPerFaction: UNIT_LIMIT,

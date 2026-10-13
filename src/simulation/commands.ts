@@ -6,6 +6,7 @@ import {
   beginCrossingDismantle,
 } from './crossings';
 import { resolveMatchOutcome } from './outcome';
+import { isHqProtected } from './combat';
 import { findPath } from './pathfinding';
 import { unitCapabilities } from './unit-capabilities';
 import { cancelProduction, enqueueProduction } from './production';
@@ -401,6 +402,9 @@ export function applyCommand(
     let initialStatus: 'tracking' | 'searching' = 'tracking';
     if (command.target.kind === 'base') {
       const base = state.bases.find(({ id }) => id === command.target.id);
+      if (base && isHqProtected(state, base) && base.owner !== actor) {
+        return reject(state, 'HQ_PROTECTED');
+      }
       const stronghold =
         command.target.id === state.localFaction.stronghold.id &&
         state.localFaction.active &&

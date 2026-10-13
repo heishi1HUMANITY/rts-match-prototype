@@ -301,14 +301,16 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('baseIncomeCentiPerTick') &&
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
-            !fieldPath.endsWith('ticketWeight');
+            !fieldPath.endsWith('ticketWeight') &&
+            !fieldPath.endsWith('hqProtectionTicks');
           const max = fieldPath.endsWith('.garrisonCapacity')
             ? 64
             : fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
               : fieldPath.endsWith('captureEfficiencyPercent')
                 ? 1_000
-                : fieldPath.endsWith('timeLimitTicks')
+                : fieldPath.endsWith('timeLimitTicks') ||
+                    fieldPath.endsWith('hqProtectionTicks')
                   ? 100_000_000
                   : fieldPath.endsWith('moveTicksPerCell') ||
                       fieldPath.endsWith('decisionIntervalTicks') ||
@@ -511,7 +513,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 13 &&
       input.masterSchemaVersion !== 14 &&
       input.masterSchemaVersion !== 15 &&
-      input.masterSchemaVersion !== 16)
+      input.masterSchemaVersion !== 16 &&
+      input.masterSchemaVersion !== 17)
   )
     return {
       ok: false,
@@ -825,6 +828,20 @@ export function validateEnvelope(
         };
       }
     }
+    if (input.masterSchemaVersion <= 17) {
+      if (isRecord(migrationCandidate.match)) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          match: {
+            ...migrationCandidate.match,
+            hqProtectionTicks:
+              typeof migrationCandidate.match.hqProtectionTicks === 'number'
+                ? migrationCandidate.match.hqProtectionTicks
+                : 1200,
+          },
+        };
+      }
+    }
     candidateRules = migrationCandidate;
   }
   if (
@@ -866,7 +883,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 13 &&
       input.masterSchemaVersion !== 14 &&
       input.masterSchemaVersion !== 15 &&
-      input.masterSchemaVersion !== 16
+      input.masterSchemaVersion !== 16 &&
+      input.masterSchemaVersion !== 17
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -925,7 +943,8 @@ export function validateEnvelope(
         input.masterSchemaVersion === 13 ||
         input.masterSchemaVersion === 14 ||
         input.masterSchemaVersion === 15 ||
-        input.masterSchemaVersion === 16)
+        input.masterSchemaVersion === 16 ||
+        input.masterSchemaVersion === 17)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))

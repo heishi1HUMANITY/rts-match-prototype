@@ -16,10 +16,8 @@ function eliminationReason(
   const hq = state.bases.find(
     (base) => base.kind === 'hq' && base.homeFactionId === faction.id,
   );
-  const hasUnits = state.units.some(
-    (unit) => unit.factionId === faction.id && unit.hp > 0,
-  );
-  return hq?.hp === 0 && !hasUnits ? 'forces' : null;
+  if (hq && hq.hp <= 0) return 'hq';
+  return null;
 }
 
 function standingOrder(a: FactionState, b: FactionState): number {
@@ -65,6 +63,7 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
       ? faction
       : {
           ...faction,
+          ticketsCenti: 0,
           eliminatedAtTick: state.elapsedTicks,
           eliminationReason: reason,
           productionJobs: [],
@@ -88,6 +87,7 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
               ? {
                   ...base,
                   hp: 0,
+                  upgradeJob: null,
                   captureCandidate: null,
                   captureProgressCentiTicks: 0,
                 }
@@ -100,18 +100,25 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
                 ...base,
                 owner: null,
                 hp: base.maxHp,
-                defender: state.rules.defenses.respawnEnabled
-                  ? {
-                      hp: state.rules.defenses[base.kind].maxHp,
-                      maxHp: state.rules.defenses[base.kind].maxHp,
-                      disabledTicks: 0,
-                    }
-                  : null,
+                defender: {
+                  hp: state.rules.defenses[base.kind].maxHp,
+                  maxHp: state.rules.defenses[base.kind].maxHp,
+                  disabledTicks: 0,
+                },
+                upgradeJob: null,
                 captureCandidate: null,
                 captureProgressCentiTicks: 0,
               }
             : base;
         });
+  const crossings =
+    newlyEliminated.size === 0
+      ? state.crossings
+      : state.crossings.map((crossing) =>
+          crossing.owner !== null && newlyEliminated.has(crossing.owner)
+            ? { ...crossing, owner: null, job: null }
+            : crossing,
+        );
   const alive = factions.filter((faction) => faction.eliminatedAtTick === null);
   const reason: MatchResult['reason'] | null =
     alive.length === 0
@@ -135,6 +142,7 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
     factions,
     units,
     bases,
+    crossings,
     facilities: state.facilities.filter(
       (facility) => !newlyEliminated.has(facility.owner),
     ),

@@ -14,7 +14,7 @@ describe('runtime group selection and orders', () => {
   it('previews and batches base marches without mutating or losing replay history', () => {
     const runtime = runtimeFor();
     runtime.dispatch({ type: 'start' });
-    const target = { kind: 'base' as const, id: 'OUT-03' };
+    const target = { kind: 'base' as const, id: 'HOME-A' };
     const before = runtime.snapshot();
     const preview = runtime.previewGroupMarch(
       ['B-01', 'A-02', 'A-01', 'A-01'],
@@ -222,7 +222,7 @@ describe('runtime group selection and orders', () => {
     const runtime = runtimeFor();
     runtime.dispatch({ type: 'start' });
     runtime.selectAll();
-    expect(runtime.groupMove({ x: 20, y: 28 }).accepted).toEqual([
+    expect(runtime.groupMove({ x: 9, y: 20 }).accepted).toEqual([
       'A-01',
       'A-02',
     ]);

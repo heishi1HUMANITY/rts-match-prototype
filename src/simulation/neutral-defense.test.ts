@@ -32,12 +32,12 @@ describe('F05 neutral garrisons and capture', () => {
     for (let tick = 0; tick < 20; tick += 1) state = stepMatch(state);
     expect(outpost()).toMatchObject({
       owner: null,
-      hp: 100,
+      hp: 300,
       defender: { hp: 0 },
     });
     expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(180);
 
-    for (let tick = 0; tick < 34; tick += 1) state = stepMatch(state);
+    for (let tick = 0; tick < 99; tick += 1) state = stepMatch(state);
     expect(outpost()).toMatchObject({
       owner: null,
       hp: 0,
@@ -48,7 +48,7 @@ describe('F05 neutral garrisons and capture', () => {
     for (let tick = 0; tick < 11; tick += 1) state = stepMatch(state);
     expect(outpost()).toMatchObject({
       owner: 'A',
-      hp: 30,
+      hp: 90,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
       defender: null,
@@ -78,7 +78,7 @@ describe('F05 neutral garrisons and capture', () => {
         ).toBe(0);
     }
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
-      hp: 100,
+      hp: 300,
       defender: { hp: 60, maxHp: 60, disabledTicks: 0 },
     });
   });
@@ -132,7 +132,7 @@ describe('F05 neutral garrisons and capture', () => {
     state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 300,
+      hp: 800,
       defender: { hp: 160, maxHp: 160, disabledTicks: 0 },
     });
   });
@@ -159,7 +159,7 @@ describe('F05 neutral garrisons and capture', () => {
     const next = resolveCombat(state);
     expect(next.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: null,
-      hp: 300,
+      hp: 800,
       defender: null,
     });
   });

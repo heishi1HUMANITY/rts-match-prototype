@@ -75,7 +75,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 17,
+        masterSchemaVersion: 18,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -190,7 +190,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 17,
+        masterSchemaVersion: 18,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -218,7 +218,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 17,
+        masterSchemaVersion: 18,
         revision: 10,
         rules: {
           defenses: {
@@ -281,7 +281,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(17);
+    expect(loaded.envelope.masterSchemaVersion).toBe(18);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -374,7 +374,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 17,
+      masterSchemaVersion: 18,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },
@@ -420,7 +420,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 17,
+      masterSchemaVersion: 18,
       revision: 50,
       rules: {
         units: {
@@ -442,6 +442,33 @@ describe('F17 browser master store', () => {
             intervalTicks: 1,
             canAttackWhileMoving: true,
           },
+        },
+      },
+    });
+  });
+
+  it('loads and upgrades schema 17 rules adding hqProtectionTicks', () => {
+    const storage = new MemoryStorage();
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.match.hqProtectionTicks;
+    legacy.match.initialSupplyCenti = 99_999;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 17, revision: 51, rules: legacy }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.envelope).toMatchObject({
+      masterSchemaVersion: 18,
+      revision: 51,
+      rules: {
+        match: {
+          initialSupplyCenti: 99_999,
+          hqProtectionTicks: 1200,
         },
       },
     });
