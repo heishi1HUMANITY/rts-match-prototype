@@ -70,12 +70,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(snapshot, {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f18-v3',
-      schemaVersion: 19,
+      rulesVersion: 'f16-v1',
+      schemaVersion: 20,
     });
     expect(diagnostic).toMatchObject({
       rules: {
-        masterSchemaVersion: 16,
+        masterSchemaVersion: 17,
         rules: { capture: { restoredHpPercent: 50 } },
       },
     });
@@ -168,16 +168,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f18-v3',
-      schemaVersion: 19,
+      rulesVersion: 'f16-v1',
+      schemaVersion: 20,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 19,
-        rulesVersion: 'f18-v3',
+        schemaVersion: 20,
+        rulesVersion: 'f16-v1',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 16,
+        masterSchemaVersion: 17,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -187,7 +187,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
   it('clears a destroyed selected unit and replays simultaneous combat', () => {
     const { runtime, advance } = running('g2-combat');
     runtime.select('A-01');
-    advance(2);
+    advance(11);
     expect(runtime.playerSnapshot().selectedUnitId).toBeNull();
     expect(
       runtime.playerSnapshot().view.ownUnits.some((unit) => unit.id === 'A-01'),
@@ -236,8 +236,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 19 as const,
-      rulesVersion: 'f18-v3' as const,
+      schemaVersion: 20 as const,
+      rulesVersion: 'f16-v1' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -251,6 +251,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
       replay({
         ...input,
         rulesVersion: 'cp0-npc-v1',
+      } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        ...input,
+        rulesVersion: 'f18-v3',
       } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>

@@ -79,6 +79,7 @@ function makeLocalUnit(
     edgeProgress: 0,
     moveTicksPerCell: state.rules.units[kind].moveTicksPerCell,
     marchOrder: null,
+    attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
   };
 }
 

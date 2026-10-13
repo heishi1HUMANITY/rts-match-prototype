@@ -82,9 +82,9 @@ describe('G2 fixed-tick integration', () => {
   it('g2-combat damages both sides for one tick and removes both on the second', () => {
     let state = running(createMatch(42, { scenarioId: 'g2-combat' }));
     state = stepMatch(state);
-    expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(2);
-    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(2);
-    state = stepMatch(state);
+    expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(20);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(20);
+    for (let tick = 0; tick < 10; tick += 1) state = stepMatch(state);
     expect(state.units.some(({ id }) => id === 'A-01' || id === 'B-01')).toBe(
       false,
     );
@@ -109,18 +109,22 @@ describe('G2 fixed-tick integration', () => {
       cell: { x: 22, y: 20 },
     };
     state = onlyUnits(state, [a, b]);
+    state = {
+      ...state,
+      bases: state.bases.map((base) => ({ ...base, defender: null })),
+    };
     state = stepMatch(state);
     expect(state.units.find(({ id }) => id === 'A-01')).toMatchObject({
       cell: { x: 19, y: 20 },
       edgeProgress: 1,
     });
-    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(100);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(200);
     state = stepMatch(state);
     expect(state.units.find(({ id }) => id === 'A-01')).toMatchObject({
       cell: { x: 20, y: 20 },
       edgeProgress: 0,
     });
-    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(98);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(180);
   });
 
   it('completes research after combat and applies its bonus starting next tick', () => {
@@ -132,8 +136,8 @@ describe('G2 fixed-tick integration', () => {
     const b = {
       ...state.units.find(({ id }) => id === 'B-01')!,
       cell: { x: 22, y: 20 },
-      hp: 5,
-      maxHp: 100,
+      hp: 41,
+      maxHp: 200,
     };
     state = onlyUnits(state, [a, b]);
     state = setFaction(state, 'A', {
@@ -154,8 +158,8 @@ describe('G2 fixed-tick integration', () => {
       activeResearch: null,
       completedResearchIds: ['firepower-1'],
     });
-    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(3);
-    state = stepMatch(state);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(21);
+    for (let tick = 0; tick < 10; tick += 1) state = stepMatch(state);
     expect(state.units.some(({ id }) => id === 'B-01')).toBe(false);
   });
 
@@ -181,7 +185,7 @@ describe('G2 fixed-tick integration', () => {
     state = stepMatch(state);
     expect(state.units.find(({ id }) => id === 'A-03')).toMatchObject({
       cell: { x: 6, y: 34 },
-      hp: 100,
+      hp: 200,
     });
     expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(50);
   });

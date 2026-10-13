@@ -108,8 +108,8 @@ describe('F08 unit domains and roles', () => {
                 ...unit,
                 kind: 'helicopter' as UnitKind,
                 cell: { x: 12, y: 10 },
-                hp: 90,
-                maxHp: 90,
+                hp: 140,
+                maxHp: 140,
               }
             : unit,
     );
@@ -217,7 +217,7 @@ describe('F08 unit domains and roles', () => {
       'A',
     );
     const recovered = stepMatch(state);
-    expect(recovered.units.find(({ id }) => id === 'A-02')?.hp).toBe(53);
+    expect(recovered.units.find(({ id }) => id === 'A-02')?.hp).toBe(55);
     expect(recovered.units.find(({ id }) => id === 'A-01')?.hp).toBe(50);
   });
 });

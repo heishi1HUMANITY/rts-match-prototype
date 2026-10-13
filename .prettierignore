@@ -10,3 +10,4 @@ docs/project/reference-manifest.json
 
 playwright-report/
 test-results/
+.codex-remote-attachments/

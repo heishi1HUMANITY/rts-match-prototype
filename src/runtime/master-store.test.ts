@@ -75,7 +75,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 16,
+        masterSchemaVersion: 17,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -190,7 +190,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 16,
+        masterSchemaVersion: 17,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -218,7 +218,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 16,
+        masterSchemaVersion: 17,
         revision: 10,
         rules: {
           defenses: {
@@ -281,7 +281,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(16);
+    expect(loaded.envelope.masterSchemaVersion).toBe(17);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -374,7 +374,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 16,
+      masterSchemaVersion: 17,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },
@@ -387,6 +387,55 @@ describe('F17 browser master store', () => {
             'base-development-2': {
               effects: [{ id: 'base-upgrade-max', value: 3 }],
             },
+          },
+        },
+      },
+    });
+  });
+
+  it('loads and upgrades schema 16 rules adding F16 attack profiles', () => {
+    const storage = new MemoryStorage();
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    for (const unit of Object.values(legacy.units) as Record<string, any>[]) {
+      delete unit.windupTicks;
+      delete unit.intervalTicks;
+      delete unit.canAttackWhileMoving;
+    }
+    for (const def of Object.values(legacy.defenses) as Record<string, any>[]) {
+      if (typeof def === 'object' && def !== null) {
+        delete def.windupTicks;
+        delete def.intervalTicks;
+        delete def.canAttackWhileMoving;
+      }
+    }
+    legacy.units.assault.maxHp = 222;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 16, revision: 50, rules: legacy }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.envelope).toMatchObject({
+      masterSchemaVersion: 17,
+      revision: 50,
+      rules: {
+        units: {
+          assault: {
+            maxHp: 222,
+            windupTicks: 0,
+            intervalTicks: 10,
+            canAttackWhileMoving: true,
+          },
+        },
+        defenses: {
+          outpost: {
+            windupTicks: 0,
+            intervalTicks: 1,
+            canAttackWhileMoving: true,
           },
         },
       },

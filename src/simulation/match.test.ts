@@ -6,7 +6,7 @@ import { createMatch } from './match';
 describe('initial match contract', () => {
   it('creates schema-v18 ready state with three ranked factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(19);
+    expect(match.schemaVersion).toBe(20);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -43,8 +43,8 @@ describe('initial match contract', () => {
         id,
         factionId,
         kind,
-        hp: kind === 'assault' ? 100 : 60,
-        maxHp: kind === 'assault' ? 100 : 60,
+        hp: kind === 'assault' ? 200 : 120,
+        maxHp: kind === 'assault' ? 200 : 120,
         cell,
         path: [],
         edgeProgress: 0,
@@ -169,13 +169,13 @@ describe('initial match contract', () => {
     const combat = createMatch(42, { scenarioId: 'g2-combat' });
     expect(combat.units.find(({ id }) => id === 'A-01')).toMatchObject({
       cell: { x: 20, y: 20 },
-      hp: 4,
-      maxHp: 100,
+      hp: 40,
+      maxHp: 200,
     });
     expect(combat.units.find(({ id }) => id === 'B-01')).toMatchObject({
       cell: { x: 22, y: 20 },
-      hp: 4,
-      maxHp: 100,
+      hp: 40,
+      maxHp: 200,
     });
     expect(combat.units.find(({ id }) => id === 'A-02')!.cell).toEqual({
       x: 10,

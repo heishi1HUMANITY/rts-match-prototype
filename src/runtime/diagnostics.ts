@@ -48,7 +48,7 @@ export function rulesContentId(rules: RulesMaster): string {
     hash ^= BigInt(text.charCodeAt(index));
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
-  return `f18-${hash.toString(16).padStart(16, '0')}`;
+  return `f16-${hash.toString(16).padStart(16, '0')}`;
 }
 
 export function replay(input: ReplayInput): {

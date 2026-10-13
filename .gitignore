@@ -13,3 +13,4 @@ Thumbs.db
 *Zone.Identifier*
 # Historical captures stay local; see docs/project/REFERENCES.md.
 /docs/video/
+.codex-remote-attachments/
