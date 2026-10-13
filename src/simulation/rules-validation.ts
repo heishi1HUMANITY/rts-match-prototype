@@ -71,6 +71,7 @@ export function validateRules(input: unknown): ValidationResult {
     'tickets',
     'npc',
     'localFaction',
+    'supplyLines',
   ] as const;
   exactKeys(input, rootKeys, 'rules', issues);
   const walk = (value: unknown, defaults: unknown, path: string): unknown => {
@@ -301,7 +302,10 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
+          const isSupplyLinePercent =
+            fieldPath.startsWith('rules.supplyLines.');
           const max =
+            isSupplyLinePercent ||
             fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
               : fieldPath.endsWith('captureEfficiencyPercent')
@@ -314,7 +318,12 @@ export function validateRules(input: unknown): ValidationResult {
                       fieldPath.endsWith('requiredTicks')
                     ? 10_000
                     : 1_000_000_000;
-          const number = numberField(actual, 0, max, positive);
+          const number = numberField(
+            actual,
+            0,
+            max,
+            isSupplyLinePercent ? false : positive,
+          );
           if (number === undefined)
             issues.push({
               key: fieldPath,
@@ -503,7 +512,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
-      input.masterSchemaVersion !== 12)
+      input.masterSchemaVersion !== 12 &&
+      input.masterSchemaVersion !== 13)
   )
     return {
       ok: false,
@@ -607,6 +617,11 @@ export function validateEnvelope(
         ...migrationCandidate,
         facilities: DEFAULT_RULES.facilities,
       };
+    if (!Object.hasOwn(migrationCandidate, 'supplyLines'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        supplyLines: DEFAULT_RULES.supplyLines,
+      };
     if (isRecord(migrationCandidate.units))
       migrationCandidate = {
         ...migrationCandidate,
@@ -642,7 +657,9 @@ export function validateEnvelope(
         ? oldResearch.definitions
         : null;
     if (
-      (input.masterSchemaVersion === 11 || input.masterSchemaVersion === 12) &&
+      (input.masterSchemaVersion === 11 ||
+        input.masterSchemaVersion === 12 ||
+        input.masterSchemaVersion === 13) &&
       oldDefinitions === null
     )
       return {
@@ -665,7 +682,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
-      input.masterSchemaVersion !== 12
+      input.masterSchemaVersion !== 12 &&
+      input.masterSchemaVersion !== 13
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -719,7 +737,9 @@ export function validateEnvelope(
         return { ok: false, issues: migrationIssues };
     } else if (
       oldDefinitions &&
-      (input.masterSchemaVersion === 11 || input.masterSchemaVersion === 12)
+      (input.masterSchemaVersion === 11 ||
+        input.masterSchemaVersion === 12 ||
+        input.masterSchemaVersion === 13)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))
@@ -730,7 +750,7 @@ export function validateEnvelope(
           writable: true,
         });
       // F21 preserves arbitrary existing nodes and deliberate removals. Only
-      // newly introduced F11 facility definitions are supplemented for both versions.
+      // newly introduced F11 facility definitions are supplemented for older versions.
       for (const [id, definition] of Object.entries(
         DEFAULT_RULES.research.definitions,
       ))

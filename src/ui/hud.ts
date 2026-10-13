@@ -4,6 +4,7 @@ import { marchOrderLabel } from './march-target';
 import type {
   BaseOwnerId,
   FactionView,
+  OwnedBaseView,
   ResearchId,
   UnitKind,
 } from '../simulation/types';
@@ -141,7 +142,7 @@ export function createHud(app: HTMLElement): HudElements {
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f19-capture">検査：制圧後HP率</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+      <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f12-supply-lines">検査：補給線</option><option value="f19-capture">検査：制圧後HP率</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -149,7 +150,7 @@ export function createHud(app: HTMLElement): HudElements {
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
       <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
-          <label>生産場所 <select data-production-site aria-label="部隊の生産場所"></select></label><div class="production-options"></div>
+        <label>生産場所 <select data-production-site aria-label="部隊の生産場所"></select></label><div class="production-options"></div>
           <h3>生産キュー</h3><div class="production-queue"></div>
         </section>
         <section data-panel="research" hidden><button data-action="bank-research">指定解除・バンクする</button><p>選択中の研究にポイントを充填。必要量で完了。指定しない間はバンクします。切替・解除でも充填済みポイントは残ります。</p>
@@ -410,15 +411,25 @@ export function updateHud(
     `補給 ${amount(own.supplyCenti)} / 研究バンク ${(own.researchCenti / 100).toFixed(1)}`,
   );
   const bases = view.bases.filter(
-    (base) => base.visibility === 'owned' && base.hp > 0,
+    (base): base is OwnedBaseView => base.visibility === 'owned' && base.hp > 0,
   );
-  const income = bases.reduce(
-      (n, base) =>
-        n +
-        view.rules.bases[base.kind].supplyIncomeCentiPerTick +
-        researchEffectValue(own, view.rules, 'supply-income-bonus'),
-      0,
-    ),
+  const income = bases.reduce((n, base) => {
+      const connected = view.supplyLine.connectedBaseIds.includes(base.id);
+      const percent = connected
+        ? 100
+        : view.rules.supplyLines.disconnectedIncomePercent;
+      const activeTier =
+        base.level > 1
+          ? baseUpgradeTier(base.kind, base.level as 2 | 3, view.rules)
+          : null;
+      const perTick =
+        Math.floor(
+          (view.rules.bases[base.kind].supplyIncomeCentiPerTick *
+            (activeTier?.supplyIncomePercent ?? 100)) /
+            100,
+        ) + researchEffectValue(own, view.rules, 'supply-income-bonus');
+      return n + Math.floor((perTick * percent) / 100);
+    }, 0),
     rp =
       view.rules.research.baseIncomeCentiPerTick +
       bases.reduce(
@@ -719,6 +730,14 @@ export function updateHud(
             : '未建設'
           : `${crossing.owner}所有 · HP${crossing.hp}/${crossing.maxHp}${job ? ` · ${job.kind === 'dismantle' ? '解体' : '建設'} ${job.progressTicks}/${job.requiredTicks}` : ''}`;
     }
+    const connectedCrossing = view.supplyLine.connectedCrossingIds.includes(
+      site.id,
+    );
+    if (
+      crossing.visibility === 'owned' &&
+      crossing.owner === view.viewerFactionId
+    )
+      status += ` · 補給線${connectedCrossing ? '接続' : '切断'}`;
     row.querySelector<HTMLElement>('.crossing-status')!.textContent = status;
     const requiredResearch = Object.entries(
       view.rules.research.definitions,
@@ -781,7 +800,7 @@ export function updateHud(
       !canDismantle || view.phase !== 'running' || snapshot.contextLost;
     row.querySelector<HTMLElement>('.crossing-reason')!.textContent =
       buildReason ??
-      `費用 ${amount(view.rules.crossings[site.tier].costCenti)} · 建設 ${seconds(view.rules.crossings[site.tier].buildTicks)} · 選択部隊で建設`;
+      `補給線：${connectedCrossing ? '首都と接続' : '切断'} · 費用 ${amount(view.rules.crossings[site.tier].costCenti)} · 建設 ${seconds(view.rules.crossings[site.tier].buildTicks)} · 選択部隊で建設`;
   }
   const selector =
     elements.root.querySelector<HTMLSelectElement>('[data-base-select]')!;
@@ -824,7 +843,18 @@ export function updateHud(
           (activeTier?.researchIncomePercent ?? 100)) /
           100,
       );
-      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureProgressCentiTicks / 100}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${supplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
+      const supplyConnected =
+        base.visibility === 'owned' &&
+        view.supplyLine.connectedBaseIds.includes(base.id);
+      const effectiveSupplyIncome = Math.floor(
+        (supplyIncome *
+          (supplyConnected
+            ? 100
+            : view.rules.supplyLines.disconnectedIncomePercent)) /
+          100,
+      );
+      const supplyReason = view.supplyLine.disconnectedBaseReasons[base.id];
+      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureProgressCentiTicks / 100}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給線：${supplyConnected ? '首都と接続' : `切断 · ${supplyReason ?? '首都へ未接続'} · 補給収入 ${view.rules.supplyLines.disconnectedIncomePercent}%`}\n補給 +${effectiveSupplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
       if (base.visibility === 'owned') {
         if (base.upgradeJob) {
           upgradeReason = `Lv${base.upgradeJob.targetLevel}へ強化中 · 残り${seconds(base.upgradeJob.remainingTicks)}`;

@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 13 as const;
-export const RULES_VERSION = 'f11-v1' as const;
+export const MASTER_SCHEMA_VERSION = 14 as const;
+export const RULES_VERSION = 'f12-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -66,6 +66,13 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly supplyLines: {
+    readonly disconnectedIncomePercent: number;
+    readonly disconnectedBaseRecoveryPercent: number;
+    readonly disconnectedCrossingRecoveryPercent: number;
+    readonly disconnectedBaseTurretDamagePercent: number;
+    readonly disconnectedFacilityDamagePercent: number;
+  };
   readonly facilities: {
     readonly slotsPerAnchor: number;
     readonly maxPerFaction: number;
@@ -197,6 +204,13 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  supplyLines: {
+    disconnectedIncomePercent: 50,
+    disconnectedBaseRecoveryPercent: 0,
+    disconnectedCrossingRecoveryPercent: 0,
+    disconnectedBaseTurretDamagePercent: 50,
+    disconnectedFacilityDamagePercent: 50,
+  },
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,

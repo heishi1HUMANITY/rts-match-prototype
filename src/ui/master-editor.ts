@@ -62,6 +62,31 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: '%',
     help: '1〜100の整数。制圧後のLv1最大HPに対する割合を切り捨て、最低1HPにします。保存後の新しい試合に適用します。',
   },
+  disconnectedIncomePercent: {
+    label: '切断拠点の補給収入',
+    unit: '%',
+    help: '首都から切断された所有拠点の補給収入倍率です。研究収入には影響しません。',
+  },
+  disconnectedBaseRecoveryPercent: {
+    label: '切断拠点の回復',
+    unit: '%',
+    help: '補給線から切断された拠点のHP回復倍率です。',
+  },
+  disconnectedCrossingRecoveryPercent: {
+    label: '切断渡河点の回復',
+    unit: '%',
+    help: '首都へ接続しない所有橋・索道のHP回復倍率です。',
+  },
+  disconnectedBaseTurretDamagePercent: {
+    label: '切断拠点砲座の攻撃',
+    unit: '%',
+    help: '補給線から切断された拠点砲座の攻撃倍率です。',
+  },
+  disconnectedFacilityDamagePercent: {
+    label: '切断施設の攻撃',
+    unit: '%',
+    help: '補給線から切断された拠点/渡河点付属施設の攻撃倍率です。',
+  },
   respawnEnabled: {
     label: '守備NPCの復活',
     unit: '',
@@ -409,6 +434,7 @@ function fieldsFor(rules: RulesMaster): {
     tickets: 'チケット',
     npc: 'NPC',
     localFaction: '現地勢力',
+    supplyLines: '補給線',
   };
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {

@@ -6,6 +6,7 @@ import type {
   FactionId,
   MatchState,
 } from './types';
+import { supplyNetwork } from './supply';
 
 export function maximumBaseLevel(
   faction: Pick<MatchState['factions'][number], 'completedResearchIds'>,
@@ -92,6 +93,12 @@ function baseStatsMaxHp(base: BaseState, rules: RulesMaster): number {
 /** Progresses paid jobs and passive recovery after combat and capture resolve. */
 export function advanceBaseUpgrades(state: MatchState): MatchState {
   let changed = false;
+  const supplyByFaction = new Map(
+    state.factions.map((faction) => [
+      faction.id,
+      supplyNetwork(state, faction.id),
+    ]),
+  );
   const bases = state.bases.map((base) => {
     let next = base;
     if (base.upgradeJob) {
@@ -123,19 +130,27 @@ export function advanceBaseUpgrades(state: MatchState): MatchState {
         }
       }
     }
+    const connected =
+      next.owner === 'local' ||
+      (next.owner !== null &&
+        supplyByFaction.get(next.owner)?.connectedBaseIds.includes(next.id));
+    const recoveryPercent = connected
+      ? 100
+      : state.rules.supplyLines.disconnectedBaseRecoveryPercent;
+    const recovery = Math.floor(
+      (state.rules.baseUpgrades.recoveryPerTick * recoveryPercent) / 100,
+    );
     if (
       next.owner !== null &&
       next.hp > 0 &&
       next.hp < next.maxHp &&
+      recovery > 0 &&
       state.elapsedTicks - next.lastDamagedTick >=
         state.rules.baseUpgrades.recoveryDelayTicks
     ) {
       next = {
         ...next,
-        hp: Math.min(
-          next.maxHp,
-          next.hp + state.rules.baseUpgrades.recoveryPerTick,
-        ),
+        hp: Math.min(next.maxHp, next.hp + recovery),
       };
     }
     if (next !== base) changed = true;

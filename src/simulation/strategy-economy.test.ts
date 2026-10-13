@@ -73,7 +73,7 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(withoutHq);
-    expect(faction(next).supplyCenti).toBe(12);
+    expect(faction(next).supplyCenti).toBe(2);
     expect(next.units).toBe(withoutHq.units);
   });
 });

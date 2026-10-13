@@ -14,6 +14,7 @@ import type {
   MatchState,
   CrossingView,
 } from './types';
+import { supplyNetwork } from './supply';
 
 function copyKnowledgeMap(knowledge: FactionKnowledge): {
   visible: boolean[];
@@ -239,6 +240,7 @@ export function getFactionView(
       hp: unit.hp,
       maxHp: unit.maxHp,
     }));
+  const supply = supplyNetwork(state, factionId);
   return {
     viewerFactionId: factionId,
     seed: state.seed,
@@ -331,6 +333,11 @@ export function getFactionView(
         ? { ...faction.activeResearch }
         : null,
       completedResearchIds: [...faction.completedResearchIds],
+    },
+    supplyLine: {
+      connectedBaseIds: [...supply.connectedBaseIds],
+      connectedCrossingIds: [...supply.connectedCrossingIds],
+      disconnectedBaseReasons: { ...supply.disconnectedBaseReasons },
     },
     ownUnits,
     visibleEnemies,

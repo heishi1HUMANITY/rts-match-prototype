@@ -59,13 +59,14 @@ describe('F17 browser master store', () => {
   it('migrates schema 11 capture settings without dropping saved edits', () => {
     const storage = new MemoryStorage();
     const { restoredHpPercent: _removed, ...capture } = DEFAULT_RULES.capture;
+    const { supplyLines: _removedSupplyLines, ...legacyRules } = DEFAULT_RULES;
     storage.setItem(
       'rts-match-prototype.master.v1',
       JSON.stringify({
         masterSchemaVersion: 11,
         revision: 42,
         rules: {
-          ...DEFAULT_RULES,
+          ...legacyRules,
           capture: { ...capture, requiredTicks: 57 },
           npc: { ...DEFAULT_RULES.npc, decisionIntervalTicks: 60 },
         },
@@ -75,11 +76,12 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
           npc: { decisionIntervalTicks: 60 },
+          supplyLines: DEFAULT_RULES.supplyLines,
         },
       },
     });
@@ -176,7 +178,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -204,7 +206,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 10,
         rules: {
           defenses: {
@@ -267,7 +269,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(13);
+    expect(loaded.envelope.masterSchemaVersion).toBe(14);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -360,7 +362,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 13,
+      masterSchemaVersion: 14,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },

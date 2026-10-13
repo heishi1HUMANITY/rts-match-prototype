@@ -1,9 +1,16 @@
 import type { CombatantId, MatchState } from './types';
 import { researchEffectValue } from './research';
 import { upgradedIncome } from './base-upgrades';
+import { supplyNetwork } from './supply';
 
 /** Applies income from surviving owned bases and upkeep for surviving units. */
 export function applyEconomyTick(state: MatchState): MatchState {
+  const supplyByFaction = new Map(
+    state.factions.map((faction) => [
+      faction.id,
+      supplyNetwork(state, faction.id),
+    ]),
+  );
   const income = new Map<CombatantId, { supply: number; research: number }>();
   for (const faction of state.factions) {
     if (faction.eliminatedAtTick !== null) continue;
@@ -23,13 +30,23 @@ export function applyEconomyTick(state: MatchState): MatchState {
     const supplyBonus = faction
       ? researchEffectValue(faction, state.rules, 'supply-income-bonus')
       : 0;
-    entry.supply +=
-      upgradedIncome(
+    const disconnected =
+      base.owner !== 'local' &&
+      !supplyByFaction.get(base.owner)?.connectedBaseIds.includes(base.id);
+    const incomePercent = disconnected
+      ? state.rules.supplyLines.disconnectedIncomePercent
+      : 100;
+    entry.supply += Math.floor(
+      ((upgradedIncome(
         base,
         stats.supplyIncomeCentiPerTick,
         state.rules,
         'supply',
-      ) + supplyBonus;
+      ) +
+        supplyBonus) *
+        incomePercent) /
+        100,
+    );
     entry.research += upgradedIncome(
       base,
       stats.researchIncomeCentiPerTick,

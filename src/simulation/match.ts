@@ -131,6 +131,16 @@ function buildUnits(rules: RulesMaster): UnitState[] {
 
 function scenarioMap(seed: number, scenarioId: ScenarioId) {
   const map = createMap(seed);
+  if (scenarioId === 'f12-supply-lines') {
+    const blocked = new Array(map.width * map.height).fill(false);
+    for (let y = 0; y < map.height; y += 1) blocked[y * map.width + 15] = true;
+    return {
+      ...map,
+      terrain: new Array(map.width * map.height).fill('land'),
+      terrainLevel: new Array(map.width * map.height).fill(0),
+      blocked,
+    };
+  }
   if (scenarioId !== 'f02-pursuit' && scenarioId !== 'g2-combat') return map;
   return {
     ...map,
@@ -147,6 +157,7 @@ function configuredFixture(
   let factions = state.factions.map((faction) => ({ ...faction }));
   let units = state.units.map((unit) => ({ ...unit, cell: { ...unit.cell } }));
   let bases = state.bases.map((base) => ({ ...base, cell: { ...base.cell } }));
+  let crossings = state.crossings.map((crossing) => ({ ...crossing }));
   if (scenarioId === 'g2-capture') {
     units = units.map((unit) =>
       unit.id === 'A-01'
@@ -308,8 +319,44 @@ function configuredFixture(
     bases = bases.map((base) =>
       base.id === 'OUT-01' ? { ...base, owner: 'A', defender: null } : base,
     );
+  } else if (scenarioId === 'f12-supply-lines') {
+    units = units.map((unit) =>
+      unit.id === 'A-01' ? { ...unit, cell: { x: 16, y: 27 } } : unit,
+    );
+    bases = bases.map((base) =>
+      base.id === 'OUT-03'
+        ? { ...base, owner: 'A', hp: base.maxHp, defender: null }
+        : base,
+    );
+    const site = state.map.crossingSites?.find(
+      ({ id }) => id === 'CROSS-BORDER-120-B2',
+    );
+    if (site) {
+      crossings = crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? {
+              ...crossing,
+              owner: 'A',
+              hp: state.rules.crossings[site.tier].maxHp,
+              maxHp: state.rules.crossings[site.tier].maxHp,
+            }
+          : crossing,
+      );
+      factions = factions.map((faction) =>
+        faction.id === 'A'
+          ? {
+              ...faction,
+              supplyCenti: 100_000,
+              completedResearchIds: [
+                ...faction.completedResearchIds,
+                'bridge-2',
+              ],
+            }
+          : faction,
+      );
+    }
   }
-  return { ...state, factions, units, bases };
+  return { ...state, factions, units, bases, crossings };
 }
 
 /** Creates a fresh schema-versioned match using deterministic map and scenario fixtures. */

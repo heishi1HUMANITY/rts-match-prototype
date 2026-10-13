@@ -22,7 +22,8 @@ export type ScenarioId =
   | 'f08-unit-domains'
   | 'f10-base-upgrades'
   | 'f19-capture'
-  | 'f11-facilities';
+  | 'f11-facilities'
+  | 'f12-supply-lines';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -404,6 +405,11 @@ export interface FactionView {
   readonly visible: readonly boolean[];
   readonly explored: readonly boolean[];
   readonly ownFaction: OwnFactionView;
+  readonly supplyLine: {
+    readonly connectedBaseIds: readonly string[];
+    readonly connectedCrossingIds: readonly string[];
+    readonly disconnectedBaseReasons: Readonly<Record<string, string>>;
+  };
   readonly ownUnits: readonly OwnUnitView[];
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
   readonly bases: readonly BaseView[];

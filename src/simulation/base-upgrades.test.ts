@@ -123,7 +123,7 @@ describe('F10 base upgrades', () => {
     const twoIncome = applyEconomyTick(levelTwo);
     expect(
       faction(twoIncome, 'A').supplyCenti - faction(oneIncome, 'A').supplyCenti,
-    ).toBe(6);
+    ).toBe(3);
     expect(
       faction(twoIncome, 'A').researchCenti -
         faction(oneIncome, 'A').researchCenti,
@@ -138,7 +138,7 @@ describe('F10 base upgrades', () => {
       elapsedTicks: 10,
     }).bases.find(({ id }) => id === base.id)!;
     expect(stillPaused.hp).toBe(50);
-    expect(recovering.hp).toBe(51);
+    expect(recovering.hp).toBe(50);
   });
 
   it('fires level 2 turrets on interval boundaries and damages air at half rate', () => {

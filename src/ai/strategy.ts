@@ -19,6 +19,7 @@ import type {
 } from '../simulation/types';
 import { isUnitUnlocked } from '../simulation/research';
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
+import { supplyReachableCells } from '../simulation/supply';
 
 function distanceSquared(a: Cell, b: Cell): number {
   const dx = a.x - b.x;
@@ -318,6 +319,9 @@ function crossingConstructionCommand(
   unit: OwnUnitView,
 ): Command | undefined {
   if (unit.kind !== 'assault') return undefined;
+  const hq = view.bases.find(
+    (base) => base.visibility === 'owned' && base.kind === 'hq' && base.hp > 0,
+  );
   const known = view.crossings.filter(
     (crossing) =>
       crossing.visibility === 'visible' || crossing.visibility === 'owned',
@@ -349,11 +353,28 @@ function crossingConstructionCommand(
         .filter((entry) => entry.route !== null)
         .sort((a, b) => a.route!.length - b.route!.length)[0];
       if (!best) return [];
+      const restoredBases = hq
+        ? view.bases.filter(
+            (base) =>
+              base.visibility === 'owned' &&
+              base.hp > 0 &&
+              !view.supplyLine.connectedBaseIds.includes(base.id) &&
+              supplyReachableCells(view.map, hq.cell, view.viewerFactionId, [
+                ...knownActiveCrossings(view),
+                {
+                  ...site,
+                  owner: view.viewerFactionId,
+                  allowedUnitKinds: [],
+                },
+              ]).has(`${base.cell.x},${base.cell.y}`),
+          ).length
+        : 0;
       return [
         {
           siteId: site.id,
           bank: best.bank,
           route: best.route!,
+          restoredBases,
           adjacent:
             isNear(unit.cell, site.bankA) || isNear(unit.cell, site.bankB),
         },
@@ -361,7 +382,9 @@ function crossingConstructionCommand(
     })
     .sort(
       (a, b) =>
-        a.route.length - b.route.length || (a.siteId < b.siteId ? -1 : 1),
+        b.restoredBases - a.restoredBases ||
+        a.route.length - b.route.length ||
+        (a.siteId < b.siteId ? -1 : 1),
     )[0];
   if (!options) return undefined;
   if (options.adjacent)

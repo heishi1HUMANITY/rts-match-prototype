@@ -11,6 +11,7 @@ import type {
   UnitState,
 } from './types';
 import type { FactionState } from './types';
+import { supplyNetwork } from './supply';
 
 export const CROSSING_ALLOWED_UNIT_KINDS: Readonly<
   Record<CrossingSite['tier'], readonly UnitKind[]>
@@ -251,6 +252,12 @@ function isAdjacent(
 
 export function advanceCrossings(state: MatchState): MatchState {
   let changed = false;
+  const supplyByFaction = new Map(
+    state.factions.map((faction) => [
+      faction.id,
+      supplyNetwork(state, faction.id),
+    ]),
+  );
   const crossings = state.crossings.map((crossing) => {
     const site = state.map.crossingSites?.find(
       ({ id }) => id === crossing.siteId,
@@ -279,10 +286,20 @@ export function advanceCrossings(state: MatchState): MatchState {
       state.elapsedTicks - crossing.lastDamagedTick >= 10 &&
       crossing.hp < crossing.maxHp
     ) {
+      const connected = supplyByFaction
+        .get(crossing.owner)
+        ?.connectedCrossingIds.includes(crossing.siteId);
+      const recoveryPercent = connected
+        ? 100
+        : state.rules.supplyLines.disconnectedCrossingRecoveryPercent;
+      const recovery = Math.floor(
+        (stats.regenerationPerTick * recoveryPercent) / 100,
+      );
+      if (recovery <= 0) return crossing;
       changed = true;
       return {
         ...crossing,
-        hp: Math.min(crossing.maxHp, crossing.hp + stats.regenerationPerTick),
+        hp: Math.min(crossing.maxHp, crossing.hp + recovery),
       };
     }
     return crossing;

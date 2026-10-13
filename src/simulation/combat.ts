@@ -19,6 +19,7 @@ import type {
 import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
 import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
+import { supplyNetwork } from './supply';
 
 interface Target {
   readonly kind:
@@ -330,6 +331,12 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
 /** Applies one simultaneous damage snapshot, then finalizes deaths and losses. */
 export function resolveCombat(state: MatchState): MatchState {
   const snapshot = state;
+  const supplyByFaction = new Map(
+    snapshot.factions.map((faction) => [
+      faction.id,
+      supplyNetwork(snapshot, faction.id),
+    ]),
+  );
   const unitDamage = new Map<string, number>();
   const facilityDamage = new Map<string, number>();
   const activatedFacilities = new Set<string>();
@@ -386,6 +393,14 @@ export function resolveCombat(state: MatchState): MatchState {
   for (const f of snapshot.facilities) {
     if (f.hp <= 0 || f.remainingBuildTicks > 0) continue;
     const d = snapshot.rules.facilities.definitions[f.kind];
+    const network = supplyByFaction.get(f.owner);
+    const anchorConnected =
+      f.anchor.kind === 'base'
+        ? network?.connectedBaseIds.includes(f.anchor.id)
+        : network?.connectedCrossingIds.includes(f.anchor.id);
+    const damagePercent = anchorConnected
+      ? 100
+      : snapshot.rules.supplyLines.disconnectedFacilityDamagePercent;
     if (snapshot.elapsedTicks - f.lastActivatedTick < d.attackIntervalTicks)
       continue;
     const target = snapshot.units
@@ -412,12 +427,14 @@ export function resolveCombat(state: MatchState): MatchState {
       )
       .sort((a, b) => a.distance - b.distance || (a.u.id < b.u.id ? -1 : 1))[0];
     if (!target) continue;
-    const damage =
+    const rawDamage =
       target.domain === 'air'
         ? d.damageVsAir
         : target.domain === 'water'
           ? d.damageVsWater
           : d.damageVsLand;
+    const damage = Math.floor((rawDamage * damagePercent) / 100);
+    if (damage <= 0) continue;
     unitDamage.set(target.u.id, (unitDamage.get(target.u.id) ?? 0) + damage);
     activatedFacilities.add(f.id);
     if (f.kind === 'mine') facilityDamage.set(f.id, f.hp);
@@ -465,6 +482,18 @@ export function resolveCombat(state: MatchState): MatchState {
     if (base.owner === null || base.hp <= 0) continue;
     const turret = baseTurretDamage(base, snapshot.rules);
     if (!turret || snapshot.elapsedTicks % turret.interval !== 0) continue;
+    const connected =
+      base.owner === 'local' ||
+      supplyByFaction.get(base.owner)?.connectedBaseIds.includes(base.id) ===
+        true;
+    const turretDamage = connected
+      ? turret.damage
+      : Math.floor(
+          (turret.damage *
+            snapshot.rules.supplyLines.disconnectedBaseTurretDamagePercent) /
+            100,
+        );
+    if (turretDamage <= 0) continue;
     const target = snapshot.units
       .filter((unit) => unit.hp > 0 && unit.factionId !== base.owner)
       .map((unit) => ({
@@ -487,7 +516,7 @@ export function resolveCombat(state: MatchState): MatchState {
       )[0]?.unit;
     if (target) {
       const air = snapshot.rules.units[target.kind].movementDomain === 'air';
-      const damage = air ? Math.ceil(turret.damage / 2) : turret.damage;
+      const damage = air ? Math.ceil(turretDamage / 2) : turretDamage;
       unitDamage.set(target.id, (unitDamage.get(target.id) ?? 0) + damage);
     }
   }
