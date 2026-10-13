@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 13 as const;
-export const RULES_VERSION = 'f11-v1' as const;
+export const MASTER_SCHEMA_VERSION = 14 as const;
+export const RULES_VERSION = 'f18-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -105,6 +105,7 @@ export interface RulesMaster {
         readonly supplyIncomeCentiPerTick: number;
         readonly researchIncomeCentiPerTick: number;
         readonly ticketWeight: number;
+        readonly garrisonCapacity: number;
       }
     >
   >;
@@ -329,14 +330,15 @@ export const DEFAULT_RULES: RulesMaster = {
     }),
   ) as unknown as RulesMaster['units'],
   bases: {
-    hq: { ...BASE_STATS.hq, ticketWeight: 0 },
-    outpost: { ...BASE_STATS.outpost, ticketWeight: 1 },
+    hq: { ...BASE_STATS.hq, ticketWeight: 0, garrisonCapacity: 2 },
+    outpost: { ...BASE_STATS.outpost, ticketWeight: 1, garrisonCapacity: 1 },
     medium: {
       maxHp: 180,
       vision: 5,
       supplyIncomeCentiPerTick: 30,
       researchIncomeCentiPerTick: 15,
       ticketWeight: 2,
+      garrisonCapacity: 2,
     },
     large: {
       maxHp: 300,
@@ -344,6 +346,7 @@ export const DEFAULT_RULES: RulesMaster = {
       supplyIncomeCentiPerTick: 40,
       researchIncomeCentiPerTick: 20,
       ticketWeight: 3,
+      garrisonCapacity: 3,
     },
   },
   defenses: {

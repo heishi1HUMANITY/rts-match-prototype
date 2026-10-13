@@ -75,7 +75,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -176,7 +176,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -204,7 +204,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 13,
+        masterSchemaVersion: 14,
         revision: 10,
         rules: {
           defenses: {
@@ -360,7 +360,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 13,
+      masterSchemaVersion: 14,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },

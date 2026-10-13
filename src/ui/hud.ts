@@ -157,7 +157,7 @@ export function createHud(app: HTMLElement): HudElements {
         </section>
         <section data-panel="crossings" hidden><p>予定地は公開情報です。敵設備の所有・耐久・作業は視界内だけ更新します。</p><div class="crossing-list"></div></section>
         <section data-panel="facilities" hidden><p>所有拠点・完成した橋/索道へ建築します。位置は自動、建築中も枠を使います。アンカーを失うと施設は消えます。</p><label>設置先 <select data-facility-anchor aria-label="施設の設置先"></select></label><p data-facility-slots></p><div class="facility-options"></div><p data-facility-status></p></section>
-        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-upgrade-reason></p><button data-action="upgrade-base">拠点を強化</button><p data-capture-help></p><button data-action="production">生産を開く</button></section>
+        <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-upgrade-reason></p><button data-action="upgrade-base">拠点を強化</button><button data-action="garrison">選択部隊を駐留</button><p data-capture-help></p><button data-action="production">生産を開く</button></section>
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="facilities">施設</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
@@ -469,9 +469,11 @@ export function updateHud(
   else if (selectedUnits.length > 1)
     selectionInstruction = 'まとめてドラッグ、または地面タップで移動';
   else if (selected)
-    selectionInstruction = selected.path.length
-      ? `移動中 · ${elements.multiSelect ? 'タップで選択を追加' : 'ドラッグで行先変更'}`
-      : `ドラッグで移動${elements.multiSelect ? ' · タップで追加/解除' : ''}`;
+    selectionInstruction = selected.garrisonedAtBaseId
+      ? `駐留中 · 地面へ移動指示で ${selected.garrisonedAtBaseId} から出撃`
+      : selected.path.length
+        ? `移動中 · ${elements.multiSelect ? 'タップで選択を追加' : 'ドラッグで行先変更'}`
+        : `ドラッグで移動${elements.multiSelect ? ' · タップで追加/解除' : ''}`;
   else
     selectionInstruction = elements.multiSelect
       ? '複数選択中 · 自軍をタップで追加、すべて選択も可'
@@ -508,7 +510,7 @@ export function updateHud(
     node.classList.toggle('selected', selected);
     node.setAttribute('aria-pressed', String(selected));
     node.querySelector('small')!.textContent =
-      `${kindName(unit.kind)} ${unit.hp}/${unit.maxHp}${unit.marchOrder ? ' →' : ''}`;
+      `${kindName(unit.kind)} ${unit.hp}/${unit.maxHp}${unit.garrisonedAtBaseId ? ` · 駐留 ${unit.garrisonedAtBaseId}` : unit.marchOrder ? ' →' : ''}`;
     const orderLabel = marchOrderLabel(unit);
     node.title = orderLabel;
     node.setAttribute(
@@ -799,9 +801,20 @@ export function updateHud(
   const upgradeButton = elements.root.querySelector<HTMLButtonElement>(
     '[data-action="upgrade-base"]',
   )!;
+  const garrisonButton = elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="garrison"]',
+  )!;
   upgradeButton.hidden = base?.visibility !== 'owned';
   upgradeButton.disabled = true;
   upgradeButton.textContent = '拠点を強化';
+  garrisonButton.hidden = base?.visibility !== 'owned';
+  garrisonButton.disabled =
+    base?.visibility !== 'owned' ||
+    selectedUnits.length === 0 ||
+    view.phase !== 'running' ||
+    snapshot.contextLost ||
+    own.eliminatedAtTick !== null;
+  garrisonButton.textContent = '選択部隊を駐留';
   if (base) {
     const location = `${base.id} (${base.cell.x},${base.cell.y})`;
     if (base.visibility === 'unknown')
@@ -864,6 +877,19 @@ export function updateHud(
         }
       }
     }
+  }
+  if (base?.visibility === 'owned') {
+    const garrison = view.ownUnits.filter(
+      (unit) => unit.garrisonedAtBaseId === base.id,
+    );
+    detail += `\n駐留 ${garrison.length}/${view.rules.bases[base.kind].garrisonCapacity}`;
+    if (garrison.length > 0)
+      detail += ` · ${garrison
+        .map(
+          (unit) =>
+            `${unit.id} ${kindName(unit.kind)} HP${unit.hp}/${unit.maxHp}`,
+        )
+        .join('、')}`;
   }
   text('.base-detail', detail);
   text('[data-upgrade-reason]', upgradeReason);
@@ -1008,6 +1034,7 @@ function drawMiniMap(
     }
     context.fillStyle = '#fff';
     for (const unit of view.ownUnits) {
+      if (unit.garrisonedAtBaseId) continue;
       context.fillRect(unit.cell.x * cellWidth, unit.cell.y * cellHeight, 2, 2);
     }
     context.fillStyle = '#a71818';

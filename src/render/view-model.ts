@@ -79,7 +79,10 @@ export function getUnitFrames(
     ]),
   );
   const fraction = Math.max(0, Math.min(1, alpha));
-  return [...current.ownUnits, ...current.visibleEnemies].map((unit) => {
+  return [
+    ...current.ownUnits.filter((unit) => !unit.garrisonedAtBaseId),
+    ...current.visibleEnemies,
+  ].map((unit) => {
     const now = position(unit);
     const before = old.get(unit.id);
     if (

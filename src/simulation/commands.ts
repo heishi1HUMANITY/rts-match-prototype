@@ -106,6 +106,13 @@ function parseCommand(input: unknown): ParsedCommand | null {
       : null;
   }
   if (
+    input.type === 'garrison' &&
+    hasExactKeys(input, ['type', 'unitId', 'baseId']) &&
+    typeof input.unitId === 'string' &&
+    typeof input.baseId === 'string'
+  )
+    return { type: 'garrison', unitId: input.unitId, baseId: input.baseId };
+  if (
     input.type === 'enqueue-production' &&
     hasExactKeys(input, ['type', 'baseId', 'unitKind']) &&
     typeof input.baseId === 'string' &&
@@ -219,6 +226,45 @@ function isCurrentDestination(unit: UnitState, target: Cell): boolean {
   return destination !== undefined && sameCell(destination, target);
 }
 
+function garrisonedOrAssigned(state: MatchState, baseId: string): number {
+  const base = state.bases.find(({ id }) => id === baseId);
+  if (!base) return 0;
+  return state.units.filter(
+    (unit) =>
+      unit.garrisonedAtBaseId === baseId ||
+      (unit.factionId === base.owner &&
+        ((unit.moveTarget?.x === base.cell.x &&
+          unit.moveTarget?.y === base.cell.y) ||
+          (unit.marchOrder?.target.kind === 'base' &&
+            unit.marchOrder.target.id === baseId))),
+  ).length;
+}
+
+function garrisonReject(
+  state: MatchState,
+  actor: FactionId,
+  unit: UnitState,
+  baseId: string,
+): RejectCode | null {
+  const base = state.bases.find(({ id }) => id === baseId);
+  if (!base || base.owner !== actor) return null;
+  if (unitCapabilities(unit.kind, state.rules).movementDomain !== 'land')
+    return 'GARRISON_NOT_ALLOWED';
+  const alreadyAssigned =
+    unit.garrisonedAtBaseId === baseId ||
+    (unit.moveTarget?.x === base.cell.x &&
+      unit.moveTarget?.y === base.cell.y) ||
+    (unit.marchOrder?.target.kind === 'base' &&
+      unit.marchOrder.target.id === baseId);
+  if (
+    !alreadyAssigned &&
+    garrisonedOrAssigned(state, baseId) >=
+      state.rules.bases[base.kind].garrisonCapacity
+  )
+    return 'GARRISON_FULL';
+  return null;
+}
+
 export function applyCommand(
   state: MatchState,
   actor: FactionId,
@@ -297,7 +343,45 @@ export function applyCommand(
     );
   }
 
+  if (command.type === 'garrison') {
+    const base = state.bases.find(({ id }) => id === command.baseId);
+    if (!base) return reject(state, 'BASE_NOT_FOUND');
+    if (base.owner !== actor) return reject(state, 'GARRISON_NOT_OWNED');
+    const reason = garrisonReject(state, actor, unit, base.id);
+    if (reason) return reject(state, reason);
+    if (sameCell(unit.cell, base.cell) && unit.path.length === 0)
+      return succeed(
+        copyWithUnit(state, unit, {
+          ...unit,
+          path: [],
+          marchOrder: null,
+          moveTarget: null,
+          garrisonedAtBaseId: base.id,
+        }),
+      );
+    const currentEdge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
+    const origin = currentEdge ?? unit.cell;
+    const route = findPath(state.map, origin, base.cell, {
+      factionId: unit.factionId,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
+      crossings: knownActiveCrossings(state, unit.factionId),
+      unitKind: unit.kind,
+      allowBlockedStart: true,
+    });
+    if (route === null) return reject(state, 'UNREACHABLE');
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...unit,
+        path: currentEdge === undefined ? route : [currentEdge, ...route],
+        marchOrder: null,
+        moveTarget: { ...base.cell },
+        garrisonedAtBaseId: null,
+      }),
+    );
+  }
+
   if (command.type === 'stop') {
+    if (unit.garrisonedAtBaseId) return succeed(state);
     const stoppedPath = unit.edgeProgress > 0 ? unit.path.slice(0, 1) : [];
     if (
       (unit.marchOrder === undefined || unit.marchOrder === null) &&
@@ -323,6 +407,20 @@ export function applyCommand(
     let initialStatus: 'tracking' | 'searching' = 'tracking';
     if (command.target.kind === 'base') {
       const base = state.bases.find(({ id }) => id === command.target.id);
+      if (base?.owner === actor) {
+        const reason = garrisonReject(state, actor, unit, base.id);
+        if (reason) return reject(state, reason);
+        if (sameCell(unit.cell, base.cell) && unit.path.length === 0)
+          return succeed(
+            copyWithUnit(state, unit, {
+              ...unit,
+              path: [],
+              marchOrder: null,
+              moveTarget: null,
+              garrisonedAtBaseId: base.id,
+            }),
+          );
+      }
       const stronghold =
         command.target.id === state.localFaction.stronghold.id &&
         state.localFaction.active &&
@@ -354,7 +452,7 @@ export function applyCommand(
     }
     const march = advanceMarchOrder(
       state,
-      unit,
+      { ...unit, garrisonedAtBaseId: null },
       command.target,
       lastKnownCell,
       lastSeenTick,
@@ -382,6 +480,24 @@ export function applyCommand(
     })
   )
     return reject(state, 'BLOCKED');
+  const baseAtTarget = state.bases.find(
+    (base) => base.owner === actor && sameCell(base.cell, target),
+  );
+  if (baseAtTarget) {
+    const reason = garrisonReject(state, actor, unit, baseAtTarget.id);
+    if (reason) return reject(state, reason);
+    if (sameCell(unit.cell, target) && unit.path.length === 0)
+      return succeed(
+        copyWithUnit(state, unit, {
+          ...unit,
+          path: [],
+          edgeProgress: 0,
+          marchOrder: null,
+          moveTarget: null,
+          garrisonedAtBaseId: baseAtTarget.id,
+        }),
+      );
+  }
   if (isCurrentDestination(unit, target)) {
     if (unit.marchOrder === undefined || unit.marchOrder === null)
       return succeed(state);
@@ -407,6 +523,7 @@ export function applyCommand(
       edgeProgress: unit.edgeProgress,
       marchOrder: null,
       moveTarget: { ...target },
+      garrisonedAtBaseId: null,
     }),
   );
 }

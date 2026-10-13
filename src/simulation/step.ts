@@ -134,6 +134,79 @@ function revalidateRoutes(state: MatchState): MatchState {
   return changed ? { ...state, units } : state;
 }
 
+function garrisonArrivals(before: MatchState, after: MatchState): MatchState {
+  const baseCounts = new Map<string, number>();
+  for (const unit of after.units)
+    if (unit.garrisonedAtBaseId)
+      baseCounts.set(
+        unit.garrisonedAtBaseId,
+        (baseCounts.get(unit.garrisonedAtBaseId) ?? 0) + 1,
+      );
+  let changed = false;
+  const units = [...after.units]
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((unit) => {
+      const old = before.units.find(({ id }) => id === unit.id);
+      if (
+        !old ||
+        old.garrisonedAtBaseId ||
+        unit.path.length > 0 ||
+        (unit.cell.x === old.cell.x && unit.cell.y === old.cell.y)
+      )
+        return unit;
+      const base = after.bases.find(
+        (candidate) =>
+          candidate.owner === unit.factionId &&
+          candidate.cell.x === unit.cell.x &&
+          candidate.cell.y === unit.cell.y &&
+          ((old.moveTarget?.x === candidate.cell.x &&
+            old.moveTarget?.y === candidate.cell.y) ||
+            (old.marchOrder?.target.kind === 'base' &&
+              old.marchOrder.target.id === candidate.id)),
+      );
+      if (
+        !base ||
+        unitCapabilities(unit.kind, after.rules).movementDomain !== 'land' ||
+        (baseCounts.get(base.id) ?? 0) >=
+          after.rules.bases[base.kind].garrisonCapacity
+      )
+        return unit;
+      changed = true;
+      baseCounts.set(base.id, (baseCounts.get(base.id) ?? 0) + 1);
+      return {
+        ...unit,
+        garrisonedAtBaseId: base.id,
+        moveTarget: null,
+        marchOrder: null,
+      };
+    });
+  return changed ? { ...after, units } : after;
+}
+
+function releaseInvalidGarrisons(before: MatchState, after: MatchState): MatchState {
+  let changed = false;
+  const units = after.units.map((unit) => {
+    if (!unit.garrisonedAtBaseId) return unit;
+    const oldBase = before.bases.find(
+      ({ id }) => id === unit.garrisonedAtBaseId,
+    );
+    const newBase = after.bases.find(
+      ({ id }) => id === unit.garrisonedAtBaseId,
+    );
+    if (
+      !newBase ||
+      newBase.owner !== unit.factionId ||
+      newBase.hp <= 0 ||
+      (oldBase !== undefined && oldBase.owner !== newBase.owner)
+    ) {
+      changed = true;
+      return { ...unit, garrisonedAtBaseId: null };
+    }
+    return unit;
+  });
+  return changed ? { ...after, units } : after;
+}
+
 /**
  * Advances one deterministic G3 tick: movement, simultaneous combat, capture,
  * economy and research fill, production, tickets, simultaneous eliminations,
@@ -147,11 +220,17 @@ export function stepMatch(state: MatchState): MatchState {
   next = { ...next, elapsedTicks: initial.elapsedTicks + 1 };
   next = advanceLocalFaction(next);
   next = advanceFacilities(next);
-  next = { ...next, units: next.units.map((unit) => stepUnit(unit, next)) };
+  const beforeMovement = next;
+  next = {
+    ...next,
+    units: next.units.map((unit) => stepUnit(unit, next)),
+  };
+  next = garrisonArrivals(beforeMovement, next);
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
   next = recoverNearHeadquarters(next, beforeCombat);
-  next = advanceCapture(next);
+  const beforeCapture = next;
+  next = releaseInvalidGarrisons(beforeCapture, advanceCapture(next));
   next = advanceBaseUpgrades(next);
   next = applyEconomyTick(next);
   next = advanceResearch(next);

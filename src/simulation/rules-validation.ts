@@ -302,7 +302,9 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
           const max =
-            fieldPath === 'rules.capture.restoredHpPercent'
+            fieldPath.endsWith('.garrisonCapacity')
+              ? 64
+              : fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
               : fieldPath.endsWith('captureEfficiencyPercent')
                 ? 1_000
@@ -503,7 +505,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
-      input.masterSchemaVersion !== 12)
+      input.masterSchemaVersion !== 12 &&
+      input.masterSchemaVersion !== 13)
   )
     return {
       ok: false,
@@ -584,6 +587,22 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (isRecord(migrationCandidate.bases))
+      migrationCandidate = {
+        ...migrationCandidate,
+        bases: Object.fromEntries(
+          Object.entries(DEFAULT_RULES.bases).map(([kind, defaults]) => [
+            kind,
+            {
+              ...defaults,
+              ...(isRecord(migrationCandidate.bases) &&
+              isRecord(migrationCandidate.bases[kind])
+                ? migrationCandidate.bases[kind]
+                : {}),
+            },
+          ]),
+        ),
+      };
     if (isRecord(migrationCandidate.capture))
       migrationCandidate = {
         ...migrationCandidate,

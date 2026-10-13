@@ -10,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 18 as const;
+export const SCHEMA_VERSION = 19 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 3_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
