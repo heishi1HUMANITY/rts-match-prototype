@@ -56,18 +56,53 @@ function issueNumber(cell = '') {
   return values.size === 1 ? [...values][0] : null;
 }
 
-export function checkpointBody(cp, issues, template, pagesUrl) {
+function formatIssue(issue) {
+  return `- #${issue.number}: ${issue.title
+    .replace(/[\r\n]/g, ' ')
+    .replace(/@/g, '&#64;')
+    .replace(/[\\`*_{}\[\]()<>#|]/g, '\\$&')}`;
+}
+
+export function carriedIssues(issues, milestones) {
+  const cpMilestones = milestones.filter((milestone) =>
+    /^CP\d+$/.test(milestone.title),
+  );
+  const target =
+    cpMilestones
+      .filter((milestone) => milestone.state === 'open')
+      .sort(
+        (left, right) =>
+          Number(left.title.slice(2)) - Number(right.title.slice(2)),
+      )[0] ?? null;
+  const closedNumbers = new Set(
+    cpMilestones
+      .filter((milestone) => milestone.state === 'closed')
+      .map((milestone) => milestone.number),
+  );
+  const carried = issues
+    .filter((issue) => {
+      const labels = issue.labels.map((label) => label.name);
+      return (
+        labels.includes('gate:play') &&
+        labels.includes('status:unverified') &&
+        !labels.includes('kind:decision') &&
+        !labels.includes('kind:checkpoint') &&
+        closedNumbers.has(issue.milestone?.number)
+      );
+    })
+    .sort((left, right) => left.number - right.number);
+  return { target, carried };
+}
+
+export function checkpointBody(cp, issues, template, pagesUrl, carried = []) {
   const pending = issues.length
-    ? issues
-        .map(
-          (issue) =>
-            `- #${issue.number}: ${issue.title
-              .replace(/[\r\n]/g, ' ')
-              .replace(/@/g, '&#64;')
-              .replace(/[\\`*_{}\[\]()<>#|]/g, '\\$&')}`,
-        )
-        .join('\n')
+    ? issues.map(formatIssue).join('\n')
     : '- なし（#12のプレイ検証済み列と検査コメントを参照）。';
+  const carryover = carried.length
+    ? `\n\n持ち越し（前のCPで未検証のまま閉じた機能）:\n${carried
+        .map(formatIssue)
+        .join('\n')}`
+    : '';
   const text = (template ?? '').replace(/\r\n/g, '\n');
   const headings = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
   if (
@@ -93,7 +128,7 @@ export function checkpointBody(cp, issues, template, pagesUrl) {
     .replace(
       '## 通常設定で1試合',
       `## 通常設定で1試合\n\n${links}`,
-    )}\n\n${pending}\n`;
+    )}\n\n${pending}${carryover}\n`;
 }
 
 export function findCheckpoint(issues, cp) {
@@ -299,6 +334,7 @@ function main() {
   const milestones = list(`${base}/milestones?state=all`).filter((item) =>
     /^CP\d+$/.test(item.title),
   );
+  const carryover = carriedIssues(plan.issues, milestones);
   for (const cp of milestones) {
     const pending = plan.issues.filter(
       (issue) =>
@@ -307,8 +343,10 @@ function main() {
         issue.labels.some((label) => label.name === 'gate:play') &&
         issue.labels.some((label) => label.name === 'status:unverified'),
     );
+    const carried =
+      cp.number === carryover.target?.number ? carryover.carried : [];
     const existing = findCheckpoint(issues, cp.title);
-    if (!existing && !pending.length) continue;
+    if (!existing && !pending.length && !carried.length) continue;
     const templatePath = `docs/project/inspection/${cp.title}.md`;
     let body;
     try {
@@ -322,6 +360,7 @@ function main() {
           'utf8',
         ),
         process.env.PAGES_URL || `https://${owner}.github.io/${name}/`,
+        carried,
       );
     } catch (error) {
       plan.warnings.push(error.message);
@@ -335,7 +374,7 @@ function main() {
         body,
         title: `${cp.title}: プレイ検査記録`,
         milestone: cp.number,
-        ...(!existing ? { labels: ['kind:checkpoint', 'flow:ready'] } : {}),
+        ...(!existing ? { labels: ['kind:checkpoint'] } : {}),
       },
     });
   }

@@ -1,6 +1,6 @@
 # 実装タスクとCP検査
 
-Issue番号からの着手は [共通作業手順](ISSUE_AGENT_RUNBOOK.md)、各機能の設計・依存・実装場所・動作確認は [タスク別実装ガイド](ISSUE_IMPLEMENTATION_GUIDE.md) を参照する。
+Issue番号からの着手は [共通作業手順](WORKFLOW.md)、各機能の設計・依存・実装場所・動作確認は [タスク別実装ガイド](ISSUE_IMPLEMENTATION_GUIDE.md) を参照する。
 
 この文書は仕様と受入条件を管理する。進捗の唯一の正は [全体Issue #12](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) のマージ済み・プレイ検証済み2列。各Issue/PRは依存・修正履歴・根拠を保持する。
 G1〜G4は機能の区分で、ユーザー合格をマージ条件にする区切りではない。以下の検査項目はSCENARIOS/e2eへ対応付ける機能契約。ユーザー検査は [WORKFLOW.md](WORKFLOW.md) のCP票で通常1試合・確認3点にまとめる。

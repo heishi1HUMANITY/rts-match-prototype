@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {
   checkpointBody,
+  carriedIssues,
   dispatchMergedNumbers,
   findCheckpoint,
   planSync,
@@ -161,6 +162,42 @@ test('dispatch includes only auto or explicitly unverified merged issues', () =>
   );
 });
 
+test('closed play issues carry to the lowest numbered open CP', () => {
+  const closedCp = { number: 1, title: 'CP0', state: 'closed' };
+  const openCp1 = { number: 2, title: 'CP1', state: 'open' };
+  const openCp3 = { number: 3, title: 'CP3', state: 'open' };
+  const carried = issue(19);
+  carried.milestone = closedCp;
+  carried.labels.push({ name: 'status:unverified' });
+  const stillOpen = issue(20);
+  stillOpen.milestone = openCp1;
+  stillOpen.labels.push({ name: 'status:unverified' });
+  const decision = issue(21);
+  decision.milestone = closedCp;
+  decision.labels.push(
+    { name: 'status:unverified' },
+    { name: 'kind:decision' },
+  );
+  const checkpoint = issue(22);
+  checkpoint.milestone = closedCp;
+  checkpoint.labels.push(
+    { name: 'status:unverified' },
+    { name: 'kind:checkpoint' },
+  );
+  const earlierIssue = issue(18);
+  earlierIssue.milestone = closedCp;
+  earlierIssue.labels.push({ name: 'status:unverified' });
+  const result = carriedIssues(
+    [carried, stillOpen, decision, checkpoint, earlierIssue],
+    [openCp3, closedCp, openCp1],
+  );
+  assert.equal(result.target, openCp1);
+  assert.deepEqual(
+    result.carried.map((candidate) => candidate.number),
+    [18, 19],
+  );
+});
+
 test('checkpoint has one match, exactly three checks and pending features', () => {
   const template = readFileSync(
     'docs/project/inspection/CP_TEMPLATE.md',
@@ -177,6 +214,18 @@ test('checkpoint has one match, exactly three checks and pending features', () =
   assert.ok(sheet.includes('https://example.github.io/repo/build-info.json'));
   assert.ok(sheet.indexOf('- #15:') > sheet.indexOf('## 既知の未検証'));
   assert.ok(checkpointBody('CP0', [], template, url).includes('- なし'));
+  assert.equal(
+    checkpointBody('CP0', [issue(15)], template, url, []),
+    checkpointBody('CP0', [issue(15)], template, url),
+  );
+  const carriedSheet = checkpointBody('CP1', [issue(15)], template, url, [
+    issue(19),
+  ]);
+  assert.ok(
+    carriedSheet.includes(
+      '- #15: feature 15\n\n持ち越し（前のCPで未検証のまま閉じた機能）:\n- #19: feature 19',
+    ),
+  );
   assert.throws(
     () => checkpointBody('CP0', [], '# CP0\n\n## 既知の未検証', url),
     /3見出し/,
