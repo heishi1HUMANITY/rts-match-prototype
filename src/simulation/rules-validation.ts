@@ -301,10 +301,9 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight');
-          const max =
-            fieldPath.endsWith('.garrisonCapacity')
-              ? 64
-              : fieldPath === 'rules.capture.restoredHpPercent'
+          const max = fieldPath.endsWith('.garrisonCapacity')
+            ? 64
+            : fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
               : fieldPath.endsWith('captureEfficiencyPercent')
                 ? 1_000

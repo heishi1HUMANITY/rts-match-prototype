@@ -233,10 +233,8 @@ function garrisonedOrAssigned(state: MatchState, baseId: string): number {
     (unit) =>
       unit.garrisonedAtBaseId === baseId ||
       (unit.factionId === base.owner &&
-        ((unit.moveTarget?.x === base.cell.x &&
-          unit.moveTarget?.y === base.cell.y) ||
-          (unit.marchOrder?.target.kind === 'base' &&
-            unit.marchOrder.target.id === baseId))),
+        unit.moveTarget?.x === base.cell.x &&
+        unit.moveTarget?.y === base.cell.y),
   ).length;
 }
 
@@ -252,10 +250,7 @@ function garrisonReject(
     return 'GARRISON_NOT_ALLOWED';
   const alreadyAssigned =
     unit.garrisonedAtBaseId === baseId ||
-    (unit.moveTarget?.x === base.cell.x &&
-      unit.moveTarget?.y === base.cell.y) ||
-    (unit.marchOrder?.target.kind === 'base' &&
-      unit.marchOrder.target.id === baseId);
+    (unit.moveTarget?.x === base.cell.x && unit.moveTarget?.y === base.cell.y);
   if (
     !alreadyAssigned &&
     garrisonedOrAssigned(state, baseId) >=
@@ -407,20 +402,6 @@ export function applyCommand(
     let initialStatus: 'tracking' | 'searching' = 'tracking';
     if (command.target.kind === 'base') {
       const base = state.bases.find(({ id }) => id === command.target.id);
-      if (base?.owner === actor) {
-        const reason = garrisonReject(state, actor, unit, base.id);
-        if (reason) return reject(state, reason);
-        if (sameCell(unit.cell, base.cell) && unit.path.length === 0)
-          return succeed(
-            copyWithUnit(state, unit, {
-              ...unit,
-              path: [],
-              marchOrder: null,
-              moveTarget: null,
-              garrisonedAtBaseId: base.id,
-            }),
-          );
-      }
       const stronghold =
         command.target.id === state.localFaction.stronghold.id &&
         state.localFaction.active &&

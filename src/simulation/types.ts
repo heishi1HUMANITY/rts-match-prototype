@@ -22,7 +22,8 @@ export type ScenarioId =
   | 'f08-unit-domains'
   | 'f10-base-upgrades'
   | 'f19-capture'
-  | 'f11-facilities';
+  | 'f11-facilities'
+  | 'f18-garrison';
 export type UnitKind =
   | 'assault'
   | 'scout'

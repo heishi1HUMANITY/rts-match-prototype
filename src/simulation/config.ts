@@ -412,4 +412,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f10-base-upgrades',
   'f19-capture',
   'f11-facilities',
+  'f18-garrison',
 ];

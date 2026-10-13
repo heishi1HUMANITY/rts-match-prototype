@@ -499,7 +499,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(13);
+      expect(result.envelope.masterSchemaVersion).toBe(14);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);

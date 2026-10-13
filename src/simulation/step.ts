@@ -159,10 +159,8 @@ function garrisonArrivals(before: MatchState, after: MatchState): MatchState {
           candidate.owner === unit.factionId &&
           candidate.cell.x === unit.cell.x &&
           candidate.cell.y === unit.cell.y &&
-          ((old.moveTarget?.x === candidate.cell.x &&
-            old.moveTarget?.y === candidate.cell.y) ||
-            (old.marchOrder?.target.kind === 'base' &&
-              old.marchOrder.target.id === candidate.id)),
+          old.moveTarget?.x === candidate.cell.x &&
+          old.moveTarget?.y === candidate.cell.y,
       );
       if (
         !base ||
@@ -183,7 +181,10 @@ function garrisonArrivals(before: MatchState, after: MatchState): MatchState {
   return changed ? { ...after, units } : after;
 }
 
-function releaseInvalidGarrisons(before: MatchState, after: MatchState): MatchState {
+function releaseInvalidGarrisons(
+  before: MatchState,
+  after: MatchState,
+): MatchState {
   let changed = false;
   const units = after.units.map((unit) => {
     if (!unit.garrisonedAtBaseId) return unit;
