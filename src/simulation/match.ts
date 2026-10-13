@@ -101,15 +101,17 @@ function buildBases(rules: RulesMaster): BaseState[] {
       lastDamagedTick: 0,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
+      homeFactionId: hq ? factionId : null,
+      attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
       defender:
         owner === null && !hq
           ? {
               hp: rules.defenses[kind].maxHp,
               maxHp: rules.defenses[kind].maxHp,
               disabledTicks: 0,
+              attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
             }
           : null,
-      homeFactionId: hq ? factionId : null,
     };
   });
 }
@@ -126,6 +128,7 @@ function buildUnits(rules: RulesMaster): UnitState[] {
     edgeProgress: 0,
     moveTicksPerCell: rules.units[kind].moveTicksPerCell,
     marchOrder: null,
+    attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
   }));
 }
 
@@ -161,9 +164,9 @@ function configuredFixture(
   } else if (scenarioId === 'g2-combat') {
     units = units.map((unit) => {
       if (unit.id === 'A-01')
-        return { ...unit, cell: { x: 20, y: 20 }, hp: 4, maxHp: 100 };
+        return { ...unit, cell: { x: 20, y: 20 }, hp: 40, maxHp: 200 };
       if (unit.id === 'B-01')
-        return { ...unit, cell: { x: 22, y: 20 }, hp: 4, maxHp: 100 };
+        return { ...unit, cell: { x: 22, y: 20 }, hp: 40, maxHp: 200 };
       if (unit.id === 'A-02') return { ...unit, cell: { x: 10, y: 20 } };
       if (unit.id === 'B-02') return { ...unit, cell: { x: 30, y: 20 } };
       return unit;

@@ -174,6 +174,7 @@ export function resetBaseToLevelOne(
     maxHp,
     hp: Math.max(0, Math.min(maxHp, Math.floor(maxHp * hpRatio))),
     lastDamagedTick: tick,
+    attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
   };
 }
 
@@ -190,6 +191,6 @@ export function baseTurretDamage(
   return {
     damage: tier.turretDamage,
     range: tier.turretRange,
-    interval: tier.turretIntervalTicks,
+    interval: tier.intervalTicks ?? tier.turretIntervalTicks ?? 10,
   };
 }

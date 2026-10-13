@@ -570,7 +570,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(16);
+      expect(result.envelope.masterSchemaVersion).toBe(17);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);
@@ -606,5 +606,89 @@ describe('F11 and F21 combined migration contract', () => {
         effect.value === 0 && effect.facilityKind === 'jammer',
       );
     }
+  });
+
+  it('migrates schema 16 master to schema 17 by defaulting attack profile fields', () => {
+    const v16Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    // Remove new F16 fields to simulate schema 16
+    for (const unit of Object.values(v16Rules.units) as Record<string, any>[]) {
+      delete unit.windupTicks;
+      delete unit.intervalTicks;
+      delete unit.canAttackWhileMoving;
+    }
+    for (const def of Object.values(v16Rules.defenses) as Record<
+      string,
+      any
+    >[]) {
+      if (typeof def === 'object' && def !== null) {
+        delete def.windupTicks;
+        delete def.intervalTicks;
+        delete def.canAttackWhileMoving;
+      }
+    }
+    for (const fac of Object.values(v16Rules.facilities.definitions) as Record<
+      string,
+      any
+    >[]) {
+      delete fac.windupTicks;
+      delete fac.intervalTicks;
+      delete fac.canAttackWhileMoving;
+    }
+    for (const kind of Object.values(v16Rules.baseUpgrades.kinds) as Record<
+      string,
+      any
+    >[]) {
+      for (const tier of Object.values(kind) as Record<string, any>[]) {
+        delete tier.windupTicks;
+        delete tier.intervalTicks;
+        delete tier.canAttackWhileMoving;
+      }
+    }
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 16,
+      revision: 1,
+      rules: v16Rules,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(17);
+    expect(result.envelope.rules.units.assault.windupTicks).toBe(0);
+    expect(result.envelope.rules.units.assault.intervalTicks).toBe(1);
+    expect(result.envelope.rules.units.assault.canAttackWhileMoving).toBe(true);
+    expect(result.envelope.rules.units.artillery.windupTicks).toBe(0);
+    expect(result.envelope.rules.units.artillery.intervalTicks).toBe(1);
+    expect(result.envelope.rules.units.artillery.canAttackWhileMoving).toBe(
+      true,
+    );
+    expect(result.envelope.rules.defenses.outpost.windupTicks).toBe(0);
+    expect(result.envelope.rules.defenses.outpost.intervalTicks).toBe(1);
+    expect(
+      result.envelope.rules.facilities.definitions.turret.windupTicks,
+    ).toBe(0);
+  });
+
+  it('rejects invalid attack profile values in rules validation', () => {
+    const base = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    // negative windupTicks
+    const invalidWindup = structuredClone(base);
+    invalidWindup.units.assault.windupTicks = -1;
+    expect(validateRules(invalidWindup).ok).toBe(false);
+
+    // zero intervalTicks
+    const invalidInterval = structuredClone(base);
+    invalidInterval.units.assault.intervalTicks = 0;
+    expect(validateRules(invalidInterval).ok).toBe(false);
+
+    // fractional intervalTicks
+    const fractionalInterval = structuredClone(base);
+    fractionalInterval.units.assault.intervalTicks = 1.5;
+    expect(validateRules(fractionalInterval).ok).toBe(false);
   });
 });

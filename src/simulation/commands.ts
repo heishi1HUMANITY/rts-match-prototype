@@ -439,7 +439,18 @@ export function applyCommand(
       initialStatus,
     );
     if (march === null) return reject(state, 'UNREACHABLE');
-    return succeed(copyWithUnit(state, unit, march));
+    const cancelWindup =
+      !state.rules.units[unit.kind].canAttackWhileMoving &&
+      march.path.length > 0 &&
+      unit.attack?.phase === 'windup'
+        ? { targetId: null, phase: 'idle' as const, phaseEndsTick: 0 }
+        : unit.attack;
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...march,
+        ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
+      }),
+    );
   }
 
   const target = command.target;
@@ -496,6 +507,12 @@ export function applyCommand(
   if (route === null) return reject(state, 'UNREACHABLE');
 
   const path = currentEdge === undefined ? route : [currentEdge, ...route];
+  const cancelWindup =
+    !state.rules.units[unit.kind].canAttackWhileMoving &&
+    path.length > 0 &&
+    unit.attack?.phase === 'windup'
+      ? { targetId: null, phase: 'idle' as const, phaseEndsTick: 0 }
+      : unit.attack;
   return succeed(
     copyWithUnit(state, unit, {
       ...unit,
@@ -504,6 +521,7 @@ export function applyCommand(
       marchOrder: null,
       moveTarget: { ...target },
       garrisonedAtBaseId: null,
+      ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
     }),
   );
 }

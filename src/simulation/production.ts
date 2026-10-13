@@ -225,6 +225,7 @@ export function advanceProduction(state: MatchState): MatchState {
       edgeProgress: 0,
       moveTicksPerCell: next.rules.units[active.unitKind].moveTicksPerCell,
       marchOrder: null,
+      attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
     });
     return {
       ...faction,

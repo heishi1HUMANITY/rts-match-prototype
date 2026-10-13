@@ -272,7 +272,7 @@ describe('runtime group selection and orders', () => {
       callback?.(timestamp);
     };
     frame(0);
-    frame(200);
+    for (let ms = 100; ms <= 1200; ms += 100) frame(ms);
     combat.stopLoop();
     expect(combat.snapshot().state.units.some(({ id }) => id === 'A-01')).toBe(
       false,

@@ -154,3 +154,7 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 - 役割の分離は文書ではなくCodex CLIのプロファイル（設計相談は read-only sandbox）で強制する。
 - プロトタイプ段階の目的を「通常設定で試合が遊べ、体験を検査し、数値をマスタで調整できる」に絞る。細かい不具合はCP検査でNGになったものだけ直す。SCENARIOS文書と受入条件ごとのe2eは任意にし、ルールのユニットテストとスモークe2eを維持する。
 - CPは gate:play 1件で締める。閉じたCPで未検証のまま残った gate:play は次のCP票へ持ち越す。
+
+## 2026-10-13: 攻撃間隔と構えの共通プロファイル化
+
+- D057: #28 (F16 PR 1/4) で部隊・守備・砲座・施設の攻撃を共通の攻撃プロファイル（windupTicks, intervalTicks, canAttackWhileMoving）に一本化。強襲HP200/攻20/間10tick（約10秒交戦）、砲兵構え15tick/間30tick（移動撃ち不可）等の新標準値を設定。MatchState schema 20、RulesMaster schema 17、rules f16-v1へ移行し、schema 16マスタは明示移行で補完。

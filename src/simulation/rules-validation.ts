@@ -295,6 +295,7 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('initialResearchCenti') &&
             !fieldPath.endsWith('damageBonus') &&
             !fieldPath.includes('damageVs') &&
+            !fieldPath.endsWith('windupTicks') &&
             !fieldPath.endsWith('supplyIncomeCentiPerTick') &&
             !fieldPath.endsWith('researchIncomeCentiPerTick') &&
             !fieldPath.endsWith('baseIncomeCentiPerTick') &&
@@ -312,7 +313,9 @@ export function validateRules(input: unknown): ValidationResult {
                   : fieldPath.endsWith('moveTicksPerCell') ||
                       fieldPath.endsWith('decisionIntervalTicks') ||
                       fieldPath.endsWith('updateIntervalTicks') ||
-                      fieldPath.endsWith('requiredTicks')
+                      fieldPath.endsWith('requiredTicks') ||
+                      fieldPath.endsWith('windupTicks') ||
+                      fieldPath.endsWith('intervalTicks')
                     ? 10_000
                     : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
@@ -507,7 +510,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 12 &&
       input.masterSchemaVersion !== 13 &&
       input.masterSchemaVersion !== 14 &&
-      input.masterSchemaVersion !== 15)
+      input.masterSchemaVersion !== 15 &&
+      input.masterSchemaVersion !== 16)
   )
     return {
       ok: false,
@@ -539,7 +543,20 @@ export function validateEnvelope(
               damageVsStructure: legacyDamage,
             }
           : {};
-      units[kind] = { ...defaults, ...preserved, ...fallback };
+      const attackProfileDefaults =
+        input.masterSchemaVersion <= 16
+          ? {
+              windupTicks: 0,
+              intervalTicks: 1,
+              canAttackWhileMoving: true,
+            }
+          : {};
+      units[kind] = {
+        ...defaults,
+        ...attackProfileDefaults,
+        ...preserved,
+        ...fallback,
+      };
     }
     candidateRules = { ...candidateRules, units };
   }
@@ -669,6 +686,145 @@ export function validateEnvelope(
           ]),
         ),
       };
+    if (input.masterSchemaVersion <= 16) {
+      if (isRecord(migrationCandidate.units)) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          units: Object.fromEntries(
+            Object.entries(migrationCandidate.units).map(([key, value]) => [
+              key,
+              isRecord(value)
+                ? {
+                    ...value,
+                    windupTicks:
+                      typeof value.windupTicks === 'number'
+                        ? value.windupTicks
+                        : 0,
+                    intervalTicks:
+                      typeof value.intervalTicks === 'number'
+                        ? value.intervalTicks
+                        : 1,
+                    canAttackWhileMoving:
+                      typeof value.canAttackWhileMoving === 'boolean'
+                        ? value.canAttackWhileMoving
+                        : true,
+                  }
+                : value,
+            ]),
+          ),
+        };
+      }
+      if (isRecord(migrationCandidate.defenses)) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          defenses: Object.fromEntries(
+            Object.entries(migrationCandidate.defenses).map(([key, value]) => [
+              key,
+              isRecord(value)
+                ? {
+                    ...value,
+                    windupTicks:
+                      typeof value.windupTicks === 'number'
+                        ? value.windupTicks
+                        : 0,
+                    intervalTicks:
+                      typeof value.intervalTicks === 'number'
+                        ? value.intervalTicks
+                        : 1,
+                    canAttackWhileMoving:
+                      typeof value.canAttackWhileMoving === 'boolean'
+                        ? value.canAttackWhileMoving
+                        : true,
+                  }
+                : value,
+            ]),
+          ),
+        };
+      }
+      if (
+        isRecord(migrationCandidate.baseUpgrades) &&
+        isRecord(migrationCandidate.baseUpgrades.kinds)
+      ) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          baseUpgrades: {
+            ...migrationCandidate.baseUpgrades,
+            kinds: Object.fromEntries(
+              Object.entries(migrationCandidate.baseUpgrades.kinds).map(
+                ([baseKind, tiers]) => [
+                  baseKind,
+                  isRecord(tiers)
+                    ? Object.fromEntries(
+                        Object.entries(tiers).map(([tierKey, tierVal]) => [
+                          tierKey,
+                          isRecord(tierVal)
+                            ? {
+                                ...tierVal,
+                                windupTicks:
+                                  typeof tierVal.windupTicks === 'number'
+                                    ? tierVal.windupTicks
+                                    : 0,
+                                intervalTicks:
+                                  typeof tierVal.intervalTicks === 'number'
+                                    ? tierVal.intervalTicks
+                                    : typeof tierVal.turretIntervalTicks ===
+                                        'number'
+                                      ? tierVal.turretIntervalTicks
+                                      : 10,
+                                canAttackWhileMoving:
+                                  typeof tierVal.canAttackWhileMoving ===
+                                  'boolean'
+                                    ? tierVal.canAttackWhileMoving
+                                    : true,
+                              }
+                            : tierVal,
+                        ]),
+                      )
+                    : tiers,
+                ],
+              ),
+            ),
+          },
+        };
+      }
+      if (
+        isRecord(migrationCandidate.facilities) &&
+        isRecord(migrationCandidate.facilities.definitions)
+      ) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          facilities: {
+            ...migrationCandidate.facilities,
+            definitions: Object.fromEntries(
+              Object.entries(migrationCandidate.facilities.definitions).map(
+                ([facKind, defVal]) => [
+                  facKind,
+                  isRecord(defVal)
+                    ? {
+                        ...defVal,
+                        windupTicks:
+                          typeof defVal.windupTicks === 'number'
+                            ? defVal.windupTicks
+                            : 0,
+                        intervalTicks:
+                          typeof defVal.intervalTicks === 'number'
+                            ? defVal.intervalTicks
+                            : typeof defVal.attackIntervalTicks === 'number'
+                              ? defVal.attackIntervalTicks
+                              : 10,
+                        canAttackWhileMoving:
+                          typeof defVal.canAttackWhileMoving === 'boolean'
+                            ? defVal.canAttackWhileMoving
+                            : true,
+                      }
+                    : defVal,
+                ],
+              ),
+            ),
+          },
+        };
+      }
+    }
     candidateRules = migrationCandidate;
   }
   if (
@@ -709,7 +865,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 12 &&
       input.masterSchemaVersion !== 13 &&
       input.masterSchemaVersion !== 14 &&
-      input.masterSchemaVersion !== 15
+      input.masterSchemaVersion !== 15 &&
+      input.masterSchemaVersion !== 16
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -767,7 +924,8 @@ export function validateEnvelope(
         input.masterSchemaVersion === 12 ||
         input.masterSchemaVersion === 13 ||
         input.masterSchemaVersion === 14 ||
-        input.masterSchemaVersion === 15)
+        input.masterSchemaVersion === 15 ||
+        input.masterSchemaVersion === 16)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))

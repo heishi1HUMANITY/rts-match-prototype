@@ -205,6 +205,18 @@ export interface FactionState extends EliminationStatus {
 }
 export type Faction = FactionState;
 
+export interface AttackState {
+  readonly targetId: string | null;
+  readonly phase: 'idle' | 'windup' | 'cooldown';
+  readonly phaseEndsTick: number;
+}
+
+export interface AttackProfile {
+  readonly windupTicks: number;
+  readonly intervalTicks: number;
+  readonly canAttackWhileMoving: boolean;
+}
+
 export interface UnitState {
   readonly id: string;
   readonly factionId: CombatantId;
@@ -224,6 +236,7 @@ export interface UnitState {
   readonly moveTarget?: Cell | null;
   /** Set while this unit is defending a friendly base from its garrison slot. */
   readonly garrisonedAtBaseId?: string | null;
+  readonly attack?: AttackState;
 }
 
 export interface MarchTarget {
@@ -256,6 +269,7 @@ export interface BaseState {
   readonly conqueredFromLocal?: boolean;
   /** Immutable original owner for HQs; null for neutral outposts. */
   readonly homeFactionId: FactionId | null;
+  readonly attack?: AttackState;
 }
 
 export interface BaseUpgradeJob {
@@ -269,6 +283,7 @@ export interface NeutralDefenderState {
   readonly maxHp: number;
   /** Consecutive ticks without eligible capturers while disabled. */
   readonly disabledTicks: number;
+  readonly attack?: AttackState;
 }
 
 export interface BaseMemory {
@@ -292,7 +307,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 19;
+  readonly schemaVersion: 20;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -469,6 +484,7 @@ export interface FacilityState {
   readonly remainingBuildTicks: number;
   readonly lastDamagedTick: number;
   readonly lastActivatedTick: number;
+  readonly attack?: AttackState;
 }
 export interface FacilityMemory extends FacilityState {
   readonly seenTick: number;

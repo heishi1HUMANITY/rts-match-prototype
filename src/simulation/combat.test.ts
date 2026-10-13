@@ -31,8 +31,8 @@ describe('simultaneous combat target selection', () => {
       ),
     };
     const next = resolveCombat(state);
-    expect(next.units.find(({ id }) => id === 'B-01')?.hp).toBe(98);
-    expect(next.units.find(({ id }) => id === 'C-01')?.hp).toBe(100);
+    expect(next.units.find(({ id }) => id === 'B-01')?.hp).toBe(180);
+    expect(next.units.find(({ id }) => id === 'C-01')?.hp).toBe(200);
     expect(next.bases.find(({ id }) => id === 'OUT-02')?.hp).toBe(100);
   });
 
@@ -168,5 +168,116 @@ describe('simultaneous combat target selection', () => {
       productionJobs: [],
       supplyCenti: 26_000,
     });
+  });
+
+  it('cancels windup without entering cooldown when target moves out of range', () => {
+    let state = createMatch(42);
+    const attacker: UnitState = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      kind: 'artillery',
+      cell: { x: 20, y: 20 },
+      attack: { targetId: 'B-01', phase: 'windup', phaseEndsTick: 15 },
+    };
+    const target: UnitState = {
+      ...state.units.find(({ id }) => id === 'B-01')!,
+      cell: { x: 26, y: 20 }, // out of artillery range (range 4)
+      hp: 200,
+      maxHp: 200,
+    };
+    state = removeAllBut(state, [attacker, target]);
+    const after = resolveCombat(state);
+    const nextAttacker = after.units.find(({ id }) => id === 'A-01')!;
+    expect(nextAttacker.attack).toEqual({
+      targetId: null,
+      phase: 'idle',
+      phaseEndsTick: 0,
+    });
+    expect(after.units.find(({ id }) => id === 'B-01')?.hp).toBe(200);
+  });
+
+  it('cancels windup when unit with canAttackWhileMoving: false is moving', () => {
+    let state = createMatch(42);
+    const attacker: UnitState = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      kind: 'artillery',
+      cell: { x: 20, y: 20 },
+      path: [{ x: 21, y: 20 }],
+      edgeProgress: 1,
+      attack: { targetId: 'B-01', phase: 'windup', phaseEndsTick: 15 },
+    };
+    const target: UnitState = {
+      ...state.units.find(({ id }) => id === 'B-01')!,
+      cell: { x: 22, y: 20 },
+      hp: 200,
+      maxHp: 200,
+    };
+    state = removeAllBut(state, [attacker, target]);
+    const after = resolveCombat(state);
+    const nextAttacker = after.units.find(({ id }) => id === 'A-01')!;
+    expect(nextAttacker.attack).toEqual({
+      targetId: null,
+      phase: 'idle',
+      phaseEndsTick: 0,
+    });
+    expect(after.units.find(({ id }) => id === 'B-01')?.hp).toBe(200);
+  });
+
+  it('two standard assault units duel for roughly 10 seconds (100 ticks) until mutual defeat', () => {
+    let state = createMatch(42);
+    state = {
+      ...state,
+      phase: 'running',
+      bases: state.bases.map((base) => ({ ...base, defender: null })),
+    };
+    const a: UnitState = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: 20, y: 20 },
+      hp: 200,
+      maxHp: 200,
+      attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+    };
+    const b: UnitState = {
+      ...state.units.find(({ id }) => id === 'B-01')!,
+      cell: { x: 22, y: 20 },
+      hp: 200,
+      maxHp: 200,
+      attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+    };
+    state = removeAllBut(state, [a, b]);
+
+    // Tick 1: first attack deals 20 damage (HP 200 -> 180), enters cooldown until tick 11
+    state = { ...state, elapsedTicks: 1 };
+    state = resolveCombat(state);
+    expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(180);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(180);
+    expect(state.units.find(({ id }) => id === 'A-01')?.attack?.phase).toBe(
+      'cooldown',
+    );
+    expect(
+      state.units.find(({ id }) => id === 'A-01')?.attack?.phaseEndsTick,
+    ).toBe(11);
+
+    // Ticks 2-10: cooldown, no damage dealt
+    for (let tick = 2; tick <= 10; tick += 1) {
+      state = { ...state, elapsedTicks: tick };
+      state = resolveCombat(state);
+      expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(180);
+    }
+
+    // Tick 11: second attack deals 20 damage (HP 180 -> 160)
+    state = { ...state, elapsedTicks: 11 };
+    state = resolveCombat(state);
+    expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(160);
+    expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(160);
+
+    // Advance through ticks until mutual elimination at tick 91 (10th shot)
+    for (let tick = 12; tick <= 91; tick += 1) {
+      state = { ...state, elapsedTicks: tick };
+      state = resolveCombat(state);
+    }
+    // Both assault units destroyed at tick 91 (9.1 seconds / roughly 10s)
+    expect(
+      state.units.filter(({ id }) => id === 'A-01' || id === 'B-01'),
+    ).toHaveLength(0);
   });
 });

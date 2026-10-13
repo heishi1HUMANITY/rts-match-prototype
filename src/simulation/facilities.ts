@@ -164,6 +164,7 @@ export function beginFacilityBuild(
     ),
     lastDamagedTick: -1,
     lastActivatedTick: -1,
+    attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
   };
   return {
     ok: true,

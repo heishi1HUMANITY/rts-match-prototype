@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 16 as const;
-export const RULES_VERSION = 'f18-v3' as const;
+export const MASTER_SCHEMA_VERSION = 17 as const;
+export const RULES_VERSION = 'f16-v1' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -34,10 +34,13 @@ export interface BaseUpgradeTier {
   readonly maxHpPercent: number;
   readonly supplyIncomePercent: number;
   readonly researchIncomePercent: number;
-  /** Damage dealt by one shot every turretIntervalTicks. */
+  /** Damage dealt by one shot every intervalTicks. */
   readonly turretDamage: number;
   readonly turretRange: number;
-  readonly turretIntervalTicks: number;
+  readonly turretIntervalTicks?: number;
+  readonly windupTicks: number;
+  readonly intervalTicks: number;
+  readonly canAttackWhileMoving: boolean;
 }
 
 export interface BaseUpgradeRules {
@@ -61,7 +64,10 @@ export interface FacilityDefinition {
   readonly damageVsLand: number;
   readonly damageVsAir: number;
   readonly damageVsWater: number;
-  readonly attackIntervalTicks: number;
+  readonly attackIntervalTicks?: number;
+  readonly windupTicks: number;
+  readonly intervalTicks: number;
+  readonly canAttackWhileMoving: boolean;
   readonly vision: number;
   readonly jamRange: number;
 }
@@ -94,6 +100,9 @@ export interface RulesMaster {
         readonly damageVsStructure: number;
         readonly lossTicketsCenti: number;
         readonly unlockResearchId: string | null;
+        readonly windupTicks: number;
+        readonly intervalTicks: number;
+        readonly canAttackWhileMoving: boolean;
       }
     >
   >;
@@ -117,18 +126,27 @@ export interface RulesMaster {
       readonly baseDamage: number;
       readonly range: number;
       readonly respawnTicks: number;
+      readonly windupTicks: number;
+      readonly intervalTicks: number;
+      readonly canAttackWhileMoving: boolean;
     };
     readonly medium: {
       readonly maxHp: number;
       readonly baseDamage: number;
       readonly range: number;
       readonly respawnTicks: number;
+      readonly windupTicks: number;
+      readonly intervalTicks: number;
+      readonly canAttackWhileMoving: boolean;
     };
     readonly large: {
       readonly maxHp: number;
       readonly baseDamage: number;
       readonly range: number;
       readonly respawnTicks: number;
+      readonly windupTicks: number;
+      readonly intervalTicks: number;
+      readonly canAttackWhileMoving: boolean;
     };
   };
   readonly research: {
@@ -215,6 +233,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 25,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
         level3: {
           costCenti: 120_000,
@@ -225,6 +246,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 50,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
       },
       outpost: {
@@ -237,6 +261,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 12,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
         level3: {
           costCenti: 60_000,
@@ -247,6 +274,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 25,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
       },
       medium: {
@@ -259,6 +289,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 20,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
         level3: {
           costCenti: 100_000,
@@ -269,6 +302,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 40,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
       },
       large: {
@@ -281,6 +317,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 30,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
         level3: {
           costCenti: 160_000,
@@ -291,6 +330,9 @@ export const DEFAULT_RULES: RulesMaster = {
           turretDamage: 60,
           turretRange: 6,
           turretIntervalTicks: 10,
+          windupTicks: 0,
+          intervalTicks: 10,
+          canAttackWhileMoving: true,
         },
       },
     },
@@ -327,6 +369,9 @@ export const DEFAULT_RULES: RulesMaster = {
           damageVsStructure: stats.damageVsStructure,
           lossTicketsCenti: stats.lossTicketsCenti,
           unlockResearchId: stats.unlockResearchId,
+          windupTicks: stats.windupTicks,
+          intervalTicks: stats.intervalTicks,
+          canAttackWhileMoving: stats.canAttackWhileMoving,
         },
       ];
     }),
@@ -353,9 +398,33 @@ export const DEFAULT_RULES: RulesMaster = {
   },
   defenses: {
     respawnEnabled: true,
-    outpost: { maxHp: 60, baseDamage: 1, range: 2, respawnTicks: 300 },
-    medium: { maxHp: 100, baseDamage: 2, range: 3, respawnTicks: 300 },
-    large: { maxHp: 160, baseDamage: 3, range: 3, respawnTicks: 300 },
+    outpost: {
+      maxHp: 60,
+      baseDamage: 10,
+      range: 2,
+      respawnTicks: 300,
+      windupTicks: 0,
+      intervalTicks: 10,
+      canAttackWhileMoving: true,
+    },
+    medium: {
+      maxHp: 100,
+      baseDamage: 20,
+      range: 3,
+      respawnTicks: 300,
+      windupTicks: 0,
+      intervalTicks: 10,
+      canAttackWhileMoving: true,
+    },
+    large: {
+      maxHp: 160,
+      baseDamage: 30,
+      range: 3,
+      respawnTicks: 300,
+      windupTicks: 0,
+      intervalTicks: 10,
+      canAttackWhileMoving: true,
+    },
   },
   research: {
     baseIncomeCentiPerTick: BASE_RESEARCH_INCOME_CENTI_PER_TICK,
@@ -423,6 +492,9 @@ export const DEFAULT_RULES: RulesMaster = {
         damageVsAir: 0,
         damageVsWater: 20,
         attackIntervalTicks: 10,
+        windupTicks: 0,
+        intervalTicks: 10,
+        canAttackWhileMoving: true,
         vision: 3,
         jamRange: 0,
       },
@@ -435,6 +507,9 @@ export const DEFAULT_RULES: RulesMaster = {
         damageVsAir: 50,
         damageVsWater: 0,
         attackIntervalTicks: 10,
+        windupTicks: 0,
+        intervalTicks: 10,
+        canAttackWhileMoving: true,
         vision: 4,
         jamRange: 0,
       },
@@ -447,6 +522,9 @@ export const DEFAULT_RULES: RulesMaster = {
         damageVsAir: 0,
         damageVsWater: 0,
         attackIntervalTicks: 10,
+        windupTicks: 0,
+        intervalTicks: 10,
+        canAttackWhileMoving: true,
         vision: 0,
         jamRange: 0,
       },
@@ -459,6 +537,9 @@ export const DEFAULT_RULES: RulesMaster = {
         damageVsAir: 0,
         damageVsWater: 0,
         attackIntervalTicks: 10,
+        windupTicks: 0,
+        intervalTicks: 10,
+        canAttackWhileMoving: true,
         vision: 10,
         jamRange: 0,
       },
@@ -471,6 +552,9 @@ export const DEFAULT_RULES: RulesMaster = {
         damageVsAir: 0,
         damageVsWater: 0,
         attackIntervalTicks: 10,
+        windupTicks: 0,
+        intervalTicks: 10,
+        canAttackWhileMoving: true,
         vision: 0,
         jamRange: 7,
       },

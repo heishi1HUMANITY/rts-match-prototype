@@ -204,8 +204,8 @@ describe('deterministic march updates', () => {
     state = replaceUnit(state, 'C-01', nearer);
 
     const combat = resolveCombat(state);
-    expect(unit(combat, 'B-01').hp).toBe(998);
-    expect(unit(combat, 'C-01').hp).toBe(998);
+    expect(unit(combat, 'B-01').hp).toBe(980);
+    expect(unit(combat, 'C-01').hp).toBe(980);
   });
 
   it('tracks a moving visible target from each pre-movement snapshot', () => {
