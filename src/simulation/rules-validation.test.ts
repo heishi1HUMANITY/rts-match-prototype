@@ -657,8 +657,13 @@ describe('F11 and F21 combined migration contract', () => {
     if (!result.ok) return;
     expect(result.envelope.masterSchemaVersion).toBe(17);
     expect(result.envelope.rules.units.assault.windupTicks).toBe(0);
-    expect(result.envelope.rules.units.assault.intervalTicks).toBe(10);
+    expect(result.envelope.rules.units.assault.intervalTicks).toBe(1);
     expect(result.envelope.rules.units.assault.canAttackWhileMoving).toBe(true);
+    expect(result.envelope.rules.units.artillery.windupTicks).toBe(0);
+    expect(result.envelope.rules.units.artillery.intervalTicks).toBe(1);
+    expect(result.envelope.rules.units.artillery.canAttackWhileMoving).toBe(
+      true,
+    );
     expect(result.envelope.rules.defenses.outpost.windupTicks).toBe(0);
     expect(result.envelope.rules.defenses.outpost.intervalTicks).toBe(1);
     expect(

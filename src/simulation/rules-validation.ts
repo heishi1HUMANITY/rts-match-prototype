@@ -543,7 +543,20 @@ export function validateEnvelope(
               damageVsStructure: legacyDamage,
             }
           : {};
-      units[kind] = { ...defaults, ...preserved, ...fallback };
+      const attackProfileDefaults =
+        input.masterSchemaVersion <= 16
+          ? {
+              windupTicks: 0,
+              intervalTicks: 1,
+              canAttackWhileMoving: true,
+            }
+          : {};
+      units[kind] = {
+        ...defaults,
+        ...attackProfileDefaults,
+        ...preserved,
+        ...fallback,
+      };
     }
     candidateRules = { ...candidateRules, units };
   }

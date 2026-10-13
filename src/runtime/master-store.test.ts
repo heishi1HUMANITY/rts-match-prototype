@@ -427,7 +427,12 @@ describe('F17 browser master store', () => {
           assault: {
             maxHp: 222,
             windupTicks: 0,
-            intervalTicks: 10,
+            intervalTicks: 1,
+            canAttackWhileMoving: true,
+          },
+          artillery: {
+            windupTicks: 0,
+            intervalTicks: 1,
             canAttackWhileMoving: true,
           },
         },
