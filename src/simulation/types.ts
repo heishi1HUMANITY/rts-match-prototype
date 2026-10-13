@@ -22,7 +22,8 @@ export type ScenarioId =
   | 'f08-unit-domains'
   | 'f10-base-upgrades'
   | 'f19-capture'
-  | 'f11-facilities';
+  | 'f11-facilities'
+  | 'f18-garrison';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -221,6 +222,8 @@ export interface UnitState {
   readonly marchOrder?: MarchOrder | null;
   /** Retains a direct order while a newly closed crossing blocks its route. */
   readonly moveTarget?: Cell | null;
+  /** Set while this unit is defending a friendly base from its garrison slot. */
+  readonly garrisonedAtBaseId?: string | null;
 }
 
 export interface MarchTarget {
@@ -289,7 +292,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 18;
+  readonly schemaVersion: 19;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -492,6 +495,11 @@ export type Command =
     }
   | { readonly type: 'stop'; readonly unitId: string }
   | {
+      readonly type: 'garrison';
+      readonly unitId: string;
+      readonly baseId: string;
+    }
+  | {
       readonly type: 'enqueue-production';
       readonly baseId: string;
       readonly unitKind: UnitKind;
@@ -549,6 +557,9 @@ export type RejectCode =
   | 'INVALID_FACILITY_KIND'
   | 'FACILITY_ANCHOR_UNAVAILABLE'
   | 'FACILITY_LIMIT'
+  | 'GARRISON_FULL'
+  | 'GARRISON_DISABLED'
+  | 'GARRISON_NOT_OWNED'
   | 'FACILITY_SLOTS_FULL'
   | 'FACILITY_DUPLICATE'
   | 'FACILITY_NO_CELL';

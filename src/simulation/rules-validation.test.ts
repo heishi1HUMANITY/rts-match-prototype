@@ -56,6 +56,77 @@ describe('F03 rules validation', () => {
     expect(result.rules.units.assault).not.toBe(DEFAULT_RULES.units.assault);
   });
 
+  it('requires each unit garrison setting to be boolean', () => {
+    const result = validateRules({
+      ...DEFAULT_RULES,
+      units: {
+        ...DEFAULT_RULES.units,
+        assault: { ...DEFAULT_RULES.units.assault, canGarrison: 'false' },
+      },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ key: 'rules.units.assault.canGarrison' }),
+      ]),
+    });
+  });
+
+  it('migrates master schema 14 with per-unit defaults', () => {
+    const legacyRules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      unknown
+    >;
+    for (const value of Object.values(
+      legacyRules.units as Record<string, Record<string, unknown>>,
+    ))
+      delete value.canGarrison;
+    const result = validateEnvelope({
+      masterSchemaVersion: 14,
+      revision: 7,
+      rules: legacyRules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 7,
+        rules: {
+          units: {
+            assault: { canGarrison: true },
+            helicopter: { canGarrison: false },
+          },
+        },
+      },
+    });
+  });
+
+  it('migrates schema 15 global garrison setting to per-unit settings', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    rules.garrisonEnabled = true;
+    for (const value of Object.values(rules.units) as Record<string, any>[])
+      delete value.canGarrison;
+    const result = validateEnvelope({
+      masterSchemaVersion: 15,
+      revision: 8,
+      rules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        rules: {
+          units: {
+            assault: { canGarrison: true },
+            helicopter: { canGarrison: false },
+          },
+        },
+      },
+    });
+  });
+
   it('rejects research cycles, one-sided exclusions, and unknown effect IDs', () => {
     const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -499,7 +570,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(13);
+      expect(result.envelope.masterSchemaVersion).toBe(16);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);

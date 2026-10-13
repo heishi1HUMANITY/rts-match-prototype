@@ -222,11 +222,13 @@ export function getFactionView(
           }
         : null,
       moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
+      garrisonedAtBaseId: unit.garrisonedAtBaseId ?? null,
     }));
   const visibleEnemies = state.units
     .filter(
       (unit) =>
         unit.factionId !== factionId &&
+        !unit.garrisonedAtBaseId &&
         isUnitVisibleToFaction(state, unit, factionId),
     )
     .map((unit) => ({

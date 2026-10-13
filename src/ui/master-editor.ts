@@ -209,6 +209,16 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: '重み',
     help: '一定間隔の所有拠点差によるチケット圧力に使います。',
   },
+  garrisonCapacity: {
+    label: '拠点駐留上限',
+    unit: '部隊',
+    help: '拠点に駐留できる部隊数です。兵種ごとの駐留可否は兵種マスタで設定します。',
+  },
+  canGarrison: {
+    label: '拠点に駐留・防衛できる',
+    unit: '',
+    help: 'この兵種が所有拠点に駐留し、攻撃時に防衛部隊として扱われるかを設定します。',
+  },
   damageBonus: {
     label: '攻撃力上昇',
     unit: 'damage/tick',

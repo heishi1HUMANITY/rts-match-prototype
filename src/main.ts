@@ -438,6 +438,10 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'upgrade-base', baseId: hud.selectedBaseId });
     return;
   }
+  if (action === 'garrison') {
+    runtime.groupGarrison(hud.selectedBaseId);
+    return;
+  }
   if (action === 'start') {
     input.reset();
     runtime.dispatch({ type: 'start' });

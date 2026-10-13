@@ -6,7 +6,7 @@ import { createMatch } from './match';
 describe('initial match contract', () => {
   it('creates schema-v18 ready state with three ranked factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(18);
+    expect(match.schemaVersion).toBe(19);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -139,6 +139,7 @@ describe('initial match contract', () => {
     'f04-crossing',
     'f05-neutral-defense',
     'f10-base-upgrades',
+    'f18-garrison',
   ] as const)('reproduces scenario fixture %s', (scenarioId) => {
     const match = createMatch(42, { scenarioId });
     expect(createMatch(42, { scenarioId })).toEqual(match);
