@@ -75,7 +75,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 14,
+        masterSchemaVersion: 15,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -85,11 +85,12 @@ describe('F17 browser master store', () => {
     });
   });
 
-  it('round-trips capture HP percent and rejects bad saves/imports without overwriting bytes', () => {
+  it('round-trips garrison and capture settings and rejects bad saves/imports', () => {
     const storage = new MemoryStorage();
     const store = new MasterStore(storage);
     const rules = {
       ...DEFAULT_RULES,
+      garrisonEnabled: false,
       capture: { ...DEFAULT_RULES.capture, restoredHpPercent: 50 },
     };
     expect(store.saveRules(rules).ok).toBe(true);
@@ -101,7 +102,12 @@ describe('F17 browser master store', () => {
       new MasterStore(new MemoryStorage()).importJson(exported.json),
     ).toMatchObject({
       ok: true,
-      envelope: { rules: { capture: { restoredHpPercent: 50 } } },
+      envelope: {
+        rules: {
+          garrisonEnabled: false,
+          capture: { restoredHpPercent: 50 },
+        },
+      },
     });
     for (const restoredHpPercent of [0, 101, 50.5, NaN, Infinity]) {
       const invalid = {
@@ -122,7 +128,9 @@ describe('F17 browser master store', () => {
     }
     expect(store.reset()).toMatchObject({
       ok: true,
-      envelope: { rules: { capture: { restoredHpPercent: 30 } } },
+      envelope: {
+        rules: { garrisonEnabled: true, capture: { restoredHpPercent: 30 } },
+      },
     });
   });
 
@@ -176,7 +184,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 14,
+        masterSchemaVersion: 15,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -204,7 +212,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 14,
+        masterSchemaVersion: 15,
         revision: 10,
         rules: {
           defenses: {
@@ -267,7 +275,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(14);
+    expect(loaded.envelope.masterSchemaVersion).toBe(15);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -360,7 +368,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 14,
+      masterSchemaVersion: 15,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },

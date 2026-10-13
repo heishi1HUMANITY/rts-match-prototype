@@ -18,6 +18,37 @@ function unit(state: MatchState, id: string): UnitState {
 }
 
 describe('F18 base garrisons', () => {
+  it('disables the garrison command and automatic parking when the master switch is off', () => {
+    const initial = createMatch(42, {
+      scenarioId: 'f18-garrison',
+      rules: { ...structuredClone(DEFAULT_RULES), garrisonEnabled: false },
+    });
+    const hq = initial.bases.find(({ id }) => id === 'HQ-A')!;
+    const requestState = withUnits(initial, [
+      { ...unit(initial, 'A-01'), cell: { ...hq.cell } },
+    ]);
+    expect(
+      applyCommand(requestState, 'A', {
+        type: 'garrison',
+        unitId: 'A-01',
+        baseId: 'HQ-A',
+      }),
+    ).toMatchObject({ ok: false, reason: 'GARRISON_DISABLED' });
+
+    let arrivalState = withUnits(initial, [
+      {
+        ...unit(initial, 'A-01'),
+        cell: { x: hq.cell.x, y: hq.cell.y - 1 },
+        path: [{ ...hq.cell }],
+        moveTarget: { ...hq.cell },
+      },
+    ]);
+    for (let tick = 0; tick < 20; tick += 1)
+      arrivalState = stepMatch(arrivalState);
+    expect(unit(arrivalState, 'A-01').cell).toEqual(hq.cell);
+    expect(unit(arrivalState, 'A-01').garrisonedAtBaseId ?? null).toBeNull();
+  });
+
   it('moves a ground unit to its owned base, parks it on arrival, and hides its frame', () => {
     const initial = createMatch(42, { scenarioId: 'f18-garrison' });
     const state = withUnits(initial, [unit(initial, 'A-01')]);
@@ -170,6 +201,33 @@ describe('F18 base garrisons', () => {
     const next = stepMatch(state);
     expect(unit(next, 'A-01').hp).toBeLessThan(unit(state, 'A-01').hp);
     expect(next.bases.find(({ id }) => id === 'HQ-A')?.hp).toBe(hq.hp);
+  });
+
+  it('does not treat a parked unit as base defense while garrison is disabled', () => {
+    const initial = createMatch(42, {
+      scenarioId: 'f18-garrison',
+      rules: { ...structuredClone(DEFAULT_RULES), garrisonEnabled: false },
+    });
+    const hq = initial.bases.find(({ id }) => id === 'HQ-A')!;
+    const defender = {
+      ...unit(initial, 'A-01'),
+      cell: { ...hq.cell },
+      garrisonedAtBaseId: 'HQ-A',
+    };
+    const attacker = {
+      ...unit(initial, 'B-01'),
+      cell: { x: hq.cell.x, y: hq.cell.y - 1 },
+      marchOrder: {
+        target: { kind: 'base' as const, id: 'HQ-A' },
+        lastKnownCell: { ...hq.cell },
+        lastSeenTick: 0,
+        status: 'tracking' as const,
+      },
+    };
+    const state = withUnits(initial, [defender, attacker]);
+    const next = stepMatch(state);
+    expect(unit(next, 'A-01').hp).toBe(unit(state, 'A-01').hp);
+    expect(next.bases.find(({ id }) => id === 'HQ-A')?.hp).toBeLessThan(hq.hp);
   });
 
   it('releases surviving garrison units when combat destroys their base', () => {

@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 14 as const;
-export const RULES_VERSION = 'f18-v1' as const;
+export const MASTER_SCHEMA_VERSION = 15 as const;
+export const RULES_VERSION = 'f18-v2' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -72,6 +72,7 @@ export interface RulesMaster {
     readonly definitions: Readonly<Record<FacilityKind, FacilityDefinition>>;
   };
   readonly baseUpgrades: BaseUpgradeRules;
+  readonly garrisonEnabled: boolean;
   readonly units: Readonly<
     Record<
       UnitKind,
@@ -198,6 +199,7 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  garrisonEnabled: true,
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,

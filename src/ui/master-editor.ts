@@ -214,6 +214,11 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: '部隊',
     help: '拠点に駐留できる陸上部隊数です。',
   },
+  garrisonEnabled: {
+    label: '駐留・防衛を有効にする',
+    unit: '',
+    help: '無効にすると、部隊の拠点駐留と駐留部隊による防衛を停止します。',
+  },
   damageBonus: {
     label: '攻撃力上昇',
     unit: 'damage/tick',
@@ -404,6 +409,7 @@ function fieldsFor(rules: RulesMaster): {
     baseUpgrades: '拠点強化',
     units: '兵種',
     bases: '拠点',
+    garrisonEnabled: '拠点駐留・防衛',
     defenses: '中立守備',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',

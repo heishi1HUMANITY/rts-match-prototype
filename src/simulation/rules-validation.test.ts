@@ -56,6 +56,40 @@ describe('F03 rules validation', () => {
     expect(result.rules.units.assault).not.toBe(DEFAULT_RULES.units.assault);
   });
 
+  it('requires the garrison feature switch to be boolean', () => {
+    const result = validateRules({
+      ...DEFAULT_RULES,
+      garrisonEnabled: 'false',
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ key: 'rules.garrisonEnabled' }),
+      ]),
+    });
+  });
+
+  it('migrates master schema 14 with garrison enabled by default', () => {
+    const legacyRules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      unknown
+    >;
+    delete legacyRules.garrisonEnabled;
+    const result = validateEnvelope({
+      masterSchemaVersion: 14,
+      revision: 7,
+      rules: legacyRules,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 7,
+        rules: { garrisonEnabled: true },
+      },
+    });
+  });
+
   it('rejects research cycles, one-sided exclusions, and unknown effect IDs', () => {
     const invalid = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -499,7 +533,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(14);
+      expect(result.envelope.masterSchemaVersion).toBe(15);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);

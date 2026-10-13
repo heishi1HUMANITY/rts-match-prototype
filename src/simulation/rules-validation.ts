@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'garrisonEnabled',
     'facilities',
     'baseUpgrades',
     'units',
@@ -505,7 +506,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
       input.masterSchemaVersion !== 12 &&
-      input.masterSchemaVersion !== 13)
+      input.masterSchemaVersion !== 13 &&
+      input.masterSchemaVersion !== 14)
   )
     return {
       ok: false,
@@ -586,6 +588,11 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (!Object.hasOwn(migrationCandidate, 'garrisonEnabled'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        garrisonEnabled: DEFAULT_RULES.garrisonEnabled,
+      };
     if (isRecord(migrationCandidate.bases))
       migrationCandidate = {
         ...migrationCandidate,
@@ -683,7 +690,9 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 9 &&
       input.masterSchemaVersion !== 10 &&
       input.masterSchemaVersion !== 11 &&
-      input.masterSchemaVersion !== 12
+      input.masterSchemaVersion !== 12 &&
+      input.masterSchemaVersion !== 13 &&
+      input.masterSchemaVersion !== 14
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -737,7 +746,10 @@ export function validateEnvelope(
         return { ok: false, issues: migrationIssues };
     } else if (
       oldDefinitions &&
-      (input.masterSchemaVersion === 11 || input.masterSchemaVersion === 12)
+      (input.masterSchemaVersion === 11 ||
+        input.masterSchemaVersion === 12 ||
+        input.masterSchemaVersion === 13 ||
+        input.masterSchemaVersion === 14)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))

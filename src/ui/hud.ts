@@ -810,11 +810,14 @@ export function updateHud(
   garrisonButton.hidden = base?.visibility !== 'owned';
   garrisonButton.disabled =
     base?.visibility !== 'owned' ||
+    !view.rules.garrisonEnabled ||
     selectedUnits.length === 0 ||
     view.phase !== 'running' ||
     snapshot.contextLost ||
     own.eliminatedAtTick !== null;
-  garrisonButton.textContent = '選択部隊を駐留';
+  garrisonButton.textContent = view.rules.garrisonEnabled
+    ? '選択部隊を駐留'
+    : '駐留・防衛はマスタで無効';
   if (base) {
     const location = `${base.id} (${base.cell.x},${base.cell.y})`;
     if (base.visibility === 'unknown')
@@ -878,7 +881,7 @@ export function updateHud(
       }
     }
   }
-  if (base?.visibility === 'owned') {
+  if (base?.visibility === 'owned' && view.rules.garrisonEnabled) {
     const garrison = view.ownUnits.filter(
       (unit) => unit.garrisonedAtBaseId === base.id,
     );
@@ -890,6 +893,8 @@ export function updateHud(
             `${unit.id} ${kindName(unit.kind)} HP${unit.hp}/${unit.maxHp}`,
         )
         .join('、')}`;
+  } else if (base?.visibility === 'owned') {
+    detail += '\n駐留・防衛：無効';
   }
   text('.base-detail', detail);
   text('[data-upgrade-reason]', upgradeReason);
