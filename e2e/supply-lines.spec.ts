@@ -12,18 +12,19 @@ test('F12-01 / F12-02 / F12-03: crossing loss cuts supply and rebuilding restore
   await page
     .getByRole('button', { name: '適用してリセット', exact: true })
     .click();
+  await page.getByText('検査設定', { exact: true }).click();
   await page.getByRole('button', { name: '拠点', exact: true }).click();
   await page.locator('[data-base-select]').selectOption('OUT-03');
   await expect(page.locator('.base-detail')).toContainText('首都と接続');
-  await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.locator('[data-unit="A-01"]').click();
   await page.getByRole('button', { name: '渡河', exact: true }).click();
-
   const crossing = page.locator('[data-crossing="CROSS-BORDER-120-B2"]');
   await expect(crossing.locator('.crossing-status')).toContainText(
     '補給線接続',
   );
-  await crossing.locator('[data-crossing-dismantle]').click();
+  // Open the crossing panel and select its builder before starting the clock.
+  await page.getByRole('button', { name: '開始', exact: true }).click();
+  await crossing.locator('[data-crossing-dismantle]').click({ timeout: 5_000 });
   await expect(crossing.locator('.crossing-status')).toContainText('未建設', {
     timeout: 15_000,
   });

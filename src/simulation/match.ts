@@ -157,6 +157,7 @@ function configuredFixture(
   let factions = state.factions.map((faction) => ({ ...faction }));
   let units = state.units.map((unit) => ({ ...unit, cell: { ...unit.cell } }));
   let bases = state.bases.map((base) => ({ ...base, cell: { ...base.cell } }));
+  let rules = state.rules;
   let crossings = state.crossings.map((crossing) => ({ ...crossing }));
   if (scenarioId === 'g2-capture') {
     units = units.map((unit) =>
@@ -320,6 +321,22 @@ function configuredFixture(
       base.id === 'OUT-01' ? { ...base, owner: 'A', defender: null } : base,
     );
   } else if (scenarioId === 'f12-supply-lines') {
+    // Keep the interactive supply scenario focused on connections rather than
+    // neutral-base combat while its builder dismantles and rebuilds the crossing.
+    bases = bases.map((base) =>
+      base.owner === null ? { ...base, hp: 0, defender: null } : base,
+    );
+    rules = {
+      ...rules,
+      crossings: {
+        ...rules.crossings,
+        'bridge-2': {
+          ...rules.crossings['bridge-2'],
+          buildTicks: 5,
+          dismantleTicks: 5,
+        },
+      },
+    };
     units = units.map((unit) =>
       unit.id === 'A-01' ? { ...unit, cell: { x: 16, y: 27 } } : unit,
     );
@@ -356,7 +373,7 @@ function configuredFixture(
       );
     }
   }
-  return { ...state, factions, units, bases, crossings };
+  return { ...state, rules, factions, units, bases, crossings };
 }
 
 /** Creates a fresh schema-versioned match using deterministic map and scenario fixtures. */
