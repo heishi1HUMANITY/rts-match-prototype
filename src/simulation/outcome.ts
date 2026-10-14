@@ -114,11 +114,21 @@ export function resolveMatchOutcome(state: MatchState): MatchState {
   const crossings =
     newlyEliminated.size === 0
       ? state.crossings
-      : state.crossings.map((crossing) =>
-          crossing.owner !== null && newlyEliminated.has(crossing.owner)
-            ? { ...crossing, owner: null, job: null }
-            : crossing,
-        );
+      : state.crossings.map((crossing) => {
+          const ownerEliminated =
+            crossing.owner !== null && newlyEliminated.has(crossing.owner);
+          const jobEliminated =
+            crossing.job !== null &&
+            newlyEliminated.has(crossing.job.factionId);
+          if (ownerEliminated || jobEliminated) {
+            return {
+              ...crossing,
+              owner: ownerEliminated ? null : crossing.owner,
+              job: null,
+            };
+          }
+          return crossing;
+        });
   const alive = factions.filter((faction) => faction.eliminatedAtTick === null);
   const reason: MatchResult['reason'] | null =
     alive.length === 0

@@ -354,4 +354,58 @@ describe('G3 simultaneous elimination and result', () => {
     expect(byId(updated, 'C').ticketsCenti).toBe(100_000);
     expect(byId(updated, 'B').ticketsCenti).toBe(0);
   });
+
+  it('clears crossing jobs initiated by an eliminated faction and allows other factions to build', () => {
+    let state = running();
+    const site = state.map.crossingSites!.find((s) => s.tier === 'bridge-1')!;
+    state = {
+      ...state,
+      crossings: state.crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? {
+              ...crossing,
+              owner: null,
+              job: {
+                kind: 'build' as const,
+                factionId: 'B' as const,
+                progressTicks: 20,
+                requiredTicks: 100,
+                paidCostCenti: 1000,
+              },
+            }
+          : crossing,
+      ),
+      bases: state.bases.map((base) =>
+        base.id === 'HQ-B' ? { ...base, hp: 0 } : base,
+      ),
+    };
+
+    const resolved = resolveMatchOutcome(state);
+    const crossingAfter = resolved.crossings.find((c) => c.siteId === site.id);
+    expect(crossingAfter?.job).toBeNull();
+
+    const aUnit = resolved.units.find((u) => u.factionId === 'A')!;
+    const bank = site.bankA;
+    const stateWithUnit = {
+      ...resolved,
+      units: resolved.units.map((u) =>
+        u.id === aUnit.id ? { ...u, cell: bank } : u,
+      ),
+    };
+    const buildResult = applyCommand(stateWithUnit, 'A', {
+      type: 'build-crossing',
+      siteId: site.id,
+      unitId: aUnit.id,
+    });
+    expect(buildResult.ok).toBe(true);
+    if (buildResult.ok) {
+      const activeJob = buildResult.state.crossings.find(
+        (c) => c.siteId === site.id,
+      )?.job;
+      expect(activeJob).toMatchObject({
+        kind: 'build',
+        factionId: 'A',
+      });
+    }
+  });
 });
