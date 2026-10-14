@@ -7,6 +7,8 @@ import type {
   UnitState,
 } from './types';
 import { isUnitUnlocked } from './research';
+import { findPath } from './pathfinding';
+import { knownActiveCrossings } from './crossings';
 
 function isUnitKind(value: string): value is UnitKind {
   return [
@@ -231,6 +233,15 @@ export function advanceProduction(state: MatchState): MatchState {
       throw new Error('active production job has no working owned HQ');
     }
     const spawn = port?.cell ?? base!.cell;
+    const rally = faction.rallyPoint ?? null;
+    const rallyPath = rally
+      ? findPath(next.map, spawn, rally, {
+          factionId: faction.id,
+          domain,
+          crossings: knownActiveCrossings(next, faction.id),
+          unitKind: active.unitKind,
+        })
+      : null;
     spawned.push({
       id: active.unitId,
       factionId: faction.id,
@@ -238,11 +249,16 @@ export function advanceProduction(state: MatchState): MatchState {
       hp: next.rules.units[active.unitKind].maxHp,
       maxHp: next.rules.units[active.unitKind].maxHp,
       cell: { x: spawn.x, y: spawn.y },
-      path: [],
+      path: rallyPath ?? [],
       edgeProgress: 0,
       moveTicksPerCell: next.rules.units[active.unitKind].moveTicksPerCell,
       marchOrder: null,
+      moveTarget: rallyPath === null ? null : { ...rally! },
       attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      stance: 'aggressive',
+      retreating: false,
+      experienceCenti: 0,
+      rank: 0,
     });
     return {
       ...faction,

@@ -87,6 +87,7 @@ function freshFactions(
     completedResearchIds: [],
     nextUnitSerial: 3,
     nextJobSerial: 1,
+    rallyPoint: null,
   }));
 }
 
@@ -134,6 +135,10 @@ function buildUnits(rules: RulesMaster): UnitState[] {
     moveTicksPerCell: rules.units[kind].moveTicksPerCell,
     marchOrder: null,
     attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+    stance: 'aggressive',
+    retreating: false,
+    experienceCenti: 0,
+    rank: 0,
   }));
 }
 
@@ -169,9 +174,21 @@ function configuredFixture(
   } else if (scenarioId === 'g2-combat') {
     units = units.map((unit) => {
       if (unit.id === 'A-01')
-        return { ...unit, cell: { x: 20, y: 20 }, hp: 40, maxHp: 200 };
+        return {
+          ...unit,
+          cell: { x: 20, y: 20 },
+          hp: 40,
+          maxHp: 200,
+          stance: 'hold',
+        };
       if (unit.id === 'B-01')
-        return { ...unit, cell: { x: 22, y: 20 }, hp: 40, maxHp: 200 };
+        return {
+          ...unit,
+          cell: { x: 22, y: 20 },
+          hp: 40,
+          maxHp: 200,
+          stance: 'hold',
+        };
       if (unit.id === 'A-02') return { ...unit, cell: { x: 10, y: 20 } };
       if (unit.id === 'B-02') return { ...unit, cell: { x: 30, y: 20 } };
       return unit;
@@ -180,6 +197,15 @@ function configuredFixture(
       base.owner === null && base.kind !== 'hq'
         ? { ...base, hp: 0, defender: null }
         : base,
+    );
+  } else if (scenarioId === 'f13-behavior') {
+    units = units.map((unit) =>
+      unit.id === 'A-01' ? { ...unit, hp: Math.floor(unit.maxHp * 0.3) } : unit,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A'
+        ? { ...faction, supplyCenti: 50_000, researchCenti: 20_000 }
+        : faction,
     );
   } else if (scenarioId === 'g2-economy') {
     factions = factions.map((faction) =>

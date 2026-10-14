@@ -411,6 +411,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    unitBehavior: '部隊行動・練度',
     facilities: '防御施設',
     baseUpgrades: '拠点強化',
     units: '兵種',

@@ -473,6 +473,22 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'upgrade-base', baseId: hud.selectedBaseId });
     return;
   }
+  if (action === 'set-rally' || action === 'clear-rally') {
+    const view = runtime.playerSnapshot().view;
+    const base = view.bases.find(({ id }) => id === hud.selectedBaseId);
+    if (action === 'clear-rally')
+      runtime.dispatch({ type: 'set-rally', target: null });
+    else if (base?.visibility === 'owned' && base.kind === 'hq') {
+      const x = Number(
+        hud.root.querySelector<HTMLInputElement>('[data-rally-x]')?.value,
+      );
+      const y = Number(
+        hud.root.querySelector<HTMLInputElement>('[data-rally-y]')?.value,
+      );
+      runtime.dispatch({ type: 'set-rally', target: { x, y } });
+    }
+    return;
+  }
   if (action === 'garrison') {
     runtime.groupGarrison(hud.selectedBaseId);
     return;
@@ -525,6 +541,14 @@ const handleClick = (event: MouseEvent): void => {
     board.resetCamera();
   } else if (action === 'stop' || action === 'group-stop') {
     runtime.groupStop();
+  } else if (
+    action === 'stance-aggressive' ||
+    action === 'stance-hold' ||
+    action === 'stance-retreat'
+  ) {
+    runtime.groupStance(
+      action.slice('stance-'.length) as 'aggressive' | 'hold' | 'retreat',
+    );
   } else if (action === 'clear') runtime.select(null);
   else if (action === 'multi-select') {
     input.cancelGesture();

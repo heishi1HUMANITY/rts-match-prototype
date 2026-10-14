@@ -171,3 +171,7 @@ G1の具体的な公開契約と生成手順は [G1_IMPLEMENTATION_DESIGN.md](G1
 
 - D060: #28 (F16 PR 4/4) で部隊の移動速度（moveTicksPerCell: assault 4, scout 3, artillery 6, antiAir 4, helicopter 2, patrolBoat 4）および生産時間（buildTicks: 200, 100, 180, 160, 220, 200）を更新し、操作密度（20〜30秒に1回）と交戦の視認性を確保。現地勢力は既定無効（localFaction.enabled: false、マスタで切替可能）。古い保存マスタがある場合は起動時に更新案内を表示（1回のみ、戻す/このまま）。RulesMaster schema 20、rules f16-v4。
 - D061: 試合の弧とチケット決着の採用値・理由を記録。100 seed 自動対戦（`npm run selfplay`）で全試合が10分以内（平均6分32秒、最短5分56秒、最長7分46秒）にタイマー切れなく last-standing で決着することを確認。成長曲線、攻めない罰（基礎減少）、終盤の膠着打破を成立させ、F12（外部イベント等）に頼らない自律的決着を達成。
+
+## 2026-10-15: F13 部隊行動と練度
+
+- D062: #25で攻勢/保持はdamage/移動100%、退避はdamage/移動80%。HP40%以下で自動退避、90%回復で解除。手動命令は到達まで優先。首都3セル以内を10tickごとに最大HPの4%回復。実効与damageを経験値化し閾値6000/15000/30000 centiで昇格、経験値は3段階目で上限。新数値はRulesMasterで調整可能。RulesMaster schema 21、MatchState schema 23、rules f16-v5。

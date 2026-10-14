@@ -107,6 +107,33 @@ function parseCommand(input: unknown): ParsedCommand | null {
       : null;
   }
   if (
+    input.type === 'set-stance' &&
+    hasExactKeys(input, ['type', 'unitId', 'stance']) &&
+    typeof input.unitId === 'string' &&
+    ['aggressive', 'hold', 'retreat'].includes(String(input.stance))
+  )
+    return {
+      type: 'set-stance',
+      unitId: input.unitId,
+      stance: input.stance as 'aggressive' | 'hold' | 'retreat',
+    };
+  if (
+    input.type === 'set-rally' &&
+    hasExactKeys(input, ['type', 'target']) &&
+    (input.target === null ||
+      (isRecord(input.target) &&
+        hasExactKeys(input.target, ['x', 'y']) &&
+        Number.isInteger(input.target.x) &&
+        Number.isInteger(input.target.y)))
+  )
+    return {
+      type: 'set-rally',
+      target:
+        input.target === null
+          ? null
+          : { x: Number(input.target.x), y: Number(input.target.y) },
+    };
+  if (
     input.type === 'garrison' &&
     hasExactKeys(input, ['type', 'unitId', 'baseId']) &&
     typeof input.unitId === 'string' &&
@@ -303,6 +330,46 @@ export function applyCommand(
   if (command.type === 'enqueue-production') {
     return enqueueProduction(state, actor, command.baseId, command.unitKind);
   }
+  if (command.type === 'set-rally') {
+    if (command.target === null)
+      return succeed({
+        ...state,
+        factions: state.factions.map((entry) =>
+          entry.id === actor ? { ...entry, rallyPoint: null } : entry,
+        ),
+      });
+    const { x, y } = command.target;
+    if (x < 0 || y < 0 || x >= state.map.width || y >= state.map.height)
+      return reject(state, 'OUT_OF_BOUNDS');
+    if (
+      !canTraverse(state.map, command.target, {
+        factionId: actor,
+        domain: 'land',
+        crossings: knownActiveCrossings(state, actor),
+      })
+    )
+      return reject(state, 'BLOCKED');
+    const hq = state.bases.find(
+      (base) => base.homeFactionId === actor && base.hp > 0,
+    );
+    if (
+      !hq ||
+      findPath(state.map, hq.cell, command.target, {
+        factionId: actor,
+        domain: 'land',
+        crossings: knownActiveCrossings(state, actor),
+      }) === null
+    )
+      return reject(state, 'UNREACHABLE');
+    return succeed({
+      ...state,
+      factions: state.factions.map((entry) =>
+        entry.id === actor
+          ? { ...entry, rallyPoint: { ...command.target! } }
+          : entry,
+      ),
+    });
+  }
   if (command.type === 'cancel-production') {
     return cancelProduction(state, actor, command.jobId);
   }
@@ -338,6 +405,18 @@ export function applyCommand(
     );
   }
 
+  if (command.type === 'set-stance')
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...unit,
+        stance: command.stance,
+        ...(unit.retreating
+          ? { path: [], edgeProgress: 0, moveTarget: null, marchOrder: null }
+          : {}),
+        retreating: command.stance === 'retreat',
+      }),
+    );
+
   if (command.type === 'garrison') {
     const base = state.bases.find(({ id }) => id === command.baseId);
     if (!base) return reject(state, 'BASE_NOT_FOUND');
@@ -348,6 +427,7 @@ export function applyCommand(
       return succeed(
         copyWithUnit(state, unit, {
           ...unit,
+          retreating: false,
           path: [],
           marchOrder: null,
           moveTarget: null,
@@ -367,6 +447,7 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...unit,
+        retreating: false,
         path: currentEdge === undefined ? route : [currentEdge, ...route],
         marchOrder: null,
         moveTarget: { ...base.cell },
@@ -452,6 +533,7 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...march,
+        retreating: false,
         ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
       }),
     );
@@ -520,6 +602,7 @@ export function applyCommand(
   return succeed(
     copyWithUnit(state, unit, {
       ...unit,
+      retreating: false,
       path,
       edgeProgress: unit.edgeProgress,
       marchOrder: null,

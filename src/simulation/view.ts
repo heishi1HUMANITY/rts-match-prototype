@@ -224,6 +224,10 @@ export function getFactionView(
         : null,
       moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
       garrisonedAtBaseId: unit.garrisonedAtBaseId ?? null,
+      stance: unit.stance ?? 'aggressive',
+      retreating: unit.retreating ?? false,
+      experienceCenti: unit.experienceCenti ?? 0,
+      rank: unit.rank ?? 0,
     }));
   const visibleEnemies = state.units
     .filter(
@@ -340,6 +344,7 @@ export function getFactionView(
         ? { ...faction.activeResearch }
         : null,
       completedResearchIds: [...faction.completedResearchIds],
+      rallyPoint: faction.rallyPoint ? { ...faction.rallyPoint } : null,
     },
     ownUnits,
     visibleEnemies,

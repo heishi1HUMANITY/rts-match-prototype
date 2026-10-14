@@ -43,8 +43,14 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
   )
     return unit;
   const progress = unit.edgeProgress + 1;
-  if (progress < (unit.moveTicksPerCell ?? 2))
-    return { ...unit, edgeProgress: progress };
+  const stance = unit.retreating ? 'retreat' : (unit.stance ?? 'aggressive');
+  const movementPercent =
+    state?.rules.unitBehavior.stanceProfiles[stance].movementPercent ?? 100;
+  const requiredTicks = Math.max(
+    1,
+    Math.ceil(((unit.moveTicksPerCell ?? 2) * 100) / movementPercent),
+  );
+  if (progress < requiredTicks) return { ...unit, edgeProgress: progress };
 
   const [nextCell, ...remainingPath] = unit.path;
   if (nextCell === undefined) return { ...unit, edgeProgress: 0 };
@@ -66,7 +72,8 @@ function recoverNearHeadquarters(
   state: MatchState,
   beforeCombat: MatchState,
 ): MatchState {
-  if (state.elapsedTicks % 10 !== 0) return state;
+  const behavior = state.rules.unitBehavior;
+  if (state.elapsedTicks % behavior.recoveryIntervalTicks !== 0) return state;
   const damagedThisTick = new Set(
     beforeCombat.units.flatMap((unit) => {
       const after = state.units.find(({ id }) => id === unit.id);
@@ -89,16 +96,101 @@ function recoverNearHeadquarters(
     );
     if (
       !hq ||
-      Math.abs(unit.cell.x - hq.cell.x) + Math.abs(unit.cell.y - hq.cell.y) > 3
+      Math.abs(unit.cell.x - hq.cell.x) + Math.abs(unit.cell.y - hq.cell.y) >
+        behavior.recoveryRadius
     )
       return unit;
     const hp = Math.min(
       unit.maxHp,
-      unit.hp + Math.max(1, Math.ceil((unit.maxHp * 4) / 100)),
+      unit.hp +
+        Math.max(
+          1,
+          Math.ceil((unit.maxHp * behavior.recoveryPercentPerInterval) / 100),
+        ),
     );
     if (hp === unit.hp) return unit;
     changed = true;
-    return { ...unit, hp };
+    const returned = (hp * 100) / unit.maxHp >= behavior.returnAboveHpPercent;
+    return { ...unit, hp, ...(returned ? { retreating: false } : {}) };
+  });
+  return changed ? { ...state, units } : state;
+}
+
+function advanceRetreats(state: MatchState): MatchState {
+  const { retreatBelowHpPercent, returnAboveHpPercent } =
+    state.rules.unitBehavior;
+  let changed = false;
+  const units = state.units.map((unit) => {
+    if (unit.hp <= 0 || unit.factionId === 'local') return unit;
+    const percent = (unit.hp * 100) / unit.maxHp;
+    const manual = Boolean(
+      unit.marchOrder || unit.moveTarget || unit.garrisonedAtBaseId,
+    );
+    const wasRetreating = unit.retreating === true;
+    if (
+      wasRetreating &&
+      unit.stance !== 'retreat' &&
+      percent >= returnAboveHpPercent
+    ) {
+      changed = true;
+      return {
+        ...unit,
+        retreating: false,
+        path: [],
+        edgeProgress: 0,
+        moveTarget: null,
+        marchOrder: null,
+      };
+    }
+    const shouldRetreat =
+      (unit.stance === 'retreat' && wasRetreating) ||
+      (unit.stance !== 'hold' && percent <= retreatBelowHpPercent);
+    if (!shouldRetreat || manual) return unit;
+    const hq = state.bases.find(
+      (base) =>
+        base.homeFactionId === unit.factionId &&
+        base.kind === 'hq' &&
+        base.hp > 0,
+    );
+    if (!hq) {
+      if (wasRetreating) return unit;
+      changed = true;
+      return { ...unit, retreating: true };
+    }
+    if (unit.cell.x === hq.cell.x && unit.cell.y === hq.cell.y) {
+      if (wasRetreating) return unit;
+      changed = true;
+      return { ...unit, retreating: true };
+    }
+    const currentEdge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
+    const route = findPath(state.map, currentEdge ?? unit.cell, hq.cell, {
+      factionId: unit.factionId,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
+      crossings: knownActiveCrossings(state, unit.factionId),
+      unitKind: unit.kind,
+      allowBlockedStart: true,
+    });
+    if (route === null) {
+      if (wasRetreating) return unit;
+      changed = true;
+      return { ...unit, retreating: true };
+    }
+    const path = currentEdge ? [currentEdge, ...route] : route;
+    if (
+      wasRetreating &&
+      unit.moveTarget?.x === hq.cell.x &&
+      unit.moveTarget.y === hq.cell.y &&
+      path.length === unit.path.length
+    )
+      return unit;
+    changed = true;
+    return {
+      ...unit,
+      retreating: true,
+      path,
+      moveTarget: { ...hq.cell },
+      marchOrder: null,
+    };
   });
   return changed ? { ...state, units } : state;
 }
@@ -217,7 +309,9 @@ export function stepMatch(state: MatchState): MatchState {
   if (state.phase !== 'running') return state;
   const initial = resolveMatchOutcome(state);
   if (initial.phase === 'finished') return initial;
-  let next: MatchState = revalidateRoutes(advanceMarchOrders(initial));
+  let next: MatchState = revalidateRoutes(
+    advanceMarchOrders(advanceRetreats(initial)),
+  );
   next = { ...next, elapsedTicks: initial.elapsedTicks + 1 };
   next = advanceLocalFaction(next);
   next = advanceFacilities(next);
