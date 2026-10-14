@@ -26,7 +26,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 19 as const;
+export const MASTER_SCHEMA_VERSION = 20 as const;
 export const RULES_VERSION = 'f16-v3' as const;
 
 export interface BaseUpgradeTier {
@@ -73,6 +73,23 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly unitBehavior: {
+    readonly stanceProfiles: Readonly<
+      Record<
+        'aggressive' | 'hold' | 'retreat',
+        { readonly damagePercent: number; readonly movementPercent: number }
+      >
+    >;
+    readonly retreatBelowHpPercent: number;
+    readonly returnAboveHpPercent: number;
+    readonly recoveryIntervalTicks: number;
+    readonly recoveryRadius: number;
+    readonly recoveryPercentPerInterval: number;
+    readonly experiencePerDamageCenti: number;
+    readonly rankThresholdsCenti: readonly number[];
+    readonly rankDamagePercent: number;
+    readonly rankVisionBonus: number;
+  };
   readonly facilities: {
     readonly slotsPerAnchor: number;
     readonly maxPerFaction: number;
@@ -229,6 +246,22 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  unitBehavior: {
+    stanceProfiles: {
+      aggressive: { damagePercent: 100, movementPercent: 100 },
+      hold: { damagePercent: 100, movementPercent: 100 },
+      retreat: { damagePercent: 80, movementPercent: 80 },
+    },
+    retreatBelowHpPercent: 40,
+    returnAboveHpPercent: 90,
+    recoveryIntervalTicks: 10,
+    recoveryRadius: 3,
+    recoveryPercentPerInterval: 4,
+    experiencePerDamageCenti: 100,
+    rankThresholdsCenti: [6_000, 15_000, 30_000],
+    rankDamagePercent: 5,
+    rankVisionBonus: 0,
+  },
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,

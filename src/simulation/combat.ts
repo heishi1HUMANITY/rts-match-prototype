@@ -49,6 +49,7 @@ export interface HitReservation {
   readonly target: CombatHitTarget;
   readonly damage: number;
   readonly attackerFactionId: CombatantId;
+  readonly attackerUnitId?: string;
   readonly facilityId?: string;
 }
 
@@ -808,11 +809,22 @@ export function resolveCombat(state: MatchState): MatchState {
             damageAgainst(snapshot, attacker, target) +
             (faction ? firepowerBonus(faction, snapshot.rules) : 0);
           const modifier = attackerStateModifierPercent(snapshot, attacker);
+          const stance = attacker.stance ?? 'aggressive';
+          const stanceModifier =
+            snapshot.rules.unitBehavior.stanceProfiles[stance].damagePercent;
+          const rankModifier =
+            100 +
+            (attacker.rank ?? 0) *
+              snapshot.rules.unitBehavior.rankDamagePercent;
           return Math.max(
             1,
             Math.floor(
-              (rawDamage * (attacker.growthCenti ?? 10_000) * modifier) /
-                (10_000 * 100),
+              (rawDamage *
+                (attacker.growthCenti ?? 10_000) *
+                modifier *
+                stanceModifier *
+                rankModifier) /
+                (10_000 * 100 * 100 * 100),
             ),
           );
         },
@@ -827,6 +839,7 @@ export function resolveCombat(state: MatchState): MatchState {
         target: { kind: 'target', target: hit.target },
         damage: hit.damage,
         attackerFactionId: attacker.factionId,
+        attackerUnitId: attacker.id,
       });
     }
   }
@@ -1089,6 +1102,7 @@ export function resolveCombat(state: MatchState): MatchState {
 
   // --- ダメージ集計 ---
   const unitDamage = new Map<string, number>();
+  const experienceGain = new Map<string, number>();
   const facilityDamage = new Map<string, number>();
   const defenderDamage = new Map<string, number>();
   const baseDamage = new Map<string, number>();
@@ -1135,19 +1149,52 @@ export function resolveCombat(state: MatchState): MatchState {
     }
   }
 
+  for (const [targetId, totalDamage] of unitDamage) {
+    const target = snapshot.units.find((unit) => unit.id === targetId);
+    if (!target || totalDamage <= 0) continue;
+    const effectiveDamage = Math.min(target.hp, totalDamage);
+    const hits = hitReservations.filter(
+      (res) =>
+        res.target.kind === 'target' &&
+        res.target.target.kind === 'unit' &&
+        res.target.target.id === targetId &&
+        res.attackerUnitId,
+    );
+    const total = hits.reduce((sum, res) => sum + res.damage, 0);
+    for (const res of hits) {
+      const attackerId = res.attackerUnitId!;
+      const share = Math.floor(
+        (effectiveDamage * res.damage) / Math.max(1, total),
+      );
+      experienceGain.set(
+        attackerId,
+        (experienceGain.get(attackerId) ?? 0) +
+          share * snapshot.rules.unitBehavior.experiencePerDamageCenti,
+      );
+    }
+  }
+
   let unitLosses = new Map<FactionId, number>();
   let units = updatedUnits
     .map((unit) => {
       const damage = unitDamage.get(unit.id) ?? 0;
-      if (damage <= 0) return unit;
-      const hp = Math.max(0, unit.hp - damage);
+      const hp = damage <= 0 ? unit.hp : Math.max(0, unit.hp - damage);
       if (hp === 0 && unit.factionId !== 'local')
         unitLosses.set(
           unit.factionId,
           (unitLosses.get(unit.factionId) ?? 0) +
             snapshot.rules.units[unit.kind].lossTicketsCenti,
         );
-      return { ...unit, hp };
+      const maxExperience =
+        snapshot.rules.unitBehavior.rankThresholdsCenti.at(-1) ?? 0;
+      const experienceCenti = Math.min(
+        maxExperience,
+        (unit.experienceCenti ?? 0) + (experienceGain.get(unit.id) ?? 0),
+      );
+      const rank = snapshot.rules.unitBehavior.rankThresholdsCenti.filter(
+        (threshold) => experienceCenti >= threshold,
+      ).length;
+      return { ...unit, hp, experienceCenti, rank };
     })
     .filter(({ hp }) => hp > 0);
 
