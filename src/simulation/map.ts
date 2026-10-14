@@ -22,20 +22,20 @@ const PORTS = [
   {
     id: 'PORT-A',
     factionId: 'A' as const,
-    cell: { x: 15, y: 25 },
-    shore: { x: 14, y: 26 },
+    cell: { x: 13, y: 23 },
+    shore: { x: 12, y: 23 },
   },
   {
     id: 'PORT-B',
     factionId: 'B' as const,
-    cell: { x: 25, y: 25 },
-    shore: { x: 26, y: 26 },
+    cell: { x: 24, y: 25 },
+    shore: { x: 25, y: 26 },
   },
   {
     id: 'PORT-C',
     factionId: 'C' as const,
-    cell: { x: 20, y: 13 },
-    shore: { x: 20, y: 12 },
+    cell: { x: 24, y: 15 },
+    shore: { x: 25, y: 14 },
   },
 ] as const;
 
@@ -54,17 +54,31 @@ function createTerrain(): { terrain: TerrainKind[]; levels: number[] } {
         levels[index] = 1;
         continue;
       }
-      // Three short boundary rivers split the outer approaches. They stop short
-      // of the capitals so the starting land component remains playable.
-      if (radius > 8 && radius < 15) {
+      // Three boundary rivers (0°, 120°, 240°) extend to the edge of the board.
+      if (radius > 7.5) {
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
         const normalized = (angle + 360) % 360;
-        const boundary = [0, 120, 240].some((bearing) => {
-          const difference = Math.abs(normalized - bearing);
-          const wrapped = Math.min(difference, 360 - difference);
-          return wrapped < 2.2;
-        });
-        if (boundary) {
+
+        const isRay0 = normalized < 30 || normalized > 330;
+        const dist0 = isRay0 ? Math.abs(dy) : Infinity;
+
+        const isRay120 = normalized >= 90 && normalized <= 150;
+        const dist120 = isRay120
+          ? Math.abs(
+              dx * Math.sin((120 * Math.PI) / 180) -
+                dy * Math.cos((120 * Math.PI) / 180),
+            )
+          : Infinity;
+
+        const isRay240 = normalized >= 210 && normalized <= 270;
+        const dist240 = isRay240
+          ? Math.abs(
+              dx * Math.sin((240 * Math.PI) / 180) -
+                dy * Math.cos((240 * Math.PI) / 180),
+            )
+          : Infinity;
+
+        if (dist0 < 0.8 || dist120 < 0.8 || dist240 < 0.8) {
           terrain[index] = 'river';
           levels[index] = radius < 11 ? 2 : 3;
           continue;
@@ -186,16 +200,6 @@ function crossingSites() {
     {
       id: 'CROSS-BORDER-000-B2',
       tier: 'bridge-2' as const,
-      bankA: { x: 29, y: 18 },
-      bankB: { x: 29, y: 21 },
-      cells: [
-        { x: 29, y: 19 },
-        { x: 29, y: 20 },
-      ],
-    },
-    {
-      id: 'CROSS-BORDER-000-B3',
-      tier: 'bridge-3' as const,
       bankA: { x: 33, y: 18 },
       bankB: { x: 33, y: 21 },
       cells: [
@@ -204,32 +208,48 @@ function crossingSites() {
       ],
     },
     {
+      id: 'CROSS-BORDER-000-B3',
+      tier: 'bridge-3' as const,
+      bankA: { x: 36, y: 18 },
+      bankB: { x: 36, y: 21 },
+      cells: [
+        { x: 36, y: 19 },
+        { x: 36, y: 20 },
+      ],
+    },
+    {
       id: 'CROSS-BORDER-120-B2',
       tier: 'bridge-2' as const,
-      bankA: { x: 16, y: 27 },
-      bankB: { x: 14, y: 27 },
-      cells: [{ x: 15, y: 27 }],
+      bankA: { x: 15, y: 29 },
+      bankB: { x: 13, y: 29 },
+      cells: [{ x: 14, y: 29 }],
     },
     {
       id: 'CROSS-BORDER-120-B3',
       tier: 'bridge-3' as const,
-      bankA: { x: 14, y: 30 },
-      bankB: { x: 12, y: 30 },
-      cells: [{ x: 13, y: 30 }],
+      bankA: { x: 13, y: 34 },
+      bankB: { x: 10, y: 34 },
+      cells: [
+        { x: 11, y: 34 },
+        { x: 12, y: 34 },
+      ],
     },
     {
       id: 'CROSS-BORDER-240-B2',
       tier: 'bridge-2' as const,
-      bankA: { x: 16, y: 12 },
-      bankB: { x: 14, y: 12 },
-      cells: [{ x: 15, y: 12 }],
+      bankA: { x: 15, y: 10 },
+      bankB: { x: 13, y: 10 },
+      cells: [{ x: 14, y: 10 }],
     },
     {
       id: 'CROSS-BORDER-240-B3',
       tier: 'bridge-3' as const,
-      bankA: { x: 14, y: 8 },
-      bankB: { x: 12, y: 8 },
-      cells: [{ x: 13, y: 8 }],
+      bankA: { x: 13, y: 5 },
+      bankB: { x: 10, y: 5 },
+      cells: [
+        { x: 11, y: 5 },
+        { x: 12, y: 5 },
+      ],
     },
   ];
 }
@@ -301,31 +321,63 @@ export function createMap(seed: number): GridMap {
     for (const cell of [crossing.bankA, crossing.bankB])
       protectedCells.add(`${cell.x},${cell.y}`);
   }
-  const initialReachable = landReachable(
-    blocked,
-    terrain,
-    INITIAL_UNIT_PLACEMENTS[0]!.cell,
-  );
-  for (let y = 1; y < MAP_HEIGHT - 1; y += 1) {
-    for (let x = 1; x < MAP_WIDTH - 1; x += 1) {
-      const index = indexOf(x, y);
-      if (!initialReachable[index] || protectedCells.has(`${x},${y}`)) continue;
-      if (terrain[index] !== 'land') continue;
-      if (random.nextUint32() % 100 >= 7) continue;
-      blocked[index] = true;
-      const reachable = landReachable(
-        blocked,
-        terrain,
-        INITIAL_UNIT_PLACEMENTS[0]!.cell,
-      );
-      const required = [
-        ...INITIAL_UNIT_PLACEMENTS.map(({ cell }) => cell),
-        ...BASE_CELLS.filter(({ factionId }) => factionId !== null).map(
-          ({ cell }) => cell,
-        ),
-      ];
-      if (required.some((cell) => !reachable[indexOf(cell.x, cell.y)]))
-        blocked[index] = false;
+
+  // Protect corridors between HQs and their bridge-2 crossings so shortest path lengths remain equal.
+  const protectLine = (from: Cell, to: Cell) => {
+    let curX = from.x;
+    let curY = from.y;
+    protectedCells.add(`${curX},${curY}`);
+    while (curX !== to.x || curY !== to.y) {
+      if (curX !== to.x) curX += curX < to.x ? 1 : -1;
+      else if (curY !== to.y) curY += curY < to.y ? 1 : -1;
+      protectedCells.add(`${curX},${curY}`);
+    }
+  };
+
+  const hqA = BASE_CELLS.find((b) => b.id === 'HQ-A')!.cell;
+  const hqB = BASE_CELLS.find((b) => b.id === 'HQ-B')!.cell;
+  const hqC = BASE_CELLS.find((b) => b.id === 'HQ-C')!.cell;
+
+  const b0_b2 = plannedCrossings.find((c) => c.id === 'CROSS-BORDER-000-B2')!;
+  const b120_b2 = plannedCrossings.find((c) => c.id === 'CROSS-BORDER-120-B2')!;
+  const b240_b2 = plannedCrossings.find((c) => c.id === 'CROSS-BORDER-240-B2')!;
+
+  if (b120_b2 && b240_b2 && b0_b2) {
+    protectLine(hqA, b120_b2.bankB);
+    protectLine(hqA, b240_b2.bankB);
+    protectLine(hqB, b120_b2.bankA);
+    protectLine(hqB, b0_b2.bankB);
+    protectLine(hqC, b240_b2.bankA);
+    protectLine(hqC, b0_b2.bankA);
+  }
+
+  // Populate obstacles while preserving internal reachability for each faction.
+  for (const factionId of ['A', 'B', 'C'] as const) {
+    const spawn = INITIAL_UNIT_PLACEMENTS.find(
+      (placement) => placement.factionId === factionId,
+    )!.cell;
+    const initialReachable = landReachable(blocked, terrain, spawn);
+
+    for (let y = 1; y < MAP_HEIGHT - 1; y += 1) {
+      for (let x = 1; x < MAP_WIDTH - 1; x += 1) {
+        const index = indexOf(x, y);
+        if (!initialReachable[index] || protectedCells.has(`${x},${y}`))
+          continue;
+        if (terrain[index] !== 'land') continue;
+        if (random.nextUint32() % 100 >= 7) continue;
+        blocked[index] = true;
+        const reachable = landReachable(blocked, terrain, spawn);
+        const required = [
+          ...INITIAL_UNIT_PLACEMENTS.filter(
+            (placement) => placement.factionId === factionId,
+          ).map(({ cell }) => cell),
+          ...BASE_CELLS.filter((base) => base.factionId === factionId).map(
+            ({ cell }) => cell,
+          ),
+        ];
+        if (required.some((cell) => !reachable[indexOf(cell.x, cell.y)]))
+          blocked[index] = false;
+      }
     }
   }
   return {
@@ -400,10 +452,12 @@ export function canTraverse(
 }
 
 /** Flood fill over land, useful for validating local access without crossing islands. */
-export function getReachableCells(map: GridMap): ReadonlySet<string> {
+export function getReachableCells(
+  map: GridMap,
+  origin: Cell = INITIAL_UNIT_PLACEMENTS[0]!.cell,
+): ReadonlySet<string> {
   const seen = new Set<number>();
   const queue: number[] = [];
-  const origin = INITIAL_UNIT_PLACEMENTS[0]!.cell;
   const start = origin.y * map.width + origin.x;
   if (isCellBlocked(map, origin)) return new Set();
   seen.add(start);

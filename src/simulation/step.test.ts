@@ -37,15 +37,15 @@ describe('G2 fixed-tick integration', () => {
     const match = createMatch(42, { rules: customRules });
     const unit = match.units.find(({ id }) => id === 'A-01')!;
     expect(unit.moveTicksPerCell).toBe(4);
-    let moving: UnitState = { ...unit, path: [{ x: 7, y: 33 }] };
+    let moving: UnitState = { ...unit, path: [{ x: 7, y: 20 }] };
     for (const progress of [1, 2, 3]) {
       moving = stepUnit(moving);
       expect(moving.edgeProgress).toBe(progress);
-      expect(moving.cell).toEqual({ x: 6, y: 33 });
+      expect(moving.cell).toEqual({ x: 6, y: 20 });
     }
     moving = stepUnit(moving);
     expect(moving.edgeProgress).toBe(0);
-    expect(moving.cell).toEqual({ x: 7, y: 33 });
+    expect(moving.cell).toEqual({ x: 7, y: 20 });
     const mutableView = JSON.parse(
       JSON.stringify(match.rules),
     ) as typeof match.rules;
@@ -67,7 +67,7 @@ describe('G2 fixed-tick integration', () => {
     for (let i = 0; i < 15; i += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
-      hp: 30,
+      hp: 90,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
     });
@@ -167,7 +167,7 @@ describe('G2 fixed-tick integration', () => {
     let state = running(createMatch(42));
     const enemy = {
       ...state.units.find(({ id }) => id === 'B-01')!,
-      cell: { x: 8, y: 34 },
+      cell: { x: 7, y: 20 },
       hp: 50,
       maxHp: 100,
     };
@@ -184,7 +184,7 @@ describe('G2 fixed-tick integration', () => {
     state = setFaction(state, 'A', { productionJobs: [job] });
     state = stepMatch(state);
     expect(state.units.find(({ id }) => id === 'A-03')).toMatchObject({
-      cell: { x: 6, y: 34 },
+      cell: { x: 5, y: 20 },
       hp: 200,
     });
     expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(50);
@@ -192,9 +192,13 @@ describe('G2 fixed-tick integration', () => {
 
   it('cancels and refunds all production when an HQ is destroyed at remaining tick one', () => {
     let state = running(createMatch(42));
+    state = {
+      ...state,
+      elapsedTicks: 1200,
+    };
     const attacker = {
       ...state.units.find(({ id }) => id === 'A-01')!,
-      cell: { x: 32, y: 33 },
+      cell: { x: 27, y: 33 },
     };
     state = onlyUnits(state, [attacker]);
     state = {
@@ -225,7 +229,8 @@ describe('G2 fixed-tick integration', () => {
     expect(state.factions.find(({ id }) => id === 'B')).toMatchObject({
       supplyCenti: 11_020,
       productionJobs: [],
-      ticketsCenti: 90_000,
+      ticketsCenti: 0,
+      eliminationReason: 'hq',
     });
     expect(state.units.some(({ id }) => id === 'B-03')).toBe(false);
   });
@@ -243,11 +248,15 @@ describe('G2 fixed-tick integration', () => {
     };
     const c = {
       ...state.units.find(({ id }) => id === 'C-01')!,
-      cell: { x: 32, y: 33 },
+      cell: { x: 29, y: 33 },
     };
     state = onlyUnits(state, [a, b, c]);
     state = {
       ...state,
+      rules: {
+        ...state.rules,
+        match: { ...state.rules.match, hqProtectionTicks: 0 },
+      },
       elapsedTicks: 9,
       bases: state.bases.map((base) => {
         if (base.id === 'HQ-B') return { ...base, hp: 2 };

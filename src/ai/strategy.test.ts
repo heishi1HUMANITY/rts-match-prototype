@@ -110,7 +110,7 @@ describe('stateless faction-view NPC policy', () => {
       id: 'A-01',
       factionId: 'A' as const,
       kind: 'assault' as const,
-      positionX1024: 29184,
+      positionX1024: 24064,
       positionY1024: 34304,
       hp: 100,
       maxHp: 100,
@@ -129,7 +129,7 @@ describe('stateless faction-view NPC policy', () => {
               ...unit,
               marchOrder: {
                 target: { kind: 'unit' as const, id: enemy.id },
-                lastKnownCell: { x: 28, y: 33 },
+                lastKnownCell: { x: 23, y: 33 },
                 lastSeenTick: 0,
                 status: 'tracking' as const,
               },

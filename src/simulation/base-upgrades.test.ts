@@ -94,7 +94,7 @@ describe('F10 base upgrades', () => {
     )!;
     expect(completed).toMatchObject({
       level: 2,
-      maxHp: 130,
+      maxHp: 390,
       hp: 65,
       upgradeJob: null,
     });
@@ -151,7 +151,7 @@ describe('F10 base upgrades', () => {
         .map((unit) => ({
           ...unit,
           kind: 'helicopter' as const,
-          cell: { x: 11, y: 34 },
+          cell: { x: 10, y: 20 },
           hp: 90,
           maxHp: 90,
         })),
@@ -198,8 +198,8 @@ describe('F10 base upgrades', () => {
     expect(captured).toMatchObject({
       owner: 'A',
       level: 1,
-      maxHp: 100,
-      hp: 30,
+      maxHp: 300,
+      hp: 90,
       upgradeJob: null,
     });
   });

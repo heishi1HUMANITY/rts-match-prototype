@@ -570,7 +570,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(17);
+      expect(result.envelope.masterSchemaVersion).toBe(18);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);
@@ -655,7 +655,7 @@ describe('F11 and F21 combined migration contract', () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.envelope.masterSchemaVersion).toBe(17);
+    expect(result.envelope.masterSchemaVersion).toBe(18);
     expect(result.envelope.rules.units.assault.windupTicks).toBe(0);
     expect(result.envelope.rules.units.assault.intervalTicks).toBe(1);
     expect(result.envelope.rules.units.assault.canAttackWhileMoving).toBe(true);
@@ -669,6 +669,25 @@ describe('F11 and F21 combined migration contract', () => {
     expect(
       result.envelope.rules.facilities.definitions.turret.windupTicks,
     ).toBe(0);
+    expect(result.envelope.rules.match.hqProtectionTicks).toBe(1200);
+  });
+
+  it('migrates schema 17 master to schema 18 by defaulting hqProtectionTicks', () => {
+    const v17Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v17Rules.match.hqProtectionTicks;
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 17,
+      revision: 1,
+      rules: v17Rules,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(18);
+    expect(result.envelope.rules.match.hqProtectionTicks).toBe(1200);
   });
 
   it('rejects invalid attack profile values in rules validation', () => {

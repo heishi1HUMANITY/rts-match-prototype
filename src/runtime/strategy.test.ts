@@ -62,20 +62,20 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(
       captured.map(({ owner, hp, maxHp }) => ({ owner, hp, maxHp })),
     ).toEqual([
+      { owner: 'A', hp: 400, maxHp: 800 },
       { owner: 'A', hp: 150, maxHp: 300 },
-      { owner: 'A', hp: 50, maxHp: 100 },
-      { owner: 'A', hp: 90, maxHp: 180 },
+      { owner: 'A', hp: 250, maxHp: 500 },
     ]);
     expect(() => assertReplayMatches(snapshot)).not.toThrow();
     const diagnostic = createDiagnostic(snapshot, {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v1',
-      schemaVersion: 20,
+      rulesVersion: 'f16-v2',
+      schemaVersion: 21,
     });
     expect(diagnostic).toMatchObject({
       rules: {
-        masterSchemaVersion: 17,
+        masterSchemaVersion: 18,
         rules: { capture: { restoredHpPercent: 50 } },
       },
     });
@@ -122,11 +122,11 @@ describe('G2 presentation and diagnostic boundaries', () => {
   it('presents only the faction view, with a pure drag preview', () => {
     const { runtime } = running('standard');
     const before = runtime.snapshot();
-    const path = runtime.previewMove('A-01', { x: 20, y: 28 });
-    expect(path?.at(-1)).toEqual({ x: 20, y: 28 });
+    const path = runtime.previewMove('A-01', { x: 10, y: 20 });
+    expect(path?.at(-1)).toEqual({ x: 10, y: 20 });
     expect(runtime.snapshot().state).toBe(before.state);
     expect(runtime.snapshot().history).toBe(before.history);
-    expect(runtime.previewMove('B-01', { x: 20, y: 28 })).toBeNull();
+    expect(runtime.previewMove('B-01', { x: 10, y: 20 })).toBeNull();
     expect(runtime.playerSnapshot()).not.toHaveProperty('state');
     expect(runtime.playerSnapshot()).not.toHaveProperty('history');
     expect(runtime.playerSnapshot().view.visibleEnemies).toEqual([]);
@@ -168,16 +168,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v1',
-      schemaVersion: 20,
+      rulesVersion: 'f16-v2',
+      schemaVersion: 21,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 20,
-        rulesVersion: 'f16-v1',
+        schemaVersion: 21,
+        rulesVersion: 'f16-v2',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 17,
+        masterSchemaVersion: 18,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -236,8 +236,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 20 as const,
-      rulesVersion: 'f16-v1' as const,
+      schemaVersion: 21 as const,
+      rulesVersion: 'f16-v2' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };

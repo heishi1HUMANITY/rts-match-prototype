@@ -90,7 +90,7 @@ describe('shared command validation', () => {
     const visibleEnemy = {
       ...state,
       units: state.units.map((entry) =>
-        entry.id === 'B-01' ? { ...entry, cell: { x: 8, y: 33 } } : entry,
+        entry.id === 'B-01' ? { ...entry, cell: { x: 8, y: 20 } } : entry,
       ),
     };
     expect(
@@ -104,16 +104,16 @@ describe('shared command validation', () => {
 
   it('rejects bounds, blocked and unreachable cells without changing the original state or path', () => {
     let state = startMatch();
-    const initial = issueMove(state, { x: 10, y: 33 });
+    const initial = issueMove(state, { x: 10, y: 20 });
     expect(initial.ok).toBe(true);
     if (!initial.ok) return;
     state = initial.state;
     const oldPath = unit(state).path;
 
     for (const [target, reason] of [
-      [{ x: -1, y: 33 }, 'OUT_OF_BOUNDS'],
+      [{ x: -1, y: 20 }, 'OUT_OF_BOUNDS'],
       [{ x: 20, y: 13 }, 'BLOCKED'],
-      [{ x: 20, y: 20 }, 'UNREACHABLE'],
+      [{ x: 28, y: 33 }, 'UNREACHABLE'],
     ] as const) {
       const result = issueMove(state, target);
       expect(result).toEqual({ ok: false, state, reason });
@@ -174,7 +174,7 @@ describe('shared command validation', () => {
         seq: 1,
         tickBefore: 0,
         actor: 'A' as const,
-        command: { type: 'move', unitId: 'A-01', target: { x: 10, y: 33 } },
+        command: { type: 'move', unitId: 'A-01', target: { x: 10, y: 20 } },
       },
       {
         seq: 2,
@@ -232,7 +232,7 @@ describe('shared command validation', () => {
       'ok',
     ]);
     expect(firstReplay.state.elapsedTicks).toBe(12);
-    expect(unit(firstReplay.state).cell).toEqual({ x: 10, y: 33 });
+    expect(unit(firstReplay.state).cell).toEqual({ x: 10, y: 20 });
     expect(unit(firstReplay.state).path).toEqual([]);
   });
 });
@@ -240,52 +240,52 @@ describe('shared command validation', () => {
 describe('fixed tick unit movement', () => {
   it('moves one cell in two ticks, then stops at its target', () => {
     const state = startMatch();
-    const accepted = issueMove(state, { x: 8, y: 33 });
+    const accepted = issueMove(state, { x: 8, y: 20 });
     if (!accepted.ok) throw new Error('test move should be accepted');
     const moving = accepted.state;
     expect(unit(moving).path).toEqual([
-      { x: 7, y: 33 },
-      { x: 8, y: 33 },
+      { x: 7, y: 20 },
+      { x: 8, y: 20 },
     ]);
     const firstTick = stepMatch(moving);
     expect(firstTick.elapsedTicks).toBe(1);
-    expect(unit(firstTick).cell).toEqual({ x: 6, y: 33 });
+    expect(unit(firstTick).cell).toEqual({ x: 6, y: 20 });
     expect(unit(firstTick).edgeProgress).toBe(1);
     const secondTick = stepMatch(firstTick);
     expect(secondTick.elapsedTicks).toBe(2);
-    expect(unit(secondTick).cell).toEqual({ x: 7, y: 33 });
+    expect(unit(secondTick).cell).toEqual({ x: 7, y: 20 });
     expect(unit(secondTick).edgeProgress).toBe(0);
     const finished = stepMatch(stepMatch(secondTick));
-    expect(unit(finished).cell).toEqual({ x: 8, y: 33 });
+    expect(unit(finished).cell).toEqual({ x: 8, y: 20 });
     expect(unit(finished).path).toEqual([]);
     expect(unit(finished).edgeProgress).toBe(0);
   });
 
   it('finishes an in-progress edge before applying a replacement route', () => {
     const state = startMatch();
-    const initialMove = issueMove(state, { x: 8, y: 33 });
+    const initialMove = issueMove(state, { x: 8, y: 20 });
     if (!initialMove.ok) throw new Error('test move should be accepted');
     const halfway = stepMatch(initialMove.state);
     expect(unit(halfway).edgeProgress).toBe(1);
 
-    const retargeted = issueMove(halfway, { x: 7, y: 34 });
+    const retargeted = issueMove(halfway, { x: 7, y: 21 });
     expect(retargeted.ok).toBe(true);
     if (!retargeted.ok) return;
-    expect(unit(retargeted.state).cell).toEqual({ x: 6, y: 33 });
+    expect(unit(retargeted.state).cell).toEqual({ x: 6, y: 20 });
     expect(unit(retargeted.state).edgeProgress).toBe(1);
     expect(unit(retargeted.state).path).toEqual([
-      { x: 7, y: 33 },
-      { x: 7, y: 34 },
+      { x: 7, y: 20 },
+      { x: 7, y: 21 },
     ]);
     const completedEdge = stepMatch(retargeted.state);
-    expect(unit(completedEdge).cell).toEqual({ x: 7, y: 33 });
+    expect(unit(completedEdge).cell).toEqual({ x: 7, y: 20 });
     expect(unit(completedEdge).edgeProgress).toBe(0);
-    expect(unit(completedEdge).path).toEqual([{ x: 7, y: 34 }]);
+    expect(unit(completedEdge).path).toEqual([{ x: 7, y: 21 }]);
   });
 
   it('keeps only the current edge when stopping halfway and succeeds when already stopped', () => {
     const state = startMatch();
-    const initialMove = issueMove(state, { x: 9, y: 33 });
+    const initialMove = issueMove(state, { x: 9, y: 20 });
     if (!initialMove.ok) throw new Error('test move should be accepted');
     const halfway = stepMatch(initialMove.state);
     const stopped = applyCommand(halfway, 'A', {
@@ -294,7 +294,7 @@ describe('fixed tick unit movement', () => {
     });
     expect(stopped.ok).toBe(true);
     if (!stopped.ok) return;
-    expect(unit(stopped.state).path).toEqual([{ x: 7, y: 33 }]);
+    expect(unit(stopped.state).path).toEqual([{ x: 7, y: 20 }]);
     expect(unit(stopped.state).edgeProgress).toBe(1);
     const repeatedStop = applyCommand(stopped.state, 'A', {
       type: 'stop',
@@ -302,7 +302,7 @@ describe('fixed tick unit movement', () => {
     });
     expect(repeatedStop).toEqual({ ok: true, state: stopped.state });
     const atCenter = stepMatch(stopped.state);
-    expect(unit(atCenter).cell).toEqual({ x: 7, y: 33 });
+    expect(unit(atCenter).cell).toEqual({ x: 7, y: 20 });
     expect(unit(atCenter).path).toEqual([]);
   });
 });

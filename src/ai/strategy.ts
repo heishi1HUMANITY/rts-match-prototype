@@ -529,12 +529,16 @@ function unitMoveCommand(
   const outposts = view.bases.filter(
     (base) => base.kind !== 'hq' && !isOwnBase(base, factionId),
   );
-  const hqs = view.bases.filter(
-    (base) =>
-      base.kind === 'hq' &&
-      base.id !== `HQ-${factionId}` &&
-      isLiveKnownBase(base),
-  );
+  const isHqProtected =
+    view.tick < (view.rules.match.hqProtectionTicks ?? 1200);
+  const hqs = isHqProtected
+    ? []
+    : view.bases.filter(
+        (base) =>
+          base.kind === 'hq' &&
+          base.id !== `HQ-${factionId}` &&
+          isLiveKnownBase(base),
+      );
   const strategicTargets = outposts.length > 0 ? outposts : hqs;
 
   const proposedDefense = enemyDefenseGoal(view, unit);

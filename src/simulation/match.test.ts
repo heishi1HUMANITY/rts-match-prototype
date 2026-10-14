@@ -6,7 +6,7 @@ import { createMatch } from './match';
 describe('initial match contract', () => {
   it('creates schema-v18 ready state with three ranked factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(20);
+    expect(match.schemaVersion).toBe(21);
     expect(match.timeLimitTicks).toBe(3000);
     expect(match.result).toBeNull();
     expect(
@@ -200,7 +200,7 @@ describe('initial match contract', () => {
     });
     expect(standard.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
-      hp: 100,
+      hp: 300,
       defender: { hp: 60, maxHp: 60 },
     });
   });

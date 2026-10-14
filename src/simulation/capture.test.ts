@@ -18,9 +18,9 @@ function unguarded(state: MatchState, id = 'OUT-02'): MatchState {
 
 describe('outpost capture', () => {
   it.each([
-    ['outpost', 100],
-    ['medium', 180],
-    ['large', 300],
+    ['outpost', 300],
+    ['medium', 500],
+    ['large', 800],
   ] as const)(
     'restores the configured percentage for %s bases',
     (kind, maxHp) => {

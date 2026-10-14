@@ -59,6 +59,18 @@ export function attackerStateModifierPercent(
   return 100;
 }
 
+export function isHqProtected(
+  state: {
+    readonly elapsedTicks: number;
+    readonly rules: { readonly match: { readonly hqProtectionTicks?: number } };
+  },
+  base: { readonly kind: string },
+): boolean {
+  if (base.kind !== 'hq') return false;
+  const protectionTicks = state.rules.match.hqProtectionTicks ?? 1200;
+  return state.elapsedTicks < protectionTicks;
+}
+
 interface AttackActorContext {
   readonly profile: AttackProfile;
   readonly attack: AttackState;
@@ -526,7 +538,11 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
           id: garrison.unit.id,
           distanceSquared: garrison.distanceSquared,
         };
-      if (base.defender && base.defender.hp > 0) {
+      if (
+        base.defender &&
+        base.defender.hp > 0 &&
+        !isHqProtected(state, base)
+      ) {
         if (
           unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
             'defender',
@@ -544,6 +560,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
             ),
           };
       } else if (
+        !isHqProtected(state, base) &&
         unitCapabilities(attacker.kind, state.rules).attackTargets.includes(
           'base',
         ) &&
@@ -666,6 +683,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
     )
     .filter(
       (base) =>
+        !isHqProtected(state, base) &&
         ((base.owner !== null && base.owner !== attacker.factionId) ||
           (base.owner === null && base.defender?.hp === 0)) &&
         base.hp > 0,
@@ -1141,7 +1159,7 @@ export function resolveCombat(state: MatchState): MatchState {
         ? { ...base.defender, hp: Math.max(0, base.defender.hp - defenderHit) }
         : base.defender;
     const damage = baseDamage.get(base.id) ?? 0;
-    if (damage <= 0 || base.hp <= 0)
+    if (isHqProtected(snapshot, base) || damage <= 0 || base.hp <= 0)
       return defender === base.defender ? base : { ...base, defender };
     const hp = Math.max(0, base.hp - damage);
     const damaged = {

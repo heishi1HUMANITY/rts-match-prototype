@@ -148,7 +148,7 @@ describe('G3 simultaneous elimination and result', () => {
     expect(applyCommand(paused.state, 'A', { type: 'resume' }).ok).toBe(true);
   });
 
-  it('requires both HQ destruction and no surviving units for forces elimination', () => {
+  it('eliminates faction immediately when HQ hp reaches 0, clearing forces and resetting bases', () => {
     const state = running();
     const brokenHq = {
       ...state,
@@ -156,18 +156,29 @@ describe('G3 simultaneous elimination and result', () => {
         base.id === 'HQ-B' ? { ...base, hp: 0 } : base,
       ),
     };
-    const surviving = resolveMatchOutcome(brokenHq);
-    expect(byId(surviving, 'B').eliminatedAtTick).toBeNull();
-    const noForces = {
-      ...brokenHq,
-      units: brokenHq.units.filter(({ factionId }) => factionId !== 'B'),
-    };
-    const eliminated = resolveMatchOutcome(noForces);
+    const eliminated = resolveMatchOutcome(brokenHq);
     expect(byId(eliminated, 'B')).toMatchObject({
       eliminatedAtTick: 0,
-      eliminationReason: 'forces',
+      eliminationReason: 'hq',
+      ticketsCenti: 0,
     });
+    // Forces are removed
+    expect(eliminated.units.some(({ factionId }) => factionId === 'B')).toBe(
+      false,
+    );
     expect(eliminated.phase).toBe('running');
+
+    // If 2 of 3 HQs fall, match ends with last-standing
+    const twoBrokenHqs = {
+      ...eliminated,
+      bases: eliminated.bases.map((base) =>
+        base.id === 'HQ-C' ? { ...base, hp: 0 } : base,
+      ),
+    };
+    const finished = resolveMatchOutcome(twoBrokenHqs);
+    expect(finished.phase).toBe('finished');
+    expect(finished.result?.reason).toBe('last-standing');
+    expect(finished.result?.standings[0]?.factionId).toBe('A');
   });
 
   it('removes outposts, queue and research on elimination, then freezes balances', () => {
@@ -200,7 +211,7 @@ describe('G3 simultaneous elimination and result', () => {
     expect(byId(cleaned, 'A').activeResearch).toBeNull();
     expect(cleaned.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
-      hp: 100,
+      hp: 300,
       defender: { hp: 60, maxHp: 60, disabledTicks: 0 },
       captureCandidate: null,
       captureProgressCentiTicks: 0,
@@ -208,20 +219,6 @@ describe('G3 simultaneous elimination and result', () => {
     expect(cleaned.bases.find(({ id }) => id === 'HQ-A')).toMatchObject({
       owner: 'A',
       hp: 0,
-    });
-    const withoutRespawn = resolveMatchOutcome({
-      ...withDefeat,
-      rules: {
-        ...withDefeat.rules,
-        defenses: { ...withDefeat.rules.defenses, respawnEnabled: false },
-      },
-    });
-    expect(
-      withoutRespawn.bases.find(({ id }) => id === 'OUT-03'),
-    ).toMatchObject({
-      owner: null,
-      hp: 100,
-      defender: null,
     });
     const afterTick = stepMatch(cleaned);
     expect(byId(afterTick, 'A').supplyCenti).toBe(
@@ -356,5 +353,59 @@ describe('G3 simultaneous elimination and result', () => {
     expect(byId(updated, 'A').ticketsCenti).toBe(99_990);
     expect(byId(updated, 'C').ticketsCenti).toBe(100_000);
     expect(byId(updated, 'B').ticketsCenti).toBe(0);
+  });
+
+  it('clears crossing jobs initiated by an eliminated faction and allows other factions to build', () => {
+    let state = running();
+    const site = state.map.crossingSites!.find((s) => s.tier === 'bridge-1')!;
+    state = {
+      ...state,
+      crossings: state.crossings.map((crossing) =>
+        crossing.siteId === site.id
+          ? {
+              ...crossing,
+              owner: null,
+              job: {
+                kind: 'build' as const,
+                factionId: 'B' as const,
+                progressTicks: 20,
+                requiredTicks: 100,
+                paidCostCenti: 1000,
+              },
+            }
+          : crossing,
+      ),
+      bases: state.bases.map((base) =>
+        base.id === 'HQ-B' ? { ...base, hp: 0 } : base,
+      ),
+    };
+
+    const resolved = resolveMatchOutcome(state);
+    const crossingAfter = resolved.crossings.find((c) => c.siteId === site.id);
+    expect(crossingAfter?.job).toBeNull();
+
+    const aUnit = resolved.units.find((u) => u.factionId === 'A')!;
+    const bank = site.bankA;
+    const stateWithUnit = {
+      ...resolved,
+      units: resolved.units.map((u) =>
+        u.id === aUnit.id ? { ...u, cell: bank } : u,
+      ),
+    };
+    const buildResult = applyCommand(stateWithUnit, 'A', {
+      type: 'build-crossing',
+      siteId: site.id,
+      unitId: aUnit.id,
+    });
+    expect(buildResult.ok).toBe(true);
+    if (buildResult.ok) {
+      const activeJob = buildResult.state.crossings.find(
+        (c) => c.siteId === site.id,
+      )?.job;
+      expect(activeJob).toMatchObject({
+        kind: 'build',
+        factionId: 'A',
+      });
+    }
   });
 });

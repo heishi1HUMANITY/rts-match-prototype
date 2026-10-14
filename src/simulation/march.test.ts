@@ -50,6 +50,10 @@ function issueMarch(
 function flatState(state: MatchState): MatchState {
   return {
     ...state,
+    rules: {
+      ...state.rules,
+      match: { ...state.rules.match, hqProtectionTicks: 0 },
+    },
     map: {
       ...state.map,
       terrain: new Array(state.map.width * state.map.height).fill('land'),
@@ -108,13 +112,20 @@ describe('march command', () => {
   });
 
   it('allows public unknown bases without claiming their unseen observation time', () => {
-    const state = running();
+    let state = running();
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        match: { ...state.rules.match, hqProtectionTicks: 0 },
+      },
+    };
     const result = issueMarch(state, { kind: 'base', id: 'HQ-B' });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(unit(result.state, 'A-01').marchOrder).toMatchObject({
       target: { kind: 'base', id: 'HQ-B' },
-      lastKnownCell: { x: 33, y: 34 },
+      lastKnownCell: { x: 28, y: 33 },
       lastSeenTick: -1,
       status: 'searching',
     });
@@ -412,27 +423,27 @@ describe('deterministic march updates', () => {
     state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
-      hp: 100,
+      hp: 300,
       defender: { hp: state.rules.defenses.outpost.maxHp },
     });
     for (let tick = 0; tick < state.rules.defenses.outpost.maxHp / 2; tick += 1)
       state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
-      hp: 100,
+      hp: 300,
       defender: { hp: 0 },
     });
-    for (let tick = 0; tick < 50; tick += 1) state = stepMatch(state);
+    for (let tick = 0; tick < 159; tick += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: null,
       hp: 0,
       captureCandidate: 'A',
-      captureProgressCentiTicks: 100,
+      captureProgressCentiTicks: 1000,
     });
-    for (let tick = 0; tick < 30; tick += 1) state = stepMatch(state);
+    for (let tick = 0; tick < 20; tick += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
-      hp: 30,
+      hp: 90,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
     });
@@ -452,17 +463,17 @@ describe('deterministic march updates', () => {
     state = onlyUnits(state, ['A-01']);
     state = replaceUnit(state, 'A-01', {
       ...unit(state, 'A-01'),
-      cell: { x: 8, y: 34 },
+      cell: { x: 7, y: 20 },
     });
     const accepted = issueMarch(state, { kind: 'base', id: 'HQ-A' });
     if (!accepted.ok) throw new Error('friendly base should be a valid target');
     state = accepted.state;
     for (let tick = 0; tick < 5; tick += 1) state = stepMatch(state);
-    expect(unit(state, 'A-01').cell).toEqual({ x: 6, y: 34 });
+    expect(unit(state, 'A-01').cell).toEqual({ x: 5, y: 20 });
     expect(unit(state, 'A-01').path).toEqual([]);
     expect(unit(state, 'A-01').marchOrder?.status).toBe('arrived');
     const held = stepMatch(stepMatch(state));
-    expect(unit(held, 'A-01').cell).toEqual({ x: 6, y: 34 });
+    expect(unit(held, 'A-01').cell).toEqual({ x: 5, y: 20 });
     expect(unit(held, 'A-01').path).toEqual([]);
     expect(unit(held, 'A-01').marchOrder?.status).toBe('arrived');
   });
@@ -472,7 +483,7 @@ describe('deterministic march updates', () => {
     state = onlyUnits(state, ['A-01']);
     state = replaceUnit(state, 'A-01', {
       ...unit(state, 'A-01'),
-      cell: { x: 32, y: 34 },
+      cell: { x: 27, y: 33 },
     });
     state = {
       ...state,
@@ -484,11 +495,11 @@ describe('deterministic march updates', () => {
     if (!accepted.ok) throw new Error('known HQ should be a valid target');
     state = accepted.state;
     state = stepMatch(stepMatch(stepMatch(state)));
-    expect(unit(state, 'A-01').cell).toEqual({ x: 33, y: 34 });
+    expect(unit(state, 'A-01').cell).toEqual({ x: 28, y: 33 });
     expect(unit(state, 'A-01').path).toEqual([]);
     expect(unit(state, 'A-01').marchOrder?.status).toBe('arrived');
     const held = stepMatch(stepMatch(state));
-    expect(unit(held, 'A-01').cell).toEqual({ x: 33, y: 34 });
+    expect(unit(held, 'A-01').cell).toEqual({ x: 28, y: 33 });
     expect(unit(held, 'A-01').path).toEqual([]);
   });
 

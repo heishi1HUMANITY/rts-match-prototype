@@ -1,4 +1,5 @@
 import { FACILITY_NAMES, updateFacilitiesPanel } from './facilities';
+import { updateTicketsHud } from './tickets';
 import type { PlayerSnapshot } from '../runtime/controller';
 import { marchOrderLabel } from './march-target';
 import type {
@@ -137,7 +138,7 @@ export function createHud(app: HTMLElement): HudElements {
   app.innerHTML = `
     <header class="topbar">
       <div class="brand"><span class="brand-mark">◆</span><div><strong>RTS MATCH</strong><small>1v1v1 RTS</small></div></div>
-      <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span><span data-local-status aria-live="polite" style="max-width:230px;color:#59636c;font:600 9px/1.2 system-ui,sans-serif;white-space:normal"></span></div>
+      <div class="faction-legend ticket-strip" aria-label="公開チケット"><span class="legend-a"><b>◆ A</b><strong data-ticket="A"></strong></span><span class="legend-b"><b>■ B</b><strong data-ticket="B"></strong></span><span class="legend-c"><b>⬡ C</b><strong data-ticket="C"></strong></span><span data-local-status aria-live="polite" style="max-width:230px;color:#59636c;font:600 9px/1.2 system-ui,sans-serif;white-space:normal"></span><span data-testid="hq-protection-banner" class="hq-protection-banner" hidden style="font-size: 11px; font-weight: bold; color: #38bdf8; padding: 2px 6px; border-radius: 4px; background: rgba(14, 116, 144, 0.2); border: 1px solid rgba(56, 189, 248, 0.4); margin-left: 8px;"></span><span data-testid="hq-warning-banner" class="hq-warning-banner" hidden style="font-size: 11px; font-weight: bold; color: #f87171; padding: 2px 6px; border-radius: 4px; background: rgba(185, 28, 28, 0.25); border: 1px solid rgba(248, 113, 113, 0.6); margin-left: 8px;"></span></div>
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
@@ -318,6 +319,7 @@ export function updateHud(
     selectedUnits.length > 1 ? `${selectedUnits.length}部隊を停止` : '部隊停止';
   elements.clear.disabled = !canSelect || selectedUnits.length === 0;
   elements.status.textContent = snapshot.message;
+  updateTicketsHud(elements, snapshot);
   text('.tick-readout', `TICK ${view.tick} · ${view.phase.toUpperCase()}`);
   for (const id of ['A', 'B', 'C'] as const)
     text(
@@ -939,7 +941,7 @@ export function updateHud(
                 ? '■'
                 : '⬡';
           row.className = `legend-${standing.factionId.toLowerCase()}`;
-          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都・全部隊喪失'}）`}`;
+          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都陥落'}）`}`;
           return row;
         }),
       );
