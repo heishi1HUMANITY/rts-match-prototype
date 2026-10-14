@@ -179,6 +179,6 @@ describe('V06 view-only render frames', () => {
         defenderHp: 0,
         defenderMaxHp: 60,
       }),
-    ).toContain('中立 HP0/100 · 守備撃破 · A制圧 12/30');
+    ).toContain('中立 HP0/100 · 守備撃破 · A制圧 6%');
   });
 });

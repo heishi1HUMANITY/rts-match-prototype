@@ -307,7 +307,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 21;
+  readonly schemaVersion: 22;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -419,6 +419,7 @@ export interface FactionView {
   readonly publicEliminations: Readonly<Record<FactionId, EliminationStatus>>;
   readonly map: GridMap;
   readonly ticketsCenti: Readonly<Record<FactionId, number>>;
+  readonly ticketRatesCentiPerSec: Readonly<Record<FactionId, number>>;
   readonly visible: readonly boolean[];
   readonly explored: readonly boolean[];
   readonly ownFaction: OwnFactionView;

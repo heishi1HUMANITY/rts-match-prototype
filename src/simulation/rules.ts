@@ -3,14 +3,15 @@ import {
   BASE_RESEARCH_INCOME_CENTI_PER_TICK,
   CAPTURE_RADIUS,
   CAPTURE_TICKS_REQUIRED,
-  HQ_LOSS_TICKETS_CENTI,
   INITIAL_RESEARCH_CENTI,
   INITIAL_SUPPLY_CENTI,
   INITIAL_TICKETS_CENTI,
   MOVE_TICKS_PER_CELL,
   PRODUCTION_QUEUE_LIMIT,
   STANDARD_TIME_LIMIT_TICKS,
-  UNIT_LIMIT,
+  BASE_UNITS,
+  UNITS_PER_OWNED_BASE,
+  MAX_UNITS,
   UNIT_LOSS_TICKETS_CENTI,
   UNIT_STATS,
   RESEARCH_DEFINITIONS,
@@ -25,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 18 as const;
-export const RULES_VERSION = 'f16-v2' as const;
+export const MASTER_SCHEMA_VERSION = 19 as const;
+export const RULES_VERSION = 'f16-v3' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -172,11 +173,12 @@ export interface RulesMaster {
     readonly initialResearchCenti: number;
     readonly initialTicketsCenti: number;
     readonly unitLossTicketsCenti: number;
-    readonly hqLossTicketsCenti: number;
     readonly hqProtectionTicks: number;
   };
   readonly limits: {
-    readonly unitsPerFaction: number;
+    readonly baseUnits: number;
+    readonly unitsPerOwnedBase: number;
+    readonly maxUnits: number;
     readonly productionQueue: number;
   };
   readonly capture: {
@@ -188,6 +190,15 @@ export interface RulesMaster {
     readonly updateIntervalTicks: number;
     readonly penaltyPerWeightCenti: number;
     readonly maximumPenaltyWeight: number;
+    readonly decay: {
+      readonly startTick: number;
+      readonly startCentiPerTick: number;
+      readonly endTick: number;
+      readonly endCentiPerTick: number;
+      readonly territoryPercentPerWeight: number;
+      readonly territoryMinPercent: number;
+      readonly territoryMaxPercent: number;
+    };
   };
   readonly npc: {
     readonly decisionIntervalTicks: number;
@@ -553,11 +564,12 @@ export const DEFAULT_RULES: RulesMaster = {
     initialResearchCenti: INITIAL_RESEARCH_CENTI,
     initialTicketsCenti: INITIAL_TICKETS_CENTI,
     unitLossTicketsCenti: UNIT_LOSS_TICKETS_CENTI,
-    hqLossTicketsCenti: HQ_LOSS_TICKETS_CENTI,
     hqProtectionTicks: 1200,
   },
   limits: {
-    unitsPerFaction: UNIT_LIMIT,
+    baseUnits: BASE_UNITS,
+    unitsPerOwnedBase: UNITS_PER_OWNED_BASE,
+    maxUnits: MAX_UNITS,
     productionQueue: PRODUCTION_QUEUE_LIMIT,
   },
   capture: {
@@ -569,6 +581,15 @@ export const DEFAULT_RULES: RulesMaster = {
     updateIntervalTicks: 10,
     penaltyPerWeightCenti: 10,
     maximumPenaltyWeight: 6,
+    decay: {
+      startTick: 3000,
+      startCentiPerTick: 3,
+      endTick: 6000,
+      endCentiPerTick: 15,
+      territoryPercentPerWeight: 25,
+      territoryMinPercent: 50,
+      territoryMaxPercent: 200,
+    },
   },
   npc: {
     decisionIntervalTicks: 30,

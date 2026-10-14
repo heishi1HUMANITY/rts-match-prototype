@@ -403,6 +403,13 @@ describe('deterministic march updates', () => {
 
   it('marches onto an enemy outpost, captures it after destruction, then holds ownership', () => {
     let state = flatState(running());
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        capture: { ...state.rules.capture, requiredTicks: 30 },
+      },
+    };
     state = onlyUnits(state, ['A-01']);
     state = replaceUnit(state, 'A-01', {
       ...unit(state, 'A-01'),

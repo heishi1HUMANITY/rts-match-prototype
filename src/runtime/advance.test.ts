@@ -4,6 +4,7 @@ import { applyCommand } from '../simulation/commands';
 import { createMatch } from '../simulation/match';
 import type { MatchState, ScenarioId } from '../simulation/types';
 import { advanceMatch } from './advance';
+import { DEFAULT_RULES } from '../simulation/rules';
 
 function running(state: MatchState): MatchState {
   return { ...state, phase: 'running' };
@@ -121,7 +122,12 @@ describe('advanceMatch NPC orchestration', () => {
 
   it('finishes full standard matches with active NPC strategy and valid final standings', () => {
     for (const seed of [0, 42, 43]) {
-      const initial = createMatch(seed);
+      const initial = createMatch(seed, {
+        rules: {
+          ...DEFAULT_RULES,
+          match: { ...DEFAULT_RULES.match, timeLimitTicks: 3_000 },
+        },
+      });
       const started = applyCommand(initial, 'A', { type: 'start' });
       expect(started.ok).toBe(true);
       if (!started.ok) throw new Error('standard match failed to start');

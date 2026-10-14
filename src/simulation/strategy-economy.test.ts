@@ -47,7 +47,7 @@ describe('G2 integer economy', () => {
   it('accrues HQ income minus surviving unit upkeep exactly in centi', () => {
     let state = runningMatch();
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
-    expect(faction(state).supplyCenti).toBe(20_520);
+    expect(faction(state).supplyCenti).toBe(20_450);
     expect(faction(state).researchCenti).toBe(120);
 
     const outpost = state.bases.find(({ id }) => id === 'OUT-03');
@@ -59,9 +59,9 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(owned);
-    expect(faction(next).supplyCenti).toBe(20_592);
+    expect(faction(next).supplyCenti).toBe(20_515);
     expect(faction(next).researchCenti).toBe(142);
-    expect(faction(owned).supplyCenti).toBe(20_520);
+    expect(faction(owned).supplyCenti).toBe(20_450);
   });
 
   it('clamps upkeep at zero without creating supply or damaging units', () => {
@@ -73,7 +73,7 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(withoutHq);
-    expect(faction(next).supplyCenti).toBe(12);
+    expect(faction(next).supplyCenti).toBe(5);
     expect(next.units).toBe(withoutHq.units);
   });
 });
@@ -129,6 +129,12 @@ describe('G2 production commands and tick helpers', () => {
 
   it('serializes active and waiting jobs and starts the next only on a later tick', () => {
     let state = withFaction(runningMatch(), { supplyCenti: 100_000 });
+    state = {
+      ...state,
+      bases: state.bases.map((b) =>
+        b.id.startsWith('OUT-') ? { ...b, owner: 'A' as const, hp: 100 } : b,
+      ),
+    };
     state = accepted(state, {
       type: 'enqueue-production',
       baseId: 'HQ-A',
@@ -356,21 +362,22 @@ describe('G2 production commands and tick helpers', () => {
     ).toBe(false);
   });
 
-  it('counts live units and reservations toward the six-unit cap', () => {
+  it('links unit limit to owned bases, enforces soft cap, pauses queue on exceed, and resumes on casualty', () => {
     let state = withFaction(runningMatch(), { supplyCenti: 100_000 });
-    for (let i = 0; i < 3; i += 1) {
-      state = accepted(state, {
-        type: 'enqueue-production',
-        baseId: 'HQ-A',
-        unitKind: 'scout',
-      });
-      for (let tick = 0; tick < 60; tick += 1) state = advanceProduction(state);
-    }
+    // Initially baseUnits = 3, owned non-HQ bases = 1 (HOME-A) -> limit = 4.
+    // Living units: 2 (A-01, A-02).
+    // Can enqueue 2 units to reach limit (2 + 2 = 4)
     state = accepted(state, {
       type: 'enqueue-production',
       baseId: 'HQ-A',
       unitKind: 'scout',
     });
+    state = accepted(state, {
+      type: 'enqueue-production',
+      baseId: 'HQ-A',
+      unitKind: 'scout',
+    });
+    // Next enqueue (5th committed unit) is rejected by UNIT_LIMIT
     expect(
       applyCommand(state, 'A', {
         type: 'enqueue-production',
@@ -382,6 +389,81 @@ describe('G2 production commands and tick helpers', () => {
       state,
       reason: 'UNIT_LIMIT',
     });
+
+    // Acquire 1 outpost (OUT-01) -> limit becomes 3 + 2 = 5
+    state = {
+      ...state,
+      bases: state.bases.map((b) =>
+        b.id === 'OUT-01' ? { ...b, owner: 'A' as const, hp: 100 } : b,
+      ),
+    };
+    // Now can enqueue 1 more (live 2 + jobs 2 -> 4, now 4 + 1 = 5)
+    state = accepted(state, {
+      type: 'enqueue-production',
+      baseId: 'HQ-A',
+      unitKind: 'scout',
+    });
+    expect(faction(state).productionJobs).toHaveLength(3);
+
+    // Lose OUT-01 -> limit drops back to 4
+    state = {
+      ...state,
+      bases: state.bases.map((b) =>
+        b.id === 'OUT-01' ? { ...b, owner: null, hp: 0 } : b,
+      ),
+    };
+    // Existing units and jobs remain (soft cap: no deletion)
+    expect(
+      state.units.filter((u) => u.factionId === 'A' && u.hp > 0),
+    ).toHaveLength(2);
+    expect(faction(state).productionJobs).toHaveLength(3);
+
+    // Further enqueue is rejected
+    expect(
+      applyCommand(state, 'A', {
+        type: 'enqueue-production',
+        baseId: 'HQ-A',
+        unitKind: 'scout',
+      }),
+    ).toEqual({
+      ok: false,
+      state,
+      reason: 'UNIT_LIMIT',
+    });
+
+    // Let the active jobs produce. Active job finishes in 60 ticks.
+    for (let tick = 0; tick < 60; tick += 1) {
+      state = advanceProduction(state);
+    }
+    // Now 3 live units, 2 jobs remaining.
+    expect(
+      state.units.filter((u) => u.factionId === 'A' && u.hp > 0),
+    ).toHaveLength(3);
+
+    // Next job produces for 60 ticks -> spawns 4th live unit
+    for (let tick = 0; tick < 60; tick += 1) {
+      state = advanceProduction(state);
+    }
+    expect(
+      state.units.filter((u) => u.factionId === 'A' && u.hp > 0),
+    ).toHaveLength(4);
+    // Now liveCount (4) >= limit (4). 3rd job is now active with remainingTicks = 60
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(60);
+
+    // Advance 5 ticks: because liveCount(4) >= limit(4), production PAUSES (remainingTicks not decremented)
+    for (let tick = 0; tick < 5; tick += 1) {
+      state = advanceProduction(state);
+    }
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(60);
+
+    // Kill one living unit -> liveCount drops to 3 < limit(4)
+    state = {
+      ...state,
+      units: state.units.map((u) => (u.id === 'A-01' ? { ...u, hp: 0 } : u)),
+    };
+    // Now advance production -> production RESUMES (ticks decrement)
+    state = advanceProduction(state);
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(59);
   });
 });
 

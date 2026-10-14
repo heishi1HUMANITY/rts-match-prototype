@@ -1,4 +1,5 @@
 import { MAP_WIDTH } from './config';
+import { getFactionTicketLossRateCentiPerSec } from './tickets';
 import {
   getUnitPositionX1024,
   getUnitPositionY1024,
@@ -316,6 +317,12 @@ export function getFactionView(
     },
     ticketsCenti: Object.fromEntries(
       state.factions.map((entry) => [entry.id, entry.ticketsCenti]),
+    ) as Record<FactionId, number>,
+    ticketRatesCentiPerSec: Object.fromEntries(
+      state.factions.map((entry) => [
+        entry.id,
+        getFactionTicketLossRateCentiPerSec(state, entry.id),
+      ]),
     ) as Record<FactionId, number>,
     visible: masks.visible,
     explored: masks.explored,

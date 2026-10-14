@@ -4,10 +4,13 @@ import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
 import { maximumBaseLevel } from '../simulation/base-upgrades';
 import { replay, rulesContentId } from './diagnostics';
 import { SCHEMA_VERSION } from '../simulation/config';
-import { RULES_VERSION } from '../simulation/rules';
-import type { CommandEntry } from './controller';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES } from '../simulation/rules';
+import {
+  DEFAULT_RULES,
+  MASTER_SCHEMA_VERSION,
+  RULES_VERSION,
+} from '../simulation/rules';
+import type { CommandEntry } from './controller';
 import { MasterStore, type StorageLike } from './master-store';
 
 class MemoryStorage implements StorageLike {
@@ -75,7 +78,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 18,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 42,
         rules: {
           capture: { requiredTicks: 57, restoredHpPercent: 30 },
@@ -190,7 +193,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 18,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 9,
         rules: {
           units: { scout: { costCenti: 8_000 } },
@@ -218,7 +221,7 @@ describe('F17 browser master store', () => {
       ok: true,
       source: 'storage',
       envelope: {
-        masterSchemaVersion: 18,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         revision: 10,
         rules: {
           defenses: {
@@ -281,7 +284,7 @@ describe('F17 browser master store', () => {
     const loaded = new MasterStore(storage).load();
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    expect(loaded.envelope.masterSchemaVersion).toBe(18);
+    expect(loaded.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
     expect(loaded.envelope.revision).toBe(14);
     expect(
       loaded.envelope.rules.research.definitions['firepower-1'],
@@ -374,7 +377,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 18,
+      masterSchemaVersion: MASTER_SCHEMA_VERSION,
       revision: 31,
       rules: {
         bases: { outpost: { supplyIncomeCentiPerTick: 27 } },
@@ -420,7 +423,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 18,
+      masterSchemaVersion: MASTER_SCHEMA_VERSION,
       revision: 50,
       rules: {
         units: {
@@ -463,7 +466,7 @@ describe('F17 browser master store', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     expect(loaded.envelope).toMatchObject({
-      masterSchemaVersion: 18,
+      masterSchemaVersion: MASTER_SCHEMA_VERSION,
       revision: 51,
       rules: {
         match: {
@@ -472,6 +475,52 @@ describe('F17 browser master store', () => {
         },
       },
     });
+  });
+
+  it('loads and upgrades schema 18 rules adding limits, decay, and upkeeps', () => {
+    const storage = new MemoryStorage();
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    legacy.limits = {
+      unitsPerFaction: 6,
+      productionQueue: 3,
+    };
+    delete legacy.tickets.decay;
+    legacy.match.hqLossTicketsCenti = 10_000;
+    legacy.units.assault.upkeepCentiPerTick = 5;
+    storage.setItem(
+      'rts-match-prototype.master.v1',
+      JSON.stringify({ masterSchemaVersion: 18, revision: 52, rules: legacy }),
+    );
+    const loaded = new MasterStore(storage).load();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.envelope).toMatchObject({
+      masterSchemaVersion: MASTER_SCHEMA_VERSION,
+      revision: 52,
+      rules: {
+        limits: {
+          baseUnits: 3,
+          unitsPerOwnedBase: 1,
+          maxUnits: 9,
+          productionQueue: 3,
+        },
+        tickets: {
+          decay: DEFAULT_RULES.tickets.decay,
+        },
+        units: {
+          assault: {
+            upkeepCentiPerTick: 10,
+          },
+        },
+      },
+    });
+    expect(
+      (loaded.envelope.rules.match as Record<string, unknown>)
+        .hqLossTicketsCenti,
+    ).toBeUndefined();
   });
 });
 

@@ -570,7 +570,7 @@ describe('F11 and F21 combined migration contract', () => {
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.envelope.masterSchemaVersion).toBe(18);
+      expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
       expect(
         result.envelope.rules.research.definitions['custom-power']!.costCenti,
       ).toBe(4321);
@@ -655,7 +655,7 @@ describe('F11 and F21 combined migration contract', () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.envelope.masterSchemaVersion).toBe(18);
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
     expect(result.envelope.rules.units.assault.windupTicks).toBe(0);
     expect(result.envelope.rules.units.assault.intervalTicks).toBe(1);
     expect(result.envelope.rules.units.assault.canAttackWhileMoving).toBe(true);
@@ -686,8 +686,42 @@ describe('F11 and F21 combined migration contract', () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.envelope.masterSchemaVersion).toBe(18);
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
     expect(result.envelope.rules.match.hqProtectionTicks).toBe(1200);
+  });
+
+  it('migrates schema 18 master to schema 19 defaulting limits, decay, and upkeeps', () => {
+    const v18Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    v18Rules.limits = {
+      unitsPerFaction: 6,
+      productionQueue: 3,
+    };
+    delete v18Rules.tickets.decay;
+    v18Rules.match.hqLossTicketsCenti = 10_000;
+    v18Rules.units.assault.upkeepCentiPerTick = 5; // old default
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 18,
+      revision: 1,
+      rules: v18Rules,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+    expect(result.envelope.rules.limits.baseUnits).toBe(3);
+    expect(result.envelope.rules.limits.unitsPerOwnedBase).toBe(1);
+    expect(result.envelope.rules.limits.maxUnits).toBe(9);
+    expect(result.envelope.rules.tickets.decay).toEqual(
+      DEFAULT_RULES.tickets.decay,
+    );
+    expect(
+      (result.envelope.rules.match as Record<string, unknown>)
+        .hqLossTicketsCenti,
+    ).toBeUndefined();
+    expect(result.envelope.rules.units.assault.upkeepCentiPerTick).toBe(10);
   });
 
   it('rejects invalid attack profile values in rules validation', () => {

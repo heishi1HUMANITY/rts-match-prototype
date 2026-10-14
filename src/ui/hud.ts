@@ -260,11 +260,13 @@ function productionReason(
     if (hq?.visibility !== 'owned' || hq.hp <= 0)
       return '稼働中の首都を選んでください';
   }
-  if (
-    view.ownUnits.length + view.ownFaction.productionJobs.length >=
-    view.rules.limits.unitsPerFaction
-  )
-    return `部隊上限${view.rules.limits.unitsPerFaction}（予約を含む）`;
+  const ownedBases = view.bases.filter(
+    (base) => base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
+  ).length;
+  const { baseUnits, unitsPerOwnedBase, maxUnits } = view.rules.limits;
+  const limit = Math.min(maxUnits, baseUnits + ownedBases * unitsPerOwnedBase);
+  if (view.ownUnits.length + view.ownFaction.productionJobs.length >= limit)
+    return `部隊上限${limit}（拠点${ownedBases}、予約を含む）`;
   if (
     view.ownFaction.productionJobs.length >= view.rules.limits.productionQueue
   )
@@ -524,9 +526,17 @@ export function updateHud(
     '.panel-live',
     `${view.phase === 'running' ? '● 進行中' : '■ 停止中'} · ${(view.tick / 10).toFixed(1)}秒 · 補給${amount(own.supplyCenti)} / 研究${amount(own.researchCenti)}`,
   );
+  const ownedBases = view.bases.filter(
+    (base) => base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
+  ).length;
+  const { baseUnits, unitsPerOwnedBase, maxUnits } = view.rules.limits;
+  const unitLimit = Math.min(
+    maxUnits,
+    baseUnits + ownedBases * unitsPerOwnedBase,
+  );
   text(
     '.production-summary',
-    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限${view.rules.limits.unitsPerFaction} · 首都/港で直列生産`,
+    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限${unitLimit}（拠点${ownedBases}） · 首都/港で直列生産`,
   );
   const siteSelect = elements.root.querySelector<HTMLSelectElement>(
     '[data-production-site]',
@@ -845,7 +855,7 @@ export function updateHud(
           (activeTier?.researchIncomePercent ?? 100)) /
           100,
       );
-      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${base.captureProgressCentiTicks / 100}/${view.rules.capture.requiredTicks}` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${supplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
+      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${Math.floor((base.captureProgressCentiTicks / (view.rules.capture.requiredTicks * 100)) * 100)}%` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${supplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
       if (base.visibility === 'owned') {
         if (base.upgradeJob) {
           upgradeReason = `Lv${base.upgradeJob.targetLevel}へ強化中 · 残り${seconds(base.upgradeJob.remainingTicks)}`;

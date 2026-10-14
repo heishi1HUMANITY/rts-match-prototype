@@ -233,10 +233,13 @@ function knownActiveCrossings(view: FactionView): readonly ActiveCrossing[] {
 function productionCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
   const committed = view.ownUnits.length + faction.productionJobs.length;
-  if (
-    committed >= view.rules.limits.unitsPerFaction ||
-    faction.productionJobs.length >= view.rules.limits.productionQueue
-  ) {
+  const ownedBases = view.bases.filter(
+    (base) => base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
+  ).length;
+  const { baseUnits, unitsPerOwnedBase, maxUnits, productionQueue } =
+    view.rules.limits;
+  const limit = Math.min(maxUnits, baseUnits + ownedBases * unitsPerOwnedBase);
+  if (committed >= limit || faction.productionJobs.length >= productionQueue) {
     return undefined;
   }
 

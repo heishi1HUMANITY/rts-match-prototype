@@ -87,10 +87,10 @@ describe('simultaneous combat target selection', () => {
       false,
     );
     expect(next.factions.find(({ id }) => id === 'A')?.ticketsCenti).toBe(
-      99_200,
+      29_200,
     );
     expect(next.factions.find(({ id }) => id === 'B')?.ticketsCenti).toBe(
-      99_200,
+      29_200,
     );
   });
 
@@ -166,7 +166,7 @@ describe('simultaneous combat target selection', () => {
       hp: 0,
     });
     expect(next.factions.find(({ id }) => id === 'B')).toMatchObject({
-      ticketsCenti: 90_000,
+      ticketsCenti: 30_000,
       productionJobs: [],
       supplyCenti: 26_000,
     });

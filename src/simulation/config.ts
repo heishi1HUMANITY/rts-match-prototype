@@ -10,8 +10,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 21 as const;
-export const STANDARD_TIME_LIMIT_TICKS = 3_000;
+export const SCHEMA_VERSION = 22 as const;
+export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
 export const MAP_HEIGHT = 40;
@@ -21,15 +21,17 @@ export const TICK_DURATION_MS = 100;
 
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;
-export const INITIAL_TICKETS_CENTI = 100_000;
+export const INITIAL_TICKETS_CENTI = 30_000;
 export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 2;
-export const UNIT_LIMIT = 6;
+export const BASE_UNITS = 3;
+export const UNITS_PER_OWNED_BASE = 1;
+export const MAX_UNITS = 9;
+export const UNIT_LIMIT = MAX_UNITS;
 /** Active job plus two queued jobs. */
 export const PRODUCTION_QUEUE_LIMIT = 3;
-export const CAPTURE_TICKS_REQUIRED = 30;
+export const CAPTURE_TICKS_REQUIRED = 200;
 export const CAPTURE_RADIUS = 1;
 export const UNIT_LOSS_TICKETS_CENTI = 800;
-export const HQ_LOSS_TICKETS_CENTI = 10_000;
 
 export const UNIT_STATS: Readonly<
   Record<
@@ -59,7 +61,7 @@ export const UNIT_STATS: Readonly<
   assault: {
     costCenti: 12_000,
     buildTicks: 120,
-    upkeepCenti: 5,
+    upkeepCenti: 10,
     maxHp: 200,
     range: 2,
     vision: 6,
@@ -79,7 +81,7 @@ export const UNIT_STATS: Readonly<
   scout: {
     costCenti: 6_000,
     buildTicks: 60,
-    upkeepCenti: 3,
+    upkeepCenti: 5,
     maxHp: 120,
     range: 1,
     vision: 8,
@@ -99,7 +101,7 @@ export const UNIT_STATS: Readonly<
   artillery: {
     costCenti: 10_000,
     buildTicks: 100,
-    upkeepCenti: 6,
+    upkeepCenti: 14,
     maxHp: 160,
     range: 5,
     vision: 5,
@@ -119,7 +121,7 @@ export const UNIT_STATS: Readonly<
   antiAir: {
     costCenti: 9_000,
     buildTicks: 90,
-    upkeepCenti: 5,
+    upkeepCenti: 10,
     maxHp: 180,
     range: 4,
     vision: 7,
@@ -139,7 +141,7 @@ export const UNIT_STATS: Readonly<
   helicopter: {
     costCenti: 14_000,
     buildTicks: 140,
-    upkeepCenti: 7,
+    upkeepCenti: 16,
     maxHp: 180,
     range: 3,
     vision: 8,
@@ -159,7 +161,7 @@ export const UNIT_STATS: Readonly<
   patrolBoat: {
     costCenti: 12_000,
     buildTicks: 120,
-    upkeepCenti: 6,
+    upkeepCenti: 14,
     maxHp: 220,
     range: 3,
     vision: 7,
