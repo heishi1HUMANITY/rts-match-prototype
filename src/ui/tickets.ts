@@ -55,7 +55,10 @@ export function detectSuddenLossTickets(
   const periodicCount =
     Math.floor(currentTick / updateIntervalTicks) -
     Math.floor(prevTick / updateIntervalTicks);
-  const expectedPeriodicLoss = Math.max(0, periodicCount * rateCentiPerSec);
+  const expectedPeriodicLoss = Math.max(
+    0,
+    (periodicCount * rateCentiPerSec * updateIntervalTicks) / 10,
+  );
   const suddenDropAmount = dropAmount - expectedPeriodicLoss;
 
   // Threshold: >= 80 centi corresponds to at least ~1 ticket sudden drop

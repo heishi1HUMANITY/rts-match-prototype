@@ -138,6 +138,33 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
   });
 
   describe('detectSuddenLossTickets', () => {
+    it.each([5, 20])(
+      'excludes periodic decay and preserves unit losses with a %i-tick interval',
+      (intervalTicks) => {
+        const periodicLoss = (150 * intervalTicks) / 10;
+        expect(
+          detectSuddenLossTickets(
+            25_000 - periodicLoss,
+            25_000,
+            5999,
+            6000,
+            150,
+            intervalTicks,
+          ),
+        ).toBeNull();
+        expect(
+          detectSuddenLossTickets(
+            25_000 - periodicLoss - 800,
+            25_000,
+            5999,
+            6000,
+            150,
+            intervalTicks,
+          ),
+        ).toBe(8);
+      },
+    );
+
     it('returns null for periodic decay only (e.g. 150 centi at 10-tick interval)', () => {
       // 10 minutes in: rate is 150 centi/sec (1.5/s).
       // Over 10 ticks, exactly 150 centi dropped due to periodic decay.
