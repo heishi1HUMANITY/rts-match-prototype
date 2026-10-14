@@ -6,7 +6,11 @@ import {
   replay,
   rulesContentId,
 } from './diagnostics';
-import { DEFAULT_RULES } from '../simulation/rules';
+import {
+  DEFAULT_RULES,
+  MASTER_SCHEMA_VERSION,
+  RULES_VERSION,
+} from '../simulation/rules';
 import type { ScenarioId } from '../simulation/types';
 
 function running(scenario: ScenarioId) {
@@ -74,12 +78,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(snapshot, {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v3',
+      rulesVersion: RULES_VERSION,
       schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       rules: {
-        masterSchemaVersion: 19,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         rules: { capture: { restoredHpPercent: 50 } },
       },
     });
@@ -172,16 +176,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v3',
+      rulesVersion: RULES_VERSION,
       schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
         schemaVersion: 22,
-        rulesVersion: 'f16-v3',
+        rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 19,
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -241,7 +245,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       history: [],
       finalTick: 0,
       schemaVersion: 22 as const,
-      rulesVersion: 'f16-v3' as const,
+      rulesVersion: 'f16-v4' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -261,6 +265,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
       replay({
         ...input,
         rulesVersion: 'f18-v3',
+      } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        ...input,
+        rulesVersion: 'f16-v3',
       } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>

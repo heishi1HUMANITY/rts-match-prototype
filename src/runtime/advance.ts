@@ -5,9 +5,8 @@ import { stepMatch } from '../simulation/step';
 import { updateFactionKnowledge } from '../simulation/visibility';
 import { decideBotCommands } from '../ai/strategy';
 import { advanceLocalFactionOrders } from '../ai/local-faction';
-import type { FactionId, MatchState } from '../simulation/types';
+import type { MatchState } from '../simulation/types';
 
-const BOT_FACTIONS: readonly FactionId[] = ['B', 'C'];
 // F06 keeps its existing one-second response; B/C difficulty is independent.
 const LOCAL_DECISION_INTERVAL_TICKS = 10;
 
@@ -45,7 +44,10 @@ export function advanceMatch(state: MatchState): MatchState {
   if (prepared.elapsedTicks % prepared.rules.npc.decisionIntervalTicks === 0) {
     // Both views must describe the same pre-command world. In particular, B's
     // command must not affect information available to C at this boundary.
-    const decisions = (enablesBots(prepared) ? BOT_FACTIONS : []).map(
+    const botFactions = prepared.factions
+      .filter((entry) => entry.controller === 'bot')
+      .map((entry) => entry.id);
+    const decisions = (enablesBots(prepared) ? botFactions : []).map(
       (factionId) => {
         const faction = prepared.factions.find(
           (entry) => entry.id === factionId,

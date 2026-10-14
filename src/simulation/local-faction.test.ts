@@ -12,12 +12,17 @@ function running(state: MatchState): MatchState {
   return { ...state, phase: 'running' };
 }
 
+const ENABLED_LOCAL_RULES = {
+  ...DEFAULT_RULES,
+  localFaction: { ...DEFAULT_RULES.localFaction, enabled: true },
+};
+
 describe('F06 local faction', () => {
-  it('appears on the configured tick and owns no ranked faction slot', () => {
-    let state = running(createMatch(42));
+  it('appears on the configured tick and owns no ranked faction slot when enabled', () => {
+    let state = running(createMatch(42, { rules: ENABLED_LOCAL_RULES }));
     for (
       let tick = 0;
-      tick < DEFAULT_RULES.localFaction.appearanceTick;
+      tick < ENABLED_LOCAL_RULES.localFaction.appearanceTick;
       tick += 1
     )
       state = stepMatch(state);
@@ -32,8 +37,37 @@ describe('F06 local faction', () => {
     expect(state.result).toBeNull();
   });
 
+  it('does not spawn stronghold, units, or advance when disabled by default (F16-07)', () => {
+    let state = running(createMatch(42));
+    expect(state.rules.localFaction.enabled).toBe(false);
+    expect(state.localFaction.active).toBe(false);
+    expect(state.localFaction.stronghold.hp).toBe(0);
+    expect(
+      state.units.filter(({ factionId }) => factionId === 'local'),
+    ).toHaveLength(0);
+
+    for (let tick = 0; tick < 350; tick += 1) {
+      state = stepMatch(state);
+    }
+    expect(state.localFaction.active).toBe(false);
+    expect(state.localFaction.stronghold.hp).toBe(0);
+    expect(
+      state.units.filter(({ factionId }) => factionId === 'local'),
+    ).toHaveLength(0);
+
+    const f06Default = createMatch(42, { scenarioId: 'f06-local-faction' });
+    expect(f06Default.localFaction.active).toBe(false);
+    expect(f06Default.localFaction.stronghold.hp).toBe(0);
+    expect(
+      f06Default.units.filter(({ factionId }) => factionId === 'local'),
+    ).toHaveLength(0);
+  });
+
   it('charges for deterministic spawns and respects the local unit cap', () => {
-    const match = createMatch(42, { scenarioId: 'f06-local-faction' });
+    const match = createMatch(42, {
+      scenarioId: 'f06-local-faction',
+      rules: ENABLED_LOCAL_RULES,
+    });
     const due = {
       ...match,
       localFaction: {
@@ -66,7 +100,10 @@ describe('F06 local faction', () => {
   });
 
   it('keeps local bases out of ticket pressure and hides unseen local units', () => {
-    const match = createMatch(42, { scenarioId: 'f06-local-faction' });
+    const match = createMatch(42, {
+      scenarioId: 'f06-local-faction',
+      rules: ENABLED_LOCAL_RULES,
+    });
     const local = match.units.find(({ factionId }) => factionId === 'local')!;
     const withHiddenUnit = {
       ...match,

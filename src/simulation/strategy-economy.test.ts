@@ -121,7 +121,7 @@ describe('G2 production commands and tick helpers', () => {
       id: 'A-J01',
       unitId: 'A-03',
       costCenti: 12_000,
-      remainingTicks: 120,
+      remainingTicks: 200,
       status: 'active',
     });
     expect(faction(exact).nextUnitSerial).toBe(3);
@@ -166,18 +166,18 @@ describe('G2 production commands and tick helpers', () => {
       state,
       reason: 'QUEUE_FULL',
     });
-    for (let tick = 0; tick < 59; tick += 1) state = advanceProduction(state);
+    for (let tick = 0; tick < 99; tick += 1) state = advanceProduction(state);
     expect(
       faction(state).productionJobs.map(({ remainingTicks }) => remainingTicks),
-    ).toEqual([1, 120, 60]);
+    ).toEqual([1, 200, 100]);
     state = advanceProduction(state);
     expect(state.units.some(({ id }) => id === 'A-03')).toBe(true);
     expect(
       faction(state).productionJobs.map(({ remainingTicks }) => remainingTicks),
-    ).toEqual([120, 60]);
+    ).toEqual([200, 100]);
     expect(faction(state).productionJobs[0]?.status).toBe('active');
     state = advanceProduction(state);
-    expect(faction(state).productionJobs[0]?.remainingTicks).toBe(119);
+    expect(faction(state).productionJobs[0]?.remainingTicks).toBe(199);
   });
 
   it('refunds only once, reserves monotonic IDs, and hides other factions jobs', () => {
@@ -241,17 +241,17 @@ describe('G2 production commands and tick helpers', () => {
       unitKind: 'assault',
     });
     const afterTick = advanceProduction(state);
-    expect(faction(afterTick).productionJobs[0]?.remainingTicks).toBe(59);
+    expect(faction(afterTick).productionJobs[0]?.remainingTicks).toBe(99);
     const afterCancel = accepted(afterTick, {
       type: 'cancel-production',
       jobId: 'A-J02',
     });
     expect(faction(afterCancel).productionJobs).toHaveLength(1);
-    expect(faction(afterCancel).productionJobs[0]?.remainingTicks).toBe(59);
+    expect(faction(afterCancel).productionJobs[0]?.remainingTicks).toBe(99);
     expect(faction(afterCancel).supplyCenti).toBe(94_000);
 
     let completed = afterCancel;
-    for (let tick = 0; tick < 59; tick += 1)
+    for (let tick = 0; tick < 99; tick += 1)
       completed = advanceProduction(completed);
     expect(completed.units.some(({ id }) => id === 'A-03')).toBe(true);
     const killed = {
@@ -431,8 +431,8 @@ describe('G2 production commands and tick helpers', () => {
       reason: 'UNIT_LIMIT',
     });
 
-    // Let the active jobs produce. Active job finishes in 60 ticks.
-    for (let tick = 0; tick < 60; tick += 1) {
+    // Let the active jobs produce. Active job finishes in 100 ticks.
+    for (let tick = 0; tick < 100; tick += 1) {
       state = advanceProduction(state);
     }
     // Now 3 live units, 2 jobs remaining.
@@ -440,21 +440,21 @@ describe('G2 production commands and tick helpers', () => {
       state.units.filter((u) => u.factionId === 'A' && u.hp > 0),
     ).toHaveLength(3);
 
-    // Next job produces for 60 ticks -> spawns 4th live unit
-    for (let tick = 0; tick < 60; tick += 1) {
+    // Next job produces for 100 ticks -> spawns 4th live unit
+    for (let tick = 0; tick < 100; tick += 1) {
       state = advanceProduction(state);
     }
     expect(
       state.units.filter((u) => u.factionId === 'A' && u.hp > 0),
     ).toHaveLength(4);
-    // Now liveCount (4) >= limit (4). 3rd job is now active with remainingTicks = 60
-    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(60);
+    // Now liveCount (4) >= limit (4). 3rd job is now active with remainingTicks = 100
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(100);
 
     // Advance 5 ticks: because liveCount(4) >= limit(4), production PAUSES (remainingTicks not decremented)
     for (let tick = 0; tick < 5; tick += 1) {
       state = advanceProduction(state);
     }
-    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(60);
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(100);
 
     // Kill one living unit -> liveCount drops to 3 < limit(4)
     state = {
@@ -463,7 +463,7 @@ describe('G2 production commands and tick helpers', () => {
     };
     // Now advance production -> production RESUMES (ticks decrement)
     state = advanceProduction(state);
-    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(59);
+    expect(faction(state).productionJobs[0]!.remainingTicks).toBe(99);
   });
 });
 

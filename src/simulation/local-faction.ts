@@ -137,6 +137,7 @@ export function advanceLocalFaction(state: MatchState): MatchState {
     state.scenarioId !== 'f06-local-faction'
   )
     return state;
+  if (!state.rules.localFaction.enabled) return state;
   if (!state.localFaction.active) {
     return state.elapsedTicks >= state.rules.localFaction.appearanceTick
       ? activate(state)

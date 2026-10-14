@@ -240,7 +240,7 @@ describe('deterministic march updates', () => {
     const seenAt = unit(state, 'A-01').marchOrder!.lastSeenTick;
     state = stepMatch(state);
     expect(unit(state, 'A-01').marchOrder?.lastSeenTick).toBe(seenAt);
-    state = stepMatch(state);
+    for (let i = 0; i < 3; i += 1) state = stepMatch(state);
     expect(unit(state, 'A-01').marchOrder?.lastSeenTick).toBeGreaterThan(
       seenAt,
     );
@@ -475,7 +475,7 @@ describe('deterministic march updates', () => {
     const accepted = issueMarch(state, { kind: 'base', id: 'HQ-A' });
     if (!accepted.ok) throw new Error('friendly base should be a valid target');
     state = accepted.state;
-    for (let tick = 0; tick < 5; tick += 1) state = stepMatch(state);
+    for (let tick = 0; tick < 10; tick += 1) state = stepMatch(state);
     expect(unit(state, 'A-01').cell).toEqual({ x: 5, y: 20 });
     expect(unit(state, 'A-01').path).toEqual([]);
     expect(unit(state, 'A-01').marchOrder?.status).toBe('arrived');
@@ -501,7 +501,7 @@ describe('deterministic march updates', () => {
     const accepted = issueMarch(state, { kind: 'base', id: 'HQ-B' });
     if (!accepted.ok) throw new Error('known HQ should be a valid target');
     state = accepted.state;
-    state = stepMatch(stepMatch(stepMatch(state)));
+    for (let i = 0; i < 5; i += 1) state = stepMatch(state);
     expect(unit(state, 'A-01').cell).toEqual({ x: 28, y: 33 });
     expect(unit(state, 'A-01').path).toEqual([]);
     expect(unit(state, 'A-01').marchOrder?.status).toBe('arrived');

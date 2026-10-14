@@ -34,7 +34,7 @@ describe('advanceMatch NPC orchestration', () => {
       expect(faction.productionJobs).toHaveLength(1);
       expect(faction.productionJobs[0]).toMatchObject({
         unitKind: 'assault',
-        remainingTicks: 119,
+        remainingTicks: 199,
       });
       expect(faction.activeResearch).toEqual({ researchId: 'firepower-1' });
       expect(faction.researchProgressCenti['firepower-1']).toBe(12);

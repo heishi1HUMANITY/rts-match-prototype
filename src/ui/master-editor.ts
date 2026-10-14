@@ -4,6 +4,7 @@ import {
   cloneRules,
   DEFAULT_RULES,
   MASTER_SCHEMA_VERSION,
+  RULES_VERSION,
 } from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
 import type { ValidationIssue } from '../simulation/rules-validation';
@@ -66,6 +67,11 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     label: '守備NPCの復活',
     unit: '',
     help: '無効にすると、撃破された守備NPCは復活しません。',
+  },
+  enabled: {
+    label: '現地勢力の出現',
+    unit: '',
+    help: '有効にすると、通常試合の出現時刻に現地勢力が登場します。',
   },
   appearanceTick: {
     label: '出現時刻',
@@ -875,6 +881,7 @@ export function createMasterEditor(
           masterSchemaVersion: MASTER_SCHEMA_VERSION,
           revision: savedEnvelope.revision,
           rules: valid.rules,
+          rulesVersion: RULES_VERSION,
         },
         null,
         2,

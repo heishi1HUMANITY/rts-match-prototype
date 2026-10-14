@@ -121,13 +121,13 @@ describe('G2 fixed-tick integration', () => {
       ...state,
       bases: state.bases.map((base) => ({ ...base, defender: null })),
     };
-    state = stepMatch(state);
+    state = stepMatch(stepMatch(state));
     expect(state.units.find(({ id }) => id === 'A-01')).toMatchObject({
       cell: { x: 19, y: 20 },
-      edgeProgress: 1,
+      edgeProgress: 2,
     });
     expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(200);
-    state = stepMatch(state);
+    state = stepMatch(stepMatch(state));
     expect(state.units.find(({ id }) => id === 'A-01')).toMatchObject({
       cell: { x: 20, y: 20 },
       edgeProgress: 0,

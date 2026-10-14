@@ -520,9 +520,12 @@ export function validateEnvelope(
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] } {
   if (
     !isRecord(input) ||
-    Object.keys(input).length !== 3 ||
+    (Object.keys(input).length !== 3 && Object.keys(input).length !== 4) ||
     Object.keys(input).some(
-      (key) => !['masterSchemaVersion', 'revision', 'rules'].includes(key),
+      (key) =>
+        !['masterSchemaVersion', 'revision', 'rules', 'rulesVersion'].includes(
+          key,
+        ),
     ) ||
     !isInteger(input.revision) ||
     input.revision < 0 ||
@@ -543,7 +546,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 15 &&
       input.masterSchemaVersion !== 16 &&
       input.masterSchemaVersion !== 17 &&
-      input.masterSchemaVersion !== 18)
+      input.masterSchemaVersion !== 18 &&
+      input.masterSchemaVersion !== 19)
   )
     return {
       ok: false,
@@ -954,6 +958,65 @@ export function validateEnvelope(
         };
       }
     }
+    if (input.masterSchemaVersion <= 19) {
+      if (isRecord(migrationCandidate.localFaction)) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          localFaction: {
+            ...migrationCandidate.localFaction,
+            enabled:
+              typeof migrationCandidate.localFaction.enabled === 'boolean'
+                ? migrationCandidate.localFaction.enabled
+                : DEFAULT_RULES.localFaction.enabled,
+          },
+        };
+      }
+      if (isRecord(migrationCandidate.units)) {
+        const oldMoveDefaults: Record<string, number> = {
+          assault: 2,
+          scout: 2,
+          artillery: 3,
+          antiAir: 2,
+          helicopter: 1,
+          patrolBoat: 2,
+        };
+        const oldBuildDefaults: Record<string, number> = {
+          assault: 120,
+          scout: 60,
+          artillery: 100,
+          antiAir: 90,
+          helicopter: 140,
+          patrolBoat: 120,
+        };
+        migrationCandidate = {
+          ...migrationCandidate,
+          units: Object.fromEntries(
+            Object.entries(migrationCandidate.units).map(([kind, unitVal]) => [
+              kind,
+              isRecord(unitVal)
+                ? {
+                    ...unitVal,
+                    moveTicksPerCell:
+                      typeof unitVal.moveTicksPerCell === 'number' &&
+                      unitVal.moveTicksPerCell !== oldMoveDefaults[kind]
+                        ? unitVal.moveTicksPerCell
+                        : (DEFAULT_RULES.units[
+                            kind as keyof typeof DEFAULT_RULES.units
+                          ]?.moveTicksPerCell ?? 4),
+                    buildTicks:
+                      typeof unitVal.buildTicks === 'number' &&
+                      unitVal.buildTicks !== oldBuildDefaults[kind]
+                        ? unitVal.buildTicks
+                        : (DEFAULT_RULES.units[
+                            kind as keyof typeof DEFAULT_RULES.units
+                          ]?.buildTicks ?? 200),
+                  }
+                : unitVal,
+            ]),
+          ),
+        };
+      }
+    }
     candidateRules = migrationCandidate;
   }
   if (
@@ -984,21 +1047,7 @@ export function validateEnvelope(
       string,
       ResearchDefinition
     >;
-    if (
-      oldDefinitions &&
-      input.masterSchemaVersion !== 7 &&
-      input.masterSchemaVersion !== 8 &&
-      input.masterSchemaVersion !== 9 &&
-      input.masterSchemaVersion !== 10 &&
-      input.masterSchemaVersion !== 11 &&
-      input.masterSchemaVersion !== 12 &&
-      input.masterSchemaVersion !== 13 &&
-      input.masterSchemaVersion !== 14 &&
-      input.masterSchemaVersion !== 15 &&
-      input.masterSchemaVersion !== 16 &&
-      input.masterSchemaVersion !== 17 &&
-      input.masterSchemaVersion !== 18
-    ) {
+    if (oldDefinitions && input.masterSchemaVersion <= 6) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
         if (!converted[id]) {
@@ -1051,14 +1100,8 @@ export function validateEnvelope(
         return { ok: false, issues: migrationIssues };
     } else if (
       oldDefinitions &&
-      (input.masterSchemaVersion === 11 ||
-        input.masterSchemaVersion === 12 ||
-        input.masterSchemaVersion === 13 ||
-        input.masterSchemaVersion === 14 ||
-        input.masterSchemaVersion === 15 ||
-        input.masterSchemaVersion === 16 ||
-        input.masterSchemaVersion === 17 ||
-        input.masterSchemaVersion === 18)
+      input.masterSchemaVersion >= 11 &&
+      input.masterSchemaVersion <= 19
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))
@@ -1097,6 +1140,9 @@ export function validateEnvelope(
           masterSchemaVersion: MASTER_SCHEMA_VERSION,
           revision: input.revision,
           rules: result.rules,
+          ...(typeof input.rulesVersion === 'string'
+            ? { rulesVersion: input.rulesVersion }
+            : {}),
         },
       }
     : result;
