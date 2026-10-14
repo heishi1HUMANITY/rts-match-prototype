@@ -2,6 +2,7 @@ import type { PlayerSnapshot } from '../runtime/controller';
 import type { FactionId, OwnedBaseView } from '../simulation/types';
 import type { HudElements } from './hud';
 
+let lastTick: number | null = null;
 let lastHqHp: number | null = null;
 let lastAttackedTick: number | null = null;
 
@@ -19,6 +20,67 @@ const suddenLossInfo: Record<
   B: null,
   C: null,
 };
+
+/**
+ * Resets all cached tick history and sudden loss information.
+ * Call this when a match resets or a new match begins.
+ */
+export function resetTicketsHud(): void {
+  lastTick = null;
+  lastHqHp = null;
+  lastAttackedTick = null;
+  for (const id of ['A', 'B', 'C'] as const) {
+    lastTicketsCenti[id] = null;
+    suddenLossInfo[id] = null;
+  }
+}
+
+/**
+ * Calculates sudden loss (in whole ticket units) by subtracting expected periodic decay.
+ * Returns null if the drop is only regular periodic decay or below threshold.
+ */
+export function detectSuddenLossTickets(
+  currentTicketsCenti: number,
+  previousTicketsCenti: number,
+  prevTick: number,
+  currentTick: number,
+  rateCentiPerSec: number,
+  updateIntervalTicks: number = 10,
+): number | null {
+  if (currentTick <= prevTick) return null;
+  const dropAmount = previousTicketsCenti - currentTicketsCenti;
+  if (dropAmount <= 0) return null;
+
+  // Number of periodic decay intervals passed between prevTick and currentTick
+  const periodicCount =
+    Math.floor(currentTick / updateIntervalTicks) -
+    Math.floor(prevTick / updateIntervalTicks);
+  const expectedPeriodicLoss = Math.max(0, periodicCount * rateCentiPerSec);
+  const suddenDropAmount = dropAmount - expectedPeriodicLoss;
+
+  // Threshold: >= 80 centi corresponds to at least ~1 ticket sudden drop
+  if (suddenDropAmount >= 80) {
+    const suddenTickets = Math.round(suddenDropAmount / 100);
+    return suddenTickets > 0 ? suddenTickets : null;
+  }
+  return null;
+}
+
+/**
+ * Returns active sudden loss ticket amount for a faction, or null if expired / not running.
+ */
+export function getActiveSuddenLoss(
+  id: FactionId,
+  currentTick: number,
+  phase: string,
+): number | null {
+  if (phase !== 'running') return null;
+  const currentDrop = suddenLossInfo[id];
+  if (currentDrop && currentTick < currentDrop.expireTick) {
+    return currentDrop.amount;
+  }
+  return null;
+}
 
 function ensureTicketElements(root: HTMLElement): {
   protection: HTMLElement;
@@ -136,6 +198,14 @@ export function updateTicketsHud(
 ): void {
   const { root } = elements;
   const { view } = snapshot;
+
+  // Reset tracking if match restarted, tick rewinded, or phase is ready
+  if (lastTick === null || view.tick < lastTick || view.phase === 'ready') {
+    resetTicketsHud();
+  }
+  const prevTick = lastTick;
+  lastTick = view.tick;
+
   const { protection, hqWarning } = ensureTicketElements(root);
 
   // 1. HQ Protection Countdown
@@ -184,6 +254,8 @@ export function updateTicketsHud(
     ...surviving.map((id) => view.ticketsCenti[id] ?? 0),
   );
 
+  const intervalTicks = view.rules.tickets.updateIntervalTicks || 10;
+
   for (const id of ['A', 'B', 'C'] as const) {
     const spans = ensureFactionSpans(root, id);
     const isEliminated = view.publicEliminations[id]?.eliminatedAtTick !== null;
@@ -215,25 +287,31 @@ export function updateTicketsHud(
       spans.rate.hidden = true;
     }
 
-    // Sudden loss display (e.g. unit killed: drop >= 100 centi in 1 tick)
-    if (previousTickets !== null && view.phase === 'running') {
-      const dropAmount = previousTickets - currentTickets;
-      if (dropAmount >= 100) {
-        const suddenDropTickets = Math.round(dropAmount / 100);
+    // Sudden loss display (e.g. unit killed: exclude expected periodic decay)
+    if (
+      previousTickets !== null &&
+      prevTick !== null &&
+      view.phase === 'running'
+    ) {
+      const suddenTickets = detectSuddenLossTickets(
+        currentTickets,
+        previousTickets,
+        prevTick,
+        view.tick,
+        rateCenti,
+        intervalTicks,
+      );
+      if (suddenTickets !== null) {
         suddenLossInfo[id] = {
-          amount: suddenDropTickets,
+          amount: suddenTickets,
           expireTick: view.tick + 20, // 2 seconds
         };
       }
     }
 
-    const currentDrop = suddenLossInfo[id];
-    if (
-      currentDrop &&
-      view.tick < currentDrop.expireTick &&
-      view.phase === 'running'
-    ) {
-      spans.drop.textContent = `-${currentDrop.amount}`;
+    const currentDropAmount = getActiveSuddenLoss(id, view.tick, view.phase);
+    if (currentDropAmount !== null) {
+      spans.drop.textContent = `-${currentDropAmount}`;
       spans.drop.hidden = false;
     } else {
       spans.drop.textContent = '';
