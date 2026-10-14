@@ -2,8 +2,6 @@ import type { PlayerSnapshot } from '../runtime/controller';
 import type { OwnedBaseView } from '../simulation/types';
 import type { HudElements } from './hud';
 
-let protectionBanner: HTMLElement | null = null;
-let hqWarningBanner: HTMLElement | null = null;
 let lastHqHp: number | null = null;
 let lastAttackedTick: number | null = null;
 
@@ -11,39 +9,33 @@ function ensureTicketElements(root: HTMLElement): {
   protection: HTMLElement;
   hqWarning: HTMLElement;
 } {
-  if (!protectionBanner || !root.contains(protectionBanner)) {
-    protectionBanner = root.querySelector<HTMLElement>(
-      '[data-testid="hq-protection-banner"]',
-    );
-    if (!protectionBanner) {
-      protectionBanner = document.createElement('div');
-      protectionBanner.setAttribute('data-testid', 'hq-protection-banner');
-      protectionBanner.className = 'hq-protection-banner';
-      protectionBanner.style.cssText =
-        'font-size: 13px; font-weight: bold; color: #38bdf8; padding: 2px 8px; border-radius: 4px; background: rgba(14, 116, 144, 0.2); border: 1px solid rgba(56, 189, 248, 0.4); display: inline-block; margin-right: 8px;';
-      const statusArea =
-        root.querySelector('.status-bar, .top-bar, .phase-status') ?? root;
-      statusArea.prepend(protectionBanner);
-    }
+  let protection = root.querySelector<HTMLElement>(
+    '[data-testid="hq-protection-banner"]',
+  );
+  if (!protection) {
+    protection = document.createElement('span');
+    protection.setAttribute('data-testid', 'hq-protection-banner');
+    protection.className = 'hq-protection-banner';
+    protection.hidden = true;
+    const target =
+      root.querySelector('.ticket-strip, .faction-legend, .topbar') ?? root;
+    target.appendChild(protection);
   }
 
-  if (!hqWarningBanner || !root.contains(hqWarningBanner)) {
-    hqWarningBanner = root.querySelector<HTMLElement>(
-      '[data-testid="hq-warning-banner"]',
-    );
-    if (!hqWarningBanner) {
-      hqWarningBanner = document.createElement('div');
-      hqWarningBanner.setAttribute('data-testid', 'hq-warning-banner');
-      hqWarningBanner.className = 'hq-warning-banner';
-      hqWarningBanner.style.cssText =
-        'font-size: 13px; font-weight: bold; color: #f87171; padding: 2px 8px; border-radius: 4px; background: rgba(185, 28, 28, 0.25); border: 1px solid rgba(248, 113, 113, 0.6); display: inline-block; margin-right: 8px; animation: pulse 1s infinite;';
-      const statusArea =
-        root.querySelector('.status-bar, .top-bar, .phase-status') ?? root;
-      statusArea.prepend(hqWarningBanner);
-    }
+  let hqWarning = root.querySelector<HTMLElement>(
+    '[data-testid="hq-warning-banner"]',
+  );
+  if (!hqWarning) {
+    hqWarning = document.createElement('span');
+    hqWarning.setAttribute('data-testid', 'hq-warning-banner');
+    hqWarning.className = 'hq-warning-banner';
+    hqWarning.hidden = true;
+    const target =
+      root.querySelector('.ticket-strip, .faction-legend, .topbar') ?? root;
+    target.appendChild(hqWarning);
   }
 
-  return { protection: protectionBanner, hqWarning: hqWarningBanner };
+  return { protection, hqWarning };
 }
 
 /**
