@@ -368,10 +368,12 @@ export const BASE_CELLS: readonly {
   { id: 'HOME-C', kind: 'outpost', cell: { x: 25, y: 9 }, factionId: 'C' },
   { id: 'OUT-01', kind: 'outpost', cell: { x: 18, y: 17 }, factionId: null },
   { id: 'OUT-02', kind: 'large', cell: { x: 20, y: 20 }, factionId: null },
-  { id: 'OUT-03', kind: 'outpost', cell: { x: 20, y: 28 }, factionId: null },
-  { id: 'MID-01', kind: 'medium', cell: { x: 33, y: 22 }, factionId: null },
-  { id: 'MID-02', kind: 'medium', cell: { x: 12, y: 29 }, factionId: null },
-  { id: 'MID-03', kind: 'medium', cell: { x: 16, y: 10 }, factionId: null },
+  { id: 'OUT-03', kind: 'outpost', cell: { x: 2, y: 15 }, factionId: null },
+  { id: 'OUT-04', kind: 'outpost', cell: { x: 23, y: 36 }, factionId: null },
+  { id: 'OUT-05', kind: 'outpost', cell: { x: 33, y: 4 }, factionId: null },
+  { id: 'MID-01', kind: 'medium', cell: { x: 21, y: 30 }, factionId: null },
+  { id: 'MID-02', kind: 'medium', cell: { x: 8, y: 13 }, factionId: null },
+  { id: 'MID-03', kind: 'medium', cell: { x: 31, y: 14 }, factionId: null },
 ];
 
 export const BASE_STATS: Readonly<

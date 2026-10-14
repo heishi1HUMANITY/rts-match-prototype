@@ -83,7 +83,7 @@ describe('crossing construction', () => {
     state = {
       ...state,
       units: state.units.map((unit) =>
-        unit.id === 'A-01' ? { ...unit, cell: { x: 19, y: 10 } } : unit,
+        unit.id === 'A-01' ? { ...unit, cell: { x: 21, y: 10 } } : unit,
       ),
     };
     for (

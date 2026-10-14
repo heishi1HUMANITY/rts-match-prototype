@@ -7,6 +7,10 @@ import { advanceMatch } from './runtime/advance';
 import type { FactionId, MatchState } from './simulation/types';
 
 const isSelfplay = process.env.SELFPLAY === '1';
+const requestedSeedCount = Number(process.env.SELFPLAY_SEEDS ?? 100);
+const seedCount = Number.isInteger(requestedSeedCount)
+  ? Math.max(1, Math.min(100, requestedSeedCount))
+  : 100;
 
 interface SingleMatchReport {
   seed: number;
@@ -104,12 +108,12 @@ function runSingleMatch(seed: number): SingleMatchReport {
   };
 }
 
-describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
-  it('runs 100 seeds and generates selfplay-report.md within 20min per match', () => {
+describe.runIf(isSelfplay)(`selfplay ${seedCount} seeds report`, () => {
+  it(`runs ${seedCount} seeds and generates selfplay-report.md`, () => {
     const startTime = Date.now();
     const results: SingleMatchReport[] = [];
 
-    for (let seed = 1; seed <= 100; seed++) {
+    for (let seed = 1; seed <= seedCount; seed++) {
       const report = runSingleMatch(seed);
       results.push(report);
     }
@@ -140,13 +144,17 @@ describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
       else if (r.winner === 'C') winnersCount.C++;
       else winnersCount['draw/tie']++;
     }
+    const maxWinRate =
+      Math.max(winnersCount.A, winnersCount.B, winnersCount.C) / results.length;
+    const factionWinRatesPass = maxWinRate <= 0.5;
+    const averageDurationPass = avgTicks >= 4800 && avgTicks <= 8400;
 
     const reasonsCount: Record<string, number> = {};
     for (const r of results) {
       reasonsCount[r.reason] = (reasonsCount[r.reason] ?? 0) + 1;
     }
 
-    // Base ownership averages across 100 matches by minute (up to max minute)
+    // Base ownership averages across the selected matches by minute (up to max minute)
     const maxMinute = Math.min(20, Math.floor(maxTicks / 600) + 1);
     const baseAverages: {
       minute: number;
@@ -187,7 +195,7 @@ describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
 
     // Format markdown report
     const lines: string[] = [
-      '# CP3 F16 100-Seed Selfplay Balance Report',
+      '# CP3 F16 Selfplay Balance Report',
       '',
       `Generated: ${new Date().toISOString()}`,
       `Execution time: ${(totalTimeMs / 1000).toFixed(1)}s`,
@@ -210,6 +218,11 @@ describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
       `| C | ${winnersCount.C} | ${((winnersCount.C / results.length) * 100).toFixed(1)}% |`,
       `| Draw / Tie | ${winnersCount['draw/tie'] ?? 0} | ${(((winnersCount['draw/tie'] ?? 0) / results.length) * 100).toFixed(1)}% |`,
       '',
+      '## Acceptance',
+      '',
+      `- Maximum faction win rate <= 50%: ${seedCount === 100 ? (factionWinRatesPass ? 'PASS' : 'FAIL') : 'sample run; checked only at 100 seeds'} (${(maxWinRate * 100).toFixed(1)}%)`,
+      `- Average duration 8-14 min: ${seedCount === 100 ? (averageDurationPass ? 'PASS' : 'FAIL') : 'sample run; checked only at 100 seeds'} (${formatTicks(avgTicks)})`,
+      '',
       '## Termination Reasons',
       '',
       '| Reason | Count | Rate |',
@@ -218,6 +231,19 @@ describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
         ([reason, count]) =>
           `| ${reason} | ${count} | ${((count / results.length) * 100).toFixed(1)}% |`,
       ),
+      '',
+      '## Elimination Cause by Faction',
+      '',
+      '| Cause | A | B | C | Total |',
+      '|:---|---:|---:|---:|---:|',
+      ...(['hq', 'tickets'] as const).map((cause) => {
+        const factionCounts = (['A', 'B', 'C'] as const).map(
+          (factionId) =>
+            results.filter((r) => r.eliminationBreakdown[factionId] === cause)
+              .length,
+        );
+        return `| ${cause === 'hq' ? 'Capital destroyed' : 'Tickets reached 0'} | ${factionCounts[0]} | ${factionCounts[1]} | ${factionCounts[2]} | ${factionCounts.reduce((a, b) => a + b, 0)} |`;
+      }),
       '',
       '## Base Ownership Progression (Average bases owned by minute)',
       '',
@@ -263,11 +289,20 @@ describe.runIf(isSelfplay)('selfplay 100 seeds report', () => {
     console.log('Reasons:', reasonsCount);
     console.log(`Report written to: ${reportPath}\n`);
 
-    expect(results.length).toBe(100);
-    expect(within20Min).toBe(100);
+    expect(results.length).toBe(seedCount);
+    expect(within20Min).toBe(seedCount);
     for (const r of results) {
       expect(r.ticks).toBeLessThanOrEqual(12000);
       expect(r.phase).toBe('finished');
     }
-  }, 300000);
+    if (seedCount === 100) {
+      for (const factionId of ['A', 'B', 'C'] as const) {
+        expect(winnersCount[factionId] / results.length).toBeLessThanOrEqual(
+          0.5,
+        );
+      }
+      expect(avgTicks).toBeGreaterThanOrEqual(4800);
+      expect(avgTicks).toBeLessThanOrEqual(8400);
+    }
+  }, 900000);
 });

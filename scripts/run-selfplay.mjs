@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
-console.log('Running selfplay 100 seeds test...');
+const seedCount = process.env.SELFPLAY_SEEDS ?? '100';
+console.log(`Running selfplay ${seedCount} seeds test...`);
 const isWindows = process.platform === 'win32';
 const npxCmd = isWindows ? 'npx.cmd' : 'npx';
 

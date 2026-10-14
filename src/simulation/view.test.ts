@@ -216,20 +216,25 @@ describe('faction visibility and view isolation', () => {
   });
 
   it('keeps self-reported base loss without revealing the new hidden owner', () => {
-    let state = createMatch(42, { scenarioId: 'g2-economy' });
-    const owned = state.bases.find(({ id }) => id === 'OUT-03')!;
+    let state = createMatch(42);
+    state = withState(state, {
+      bases: state.bases.map((base) =>
+        base.id === 'OUT-04' ? { ...base, owner: 'A', hp: 100 } : base,
+      ),
+    });
+    state = { ...state, knowledge: updateFactionKnowledge(state) };
     expect(
-      getFactionView(state, 'A').bases.find(({ id }) => id === 'OUT-03')
+      getFactionView(state, 'A').bases.find(({ id }) => id === 'OUT-04')
         ?.visibility,
     ).toBe('owned');
     state = withState(state, {
       bases: state.bases.map((base) =>
-        base.id === owned.id ? { ...base, owner: 'B', hp: 100 } : base,
+        base.id === 'OUT-04' ? { ...base, owner: 'B', hp: 100 } : base,
       ),
     });
     state = { ...state, knowledge: updateFactionKnowledge(state) };
     const lost = getFactionView(state, 'A').bases.find(
-      ({ id }) => id === 'OUT-03',
+      ({ id }) => id === 'OUT-04',
     )!;
     expect(lost).toMatchObject({
       visibility: 'remembered',

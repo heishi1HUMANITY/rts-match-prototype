@@ -156,31 +156,31 @@ function crossingSites() {
     {
       id: 'CROSS-RING-N',
       tier: 'bridge-1' as const,
-      bankA: { x: 19, y: 11 },
-      bankB: { x: 19, y: 14 },
+      bankA: { x: 21, y: 11 },
+      bankB: { x: 21, y: 14 },
       cells: [
-        { x: 19, y: 12 },
-        { x: 19, y: 13 },
+        { x: 21, y: 12 },
+        { x: 21, y: 13 },
       ],
     },
     {
       id: 'CROSS-RING-SE',
       tier: 'bridge-1' as const,
-      bankA: { x: 28, y: 20 },
-      bankB: { x: 25, y: 20 },
+      bankA: { x: 21, y: 28 },
+      bankB: { x: 21, y: 25 },
       cells: [
-        { x: 27, y: 20 },
-        { x: 26, y: 20 },
+        { x: 21, y: 27 },
+        { x: 21, y: 26 },
       ],
     },
     {
       id: 'CROSS-RING-SW',
       tier: 'bridge-1' as const,
-      bankA: { x: 11, y: 20 },
-      bankB: { x: 14, y: 20 },
+      bankA: { x: 12, y: 16 },
+      bankB: { x: 15, y: 16 },
       cells: [
-        { x: 12, y: 20 },
-        { x: 13, y: 20 },
+        { x: 13, y: 16 },
+        { x: 14, y: 16 },
       ],
     },
     {
@@ -349,6 +349,34 @@ export function createMap(seed: number): GridMap {
     protectLine(hqB, b0_b2.bankB);
     protectLine(hqC, b240_b2.bankA);
     protectLine(hqC, b0_b2.bankA);
+  }
+
+  // Protect corridors within each sector (between HQ, border bridge banks, and sector neutral bases)
+  const sectorA_bases = [
+    { x: 2, y: 15 },
+    { x: 8, y: 13 },
+  ];
+  const sectorA_banks = [hqA, b120_b2.bankB, b240_b2.bankB];
+  for (const origin of sectorA_banks) {
+    for (const base of sectorA_bases) protectLine(origin, base);
+  }
+
+  const sectorB_bases = [
+    { x: 23, y: 36 },
+    { x: 21, y: 30 },
+  ];
+  const sectorB_banks = [hqB, b120_b2.bankA, b0_b2.bankB];
+  for (const origin of sectorB_banks) {
+    for (const base of sectorB_bases) protectLine(origin, base);
+  }
+
+  const sectorC_bases = [
+    { x: 33, y: 4 },
+    { x: 31, y: 14 },
+  ];
+  const sectorC_banks = [hqC, b240_b2.bankA, b0_b2.bankA];
+  for (const origin of sectorC_banks) {
+    for (const base of sectorC_bases) protectLine(origin, base);
   }
 
   // Populate obstacles while preserving internal reachability for each faction.

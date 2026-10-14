@@ -158,9 +158,9 @@ function configuredFixture(
   if (scenarioId === 'g2-capture') {
     units = units.map((unit) =>
       unit.id === 'A-01'
-        ? { ...unit, cell: { x: 20, y: 28 } }
+        ? { ...unit, cell: { x: 2, y: 15 } }
         : unit.id === 'A-02'
-          ? { ...unit, cell: { x: 20, y: 29 } }
+          ? { ...unit, cell: { x: 2, y: 16 } }
           : unit,
     );
     bases = bases.map((base) =>
@@ -242,7 +242,7 @@ function configuredFixture(
     );
   } else if (scenarioId === 'f04-crossing') {
     units = units.map((unit) =>
-      unit.id === 'A-01' ? { ...unit, cell: { x: 19, y: 10 } } : unit,
+      unit.id === 'A-01' ? { ...unit, cell: { x: 21, y: 10 } } : unit,
     );
     factions = factions.map((faction) =>
       faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
@@ -250,9 +250,9 @@ function configuredFixture(
   } else if (scenarioId === 'f05-neutral-defense') {
     units = units.map((unit) =>
       unit.id === 'A-01'
-        ? { ...unit, cell: { x: 19, y: 28 } }
+        ? { ...unit, cell: { x: 1, y: 15 } }
         : unit.id === 'A-02'
-          ? { ...unit, cell: { x: 20, y: 29 } }
+          ? { ...unit, cell: { x: 2, y: 16 } }
           : unit,
     );
     factions = factions.map((faction) =>

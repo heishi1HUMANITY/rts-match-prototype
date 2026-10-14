@@ -15,7 +15,7 @@ import {
 import { findPath } from './pathfinding';
 
 describe('seeded terrain map generation', () => {
-  it.each([0, 42, 43, 0xffffffff])(
+  it.each([0, 1, 2, 42, 43, 0xffffffff])(
     'reproduces geography and local access for seed %s',
     (seed) => {
       const map = createMap(seed);
@@ -135,6 +135,46 @@ describe('seeded terrain map generation', () => {
       })!;
       expect(fullAB.length).toBe(fullAC.length);
       expect(fullAB.length).toBe(fullBC.length);
+
+      // F16-02 / #28: 各首都から各中立拠点への陸路長（橋なし・bridge-2完成後）が陣営を入れ替えても同じ多重集合になる
+      const neutralBases = BASE_CELLS.filter((b) => b.factionId === null);
+      const noBridgeDists = (['A', 'B', 'C'] as const).map((fid) => {
+        const hq = BASE_CELLS.find((b) => b.id === `HQ-${fid}`)!.cell;
+        const reachable = neutralBases.filter(
+          (base) => findPath(map, hq, base.cell) !== null,
+        );
+        expect(
+          reachable.filter((base) => base.kind === 'outpost'),
+        ).toHaveLength(1);
+        expect(reachable.filter((base) => base.kind === 'medium')).toHaveLength(
+          1,
+        );
+        return neutralBases
+          .map((n) => findPath(map, hq, n.cell)?.length ?? null)
+          .sort((a, b) => (a === null ? 1 : b === null ? -1 : a - b));
+      });
+      expect(noBridgeDists[0]).toEqual(noBridgeDists[1]);
+      expect(noBridgeDists[0]).toEqual(noBridgeDists[2]);
+
+      const borderB2Active = [b000, b120, b240].map((c) => ({
+        ...c,
+        owner: 'A' as const,
+        allowedUnitKinds: ['assault', 'scout'] as const,
+      }));
+      const b2Dists = (['A', 'B', 'C'] as const).map((fid) => {
+        const hq = BASE_CELLS.find((b) => b.id === `HQ-${fid}`)!.cell;
+        return neutralBases
+          .map(
+            (n) =>
+              findPath(map, hq, n.cell, {
+                factionId: 'A',
+                crossings: borderB2Active,
+              })?.length ?? null,
+          )
+          .sort((a, b) => (a === null ? 1 : b === null ? -1 : a - b));
+      });
+      expect(b2Dists[0]).toEqual(b2Dists[1]);
+      expect(b2Dists[0]).toEqual(b2Dists[2]);
     },
   );
 

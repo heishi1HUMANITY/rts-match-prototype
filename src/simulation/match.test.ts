@@ -23,7 +23,7 @@ describe('initial match contract', () => {
     expect(match.phase).toBe('ready');
     expect(match.elapsedTicks).toBe(0);
     expect(match.units).toHaveLength(6);
-    expect(match.bases).toHaveLength(12);
+    expect(match.bases).toHaveLength(14);
     expect(match.knowledge).toHaveLength(4);
     expect(
       match.units.map(
@@ -159,12 +159,12 @@ describe('initial match contract', () => {
     const standard = createMatch(42);
     const capture = createMatch(42, { scenarioId: 'g2-capture' });
     expect(capture.units.find(({ id }) => id === 'A-01')!.cell).toEqual({
-      x: 20,
-      y: 28,
+      x: 2,
+      y: 15,
     });
     expect(capture.units.find(({ id }) => id === 'A-02')!.cell).toEqual({
-      x: 20,
-      y: 29,
+      x: 2,
+      y: 16,
     });
     const combat = createMatch(42, { scenarioId: 'g2-combat' });
     expect(combat.units.find(({ id }) => id === 'A-01')).toMatchObject({

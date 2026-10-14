@@ -413,7 +413,7 @@ describe('deterministic march updates', () => {
     state = onlyUnits(state, ['A-01']);
     state = replaceUnit(state, 'A-01', {
       ...unit(state, 'A-01'),
-      cell: { x: 21, y: 28 },
+      cell: { x: 3, y: 15 },
       hp: 1000,
       maxHp: 1000,
     });
