@@ -744,4 +744,26 @@ describe('F11 and F21 combined migration contract', () => {
     fractionalInterval.units.assault.intervalTicks = 1.5;
     expect(validateRules(fractionalInterval).ok).toBe(false);
   });
+
+  it('adds F13 behavior defaults while preserving a schema 20 master', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.unitBehavior;
+    legacy.match.initialSupplyCenti = 12_345;
+    const result = validateEnvelope({
+      masterSchemaVersion: 20,
+      revision: 7,
+      rules: legacy,
+    });
+    console.log(result);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+    expect(result.envelope.rules.match.initialSupplyCenti).toBe(12_345);
+    expect(result.envelope.rules.unitBehavior).toEqual(
+      DEFAULT_RULES.unitBehavior,
+    );
+  });
 });

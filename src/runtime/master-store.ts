@@ -3,6 +3,7 @@ import {
   cloneRules,
   DEFAULT_RULES,
   MASTER_SCHEMA_VERSION,
+  RULES_VERSION,
 } from '../simulation/rules';
 import type { MasterEnvelope } from '../simulation/rules';
 import {
@@ -39,6 +40,7 @@ export type LoadMasterResult =
       readonly ok: true;
       readonly envelope: MasterEnvelope;
       readonly source: 'storage' | 'default';
+      readonly outdated?: boolean;
     }
   | {
       readonly ok: false;
@@ -67,6 +69,7 @@ function defaultEnvelope(): MasterEnvelope {
     masterSchemaVersion: MASTER_SCHEMA_VERSION,
     revision: 0,
     rules: cloneRules(DEFAULT_RULES),
+    rulesVersion: RULES_VERSION,
   };
 }
 
@@ -89,12 +92,22 @@ export function parseMasterJson(json: string): ParseMasterResult {
     };
   }
 
+  if (!isRecord(parsed))
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_MASTER',
+        message: 'マスタ形式が正しくありません。',
+      },
+    };
+
+  const keys = Object.keys(parsed);
   if (
-    !isRecord(parsed) ||
-    Object.keys(parsed).length !== 3 ||
+    (keys.length !== 3 && keys.length !== 4) ||
     !Object.hasOwn(parsed, 'masterSchemaVersion') ||
     !Object.hasOwn(parsed, 'revision') ||
-    !Object.hasOwn(parsed, 'rules')
+    !Object.hasOwn(parsed, 'rules') ||
+    (keys.length === 4 && !Object.hasOwn(parsed, 'rulesVersion'))
   )
     return {
       ok: false,
@@ -141,12 +154,21 @@ export function stringifyMasterJson(input: unknown): ExportMasterResult {
 }
 
 function validateEnvelopeStrict(input: unknown): ParseMasterResult {
+  if (!isRecord(input))
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_MASTER',
+        message: 'マスタ形式が正しくありません。',
+      },
+    };
+  const keys = Object.keys(input);
   if (
-    !isRecord(input) ||
-    Object.keys(input).length !== 3 ||
+    (keys.length !== 3 && keys.length !== 4) ||
     !Object.hasOwn(input, 'masterSchemaVersion') ||
     !Object.hasOwn(input, 'revision') ||
-    !Object.hasOwn(input, 'rules')
+    !Object.hasOwn(input, 'rules') ||
+    (keys.length === 4 && !Object.hasOwn(input, 'rulesVersion'))
   )
     return {
       ok: false,
@@ -207,9 +229,34 @@ export class MasterStore {
       return { ok: true, envelope: defaultEnvelope(), source: 'default' };
 
     const parsed = parseMasterJson(raw);
-    return parsed.ok
-      ? { ok: true, envelope: parsed.envelope, source: 'storage' }
-      : { ok: false, envelope: defaultEnvelope(), error: parsed.error };
+    if (!parsed.ok)
+      return { ok: false, envelope: defaultEnvelope(), error: parsed.error };
+
+    let outdated = false;
+    try {
+      const rawObj = parseStrictJson(raw);
+      if (isRecord(rawObj)) {
+        const storedSchema =
+          typeof rawObj.masterSchemaVersion === 'number'
+            ? rawObj.masterSchemaVersion
+            : 0;
+        const storedRulesVersion =
+          typeof rawObj.rulesVersion === 'string'
+            ? rawObj.rulesVersion
+            : undefined;
+        outdated =
+          storedSchema < MASTER_SCHEMA_VERSION ||
+          storedRulesVersion !== RULES_VERSION;
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      ok: true,
+      envelope: parsed.envelope,
+      source: 'storage',
+      outdated,
+    };
   }
 
   /** Saves a complete, strictly validated envelope. Failed writes roll back. */
@@ -245,6 +292,7 @@ export class MasterStore {
       masterSchemaVersion: MASTER_SCHEMA_VERSION,
       revision,
       rules: validated.rules,
+      rulesVersion: RULES_VERSION,
     });
   }
 
@@ -279,6 +327,7 @@ export class MasterStore {
       masterSchemaVersion: MASTER_SCHEMA_VERSION,
       revision,
       rules: cloneRules(DEFAULT_RULES),
+      rulesVersion: RULES_VERSION,
     });
   }
 

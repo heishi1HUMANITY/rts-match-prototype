@@ -212,7 +212,7 @@ describe('shared command validation', () => {
         results.push(result.ok ? 'ok' : `reject:${result.reason}`);
         state = result.state;
       }
-      const finalTick = 12;
+      const finalTick = 16;
       while (state.elapsedTicks < finalTick) {
         const next = stepMatch(state);
         if (next === state)
@@ -231,14 +231,14 @@ describe('shared command validation', () => {
       'ok',
       'ok',
     ]);
-    expect(firstReplay.state.elapsedTicks).toBe(12);
+    expect(firstReplay.state.elapsedTicks).toBe(16);
     expect(unit(firstReplay.state).cell).toEqual({ x: 10, y: 20 });
     expect(unit(firstReplay.state).path).toEqual([]);
   });
 });
 
 describe('fixed tick unit movement', () => {
-  it('moves one cell in two ticks, then stops at its target', () => {
+  it('moves one cell in four ticks, then stops at its target', () => {
     const state = startMatch();
     const accepted = issueMove(state, { x: 8, y: 20 });
     if (!accepted.ok) throw new Error('test move should be accepted');
@@ -251,11 +251,13 @@ describe('fixed tick unit movement', () => {
     expect(firstTick.elapsedTicks).toBe(1);
     expect(unit(firstTick).cell).toEqual({ x: 6, y: 20 });
     expect(unit(firstTick).edgeProgress).toBe(1);
-    const secondTick = stepMatch(firstTick);
-    expect(secondTick.elapsedTicks).toBe(2);
-    expect(unit(secondTick).cell).toEqual({ x: 7, y: 20 });
-    expect(unit(secondTick).edgeProgress).toBe(0);
-    const finished = stepMatch(stepMatch(secondTick));
+    let fourthTick = firstTick;
+    for (let i = 0; i < 3; i += 1) fourthTick = stepMatch(fourthTick);
+    expect(fourthTick.elapsedTicks).toBe(4);
+    expect(unit(fourthTick).cell).toEqual({ x: 7, y: 20 });
+    expect(unit(fourthTick).edgeProgress).toBe(0);
+    let finished = fourthTick;
+    for (let i = 0; i < 4; i += 1) finished = stepMatch(finished);
     expect(unit(finished).cell).toEqual({ x: 8, y: 20 });
     expect(unit(finished).path).toEqual([]);
     expect(unit(finished).edgeProgress).toBe(0);
@@ -277,7 +279,8 @@ describe('fixed tick unit movement', () => {
       { x: 7, y: 20 },
       { x: 7, y: 21 },
     ]);
-    const completedEdge = stepMatch(retargeted.state);
+    let completedEdge = retargeted.state;
+    for (let i = 0; i < 3; i += 1) completedEdge = stepMatch(completedEdge);
     expect(unit(completedEdge).cell).toEqual({ x: 7, y: 20 });
     expect(unit(completedEdge).edgeProgress).toBe(0);
     expect(unit(completedEdge).path).toEqual([{ x: 7, y: 21 }]);
@@ -301,7 +304,8 @@ describe('fixed tick unit movement', () => {
       unitId: 'A-01',
     });
     expect(repeatedStop).toEqual({ ok: true, state: stopped.state });
-    const atCenter = stepMatch(stopped.state);
+    let atCenter = stopped.state;
+    for (let i = 0; i < 3; i += 1) atCenter = stepMatch(atCenter);
     expect(unit(atCenter).cell).toEqual({ x: 7, y: 20 });
     expect(unit(atCenter).path).toEqual([]);
   });

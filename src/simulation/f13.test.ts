@@ -31,7 +31,11 @@ describe('F13 unit behavior', () => {
     expect(stepUnit(moving, result.state).edgeProgress).toBe(1);
     expect(
       stepUnit(
-        { ...moving, stance: 'aggressive', edgeProgress: 1 },
+        {
+          ...moving,
+          stance: 'aggressive',
+          edgeProgress: (unit.moveTicksPerCell ?? 2) - 1,
+        },
         result.state,
       ).cell,
     ).toEqual({ x: 7, y: 20 });

@@ -656,3 +656,33 @@ it('applies custom-ID effects and replays the old snapshot after a different mas
     }).state,
   ).toEqual(before);
 });
+
+it('detects outdated saved envelope and resets to fresh defaults with rulesVersion', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(
+    'rts-match-prototype.master.v1',
+    JSON.stringify({
+      masterSchemaVersion: 19,
+      revision: 3,
+      rules: DEFAULT_RULES,
+    }),
+  );
+  const store = new MasterStore(storage);
+  const loaded = store.load();
+  expect(loaded.ok).toBe(true);
+  if (!loaded.ok) return;
+  expect(loaded.source).toBe('storage');
+  expect(loaded.outdated).toBe(true);
+
+  const resetResult = store.reset();
+  expect(resetResult.ok).toBe(true);
+  if (!resetResult.ok) return;
+  expect(resetResult.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+  expect(resetResult.envelope.rulesVersion).toBe(RULES_VERSION);
+
+  const reloaded = store.load();
+  expect(reloaded.ok).toBe(true);
+  if (!reloaded.ok) return;
+  expect(reloaded.outdated).toBe(false);
+  expect(reloaded.envelope.rules.localFaction.enabled).toBe(false);
+});

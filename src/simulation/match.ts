@@ -15,6 +15,7 @@ import { createInitialLocalUnits } from './local-faction';
 import type {
   BaseState,
   Cell,
+  FactionId,
   FactionState,
   MatchState,
   ScenarioId,
@@ -61,12 +62,16 @@ export {
 export interface CreateMatchOptions {
   readonly scenarioId?: ScenarioId;
   readonly rules?: RulesMaster;
+  readonly controllers?: Partial<Record<FactionId, 'human' | 'bot'>>;
 }
 
-function freshFactions(rules: RulesMaster): FactionState[] {
+function freshFactions(
+  rules: RulesMaster,
+  controllers?: Partial<Record<FactionId, 'human' | 'bot'>>,
+): FactionState[] {
   return (['A', 'B', 'C'] as const).map((id) => ({
     id,
-    controller: id === 'A' ? 'human' : 'bot',
+    controller: controllers?.[id] ?? (id === 'A' ? 'human' : 'bot'),
     supplyCenti: rules.match.initialSupplyCenti,
     researchCenti: rules.match.initialResearchCenti,
     researchProgressCenti: {
@@ -291,7 +296,7 @@ function configuredFixture(
       faction.id === 'A' ? { ...faction, supplyCenti: 18_000 } : faction,
     );
     bases = bases.map((base) =>
-      base.id === 'OUT-02'
+      base.id === 'OUT-02' && state.rules.localFaction.enabled
         ? { ...base, owner: 'local', hp: base.maxHp, defender: null }
         : base,
     );
@@ -370,7 +375,7 @@ export function createMatch(
         scenarioId === 'g3-timeout' || scenarioId === 'g3-spectate'
           ? SHORT_TIME_LIMIT_TICKS
           : rules.match.timeLimitTicks,
-      factions: freshFactions(rules),
+      factions: freshFactions(rules, options.controllers),
       phase: 'ready',
       result: null,
       map,
@@ -386,22 +391,26 @@ export function createMatch(
         job: null,
       })),
       localFaction: {
-        active: scenarioId === 'f06-local-faction',
+        active:
+          scenarioId === 'f06-local-faction' && rules.localFaction.enabled,
         defeated: false,
-        appearedAtTick: scenarioId === 'f06-local-faction' ? 0 : null,
+        appearedAtTick:
+          scenarioId === 'f06-local-faction' && rules.localFaction.enabled
+            ? 0
+            : null,
         nextSpawnTick:
-          scenarioId === 'f06-local-faction'
+          scenarioId === 'f06-local-faction' && rules.localFaction.enabled
             ? rules.localFaction.spawnIntervalTicks
             : null,
         rosterIndex:
-          scenarioId === 'f06-local-faction'
+          scenarioId === 'f06-local-faction' && rules.localFaction.enabled
             ? rules.localFaction.initialUnits
             : 0,
         stronghold: {
           id: 'LOCAL-HQ',
           cell: { x: 20, y: 23 },
           hp:
-            scenarioId === 'f06-local-faction'
+            scenarioId === 'f06-local-faction' && rules.localFaction.enabled
               ? rules.localFaction.strongholdMaxHp
               : 0,
           maxHp: rules.localFaction.strongholdMaxHp,
@@ -414,7 +423,7 @@ export function createMatch(
     scenarioId,
   );
   const withLocalUnits =
-    scenarioId === 'f06-local-faction'
+    scenarioId === 'f06-local-faction' && rules.localFaction.enabled
       ? {
           ...initial,
           units: [...initial.units, ...createInitialLocalUnits(initial)],

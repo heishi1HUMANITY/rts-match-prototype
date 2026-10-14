@@ -124,6 +124,7 @@ function createMockHudElements(): { elements: HudElements; root: FakeElement } {
     units: new FakeElement('div') as unknown as HTMLElement,
     status: new FakeElement('div') as unknown as HTMLElement,
     download: new FakeElement('button') as unknown as HTMLButtonElement,
+    outdatedDialog: new FakeElement('dialog') as unknown as HTMLDialogElement,
     panel: null,
     selectedBaseId: '',
     multiSelect: false,

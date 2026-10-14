@@ -6,7 +6,6 @@ import {
   INITIAL_RESEARCH_CENTI,
   INITIAL_SUPPLY_CENTI,
   INITIAL_TICKETS_CENTI,
-  MOVE_TICKS_PER_CELL,
   PRODUCTION_QUEUE_LIMIT,
   STANDARD_TIME_LIMIT_TICKS,
   BASE_UNITS,
@@ -26,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 20 as const;
-export const RULES_VERSION = 'f16-v3' as const;
+export const MASTER_SCHEMA_VERSION = 21 as const;
+export const RULES_VERSION = 'f16-v5' as const;
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -223,6 +222,7 @@ export interface RulesMaster {
     readonly maxCommandsPerDecision: number;
   };
   readonly localFaction: {
+    readonly enabled: boolean;
     readonly appearanceTick: number;
     readonly strongholdMaxHp: number;
     readonly initialUnits: number;
@@ -243,6 +243,7 @@ export interface MasterEnvelope {
   readonly masterSchemaVersion: typeof MASTER_SCHEMA_VERSION;
   readonly revision: number;
   readonly rules: RulesMaster;
+  readonly rulesVersion?: string;
 }
 
 export const DEFAULT_RULES: RulesMaster = {
@@ -394,12 +395,7 @@ export const DEFAULT_RULES: RulesMaster = {
           costCenti: stats.costCenti,
           buildTicks: stats.buildTicks,
           upkeepCentiPerTick: stats.upkeepCenti,
-          moveTicksPerCell:
-            kind === 'helicopter'
-              ? 1
-              : kind === 'artillery'
-                ? 3
-                : MOVE_TICKS_PER_CELL,
+          moveTicksPerCell: stats.moveTicksPerCell,
           movementDomain: stats.movementDomain,
           canGarrison: stats.movementDomain === 'land',
           attackTargets: [
@@ -630,6 +626,7 @@ export const DEFAULT_RULES: RulesMaster = {
     maxCommandsPerDecision: 2,
   },
   localFaction: {
+    enabled: false,
     appearanceTick: 300,
     strongholdMaxHp: 2_500,
     initialUnits: 2,

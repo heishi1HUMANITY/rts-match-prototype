@@ -1061,6 +1061,35 @@ select:focus-visible {
 .result-actions button {
   min-height: 44px;
 }
+.master-outdated-dialog {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px 24px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+}
+.master-outdated-dialog::backdrop {
+  background: #18202b99;
+}
+.master-outdated-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.master-outdated-dialog p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.outdated-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.outdated-actions button {
+  min-height: 38px;
+}
 @media (max-height: 500px) {
   html,
   body,
@@ -1158,6 +1187,22 @@ select:focus-visible {
   .result-standings li {
     padding: 6px 0;
     font-size: 12px;
+  }
+  .master-outdated-dialog {
+    padding: 12px 16px;
+  }
+  .master-outdated-dialog h2 {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  .master-outdated-dialog p {
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+  .outdated-actions button {
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 10px;
   }
 }
 

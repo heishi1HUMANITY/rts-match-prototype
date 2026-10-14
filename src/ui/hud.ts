@@ -35,6 +35,7 @@ export interface HudElements {
   readonly units: HTMLElement;
   readonly status: HTMLElement;
   readonly download: HTMLButtonElement;
+  readonly outdatedDialog: HTMLDialogElement;
   panel: HudPanel;
   selectedBaseId: string;
   multiSelect: boolean;
@@ -164,7 +165,8 @@ export function createHud(app: HTMLElement): HudElements {
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="facilities">施設</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="stance-aggressive">攻勢</button><button type="button" data-action="stance-hold">保持</button><button type="button" data-action="stance-retreat">退避</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
-    <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>`;
+    <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
+    <dialog class="master-outdated-dialog" aria-labelledby="outdated-title"><h2 id="outdated-title">マスタ標準値の更新</h2><p>標準値が更新されています。標準値へ戻しますか？</p><div class="outdated-actions"><button type="button" data-action="outdated-reset" class="primary">戻す</button><button type="button" data-action="outdated-dismiss">このまま</button></div></dialog>`;
   const scenarioSelect =
     app.querySelector<HTMLSelectElement>('[data-scenario]')!;
   scenarioSelect.add(new Option('検査：態勢・集結点・練度', 'f13-behavior'), 1);
@@ -186,6 +188,7 @@ export function createHud(app: HTMLElement): HudElements {
     clear: action('clear'),
     camera: action('camera'),
     download: action('download'),
+    outdatedDialog: find('.master-outdated-dialog'),
     units: find('.unit-list'),
     status: find('.status'),
     panel: null,
