@@ -102,7 +102,7 @@ export function getUnitFrames(
   });
 }
 
-export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
+export function baseLabel(base: BaseView, captureRequiredTicks = 200): string {
   if (base.id === 'LOCAL-HQ') {
     if (base.visibility === 'unknown') return '● 現地勢力 本拠 · 未観測';
     if (base.visibility === 'remembered')
@@ -134,7 +134,7 @@ export function baseLabel(base: BaseView, captureRequiredTicks = 30): string {
   const capture =
     base.captureCandidate === null
       ? ''
-      : ` · ${base.captureCandidate}制圧 ${base.captureProgressCentiTicks / 100}/${captureRequiredTicks}`;
+      : ` · ${base.captureCandidate}制圧 ${Math.floor((base.captureProgressCentiTicks / (captureRequiredTicks * 100)) * 100)}%`;
   const defender =
     base.defenderMaxHp === null
       ? ''

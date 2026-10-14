@@ -63,7 +63,15 @@ describe('G2 fixed-tick integration', () => {
   });
 
   it('adds present unit capture efficiencies and includes capture income', () => {
-    let state = running(createMatch(42, { scenarioId: 'g2-capture' }));
+    let state = running(
+      createMatch(42, {
+        scenarioId: 'g2-capture',
+        rules: {
+          ...DEFAULT_RULES,
+          capture: { ...DEFAULT_RULES.capture, requiredTicks: 30 },
+        },
+      }),
+    );
     for (let i = 0; i < 15; i += 1) state = stepMatch(state);
     expect(state.bases.find(({ id }) => id === 'OUT-03')).toMatchObject({
       owner: 'A',
@@ -74,7 +82,7 @@ describe('G2 fixed-tick integration', () => {
     for (let i = 0; i < 15; i += 1) state = stepMatch(state);
     expect(state.elapsedTicks).toBe(30);
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
-      supplyCenti: 21_880,
+      supplyCenti: 21_670,
       researchCenti: 520,
     });
   });
@@ -89,10 +97,10 @@ describe('G2 fixed-tick integration', () => {
       false,
     );
     expect(state.factions.find(({ id }) => id === 'A')?.ticketsCenti).toBe(
-      99_200,
+      29_200,
     );
     expect(state.factions.find(({ id }) => id === 'B')?.ticketsCenti).toBe(
-      99_200,
+      29_200,
     );
   });
 
@@ -290,11 +298,11 @@ describe('G2 fixed-tick integration', () => {
     state = setFaction(state, 'B', { ticketsCenti: 5 });
     state = applyTicketTick(state);
     expect(state.factions.find(({ id }) => id === 'A')?.ticketsCenti).toBe(
-      100_000,
+      30_000,
     );
     expect(state.factions.find(({ id }) => id === 'B')?.ticketsCenti).toBe(0);
     expect(state.factions.find(({ id }) => id === 'C')?.ticketsCenti).toBe(
-      99_990,
+      29_990,
     );
   });
 

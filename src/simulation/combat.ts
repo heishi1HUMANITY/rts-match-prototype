@@ -1338,10 +1338,7 @@ export function resolveCombat(state: MatchState): MatchState {
     factions: snapshot.factions.map((faction) => {
       const killReward = faction.id === strongholdWinner;
       const losses = unitLosses.get(faction.id) ?? 0;
-      const hqLoss = destroyedHqs.has(faction.id)
-        ? snapshot.rules.match.hqLossTicketsCenti
-        : 0;
-      return losses === 0 && hqLoss === 0 && !killReward
+      return losses === 0 && !killReward
         ? faction
         : {
             ...faction,
@@ -1355,7 +1352,7 @@ export function resolveCombat(state: MatchState): MatchState {
               (killReward
                 ? snapshot.rules.localFaction.strongholdRewardResearchCenti
                 : 0),
-            ticketsCenti: Math.max(0, faction.ticketsCenti - losses - hqLoss),
+            ticketsCenti: Math.max(0, faction.ticketsCenti - losses),
           };
     }),
   };

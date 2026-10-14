@@ -35,7 +35,7 @@ describe('G3 simultaneous elimination and result', () => {
       {
         factionId: 'A',
         rank: 1,
-        ticketsCenti: 100_000,
+        ticketsCenti: 30_000,
         eliminatedAtTick: null,
         eliminationReason: null,
       },
@@ -350,8 +350,8 @@ describe('G3 simultaneous elimination and result', () => {
       ),
     };
     const updated = applyTicketTick(fixture);
-    expect(byId(updated, 'A').ticketsCenti).toBe(99_990);
-    expect(byId(updated, 'C').ticketsCenti).toBe(100_000);
+    expect(byId(updated, 'A').ticketsCenti).toBe(29_990);
+    expect(byId(updated, 'C').ticketsCenti).toBe(30_000);
     expect(byId(updated, 'B').ticketsCenti).toBe(0);
   });
 

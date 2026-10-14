@@ -87,14 +87,14 @@ describe('outpost capture', () => {
     }
   });
 
-  it('requires 30 uninterrupted ticks and captures on the threshold tick', () => {
+  it('requires 200 uninterrupted ticks and captures on the threshold tick', () => {
     let state = unguarded(createMatch(42));
     const unit = {
       ...state.units.find(({ id }) => id === 'A-01')!,
       cell: { x: 20, y: 20 },
     };
     state = withUnits(state, [unit]);
-    for (let tick = 1; tick < 30; tick += 1) {
+    for (let tick = 1; tick < 200; tick += 1) {
       state = advanceCapture(state);
       expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
         owner: null,
@@ -112,7 +112,7 @@ describe('outpost capture', () => {
     });
   });
 
-  it('resets progress for no occupants and for two or three competing factions', () => {
+  it('pauses progress while enemy is present, resumes when enemy leaves, and resets when no occupants', () => {
     let state = unguarded(createMatch(42));
     const a = {
       ...state.units.find(({ id }) => id === 'A-01')!,
@@ -136,16 +136,29 @@ describe('outpost capture', () => {
           }
         : base,
     );
+    // When enemy B and C are present with A: progress is PAUSED (held, not reset)
     state = { ...state, bases, units: [a, b, c] };
     state = advanceCapture(state);
     expect(state.bases[baseIndex]).toMatchObject({
       owner: null,
-      captureCandidate: null,
-      captureProgressCentiTicks: 0,
+      captureCandidate: 'A',
+      captureProgressCentiTicks: 1200,
     });
+
+    // When enemy leaves and only A remains: progress RESUMES
+    state = { ...state, units: [a] };
+    state = advanceCapture(state);
+    expect(state.bases[baseIndex]).toMatchObject({
+      owner: null,
+      captureCandidate: 'A',
+      captureProgressCentiTicks: 1300,
+    });
+
+    // When all units leave (no occupants): progress RESETS
     state = { ...state, units: [] };
     state = advanceCapture(state);
     expect(state.bases[baseIndex]).toMatchObject({
+      owner: null,
       captureCandidate: null,
       captureProgressCentiTicks: 0,
     });
@@ -221,7 +234,7 @@ describe('outpost capture', () => {
         },
       },
     };
-    for (let tick = 0; tick < 15; tick += 1) state = advanceCapture(state);
+    for (let tick = 0; tick < 100; tick += 1) state = advanceCapture(state);
     expect(state.bases.find(({ id }) => id === 'OUT-02')).toMatchObject({
       owner: 'A',
       captureProgressCentiTicks: 0,

@@ -27,6 +27,18 @@ function jobId(factionId: FactionId, serial: number): string {
   return `${factionId}-J${String(serial).padStart(2, '0')}`;
 }
 
+export function getFactionUnitLimit(
+  state: MatchState,
+  factionId: FactionId,
+): { limit: number; ownedBases: number } {
+  const ownedBases = state.bases.filter(
+    (b) => b.owner === factionId && b.kind !== 'hq' && b.hp > 0,
+  ).length;
+  const { baseUnits, unitsPerOwnedBase, maxUnits } = state.rules.limits;
+  const limit = Math.min(maxUnits, baseUnits + ownedBases * unitsPerOwnedBase);
+  return { limit, ownedBases };
+}
+
 /** Reserves supply, queue space, and an irrevocable unit ID in one state change. */
 export function enqueueProduction(
   state: MatchState,
@@ -61,13 +73,11 @@ export function enqueueProduction(
   } else if (!base || base.kind !== 'hq' || base.hp <= 0) {
     return { ok: false, state, reason: 'HQ_UNAVAILABLE' };
   }
+  const { limit } = getFactionUnitLimit(state, actor);
   const liveCount = state.units.filter(
     (unit) => unit.factionId === actor && unit.hp > 0,
   ).length;
-  if (
-    liveCount + faction.productionJobs.length >=
-    state.rules.limits.unitsPerFaction
-  ) {
+  if (liveCount + faction.productionJobs.length >= limit) {
     return { ok: false, state, reason: 'UNIT_LIMIT' };
   }
   if (faction.productionJobs.length >= state.rules.limits.productionQueue) {
@@ -194,6 +204,13 @@ export function advanceProduction(state: MatchState): MatchState {
     if (faction.eliminatedAtTick !== null) return faction;
     const [active, ...waiting] = faction.productionJobs;
     if (active === undefined) return faction;
+    const { limit } = getFactionUnitLimit(next, faction.id);
+    const liveCount = next.units.filter(
+      (unit) => unit.factionId === faction.id && unit.hp > 0,
+    ).length;
+    if (liveCount >= limit) {
+      return faction;
+    }
     if (active.remainingTicks > 1) {
       return {
         ...faction,

@@ -23,6 +23,7 @@ for (const percent of [30, 50]) {
     );
     await expect(ratio).toHaveValue('30');
     await ratio.fill(String(percent));
+    await page.locator('[data-master-path="capture.requiredTicks"]').fill('30');
     await page
       .locator('[data-master-path="baseUpgrades.recoveryDelayTicks"]')
       .fill('10000');

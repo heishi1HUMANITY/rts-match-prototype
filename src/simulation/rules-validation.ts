@@ -302,22 +302,32 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('upkeepCentiPerTick') &&
             !fieldPath.endsWith('penaltyPerWeightCenti') &&
             !fieldPath.endsWith('ticketWeight') &&
-            !fieldPath.endsWith('hqProtectionTicks');
+            !fieldPath.endsWith('hqProtectionTicks') &&
+            !fieldPath.endsWith('startTick') &&
+            !fieldPath.endsWith('startCentiPerTick') &&
+            !fieldPath.endsWith('unitsPerOwnedBase');
           const max = fieldPath.endsWith('.garrisonCapacity')
             ? 64
             : fieldPath === 'rules.capture.restoredHpPercent'
               ? 100
-              : fieldPath.endsWith('captureEfficiencyPercent')
+              : fieldPath.endsWith('territoryMinPercent') ||
+                  fieldPath.endsWith('territoryMaxPercent') ||
+                  fieldPath.endsWith('territoryPercentPerWeight') ||
+                  fieldPath.endsWith('captureEfficiencyPercent')
                 ? 1_000
                 : fieldPath.endsWith('timeLimitTicks') ||
-                    fieldPath.endsWith('hqProtectionTicks')
+                    fieldPath.endsWith('hqProtectionTicks') ||
+                    fieldPath.endsWith('startTick') ||
+                    fieldPath.endsWith('endTick')
                   ? 100_000_000
                   : fieldPath.endsWith('moveTicksPerCell') ||
                       fieldPath.endsWith('decisionIntervalTicks') ||
                       fieldPath.endsWith('updateIntervalTicks') ||
                       fieldPath.endsWith('requiredTicks') ||
                       fieldPath.endsWith('windupTicks') ||
-                      fieldPath.endsWith('intervalTicks')
+                      fieldPath.endsWith('intervalTicks') ||
+                      fieldPath.endsWith('startCentiPerTick') ||
+                      fieldPath.endsWith('endCentiPerTick')
                     ? 10_000
                     : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
@@ -423,10 +433,28 @@ export function validateRules(input: unknown): ValidationResult {
     visited.add(id);
   };
   for (const id of Object.keys(rules.research.definitions)) visit(id);
-  if (rules.limits.unitsPerFaction < 2)
+  if (rules.limits.baseUnits < 2)
     issues.push({
-      key: 'rules.limits.unitsPerFaction',
-      message: '開始時の2部隊以上にしてください',
+      key: 'rules.limits.baseUnits',
+      message: '基本部隊数は2以上にしてください',
+    });
+  if (rules.limits.maxUnits < rules.limits.baseUnits)
+    issues.push({
+      key: 'rules.limits.maxUnits',
+      message: '最大部隊数は基本部隊数以上にしてください',
+    });
+  if (rules.tickets.decay.startTick > rules.tickets.decay.endTick)
+    issues.push({
+      key: 'rules.tickets.decay.startTick',
+      message: '開始tickは終了tick以下にしてください',
+    });
+  if (
+    rules.tickets.decay.territoryMinPercent >
+    rules.tickets.decay.territoryMaxPercent
+  )
+    issues.push({
+      key: 'rules.tickets.decay.territoryMinPercent',
+      message: '最小倍率は最大倍率以下にしてください',
     });
   if (rules.localFaction.initialUnits > rules.localFaction.maxUnits)
     issues.push({
@@ -514,7 +542,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 14 &&
       input.masterSchemaVersion !== 15 &&
       input.masterSchemaVersion !== 16 &&
-      input.masterSchemaVersion !== 17)
+      input.masterSchemaVersion !== 17 &&
+      input.masterSchemaVersion !== 18)
   )
     return {
       ok: false,
@@ -842,6 +871,89 @@ export function validateEnvelope(
         };
       }
     }
+    if (input.masterSchemaVersion <= 18) {
+      if (isRecord(migrationCandidate.match)) {
+        const { hqLossTicketsCenti: _discardHqLoss, ...cleanMatch } =
+          migrationCandidate.match as Record<string, unknown>;
+        migrationCandidate = {
+          ...migrationCandidate,
+          match: {
+            ...cleanMatch,
+            hqProtectionTicks:
+              typeof cleanMatch.hqProtectionTicks === 'number'
+                ? cleanMatch.hqProtectionTicks
+                : 1200,
+          },
+        };
+      }
+      if (isRecord(migrationCandidate.limits)) {
+        const { unitsPerFaction: _discardUnitsPerFaction, ...cleanLimits } =
+          migrationCandidate.limits as Record<string, unknown>;
+        migrationCandidate = {
+          ...migrationCandidate,
+          limits: {
+            ...cleanLimits,
+            baseUnits:
+              typeof cleanLimits.baseUnits === 'number'
+                ? cleanLimits.baseUnits
+                : 3,
+            unitsPerOwnedBase:
+              typeof cleanLimits.unitsPerOwnedBase === 'number'
+                ? cleanLimits.unitsPerOwnedBase
+                : 1,
+            maxUnits:
+              typeof cleanLimits.maxUnits === 'number'
+                ? cleanLimits.maxUnits
+                : 9,
+            productionQueue:
+              typeof cleanLimits.productionQueue === 'number'
+                ? cleanLimits.productionQueue
+                : 3,
+          },
+        };
+      }
+      if (isRecord(migrationCandidate.tickets)) {
+        migrationCandidate = {
+          ...migrationCandidate,
+          tickets: {
+            ...migrationCandidate.tickets,
+            decay: isRecord(migrationCandidate.tickets.decay)
+              ? migrationCandidate.tickets.decay
+              : DEFAULT_RULES.tickets.decay,
+          },
+        };
+      }
+      if (isRecord(migrationCandidate.units)) {
+        const oldUpkeepDefaults: Record<string, number> = {
+          assault: 5,
+          scout: 3,
+          artillery: 6,
+          antiAir: 5,
+          helicopter: 7,
+          patrolBoat: 6,
+        };
+        migrationCandidate = {
+          ...migrationCandidate,
+          units: Object.fromEntries(
+            Object.entries(migrationCandidate.units).map(([kind, unitVal]) => [
+              kind,
+              isRecord(unitVal)
+                ? {
+                    ...unitVal,
+                    upkeepCentiPerTick:
+                      typeof unitVal.upkeepCentiPerTick === 'number' &&
+                      unitVal.upkeepCentiPerTick !== oldUpkeepDefaults[kind]
+                        ? unitVal.upkeepCentiPerTick
+                        : (DEFAULT_RULES.units[
+                            kind as keyof typeof DEFAULT_RULES.units
+                          ]?.upkeepCentiPerTick ?? 10),
+                  }
+                : unitVal,
+            ]),
+          ),
+        };
+      }
+    }
     candidateRules = migrationCandidate;
   }
   if (
@@ -884,7 +996,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 14 &&
       input.masterSchemaVersion !== 15 &&
       input.masterSchemaVersion !== 16 &&
-      input.masterSchemaVersion !== 17
+      input.masterSchemaVersion !== 17 &&
+      input.masterSchemaVersion !== 18
     ) {
       const migrationIssues: ValidationIssue[] = [];
       for (const [id, oldValue] of Object.entries(oldDefinitions)) {
@@ -944,7 +1057,8 @@ export function validateEnvelope(
         input.masterSchemaVersion === 14 ||
         input.masterSchemaVersion === 15 ||
         input.masterSchemaVersion === 16 ||
-        input.masterSchemaVersion === 17)
+        input.masterSchemaVersion === 17 ||
+        input.masterSchemaVersion === 18)
     ) {
       for (const id of Object.keys(converted)) delete converted[id];
       for (const [id, oldValue] of Object.entries(oldDefinitions))

@@ -18,6 +18,7 @@ import type {
 } from '../simulation/types';
 import { FixedStepClock } from './clock';
 import type { RulesMaster } from '../simulation/rules';
+import { getFactionUnitLimit } from '../simulation/production';
 
 export interface CommandEntry {
   readonly seq: number;
@@ -520,7 +521,7 @@ export class MatchRuntime {
       if (result.ok) accepted.push(unitId);
       else rejected.push({ unitId, reason: result.reason });
     }
-    this.message = batchMessage(type, accepted, rejected);
+    this.message = batchMessage(type, accepted, rejected, this.state, 'A');
     this.emit(previous);
     return { accepted, rejected };
   }
@@ -557,7 +558,7 @@ export class MatchRuntime {
     this.previousTickState = this.state;
     this.message = result.ok
       ? this.phaseMessage()
-      : rejectMessage(result.reason);
+      : rejectMessage(result.reason, this.state, 'A');
     return result;
   }
 
@@ -593,7 +594,15 @@ export class MatchRuntime {
   }
 }
 
-export function rejectMessage(reason: RejectCode): string {
+export function rejectMessage(
+  reason: RejectCode,
+  state?: MatchState,
+  actor?: FactionId,
+): string {
+  if (reason === 'UNIT_LIMIT' && state !== undefined && actor !== undefined) {
+    const { limit, ownedBases } = getFactionUnitLimit(state, actor);
+    return `部隊上限（拠点${ownedBases}で${limit}）`;
+  }
   const messages: Record<RejectCode, string> = {
     FACTION_ELIMINATED: '脱落しているため部隊・生産・研究を操作できません',
     INVALID_COMMAND: '命令の形式が正しくありません',
@@ -653,6 +662,8 @@ function batchMessage(
   type: 'move' | 'stop' | 'march' | 'garrison',
   accepted: readonly string[],
   rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
+  state?: MatchState,
+  actor?: FactionId,
 ): string {
   const acceptedLabel =
     type === 'move'
@@ -665,7 +676,10 @@ function batchMessage(
   const prefix = `${accepted.length}部隊に${acceptedLabel}`;
   if (rejected.length === 0) return prefix;
   const details = rejected
-    .map(({ unitId, reason }) => `${unitId} ${rejectMessage(reason)}`)
+    .map(
+      ({ unitId, reason }) =>
+        `${unitId} ${rejectMessage(reason, state, actor)}`,
+    )
     .join('、');
   return `${prefix} / ${rejected.length}部隊は拒否: ${details}`;
 }

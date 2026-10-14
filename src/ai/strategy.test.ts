@@ -266,6 +266,10 @@ describe('stateless faction-view NPC policy', () => {
         ownUnits,
         rules: {
           ...initial.rules,
+          limits: {
+            ...initial.rules.limits,
+            baseUnits: 6,
+          },
           npc: {
             ...initial.rules.npc,
             decisionIntervalTicks: 30,

@@ -46,7 +46,11 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const { runtime, advance } = running('f19-capture');
     const edited = {
       ...DEFAULT_RULES,
-      capture: { ...DEFAULT_RULES.capture, restoredHpPercent: 50 },
+      capture: {
+        ...DEFAULT_RULES.capture,
+        restoredHpPercent: 50,
+        requiredTicks: 30,
+      },
     };
     expect(runtime.snapshot().state.rules.capture.restoredHpPercent).toBe(30);
     runtime.reset(42, 'f19-capture', edited);
@@ -70,12 +74,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(snapshot, {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v2',
-      schemaVersion: 21,
+      rulesVersion: 'f16-v3',
+      schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       rules: {
-        masterSchemaVersion: 18,
+        masterSchemaVersion: 19,
         rules: { capture: { restoredHpPercent: 50 } },
       },
     });
@@ -168,16 +172,16 @@ describe('G2 presentation and diagnostic boundaries', () => {
     const diagnostic = createDiagnostic(runtime.snapshot(), {
       commit: 'test',
       dirty: false,
-      rulesVersion: 'f16-v2',
-      schemaVersion: 21,
+      rulesVersion: 'f16-v3',
+      schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 21,
-        rulesVersion: 'f16-v2',
+        schemaVersion: 22,
+        rulesVersion: 'f16-v3',
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
-        masterSchemaVersion: 18,
+        masterSchemaVersion: 19,
         rules: runtime.snapshot().state.rules,
       },
     });
@@ -192,7 +196,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(
       runtime.playerSnapshot().view.ownUnits.some((unit) => unit.id === 'A-01'),
     ).toBe(false);
-    expect(runtime.playerSnapshot().view.ticketsCenti.A).toBe(99200);
+    expect(runtime.playerSnapshot().view.ticketsCenti.A).toBe(29200);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });
@@ -236,8 +240,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 21 as const,
-      rulesVersion: 'f16-v2' as const,
+      schemaVersion: 22 as const,
+      rulesVersion: 'f16-v3' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -258,6 +262,15 @@ describe('G2 presentation and diagnostic boundaries', () => {
         ...input,
         rulesVersion: 'f18-v3',
       } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        ...input,
+        rulesVersion: 'f16-v2',
+      } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({ ...input, schemaVersion: 21 } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 4 } as unknown as typeof input),

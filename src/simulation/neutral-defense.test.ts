@@ -4,6 +4,7 @@ import { resolveCombat } from './combat';
 import { getFactionView } from './view';
 import { stepMatch } from './step';
 import { updateFactionKnowledge } from './visibility';
+import { DEFAULT_RULES } from './rules';
 import type { MatchState } from './types';
 
 function running(state: MatchState): MatchState {
@@ -27,7 +28,15 @@ describe('F05 neutral garrisons and capture', () => {
   });
 
   it('requires garrison defeat, base destruction, then uncontested land control', () => {
-    let state = running(createMatch(42, { scenarioId: 'f05-neutral-defense' }));
+    let state = running(
+      createMatch(42, {
+        scenarioId: 'f05-neutral-defense',
+        rules: {
+          ...DEFAULT_RULES,
+          capture: { ...DEFAULT_RULES.capture, requiredTicks: 30 },
+        },
+      }),
+    );
     const outpost = () => state.bases.find(({ id }) => id === 'OUT-03')!;
     for (let tick = 0; tick < 20; tick += 1) state = stepMatch(state);
     expect(outpost()).toMatchObject({

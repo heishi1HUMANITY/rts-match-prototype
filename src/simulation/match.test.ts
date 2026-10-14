@@ -6,8 +6,8 @@ import { createMatch } from './match';
 describe('initial match contract', () => {
   it('creates schema-v18 ready state with three ranked factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(21);
-    expect(match.timeLimitTicks).toBe(3000);
+    expect(match.schemaVersion).toBe(22);
+    expect(match.timeLimitTicks).toBe(12000);
     expect(match.result).toBeNull();
     expect(
       match.factions.every(({ eliminatedAtTick }) => eliminatedAtTick === null),
@@ -53,7 +53,7 @@ describe('initial match contract', () => {
     expect(match.factions[0]).toMatchObject({
       supplyCenti: 20_000,
       researchCenti: 0,
-      ticketsCenti: 100_000,
+      ticketsCenti: 30_000,
     });
   });
 

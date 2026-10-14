@@ -54,13 +54,10 @@ export function advanceCapture(state: MatchState): MatchState {
         return base;
       return { ...base, captureCandidate: null, captureProgressCentiTicks: 0 };
     }
+    const presentFactions = new Set<CombatantId>();
     const captureEfficiencyByFaction = new Map<CombatantId, number>();
     for (const unit of state.units) {
-      if (
-        unit.hp <= 0 ||
-        !unitCapabilities(unit.kind, state.rules).canCaptureBase
-      )
-        continue;
+      if (unit.hp <= 0) continue;
       const position = currentUnitPosition(unit);
       if (
         isWithinCaptureRadius(
@@ -71,12 +68,15 @@ export function advanceCapture(state: MatchState): MatchState {
           state.rules.capture.radius,
         )
       ) {
-        const current = captureEfficiencyByFaction.get(unit.factionId) ?? 0;
-        captureEfficiencyByFaction.set(
-          unit.factionId,
-          current +
-            unitCapabilities(unit.kind, state.rules).captureEfficiencyPercent,
-        );
+        presentFactions.add(unit.factionId);
+        if (unitCapabilities(unit.kind, state.rules).canCaptureBase) {
+          const current = captureEfficiencyByFaction.get(unit.factionId) ?? 0;
+          captureEfficiencyByFaction.set(
+            unit.factionId,
+            current +
+              unitCapabilities(unit.kind, state.rules).captureEfficiencyPercent,
+          );
+        }
       }
     }
     if (base.defender && base.defender.hp > 0) {
@@ -115,8 +115,6 @@ export function advanceCapture(state: MatchState): MatchState {
         }
         return {
           ...base,
-          captureCandidate: null,
-          captureProgressCentiTicks: 0,
           defender: { ...base.defender, disabledTicks },
         };
       }
@@ -136,17 +134,27 @@ export function advanceCapture(state: MatchState): MatchState {
             captureProgressCentiTicks: 0,
           };
     }
-    if (captureEfficiencyByFaction.size !== 1) {
-      return eligibleBase.captureCandidate === null &&
+    if (captureEfficiencyByFaction.size === 0) {
+      if (
+        eligibleBase.captureCandidate === null &&
         eligibleBase.captureProgressCentiTicks === 0
-        ? eligibleBase
-        : {
-            ...eligibleBase,
-            captureCandidate: null,
-            captureProgressCentiTicks: 0,
-          };
+      ) {
+        return eligibleBase;
+      }
+      return {
+        ...eligibleBase,
+        captureCandidate: null,
+        captureProgressCentiTicks: 0,
+      };
+    }
+    if (captureEfficiencyByFaction.size > 1) {
+      return eligibleBase;
     }
     const candidate = [...captureEfficiencyByFaction.keys()][0]!;
+    const hasEnemyInRadius = [...presentFactions].some((f) => f !== candidate);
+    if (hasEnemyInRadius) {
+      return eligibleBase;
+    }
     const captureProgressCentiTicks =
       eligibleBase.captureCandidate === candidate
         ? eligibleBase.captureProgressCentiTicks +
