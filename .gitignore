@@ -14,3 +14,4 @@ Thumbs.db
 # Historical captures stay local; see docs/project/REFERENCES.md.
 /docs/video/
 .codex-remote-attachments/
+selfplay-report.md

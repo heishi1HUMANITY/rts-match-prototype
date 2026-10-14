@@ -129,7 +129,7 @@ describe('V06 view-only render frames', () => {
       ...current.ownUnits[0]!,
       cell: { x: 6, y: 6 },
       path: [{ x: 7, y: 6 }],
-      edgeProgress: 1 as const,
+      edgeProgress: 2 as const,
     };
     const input = { ...current, ownUnits: [own] };
     const before = JSON.stringify(input);

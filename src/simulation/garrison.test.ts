@@ -68,7 +68,7 @@ describe('F18 base garrisons', () => {
     if (!result.ok) return;
 
     let next = result.state;
-    for (let i = 0; i < 2; i += 1) next = stepMatch(next);
+    for (let i = 0; i < 4; i += 1) next = stepMatch(next);
     expect(unit(next, 'A-01')).toMatchObject({
       cell: { x: 5, y: 20 },
       path: [],

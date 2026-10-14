@@ -75,6 +75,17 @@ if (!loadedMaster.ok)
   runtime.notify(
     `保存済みマスタを使用できません。標準値で起動しました: ${loadedMaster.error.message}`,
   );
+if (
+  loadedMaster.ok &&
+  loadedMaster.source === 'storage' &&
+  loadedMaster.outdated
+) {
+  try {
+    hud.outdatedDialog.showModal();
+  } catch {
+    // Ignore environments where HTMLDialogElement.prototype.showModal is unavailable
+  }
+}
 if (!board.available) hud.start.disabled = true;
 
 function isBoardPoint(point: Point): boolean {
@@ -434,6 +445,30 @@ const handleClick = (event: MouseEvent): void => {
   }
   const action =
     target.closest<HTMLButtonElement>('[data-action]')?.dataset.action;
+  if (action === 'outdated-reset') {
+    masterStore.reset();
+    const current = runtime.playerSnapshot().view;
+    runtime.reset(
+      current.seed,
+      current.scenarioId,
+      masterStore.load().envelope.rules,
+    );
+    board.resetCamera();
+    try {
+      hud.outdatedDialog.close();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+  if (action === 'outdated-dismiss') {
+    try {
+      hud.outdatedDialog.close();
+    } catch {
+      // ignore
+    }
+    return;
+  }
   if (action === 'upgrade-base') {
     runtime.dispatch({ type: 'upgrade-base', baseId: hud.selectedBaseId });
     return;

@@ -52,6 +52,7 @@ export const UNIT_STATS: Readonly<
       readonly damageVsStructure: number;
       readonly lossTicketsCenti: number;
       readonly unlockResearchId: string | null;
+      readonly moveTicksPerCell: number;
       readonly windupTicks: number;
       readonly intervalTicks: number;
       readonly canAttackWhileMoving: boolean;
@@ -60,8 +61,9 @@ export const UNIT_STATS: Readonly<
 > = {
   assault: {
     costCenti: 12_000,
-    buildTicks: 120,
+    buildTicks: 200,
     upkeepCenti: 10,
+    moveTicksPerCell: 4,
     maxHp: 200,
     range: 2,
     vision: 6,
@@ -80,8 +82,9 @@ export const UNIT_STATS: Readonly<
   },
   scout: {
     costCenti: 6_000,
-    buildTicks: 60,
+    buildTicks: 100,
     upkeepCenti: 5,
+    moveTicksPerCell: 3,
     maxHp: 120,
     range: 1,
     vision: 8,
@@ -100,8 +103,9 @@ export const UNIT_STATS: Readonly<
   },
   artillery: {
     costCenti: 10_000,
-    buildTicks: 100,
+    buildTicks: 180,
     upkeepCenti: 14,
+    moveTicksPerCell: 6,
     maxHp: 160,
     range: 5,
     vision: 5,
@@ -120,8 +124,9 @@ export const UNIT_STATS: Readonly<
   },
   antiAir: {
     costCenti: 9_000,
-    buildTicks: 90,
+    buildTicks: 160,
     upkeepCenti: 10,
+    moveTicksPerCell: 4,
     maxHp: 180,
     range: 4,
     vision: 7,
@@ -140,8 +145,9 @@ export const UNIT_STATS: Readonly<
   },
   helicopter: {
     costCenti: 14_000,
-    buildTicks: 140,
+    buildTicks: 220,
     upkeepCenti: 16,
+    moveTicksPerCell: 2,
     maxHp: 180,
     range: 3,
     vision: 8,
@@ -160,8 +166,9 @@ export const UNIT_STATS: Readonly<
   },
   patrolBoat: {
     costCenti: 12_000,
-    buildTicks: 120,
+    buildTicks: 200,
     upkeepCenti: 14,
+    moveTicksPerCell: 4,
     maxHp: 220,
     range: 3,
     vision: 7,

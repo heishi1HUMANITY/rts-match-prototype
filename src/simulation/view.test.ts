@@ -89,7 +89,7 @@ describe('faction visibility and view isolation', () => {
       ...exact,
       cell: { x: 13, y: 21 },
       path: [{ x: 14, y: 21 }],
-      edgeProgress: 1 as const,
+      edgeProgress: 2 as const,
     };
     expect(getUnitPositionX1024(halfway)).toBe(14336);
     expect(
