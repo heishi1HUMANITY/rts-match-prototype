@@ -809,7 +809,9 @@ export function resolveCombat(state: MatchState): MatchState {
             damageAgainst(snapshot, attacker, target) +
             (faction ? firepowerBonus(faction, snapshot.rules) : 0);
           const modifier = attackerStateModifierPercent(snapshot, attacker);
-          const stance = attacker.stance ?? 'aggressive';
+          const stance = attacker.retreating
+            ? 'retreat'
+            : (attacker.stance ?? 'aggressive');
           const stanceModifier =
             snapshot.rules.unitBehavior.stanceProfiles[stance].damagePercent;
           const rankModifier =
@@ -1157,11 +1159,11 @@ export function resolveCombat(state: MatchState): MatchState {
       (res) =>
         res.target.kind === 'target' &&
         res.target.target.kind === 'unit' &&
-        res.target.target.id === targetId &&
-        res.attackerUnitId,
+        res.target.target.id === targetId,
     );
     const total = hits.reduce((sum, res) => sum + res.damage, 0);
     for (const res of hits) {
+      if (!res.attackerUnitId) continue;
       const attackerId = res.attackerUnitId!;
       const share = Math.floor(
         (effectiveDamage * res.damage) / Math.max(1, total),

@@ -43,7 +43,7 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
   )
     return unit;
   const progress = unit.edgeProgress + 1;
-  const stance = unit.stance ?? 'aggressive';
+  const stance = unit.retreating ? 'retreat' : (unit.stance ?? 'aggressive');
   const movementPercent =
     state?.rules.unitBehavior.stanceProfiles[stance].movementPercent ?? 100;
   const requiredTicks = Math.max(
@@ -127,7 +127,11 @@ function advanceRetreats(state: MatchState): MatchState {
       unit.marchOrder || unit.moveTarget || unit.garrisonedAtBaseId,
     );
     const wasRetreating = unit.retreating === true;
-    if (wasRetreating && percent >= returnAboveHpPercent) {
+    if (
+      wasRetreating &&
+      unit.stance !== 'retreat' &&
+      percent >= returnAboveHpPercent
+    ) {
       changed = true;
       return {
         ...unit,

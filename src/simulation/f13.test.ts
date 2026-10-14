@@ -5,6 +5,7 @@ import { DEFAULT_RULES } from './rules';
 import { advanceProduction } from './production';
 import { resolveCombat } from './combat';
 import { stepMatch, stepUnit } from './step';
+import type { UnitState } from './types';
 
 const started = (
   scenarioId: 'standard' | 'g2-combat' | 'f13-behavior' = 'standard',
@@ -38,7 +39,7 @@ describe('F13 unit behavior', () => {
         },
         result.state,
       ).cell,
-    ).toEqual({ x: 7, y: 20 });
+    ).toEqual({ x: 6, y: 20 });
     expect(
       result.state.rules.unitBehavior.stanceProfiles.retreat.movementPercent,
     ).toBe(80);
@@ -54,6 +55,37 @@ describe('F13 unit behavior', () => {
     };
     expect(damageByStance('aggressive')).toBe(damageByStance('hold'));
     expect(damageByStance('hold')).toBeGreaterThan(damageByStance('retreat'));
+    const autoRetreat = resolveCombat({
+      ...combatState,
+      units: combatState.units.map((item) =>
+        item.id === 'A-01'
+          ? { ...item, stance: 'aggressive' as const, retreating: true }
+          : item,
+      ),
+    });
+    expect(40 - autoRetreat.units.find(({ id }) => id === 'B-01')!.hp).toBe(
+      damageByStance('retreat'),
+    );
+    const movementState = started();
+    const movementSample: UnitState = {
+      ...movementState.units.find(({ id }) => id === 'A-01')!,
+      path: [{ x: 7, y: 20 }],
+    };
+    const aggressiveTicks = movementSample.moveTicksPerCell ?? 2;
+    const advanceTicks = (unit: UnitState, ticks: number): UnitState => {
+      let current = unit;
+      for (let tick = 0; tick < ticks; tick += 1)
+        current = stepUnit(current, movementState);
+      return current;
+    };
+    expect(
+      advanceTicks({ ...movementSample, retreating: true }, aggressiveTicks)
+        .cell,
+    ).toEqual(movementSample.cell);
+    expect(advanceTicks(movementSample, aggressiveTicks).cell).toEqual({
+      x: 7,
+      y: 20,
+    });
   });
 
   it('stores a valid rally point and sends the next production unit there', () => {
@@ -142,6 +174,23 @@ describe('F13 unit behavior', () => {
     }
   });
 
+  it('keeps a manually selected retreat stance and routes the unit to its HQ', () => {
+    const state = started();
+    const command = applyCommand(state, 'A', {
+      type: 'set-stance',
+      unitId: 'A-01',
+      stance: 'retreat',
+    });
+    expect(command.ok).toBe(true);
+    if (!command.ok) return;
+    const next = stepMatch(command.state);
+    const unit = next.units.find(({ id }) => id === 'A-01')!;
+    expect(unit.retreating).toBe(true);
+    expect(unit.moveTarget).toEqual(
+      next.bases.find(({ id }) => id === 'HQ-A')!.cell,
+    );
+  });
+
   it('awards bounded, replay-local experience from effective unit damage', () => {
     const state = started('g2-combat');
     const rules = {
@@ -161,5 +210,43 @@ describe('F13 unit behavior', () => {
         ({ id }) => id === 'A-01',
       ),
     ).toMatchObject({ experienceCenti: 0, rank: 0 });
+  });
+
+  it('does not award a unit experience for a turret contribution', () => {
+    const state = started('g2-combat');
+    const rules = {
+      ...state.rules,
+      unitBehavior: {
+        ...state.rules.unitBehavior,
+        experiencePerDamageCenti: 10_000,
+      },
+    };
+    const facility = {
+      id: 'A-TURRET-01',
+      kind: 'turret' as const,
+      owner: 'A' as const,
+      anchor: { kind: 'base' as const, id: 'HQ-A' },
+      slot: 0,
+      cell: { x: 21, y: 21 },
+      hp: 300,
+      maxHp: 300,
+      remainingBuildTicks: 0,
+      lastDamagedTick: -1,
+      lastActivatedTick: -1,
+      attack: { targetId: null, phase: 'idle' as const, phaseEndsTick: 0 },
+    };
+    const result = resolveCombat({
+      ...state,
+      rules,
+      facilities: [facility],
+      units: state.units.map((unit) =>
+        unit.id === 'B-01' ? { ...unit, hp: 500, maxHp: 500 } : unit,
+      ),
+    });
+    const target = { ...state.units.find(({ id }) => id === 'B-01')!, hp: 500 };
+    const damage = target.hp - result.units.find(({ id }) => id === 'B-01')!.hp;
+    const attacker = result.units.find(({ id }) => id === 'A-01')!;
+    expect(damage).toBeGreaterThan(0);
+    expect(attacker.experienceCenti).toBeLessThan(damage * 10_000);
   });
 });
