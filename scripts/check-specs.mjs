@@ -32,35 +32,35 @@ export async function checkSpecs(root, reviewIds = []) {
   const registry = JSON.parse(
     await readFile(path.join(root, registryPath), 'utf8'),
   );
-  if (registry.schemaVersion !== 1 || !Array.isArray(registry.specs))
+  if (registry.schemaVersion !== 2 || !Array.isArray(registry.specs))
     throw new Error('Invalid specs registry schema');
   const failures = [];
   const ids = new Set();
-  const features = new Set();
+  const names = new Set();
   const docs = new Set();
   const coveredSources = new Set();
   const reviewed = new Set(reviewIds);
   for (const id of reviewed)
     if (!registry.specs.some((entry) => entry.id === id))
-      failures.push(`未知の仕様ID: ${id}`);
+      failures.push(`未知の仕様キー: ${id}`);
 
   for (const entry of registry.specs) {
-    if (ids.has(entry.id)) failures.push(`重複仕様ID: ${entry.id}`);
+    if (ids.has(entry.id)) failures.push(`重複仕様キー: ${entry.id}`);
     ids.add(entry.id);
+    if (typeof entry.name !== 'string' || !entry.name.trim())
+      failures.push(`機能名なし: ${entry.id}`);
+    if (names.has(entry.name)) failures.push(`重複機能名: ${entry.name}`);
+    names.add(entry.name);
     if (docs.has(entry.document)) failures.push(`重複文書: ${entry.document}`);
     docs.add(entry.document);
     if (!entry.document.startsWith(`${specDirectory}/`))
       failures.push(`仕様ディレクトリ外: ${entry.document}`);
     try {
       const text = await readFile(resolveLocal(root, entry.document), 'utf8');
-      if (!text.startsWith(`# ${entry.id}:`))
-        failures.push(`文書先頭の安定IDが不一致: ${entry.document}`);
+      if (text.replace(/\r\n/g, '\n').split('\n')[0] !== `# ${entry.name}`)
+        failures.push(`文書先頭の機能名が不一致: ${entry.document}`);
     } catch (error) {
       failures.push(`仕様参照先なし: ${entry.document} (${error.message})`);
-    }
-    for (const feature of entry.features) {
-      if (features.has(feature)) failures.push(`重複機能ID: ${feature}`);
-      features.add(feature);
     }
     if (Object.keys(entry.sources).length === 0)
       failures.push(`実装参照が未登録: ${entry.id}`);
@@ -72,17 +72,13 @@ export async function checkSpecs(root, reviewIds = []) {
         );
         if (reviewed.has(entry.id)) entry.sources[source] = actual;
         else if (actual !== expected)
-          failures.push(`要仕様確認 ${entry.id}: ${source}`);
+          failures.push(`要仕様確認 ${entry.id}（${entry.name}）: ${source}`);
       } catch (error) {
         failures.push(
           `実装参照先なし ${entry.id}: ${source} (${error.message})`,
         );
       }
     }
-  }
-  for (let number = 1; number <= 21; number++) {
-    const feature = `F${String(number).padStart(2, '0')}`;
-    if (!features.has(feature)) failures.push(`機能の仕様割当なし: ${feature}`);
   }
   for (const file of await filesBelow(root, 'src')) {
     if (
@@ -146,13 +142,13 @@ if (
   try {
     const args = process.argv.slice(2);
     if (args.length && (args[0] !== '--review' || args.length === 1))
-      throw new Error('Usage: node scripts/check-specs.mjs [--review ID ...]');
+      throw new Error('Usage: node scripts/check-specs.mjs [--review KEY ...]');
     const root = fileURLToPath(new URL('../', import.meta.url));
     const failures = await checkSpecs(root, args.slice(1));
     if (failures.length) {
       console.error(failures.join('\n'));
       console.error(
-        '担当仕様を確認・修正し、npm run specs:review -- ID ... を実行。',
+        '担当仕様を確認・修正し、npm run specs:review -- KEY ... を実行。',
       );
       process.exitCode = 1;
     } else console.log('仕様リンク・機能割当・確認済み実装を検証しました。');

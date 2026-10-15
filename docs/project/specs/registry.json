@@ -1,9 +1,9 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "specs": [
     {
       "id": "MATCH",
-      "features": ["CORE", "F16"],
+      "name": "試合進行・決着",
       "document": "docs/project/specs/MATCH.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -20,7 +20,7 @@
     },
     {
       "id": "ORDERS",
-      "features": ["F01", "F02", "F18"],
+      "name": "選択・行軍・駐留",
       "document": "docs/project/specs/ORDERS.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -36,7 +36,7 @@
     },
     {
       "id": "WORLD",
-      "features": ["F03", "F04"],
+      "name": "地形・渡河設備",
       "document": "docs/project/specs/WORLD.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -49,7 +49,7 @@
     },
     {
       "id": "COMBAT",
-      "features": ["F08"],
+      "name": "兵種・戦闘・回復",
       "document": "docs/project/specs/COMBAT.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -62,7 +62,7 @@
     },
     {
       "id": "BASES",
-      "features": ["F05", "F10", "F11", "F19"],
+      "name": "拠点・守備・施設",
       "document": "docs/project/specs/BASES.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -78,7 +78,7 @@
     },
     {
       "id": "ECONOMY",
-      "features": ["F09", "F21"],
+      "name": "補給・生産・研究",
       "document": "docs/project/specs/ECONOMY.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -92,7 +92,7 @@
     },
     {
       "id": "NPC",
-      "features": ["F06", "F07", "F20"],
+      "name": "対戦NPC・現地勢力",
       "document": "docs/project/specs/NPC.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -107,7 +107,7 @@
     },
     {
       "id": "TACTICS",
-      "features": ["F15"],
+      "name": "作戦指令",
       "document": "docs/project/specs/TACTICS.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -122,7 +122,7 @@
     },
     {
       "id": "MASTER",
-      "features": ["F17"],
+      "name": "マスタ管理・診断再現",
       "document": "docs/project/specs/MASTER.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
@@ -140,7 +140,7 @@
     },
     {
       "id": "INTERFACE",
-      "features": ["UI", "F12", "F13", "F14"],
+      "name": "表示・入力境界と未提供機能",
       "document": "docs/project/specs/INTERFACE.md",
       "sources": {
         "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",

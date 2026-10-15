@@ -1,4 +1,4 @@
-# MATCH: 試合進行・決着（CORE / F16）
+# 試合進行・決着
 
 ## 動作
 
@@ -20,4 +20,4 @@
 
 数値: `match`、`tickets`、`units.*.lossTicketsCenti`。既定値は [rules.ts](../../../src/simulation/rules.ts)。時間・強さ・公平性に関わる数値は調整可能な暫定値。
 
-実装: [step.ts](../../../src/simulation/step.ts)、[tickets.ts](../../../src/simulation/tickets.ts)、[outcome.ts](../../../src/simulation/outcome.ts)。検証: [step.test.ts](../../../src/simulation/step.test.ts)、[tickets.test.ts](../../../src/simulation/tickets.test.ts)、[outcome.test.ts](../../../src/simulation/outcome.test.ts)。関連: [BASES](BASES.md)、[ECONOMY](ECONOMY.md)、[TACTICS](TACTICS.md)。
+実装: [step.ts](../../../src/simulation/step.ts)、[tickets.ts](../../../src/simulation/tickets.ts)、[outcome.ts](../../../src/simulation/outcome.ts)。検証: [step.test.ts](../../../src/simulation/step.test.ts)、[tickets.test.ts](../../../src/simulation/tickets.test.ts)、[outcome.test.ts](../../../src/simulation/outcome.test.ts)。関連: [拠点・守備・施設](BASES.md)、[補給・生産・研究](ECONOMY.md)、[作戦指令](TACTICS.md)。

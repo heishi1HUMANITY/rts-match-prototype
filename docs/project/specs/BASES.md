@@ -1,4 +1,4 @@
-# BASES: 拠点・守備・施設（F05 / F10 / F11 / F19）
+# 拠点・守備・施設
 
 ## 中立守備と制圧
 
@@ -7,7 +7,7 @@
 - 他陣営が半径内にいる間は進捗を保留。制圧可能部隊がいなくなると進捗を解除、単独候補が変わると新候補の効率から開始する。首都は制圧対象外。
 - 制圧時はLv1へ戻し、`capture.restoredHpPercent` で最大HPに対する再稼働HPを設定する（切捨て、最低1）。強化途中のjobは破棄する。
 - 守備復活が有効なら、撃破後に制圧可能部隊がいない連続tickが規模別 `respawnTicks` に達すると守備と拠点HPを全回復。無効でも初期守備は存在する。
-- 所有拠点の破壊による再中立化時は設定に従い守備を再配置する。陣営脱落時の中立化は別処理で、現行実装は守備を配置する。詳細は [MATCH](MATCH.md)。
+- 所有拠点の破壊による再中立化時は設定に従い守備を再配置する。陣営脱落時の中立化は別処理で、現行実装は守備を配置する。詳細は [試合進行・決着](MATCH.md)。
 
 ## 拠点強化
 
@@ -24,4 +24,4 @@
 
 ## 設定・参照
 
-数値: `bases`、`defenses`、`capture`、`baseUpgrades`、`facilities`。駐留は [ORDERS](ORDERS.md)。実装: [capture.ts](../../../src/simulation/capture.ts)、[base-upgrades.ts](../../../src/simulation/base-upgrades.ts)、[facilities.ts](../../../src/simulation/facilities.ts)。検証: [capture.test.ts](../../../src/simulation/capture.test.ts)、[neutral-defense.test.ts](../../../src/simulation/neutral-defense.test.ts)、[base-upgrades.test.ts](../../../src/simulation/base-upgrades.test.ts)、[facilities.test.ts](../../../src/simulation/facilities.test.ts)。
+数値: `bases`、`defenses`、`capture`、`baseUpgrades`、`facilities`。駐留は [選択・行軍・駐留](ORDERS.md)。実装: [capture.ts](../../../src/simulation/capture.ts)、[base-upgrades.ts](../../../src/simulation/base-upgrades.ts)、[facilities.ts](../../../src/simulation/facilities.ts)。検証: [capture.test.ts](../../../src/simulation/capture.test.ts)、[neutral-defense.test.ts](../../../src/simulation/neutral-defense.test.ts)、[base-upgrades.test.ts](../../../src/simulation/base-upgrades.test.ts)、[facilities.test.ts](../../../src/simulation/facilities.test.ts)。

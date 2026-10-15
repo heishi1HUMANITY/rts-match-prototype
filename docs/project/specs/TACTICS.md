@@ -1,4 +1,4 @@
-# TACTICS: 作戦指令（F15）
+# 作戦指令
 
 ## 共通条件
 
@@ -15,4 +15,4 @@
 
 セル対象は不可視セルへ発動できない。予約砲撃は命中時に所有陣営が脱落済みなら発生しない。効果とクールダウンは固定tick状態へ保存され、pauseで進まない。NPCも自陣viewから発動を選ぶ。
 
-実装: [tactical-abilities.ts](../../../src/simulation/tactical-abilities.ts)、[combat.ts](../../../src/simulation/combat.ts)、[visibility.ts](../../../src/simulation/visibility.ts)、[production.ts](../../../src/simulation/production.ts)。検証: [tactical-abilities.test.ts](../../../src/simulation/tactical-abilities.test.ts)、[e2e](../../../e2e/tactical-abilities.spec.ts)。関連: [COMBAT](COMBAT.md)、[ECONOMY](ECONOMY.md)、[NPC](NPC.md)。
+実装: [tactical-abilities.ts](../../../src/simulation/tactical-abilities.ts)、[combat.ts](../../../src/simulation/combat.ts)、[visibility.ts](../../../src/simulation/visibility.ts)、[production.ts](../../../src/simulation/production.ts)。検証: [tactical-abilities.test.ts](../../../src/simulation/tactical-abilities.test.ts)、[e2e](../../../e2e/tactical-abilities.spec.ts)。関連: [兵種・戦闘・回復](COMBAT.md)、[補給・生産・研究](ECONOMY.md)、[対戦NPC・現地勢力](NPC.md)。

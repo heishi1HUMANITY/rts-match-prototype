@@ -1,4 +1,4 @@
-# COMBAT: 兵種・戦闘・回復（F08）
+# 兵種・戦闘・回復
 
 ## 兵種
 
@@ -25,4 +25,4 @@
 
 生存する自首都からマンハッタン距離3以内、経路なし、当tickに被弾なしの部隊を10tickごとに最大HPの4%切上げ（最低1）、最大HPまで回復する。全領域共通。この距離・頻度・率は現在 `step.ts` 内の固定値で、マスタ編集対象ではない。自動退避命令や練度上昇は提供しない。
 
-実装: [combat.ts](../../../src/simulation/combat.ts)、[unit-capabilities.ts](../../../src/simulation/unit-capabilities.ts)、[step.ts](../../../src/simulation/step.ts)。検証: [combat.test.ts](../../../src/simulation/combat.test.ts)、[unit-domains.test.ts](../../../src/simulation/unit-domains.test.ts)。関連: [BASES](BASES.md)、[TACTICS](TACTICS.md)。
+実装: [combat.ts](../../../src/simulation/combat.ts)、[unit-capabilities.ts](../../../src/simulation/unit-capabilities.ts)、[step.ts](../../../src/simulation/step.ts)。検証: [combat.test.ts](../../../src/simulation/combat.test.ts)、[unit-domains.test.ts](../../../src/simulation/unit-domains.test.ts)。関連: [拠点・守備・施設](BASES.md)、[作戦指令](TACTICS.md)。

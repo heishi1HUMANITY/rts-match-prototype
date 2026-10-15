@@ -15,19 +15,16 @@ async function fixture(t) {
   await write('docs/project/specs/README.md', '[TEST](TEST.md)\n');
   await write(
     'docs/project/specs/TEST.md',
-    '# TEST: fixture\n[code](../../../src/rule.ts)\n',
+    '# テスト機能\n[code](../../../src/rule.ts)\n',
   );
   await write(
     'docs/project/specs/registry.json',
     JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       specs: [
         {
           id: 'TEST',
-          features: Array.from(
-            { length: 21 },
-            (_, i) => `F${String(i + 1).padStart(2, '0')}`,
-          ),
+          name: 'テスト機能',
           document: 'docs/project/specs/TEST.md',
           sources: { 'src/rule.ts': '' },
         },
@@ -50,7 +47,7 @@ test('detects code drift; review records only explicit valid IDs and normalizes 
   );
   assert.match(
     (await checkSpecs(root, ['UNKNOWN'])).join('\n'),
-    /未知の仕様ID/,
+    /未知の仕様キー/,
   );
   assert.equal(
     await readFile(path.join(root, 'docs/project/specs/registry.json'), 'utf8'),
@@ -64,7 +61,7 @@ test('detects broken links and anchors, and refuses to review with broken refere
   const { root, write } = await fixture(t);
   await write(
     'docs/project/specs/TEST.md',
-    '# TEST: fixture\n[x](missing.md)\n[y](TEST.md#missing)\n',
+    '# テスト機能\n[x](missing.md)\n[y](TEST.md#missing)\n',
   );
   const errors = (await checkSpecs(root, ['TEST'])).join('\n');
   assert.match(errors, /リンク切れ/);
@@ -82,17 +79,53 @@ test('detects unassigned production files and renamed source files', async (t) =
   assert.match((await checkSpecs(root)).join('\n'), /実装参照先なし TEST/);
 });
 
-test('detects missing feature assignments, duplicate IDs, and missing entry links', async (t) => {
+test('detects duplicate names and keys, and missing entry links', async (t) => {
   const { root, write } = await fixture(t);
   const registry = JSON.parse(
     await readFile(path.join(root, 'docs/project/specs/registry.json'), 'utf8'),
   );
-  registry.specs[0].features.pop();
   registry.specs.push(registry.specs[0]);
   await write('docs/project/specs/registry.json', JSON.stringify(registry));
   await write('docs/project/specs/README.md', '# Empty');
   const errors = (await checkSpecs(root)).join('\n');
-  assert.match(errors, /機能の仕様割当なし: F21/);
-  assert.match(errors, /重複仕様ID/);
+  assert.match(errors, /重複機能名/);
+  assert.match(errors, /重複仕様キー/);
   assert.match(errors, /入口に仕様リンクなし/);
+});
+
+test('allows adding and removing named features without a fixed feature count', async (t) => {
+  const { root, write } = await fixture(t);
+  const registry = JSON.parse(
+    await readFile(path.join(root, 'docs/project/specs/registry.json'), 'utf8'),
+  );
+  registry.specs.push({
+    ...registry.specs[0],
+    id: 'EXTRA',
+    name: '追加機能',
+    document: 'docs/project/specs/EXTRA.md',
+  });
+  await write('docs/project/specs/EXTRA.md', '# 追加機能\n');
+  await write(
+    'docs/project/specs/README.md',
+    '[テスト機能](TEST.md)\n[追加機能](EXTRA.md)\n',
+  );
+  await write('docs/project/specs/registry.json', JSON.stringify(registry));
+  assert.deepEqual(await checkSpecs(root), []);
+  registry.specs.shift();
+  await rm(path.join(root, 'docs/project/specs/TEST.md'));
+  await write('docs/project/specs/README.md', '[追加機能](EXTRA.md)\n');
+  await write('docs/project/specs/registry.json', JSON.stringify(registry));
+  assert.deepEqual(await checkSpecs(root), []);
+});
+
+test('detects missing names and mismatched document titles', async (t) => {
+  const { root, write } = await fixture(t);
+  const registry = JSON.parse(
+    await readFile(path.join(root, 'docs/project/specs/registry.json'), 'utf8'),
+  );
+  registry.specs[0].name = '';
+  await write('docs/project/specs/registry.json', JSON.stringify(registry));
+  const errors = (await checkSpecs(root)).join('\n');
+  assert.match(errors, /機能名なし/);
+  assert.match(errors, /文書先頭の機能名が不一致/);
 });
