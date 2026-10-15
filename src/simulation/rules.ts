@@ -25,8 +25,21 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 20 as const;
-export const RULES_VERSION = 'f16-v4' as const;
+export const MASTER_SCHEMA_VERSION = 21 as const;
+export const RULES_VERSION = 'f15-v1' as const;
+
+export interface TacticalAbilityRules {
+  readonly costCenti: number;
+  readonly cooldownTicks: number;
+  readonly durationTicks: number;
+  readonly radius: number;
+  readonly unitDamage: number;
+  readonly structureDamage: number;
+  readonly supplyGrantCenti: number;
+  readonly productionTimePercent: number;
+  readonly damageTakenPercent: number;
+  readonly visionPercent: number;
+}
 
 export interface BaseUpgradeTier {
   readonly costCenti: number;
@@ -220,6 +233,9 @@ export interface RulesMaster {
     readonly strongholdRewardSupplyCenti: number;
     readonly strongholdRewardResearchCenti: number;
   };
+  readonly tacticalAbilities: Readonly<
+    Record<import('./types').TacticalAbilityId, TacticalAbilityRules>
+  >;
 }
 
 export interface MasterEnvelope {
@@ -607,6 +623,80 @@ export const DEFAULT_RULES: RulesMaster = {
     captureRewardResearchCenti: 3_000,
     strongholdRewardSupplyCenti: 40_000,
     strongholdRewardResearchCenti: 10_000,
+  },
+  tacticalAbilities: {
+    artillery: {
+      costCenti: 12_000,
+      cooldownTicks: 1_800,
+      durationTicks: 50,
+      radius: 3,
+      unitDamage: 70,
+      structureDamage: 60,
+      supplyGrantCenti: 0,
+      productionTimePercent: 100,
+      damageTakenPercent: 100,
+      visionPercent: 100,
+    },
+    surge: {
+      costCenti: 8_000,
+      cooldownTicks: 1_800,
+      durationTicks: 300,
+      radius: 0,
+      unitDamage: 0,
+      structureDamage: 0,
+      supplyGrantCenti: 0,
+      productionTimePercent: 50,
+      damageTakenPercent: 100,
+      visionPercent: 100,
+    },
+    smoke: {
+      costCenti: 6_000,
+      cooldownTicks: 1_500,
+      durationTicks: 200,
+      radius: 4,
+      unitDamage: 0,
+      structureDamage: 0,
+      supplyGrantCenti: 0,
+      productionTimePercent: 100,
+      damageTakenPercent: 100,
+      visionPercent: 100,
+    },
+    bulwark: {
+      costCenti: 8_000,
+      cooldownTicks: 1_800,
+      durationTicks: 200,
+      radius: 0,
+      unitDamage: 0,
+      structureDamage: 0,
+      supplyGrantCenti: 0,
+      productionTimePercent: 100,
+      damageTakenPercent: 50,
+      visionPercent: 100,
+    },
+    survey: {
+      costCenti: 7_000,
+      cooldownTicks: 1_200,
+      durationTicks: 150,
+      radius: 8,
+      unitDamage: 0,
+      structureDamage: 0,
+      supplyGrantCenti: 0,
+      productionTimePercent: 100,
+      damageTakenPercent: 100,
+      visionPercent: 100,
+    },
+    jam: {
+      costCenti: 8_000,
+      cooldownTicks: 1_800,
+      durationTicks: 200,
+      radius: 0,
+      unitDamage: 0,
+      structureDamage: 0,
+      supplyGrantCenti: 0,
+      productionTimePercent: 100,
+      damageTakenPercent: 100,
+      visionPercent: 50,
+    },
   },
 };
 

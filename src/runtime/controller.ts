@@ -650,6 +650,9 @@ export function rejectMessage(
     CROSSING_UNIT_RESTRICTED: 'この部隊では建設できません',
     CROSSING_RESEARCH_REQUIRED: '必要な工兵研究が完了していません',
     HQ_PROTECTED: '首都保護期間中のため攻撃・進軍できません',
+    ABILITY_NOT_READY: 'この作戦指令は再使用まで待機中です',
+    ABILITY_TARGET_INVALID: '作戦指令の対象を指定できません',
+    ABILITY_TARGET_NOT_VISIBLE: '視界内の地点を指定してください',
   };
   return messages[reason];
 }

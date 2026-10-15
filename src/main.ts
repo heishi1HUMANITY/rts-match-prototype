@@ -27,6 +27,7 @@ let activeMovePreview: {
 let activeDragUnitId: string | null = null;
 let activeDragUnitIds: string[] | null = null;
 let dragCancelled = false;
+let pendingAbilityTarget: 'artillery' | 'smoke' | 'survey' | null = null;
 let bootError: string | null = null;
 let lifecycleKey = 'ready:false';
 let board = createBoardView({
@@ -136,7 +137,9 @@ function updateMovePreview(unitIds: readonly string[], point: Point): void {
 function clearMoveFeedback(): void {
   board.clearMovePreview();
   hud.root.querySelector<HTMLElement>('.board-hint')!.textContent =
-    '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ';
+    pendingAbilityTarget === null
+      ? '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ'
+      : `${pendingAbilityTarget === 'artillery' ? '砲撃支援' : pendingAbilityTarget === 'smoke' ? '煙幕' : '広域観測'} · 盤面の地点をタップ`;
 }
 
 function refreshActiveMovePreview(): void {
@@ -155,6 +158,10 @@ input = new CanvasInput(
   {
     canvas: board.canvas,
     onPointerDown: ({ x, y }): GestureOrigin => {
+      if (pendingAbilityTarget !== null) {
+        dragCancelled = false;
+        return { kind: 'tap-only' };
+      }
       dragCancelled = false;
       activeMovePreview = null;
       activeDragUnitId = null;
@@ -211,6 +218,15 @@ input = new CanvasInput(
     onTap: ({ x, y }) => {
       if (dragCancelled) return;
       const cell = board.pickGround(x, y);
+      if (pendingAbilityTarget !== null) {
+        const abilityId = pendingAbilityTarget;
+        pendingAbilityTarget = null;
+        clearMoveFeedback();
+        if (cell !== null)
+          runtime.dispatch({ type: 'activate-ability', abilityId, cell });
+        updateHud(hud, runtime.playerSnapshot());
+        return;
+      }
       if (cell === null) return;
       const snapshot = runtime.playerSnapshot();
       if (
@@ -279,6 +295,7 @@ input = new CanvasInput(
       clearMoveFeedback();
     },
     onEscape: () => {
+      pendingAbilityTarget = null;
       setHudPanel(hud, null);
       runtime.select(null);
     },
@@ -380,6 +397,35 @@ const handleClick = (event: MouseEvent): void => {
   if (!(target instanceof HTMLElement)) return;
   const clickedButton = target.closest<HTMLButtonElement>('button');
   if (clickedButton?.disabled) return;
+  const abilityId = clickedButton?.dataset.ability;
+  if (abilityId !== undefined) {
+    if (
+      abilityId === 'artillery' ||
+      abilityId === 'smoke' ||
+      abilityId === 'survey'
+    ) {
+      pendingAbilityTarget = abilityId;
+      input.cancelGesture();
+      setHudPanel(hud, null);
+      clearMoveFeedback();
+    } else if (abilityId === 'jam') {
+      const targetFactionId = hud.root.querySelector<HTMLSelectElement>(
+        '[data-ability-target]',
+      )?.value;
+      if (
+        targetFactionId === 'A' ||
+        targetFactionId === 'B' ||
+        targetFactionId === 'C'
+      )
+        runtime.dispatch({
+          type: 'activate-ability',
+          abilityId: 'jam',
+          targetFactionId,
+        });
+    } else if (abilityId === 'surge' || abilityId === 'bulwark')
+      runtime.dispatch({ type: 'activate-ability', abilityId });
+    return;
+  }
   const facilityKind = clickedButton?.dataset.facilityBuild;
   if (facilityKind !== undefined) {
     const value =
@@ -543,7 +589,8 @@ const handleClick = (event: MouseEvent): void => {
     action === 'research' ||
     action === 'bases' ||
     action === 'crossings' ||
-    action === 'facilities'
+    action === 'facilities' ||
+    action === 'abilities'
   ) {
     input.cancelGesture();
     const panel = action === 'bases' ? 'base' : action;

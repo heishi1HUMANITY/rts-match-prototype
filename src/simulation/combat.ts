@@ -27,8 +27,9 @@ import {
   baseUpgradeTier,
   resetBaseToLevelOne,
 } from './base-upgrades';
+import { incomingDamage } from './tactical-abilities';
 
-interface Target {
+export interface Target {
   readonly kind:
     | 'unit'
     | 'defender'
@@ -769,6 +770,91 @@ export function resolveCombat(state: MatchState): MatchState {
   const tick = snapshot.elapsedTicks;
 
   const hitReservations: HitReservation[] = [];
+  for (const strike of snapshot.scheduledStrikes) {
+    if (strike.impactTick > tick) continue;
+    const owner = snapshot.factions.find(({ id }) => id === strike.factionId);
+    if (!owner || owner.eliminatedAtTick !== null || owner.ticketsCenti <= 0)
+      continue;
+    const config = snapshot.rules.tacticalAbilities.artillery;
+    const centerX = strike.cell.x * 1024 + 512;
+    const centerY = strike.cell.y * 1024 + 512;
+    const radiusSquared = (config.radius * 1024) ** 2;
+    const reserve = (target: Target, damage: number): HitReservation => ({
+      tick,
+      target: { kind: 'target', target },
+      damage,
+      attackerFactionId: strike.factionId,
+    });
+    for (const unit of snapshot.units) {
+      if (
+        unit.factionId === strike.factionId ||
+        unit.hp <= 0 ||
+        snapshot.rules.units[unit.kind].movementDomain === 'air'
+      )
+        continue;
+      const distanceSquared =
+        (getUnitPositionX1024(unit) - centerX) ** 2 +
+        (getUnitPositionY1024(unit) - centerY) ** 2;
+      if (distanceSquared <= radiusSquared)
+        hitReservations.push(
+          reserve(
+            { kind: 'unit', id: unit.id, distanceSquared },
+            config.unitDamage,
+          ),
+        );
+    }
+    for (const base of snapshot.bases) {
+      if (
+        base.owner === null ||
+        base.owner === strike.factionId ||
+        base.hp <= 0 ||
+        isHqProtected(snapshot, base)
+      )
+        continue;
+      const distanceSquared =
+        (base.cell.x * 1024 + 512 - centerX) ** 2 +
+        (base.cell.y * 1024 + 512 - centerY) ** 2;
+      if (distanceSquared <= radiusSquared)
+        hitReservations.push(
+          reserve(
+            { kind: 'base', id: base.id, distanceSquared },
+            config.structureDamage,
+          ),
+        );
+    }
+    for (const crossing of snapshot.crossings) {
+      if (crossing.owner === null || crossing.owner === strike.factionId)
+        continue;
+      const site = snapshot.map.crossingSites?.find(
+        ({ id }) => id === crossing.siteId,
+      );
+      const cell = site?.cells[Math.floor((site.cells.length - 1) / 2)];
+      if (!cell) continue;
+      const distanceSquared =
+        (cell.x * 1024 + 512 - centerX) ** 2 +
+        (cell.y * 1024 + 512 - centerY) ** 2;
+      if (distanceSquared <= radiusSquared)
+        hitReservations.push(
+          reserve(
+            { kind: 'crossing', id: crossing.siteId, distanceSquared },
+            config.structureDamage,
+          ),
+        );
+    }
+    for (const facility of snapshot.facilities) {
+      if (facility.owner === strike.factionId || facility.hp <= 0) continue;
+      const distanceSquared =
+        (facility.cell.x * 1024 + 512 - centerX) ** 2 +
+        (facility.cell.y * 1024 + 512 - centerY) ** 2;
+      if (distanceSquared <= radiusSquared)
+        hitReservations.push(
+          reserve(
+            { kind: 'facility', id: facility.id, distanceSquared },
+            config.structureDamage,
+          ),
+        );
+    }
+  }
   const updatedUnits: UnitState[] = [];
   const updatedFacilities: FacilityState[] = [];
   const activatedFacilities = new Set<string>();
@@ -1158,7 +1244,11 @@ export function resolveCombat(state: MatchState): MatchState {
       base.defender && defenderHit > 0
         ? { ...base.defender, hp: Math.max(0, base.defender.hp - defenderHit) }
         : base.defender;
-    const damage = baseDamage.get(base.id) ?? 0;
+    const damage = incomingDamage(
+      snapshot,
+      base.owner,
+      baseDamage.get(base.id) ?? 0,
+    );
     if (isHqProtected(snapshot, base) || damage <= 0 || base.hp <= 0)
       return defender === base.defender ? base : { ...base, defender };
     const hp = Math.max(0, base.hp - damage);
@@ -1282,9 +1372,10 @@ export function resolveCombat(state: MatchState): MatchState {
     const byFaction = crossingDamage.get(crossing.siteId);
     if (!byFaction || crossing.hp <= 0 || crossing.owner === null)
       return crossing;
-    const damage = [...byFaction.values()].reduce(
-      (sum, value) => sum + value,
-      0,
+    const damage = incomingDamage(
+      snapshot,
+      crossing.owner,
+      [...byFaction.values()].reduce((sum, value) => sum + value, 0),
     );
     const hp = Math.max(0, crossing.hp - damage);
     if (hp > 0)
@@ -1323,7 +1414,11 @@ export function resolveCombat(state: MatchState): MatchState {
     facilities: updatedFacilities
       .map((f) => ({
         ...f,
-        hp: Math.max(0, f.hp - (facilityDamage.get(f.id) ?? 0)),
+        hp: Math.max(
+          0,
+          f.hp -
+            incomingDamage(snapshot, f.owner, facilityDamage.get(f.id) ?? 0),
+        ),
         lastDamagedTick: facilityDamage.has(f.id)
           ? snapshot.elapsedTicks
           : f.lastDamagedTick,

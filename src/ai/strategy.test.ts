@@ -279,7 +279,7 @@ describe('stateless faction-view NPC policy', () => {
       };
       const moved = new Set<string>();
       const economicTypes = new Set<string>();
-      for (let decision = 0; decision < ownUnits.length + 3; decision += 1) {
+      for (let decision = 0; decision < ownUnits.length + 4; decision += 1) {
         const view = { ...limited, tick: decision * 30 };
         const commands = decideBotCommands(view);
         expect(commands.length).toBeLessThanOrEqual(maxCommandsPerDecision);

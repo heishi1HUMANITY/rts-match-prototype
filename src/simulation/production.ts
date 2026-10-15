@@ -147,6 +147,12 @@ export function cancelProduction(
               ...entry,
               supplyCenti: entry.supplyCenti + job.costCenti,
               productionJobs: nextJobs,
+              ...(job.status === 'active'
+                ? {
+                    productionProgressRemainder: 0,
+                    productionProgressPercent: 100,
+                  }
+                : {}),
             }
           : entry,
       ),
@@ -182,6 +188,12 @@ export function cancelAllProductionForDestroyedHq(
         ? {
             ...entry,
             supplyCenti: entry.supplyCenti + refund,
+            ...(cancelled.some(({ status }) => status === 'active')
+              ? {
+                  productionProgressRemainder: 0,
+                  productionProgressPercent: 100,
+                }
+              : {}),
             productionJobs: remaining.map((job, index) =>
               index === 0
                 ? { ...job, status: 'active' as const }
@@ -203,7 +215,15 @@ export function advanceProduction(state: MatchState): MatchState {
   const factions = next.factions.map((faction) => {
     if (faction.eliminatedAtTick !== null) return faction;
     const [active, ...waiting] = faction.productionJobs;
-    if (active === undefined) return faction;
+    if (active === undefined)
+      return faction.productionProgressRemainder === 0 &&
+        faction.productionProgressPercent === 100
+        ? faction
+        : {
+            ...faction,
+            productionProgressRemainder: 0,
+            productionProgressPercent: 100,
+          };
     const { limit } = getFactionUnitLimit(next, faction.id);
     const liveCount = next.units.filter(
       (unit) => unit.factionId === faction.id && unit.hp > 0,
@@ -211,11 +231,27 @@ export function advanceProduction(state: MatchState): MatchState {
     if (liveCount >= limit) {
       return faction;
     }
-    if (active.remainingTicks > 1) {
+    const boostPercent =
+      faction.productionBoostUntilTick > next.elapsedTicks
+        ? next.rules.tacticalAbilities.surge.productionTimePercent
+        : 100;
+    const previousRemainder =
+      faction.productionProgressPercent === boostPercent
+        ? faction.productionProgressRemainder
+        : 0;
+    const accumulatedProgress = previousRemainder + 100;
+    const progressPerTick = Math.floor(accumulatedProgress / boostPercent);
+    const progressRemainder = accumulatedProgress % boostPercent;
+    if (active.remainingTicks > progressPerTick) {
       return {
         ...faction,
+        productionProgressRemainder: progressRemainder,
+        productionProgressPercent: boostPercent,
         productionJobs: [
-          { ...active, remainingTicks: active.remainingTicks - 1 },
+          {
+            ...active,
+            remainingTicks: active.remainingTicks - progressPerTick,
+          },
           ...waiting,
         ],
       };
@@ -246,6 +282,8 @@ export function advanceProduction(state: MatchState): MatchState {
     });
     return {
       ...faction,
+      productionProgressRemainder: 0,
+      productionProgressPercent: 100,
       productionJobs: waiting.map((job, index) =>
         index === 0 ? { ...job, status: 'active' as const } : job,
       ),

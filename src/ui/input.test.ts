@@ -37,6 +37,18 @@ describe('GestureTracker', () => {
     expect(pan.callbacks.onMovePreview).not.toHaveBeenCalled();
   });
 
+  it('delivers tap-only origins without allowing camera pans or unit moves', () => {
+    const { tracker, callbacks } = setup({ kind: 'tap-only' });
+    tracker.pointerDown({ id: 4, x: 10, y: 10 }, callbacks);
+    tracker.pointerMove({ id: 4, x: 18, y: 10 }, callbacks);
+    expect(tracker.pointerUp({ id: 4, x: 18, y: 10 }, callbacks)).toEqual({
+      kind: 'tap',
+      point: { x: 18, y: 10 },
+    });
+    expect(callbacks.onPan).not.toHaveBeenCalled();
+    expect(callbacks.onMovePreview).not.toHaveBeenCalled();
+  });
+
   it('selects a movable unit on press, previews after threshold, and drops once', () => {
     const { tracker, callbacks } = setup({
       kind: 'unit',

@@ -23,7 +23,8 @@ export type ScenarioId =
   | 'f10-base-upgrades'
   | 'f19-capture'
   | 'f11-facilities'
-  | 'f18-garrison';
+  | 'f18-garrison'
+  | 'f15-tactical-abilities';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -44,6 +45,21 @@ export type ResearchDomain =
   | 'logistics'
   | 'information'
   | 'engineering';
+export type TacticalAbilityId =
+  | 'artillery'
+  | 'surge'
+  | 'smoke'
+  | 'bulwark'
+  | 'survey'
+  | 'jam';
+export const TACTICAL_ABILITY_IDS: readonly TacticalAbilityId[] = [
+  'artillery',
+  'surge',
+  'smoke',
+  'bulwark',
+  'survey',
+  'jam',
+];
 export type ResearchEffectId =
   | 'damage-bonus'
   | 'vision-bonus'
@@ -202,6 +218,13 @@ export interface FactionState extends EliminationStatus {
   readonly completedResearchIds: readonly ResearchId[];
   readonly nextUnitSerial: number;
   readonly nextJobSerial: number;
+  readonly abilityReadyAtTick: Readonly<Record<TacticalAbilityId, number>>;
+  readonly productionBoostUntilTick: number;
+  /** Fractional production-tick progress, with denominator productionProgressPercent. */
+  readonly productionProgressRemainder: number;
+  readonly productionProgressPercent: number;
+  readonly bulwarkUntilTick: number;
+  readonly jammedUntilTick: number;
 }
 export type Faction = FactionState;
 
@@ -236,6 +259,7 @@ export interface UnitState {
   readonly moveTarget?: Cell | null;
   /** Set while this unit is defending a friendly base from its garrison slot. */
   readonly garrisonedAtBaseId?: string | null;
+  readonly smokeUntilTick?: number;
   readonly attack?: AttackState;
 }
 
@@ -307,7 +331,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 22;
+  readonly schemaVersion: 23;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -321,8 +345,23 @@ export interface MatchState {
   readonly localFaction: LocalFactionState;
   readonly crossings: readonly CrossingState[];
   readonly facilities: readonly FacilityState[];
+  readonly scheduledStrikes: readonly ScheduledStrike[];
+  readonly surveys: readonly SurveyEffect[];
   readonly knowledge: readonly FactionKnowledge[];
   readonly result: MatchResult | null;
+}
+
+export interface ScheduledStrike {
+  readonly factionId: FactionId;
+  readonly cell: Cell;
+  readonly impactTick: number;
+}
+
+export interface SurveyEffect {
+  readonly factionId: FactionId;
+  readonly cell: Cell;
+  readonly radius: number;
+  readonly expiresAtTick: number;
 }
 
 export interface OwnUnitView extends UnitState {
@@ -404,6 +443,13 @@ export interface OwnFactionView extends EliminationStatus {
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
   readonly completedResearchIds: readonly ResearchId[];
+  readonly abilityReadyAtTick: Readonly<Record<TacticalAbilityId, number>>;
+  readonly productionBoostUntilTick: number;
+  readonly bulwarkUntilTick: number;
+  readonly jammedUntilTick: number;
+  readonly activeSmokeUntilTick: number;
+  readonly activeSurveyUntilTick: number;
+  readonly pendingStrikes: readonly ScheduledStrike[];
 }
 
 export interface FactionView {
@@ -497,6 +543,20 @@ export interface FacilityView extends FacilityState {
 
 export type Command =
   | {
+      readonly type: 'activate-ability';
+      readonly abilityId: 'artillery' | 'smoke' | 'survey';
+      readonly cell: Cell;
+    }
+  | {
+      readonly type: 'activate-ability';
+      readonly abilityId: 'jam';
+      readonly targetFactionId: FactionId;
+    }
+  | {
+      readonly type: 'activate-ability';
+      readonly abilityId: 'surge' | 'bulwark';
+    }
+  | {
       readonly type: 'build-facility';
       readonly kind: FacilityKind;
       readonly anchor: FacilityAnchor;
@@ -580,7 +640,10 @@ export type RejectCode =
   | 'FACILITY_SLOTS_FULL'
   | 'FACILITY_DUPLICATE'
   | 'FACILITY_NO_CELL'
-  | 'HQ_PROTECTED';
+  | 'HQ_PROTECTED'
+  | 'ABILITY_NOT_READY'
+  | 'ABILITY_TARGET_INVALID'
+  | 'ABILITY_TARGET_NOT_VISIBLE';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }

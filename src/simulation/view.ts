@@ -340,6 +340,25 @@ export function getFactionView(
         ? { ...faction.activeResearch }
         : null,
       completedResearchIds: [...faction.completedResearchIds],
+      abilityReadyAtTick: { ...faction.abilityReadyAtTick },
+      productionBoostUntilTick: faction.productionBoostUntilTick,
+      bulwarkUntilTick: faction.bulwarkUntilTick,
+      jammedUntilTick: faction.jammedUntilTick,
+      activeSmokeUntilTick: Math.max(
+        0,
+        ...state.units
+          .filter(({ factionId }) => factionId === faction.id)
+          .map((unit) => unit.smokeUntilTick ?? 0),
+      ),
+      activeSurveyUntilTick: Math.max(
+        0,
+        ...state.surveys
+          .filter(({ factionId }) => factionId === faction.id)
+          .map((survey) => survey.expiresAtTick),
+      ),
+      pendingStrikes: state.scheduledStrikes
+        .filter(({ factionId }) => factionId === faction.id)
+        .map((strike) => ({ ...strike, cell: { ...strike.cell } })),
     },
     ownUnits,
     visibleEnemies,

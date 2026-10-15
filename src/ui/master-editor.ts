@@ -38,6 +38,46 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  cooldownTicks: {
+    label: '再使用待ち',
+    unit: 'tick (0.1秒)',
+    help: '発動後に再使用できるまでの時間です。',
+  },
+  durationTicks: {
+    label: '効果・着弾時間',
+    unit: 'tick (0.1秒)',
+    help: '持続効果の時間、または砲撃の着弾待ち時間です。',
+  },
+  unitDamage: {
+    label: '部隊damage',
+    unit: 'HP',
+    help: '砲撃支援が対象の部隊へ与えるdamageです。航空部隊は対象外です。',
+  },
+  structureDamage: {
+    label: '構造物damage',
+    unit: 'HP',
+    help: '砲撃支援が拠点・渡河設備・施設へ与えるdamageです。',
+  },
+  supplyGrantCenti: {
+    label: '追加補給',
+    unit: '補給 ×100',
+    help: '緊急増産の発動時に受け取る補給です。',
+  },
+  productionTimePercent: {
+    label: '生産所要時間',
+    unit: '%',
+    help: '増産効果中の生産所要時間です。小さいほど早く完成します。',
+  },
+  damageTakenPercent: {
+    label: '構造物の被damage',
+    unit: '%',
+    help: '鉄壁中に自軍構造物が受けるdamageの割合です。',
+  },
+  visionPercent: {
+    label: '視界半径',
+    unit: '%',
+    help: '電波妨害中に対象陣営の視界半径として残る割合です。',
+  },
   slotsPerAnchor: {
     label: '設置先あたり施設枠',
     unit: '枠',
@@ -181,9 +221,9 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   range: { label: '攻撃射程', unit: 'セル', help: '円形の攻撃範囲です。' },
   vision: { label: '視界', unit: 'セル', help: '円形の視界範囲です。' },
   costCenti: {
-    label: '生産/研究コスト',
+    label: '費用',
     unit: '補給・研究 pt ×100',
-    help: '内部値は1/100単位の整数です。',
+    help: '内部値は1/100単位の整数です。能力は発動時に補給を一度支払います。',
   },
   buildTicks: {
     label: '生産時間',
@@ -336,9 +376,9 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     help: '単独の陣営だけが範囲にいる必要時間です。',
   },
   radius: {
-    label: '制圧半径',
+    label: '範囲半径',
     unit: 'セル',
-    help: '拠点を制圧できる範囲です。',
+    help: '対象機能の範囲です。',
   },
   respawnTicks: {
     label: '守備復活時間',
@@ -425,6 +465,7 @@ function fieldsFor(rules: RulesMaster): {
     tickets: 'チケット',
     npc: 'NPC',
     localFaction: '現地勢力',
+    tacticalAbilities: '作戦指令',
   };
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
@@ -522,6 +563,18 @@ function fieldLabel(path: string): string {
     stronghold: '本拠',
   };
   const parent = path.split('.').at(-2);
+  const ability = path.match(/^tacticalAbilities\.([^.]+)\./);
+  if (ability) {
+    const names: Record<string, string> = {
+      artillery: '砲撃支援',
+      surge: '緊急増産',
+      smoke: '煙幕',
+      bulwark: '鉄壁',
+      survey: '全域観測',
+      jam: '電波妨害',
+    };
+    return `${names[ability[1]!] ?? ability[1]} · ${base}`;
+  }
   const facility = path.match(/^facilities\.definitions\.([^.]+)\.([^.]+)$/);
   if (facility) {
     const names: Record<string, string> = {
