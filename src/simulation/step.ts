@@ -18,6 +18,7 @@ import { findPath } from './pathfinding';
 import { unitCapabilities } from './unit-capabilities';
 import { advanceLocalFaction } from './local-faction';
 import { advanceBaseUpgrades } from './base-upgrades';
+import { advanceTacticalEffects } from './tactical-abilities';
 import type { MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
@@ -229,6 +230,7 @@ export function stepMatch(state: MatchState): MatchState {
   next = garrisonArrivals(beforeMovement, next);
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
+  next = advanceTacticalEffects(next);
   next = recoverNearHeadquarters(next, beforeCombat);
   const beforeCapture = next;
   next = releaseInvalidGarrisons(beforeCapture, advanceCapture(next));

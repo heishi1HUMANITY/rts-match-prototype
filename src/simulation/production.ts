@@ -211,11 +211,19 @@ export function advanceProduction(state: MatchState): MatchState {
     if (liveCount >= limit) {
       return faction;
     }
-    if (active.remainingTicks > 1) {
+    const boostPercent =
+      faction.productionBoostUntilTick > next.elapsedTicks
+        ? next.rules.tacticalAbilities.surge.productionTimePercent
+        : 100;
+    const progressPerTick = Math.max(1, Math.floor(100 / boostPercent));
+    if (active.remainingTicks > progressPerTick) {
       return {
         ...faction,
         productionJobs: [
-          { ...active, remainingTicks: active.remainingTicks - 1 },
+          {
+            ...active,
+            remainingTicks: active.remainingTicks - progressPerTick,
+          },
           ...waiting,
         ],
       };

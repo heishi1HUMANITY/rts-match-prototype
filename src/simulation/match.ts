@@ -12,6 +12,7 @@ import { createMap } from './map';
 import { findPath } from './pathfinding';
 import { createInitialKnowledge } from './visibility';
 import { createInitialLocalUnits } from './local-faction';
+import { TACTICAL_ABILITY_IDS } from './types';
 import type {
   BaseState,
   Cell,
@@ -87,6 +88,12 @@ function freshFactions(
     completedResearchIds: [],
     nextUnitSerial: 3,
     nextJobSerial: 1,
+    abilityReadyAtTick: Object.fromEntries(
+      TACTICAL_ABILITY_IDS.map((abilityId) => [abilityId, 0]),
+    ) as FactionState['abilityReadyAtTick'],
+    productionBoostUntilTick: 0,
+    bulwarkUntilTick: 0,
+    jammedUntilTick: 0,
   }));
 }
 
@@ -139,7 +146,12 @@ function buildUnits(rules: RulesMaster): UnitState[] {
 
 function scenarioMap(seed: number, scenarioId: ScenarioId) {
   const map = createMap(seed);
-  if (scenarioId !== 'f02-pursuit' && scenarioId !== 'g2-combat') return map;
+  if (
+    scenarioId !== 'f02-pursuit' &&
+    scenarioId !== 'g2-combat' &&
+    scenarioId !== 'f15-tactical-abilities'
+  )
+    return map;
   return {
     ...map,
     terrain: new Array(map.width * map.height).fill('land'),
@@ -317,6 +329,22 @@ function configuredFixture(
       base.id === 'OUT-01' ? { ...base, owner: 'A', defender: null } : base,
     );
   }
+  if (scenarioId === 'f15-tactical-abilities') {
+    const playerUnit = units.find(({ id }) => id === 'A-01')!;
+    units = units.map((unit) =>
+      unit.id === 'B-01'
+        ? { ...unit, cell: { x: playerUnit.cell.x + 3, y: playerUnit.cell.y } }
+        : unit.id === 'B-02'
+          ? {
+              ...unit,
+              cell: { x: playerUnit.cell.x + 3, y: playerUnit.cell.y + 1 },
+            }
+          : unit,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A' ? { ...faction, supplyCenti: 120_000 } : faction,
+    );
+  }
   return { ...state, factions, units, bases };
 }
 
@@ -356,6 +384,8 @@ export function createMatch(
       units: buildUnits(rules),
       bases: buildBases(rules),
       facilities: [],
+      scheduledStrikes: [],
+      surveys: [],
       crossings: (map.crossingSites ?? []).map((site) => ({
         siteId: site.id,
         owner: null,

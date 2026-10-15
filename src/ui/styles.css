@@ -672,6 +672,25 @@ summary:focus-visible {
   height: 6px;
   accent-color: var(--accent);
 }
+.tactical-ability-card {
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.tactical-ability-card button {
+  min-height: 40px;
+  text-align: left;
+}
+.tactical-ability-card small {
+  color: #59636c;
+  line-height: 1.35;
+}
+.tactical-ability-card span {
+  min-height: 16px;
+  color: #7a4e23;
+  font-size: 11px;
+}
 .crossing-card {
   display: grid;
   grid-template-columns: 1fr auto auto;

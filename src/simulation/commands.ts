@@ -12,6 +12,7 @@ import { unitCapabilities } from './unit-capabilities';
 import { cancelProduction, enqueueProduction } from './production';
 import { startResearch } from './research';
 import { beginBaseUpgrade } from './base-upgrades';
+import { activateTacticalAbility } from './tactical-abilities';
 import {
   getUnitPositionX1024,
   getUnitPositionY1024,
@@ -86,6 +87,41 @@ function parseCommand(input: unknown): ParsedCommand | null {
   ) {
     return { type: input.type };
   }
+  if (
+    input.type === 'activate-ability' &&
+    (input.abilityId === 'artillery' ||
+      input.abilityId === 'smoke' ||
+      input.abilityId === 'survey') &&
+    hasExactKeys(input, ['type', 'abilityId', 'cell']) &&
+    isRecord(input.cell) &&
+    hasExactKeys(input.cell, ['x', 'y']) &&
+    typeof input.cell.x === 'number' &&
+    Number.isInteger(input.cell.x) &&
+    typeof input.cell.y === 'number' &&
+    Number.isInteger(input.cell.y)
+  )
+    return {
+      type: 'activate-ability',
+      abilityId: input.abilityId,
+      cell: { x: input.cell.x, y: input.cell.y },
+    };
+  if (
+    input.type === 'activate-ability' &&
+    input.abilityId === 'jam' &&
+    hasExactKeys(input, ['type', 'abilityId', 'targetFactionId']) &&
+    isFactionId(input.targetFactionId)
+  )
+    return {
+      type: 'activate-ability',
+      abilityId: 'jam',
+      targetFactionId: input.targetFactionId,
+    };
+  if (
+    input.type === 'activate-ability' &&
+    (input.abilityId === 'surge' || input.abilityId === 'bulwark') &&
+    hasExactKeys(input, ['type', 'abilityId'])
+  )
+    return { type: 'activate-ability', abilityId: input.abilityId };
   if (
     input.type === 'build-facility' &&
     hasExactKeys(input, ['type', 'kind', 'anchor']) &&
@@ -298,6 +334,17 @@ export function applyCommand(
   ) {
     return reject(state, 'FACTION_ELIMINATED');
   }
+  if (command.type === 'activate-ability')
+    return activateTacticalAbility(
+      state,
+      actor,
+      command.abilityId,
+      'cell' in command
+        ? command.cell
+        : 'targetFactionId' in command
+          ? command.targetFactionId
+          : undefined,
+    );
   if (command.type === 'build-facility')
     return beginFacilityBuild(state, actor, command.kind, command.anchor);
   if (command.type === 'enqueue-production') {

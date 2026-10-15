@@ -548,6 +548,29 @@ it('rejects a research-reference array even when its coercion matches a valid ID
 });
 
 describe('F11 and F21 combined migration contract', () => {
+  it('migrates schema 20 masters with default tactical ability rules', () => {
+    const v20Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete v20Rules.tacticalAbilities;
+    v20Rules.units.assault.costCenti = 4321;
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 20,
+      revision: 9,
+      rules: v20Rules,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+    expect(result.envelope.revision).toBe(9);
+    expect(result.envelope.rules.units.assault.costCenti).toBe(4321);
+    expect(result.envelope.rules.tacticalAbilities).toEqual(
+      DEFAULT_RULES.tacticalAbilities,
+    );
+  });
+
   it.each([11, 12])(
     'preserves arbitrary schema %i IDs, edits and deliberate removals',
     (version) => {

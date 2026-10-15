@@ -612,6 +612,151 @@ function unitMoveCommand(
   return { type: 'march', unitId: unit.id, target: goal.target };
 }
 
+function tacticalAbilityCommand(view: FactionView): Command | undefined {
+  const faction = view.ownFaction;
+  const ready = (id: keyof typeof faction.abilityReadyAtTick): boolean =>
+    view.tick >= faction.abilityReadyAtTick[id] &&
+    faction.supplyCenti >= view.rules.tacticalAbilities[id].costCenti;
+  const visibleCell = (cell: { readonly x: number; readonly y: number }) =>
+    cell.x >= 0 &&
+    cell.y >= 0 &&
+    cell.x < view.map.width &&
+    cell.y < view.map.height &&
+    view.visible[cell.y * view.map.width + cell.x] === true;
+  const enemyCells = view.visibleEnemies
+    .filter((enemy) => enemy.factionId !== 'local')
+    .map((enemy) => ({
+      enemy,
+      cell: {
+        x: Math.floor(enemy.positionX1024 / 1024),
+        y: Math.floor(enemy.positionY1024 / 1024),
+      },
+    }));
+  if (ready('artillery')) {
+    const candidates = enemyCells
+      .filter(
+        ({ enemy, cell }) =>
+          view.rules.units[enemy.kind].movementDomain !== 'air' &&
+          visibleCell(cell),
+      )
+      .map(({ cell }) => ({
+        cell,
+        count: enemyCells.filter(
+          ({ enemy, cell: other }) =>
+            view.rules.units[enemy.kind].movementDomain !== 'air' &&
+            (other.x - cell.x) ** 2 + (other.y - cell.y) ** 2 <=
+              view.rules.tacticalAbilities.artillery.radius ** 2,
+        ).length,
+      }))
+      .sort(
+        (a, b) =>
+          b.count - a.count || a.cell.y - b.cell.y || a.cell.x - b.cell.x,
+      );
+    const target = candidates[0];
+    if (target && target.count >= 3)
+      return {
+        type: 'activate-ability',
+        abilityId: 'artillery',
+        cell: target.cell,
+      };
+  }
+  if (
+    ready('bulwark') &&
+    faction.bulwarkUntilTick <= view.tick &&
+    view.bases.some(
+      (base) =>
+        base.visibility === 'owned' &&
+        enemyCells.some(
+          ({ cell }) =>
+            Math.abs(cell.x - base.cell.x) + Math.abs(cell.y - base.cell.y) <=
+            view.rules.npc.defenseAttentionRadius,
+        ),
+    )
+  )
+    return { type: 'activate-ability', abilityId: 'bulwark' };
+  if (
+    ready('smoke') &&
+    view.ownUnits.some((unit) =>
+      enemyCells.some(
+        ({ cell }) =>
+          Math.abs(cell.x - unit.cell.x) + Math.abs(cell.y - unit.cell.y) <= 3,
+      ),
+    )
+  ) {
+    const front = view.ownUnits
+      .filter((unit) => unit.attack?.phase === 'idle')
+      .map((unit) => ({
+        unit,
+        threats: enemyCells.filter(
+          ({ cell }) =>
+            Math.abs(cell.x - unit.cell.x) + Math.abs(cell.y - unit.cell.y) <=
+            3,
+        ).length,
+      }))
+      .sort(
+        (a, b) => b.threats - a.threats || a.unit.id.localeCompare(b.unit.id),
+      )[0];
+    if (front && front.threats > 0)
+      return {
+        type: 'activate-ability',
+        abilityId: 'smoke',
+        cell: front.unit.cell,
+      };
+  }
+  const committed = view.ownUnits.length + faction.productionJobs.length;
+  if (
+    ready('surge') &&
+    faction.productionBoostUntilTick <= view.tick &&
+    faction.productionJobs.length > 0 &&
+    committed < view.rules.limits.maxUnits
+  )
+    return { type: 'activate-ability', abilityId: 'surge' };
+  const mapCenter = {
+    x: Math.floor(view.map.width / 2),
+    y: Math.floor(view.map.height / 2),
+  };
+  const surveyCell = view.visible
+    .flatMap((isVisible, index) =>
+      isVisible
+        ? [
+            {
+              x: index % view.map.width,
+              y: Math.floor(index / view.map.width),
+            },
+          ]
+        : [],
+    )
+    .sort(
+      (a, b) =>
+        (a.x - mapCenter.x) ** 2 +
+          (a.y - mapCenter.y) ** 2 -
+          ((b.x - mapCenter.x) ** 2 + (b.y - mapCenter.y) ** 2) ||
+        a.y - b.y ||
+        a.x - b.x,
+    )[0];
+  if (ready('survey') && surveyCell && !visibleCell(mapCenter))
+    return { type: 'activate-ability', abilityId: 'survey', cell: surveyCell };
+  if (ready('jam')) {
+    const target = (['A', 'B', 'C'] as const)
+      .filter(
+        (id) =>
+          id !== view.viewerFactionId &&
+          view.publicEliminations[id].eliminatedAtTick === null,
+      )
+      .sort(
+        (a, b) =>
+          view.ticketsCenti[b] - view.ticketsCenti[a] || a.localeCompare(b),
+      )[0];
+    if (target)
+      return {
+        type: 'activate-ability',
+        abilityId: 'jam',
+        targetFactionId: target,
+      };
+  }
+  return undefined;
+}
+
 /**
  * Stateless NPC policy. Its sole input is the faction-limited snapshot; all
  * resulting actions still pass through the shared command validator.
@@ -631,6 +776,7 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
     () => productionCommand(view),
     () => researchCommand(view),
     () => baseUpgradeCommand(view) ?? facilityConstructionCommand(view),
+    () => tacticalAbilityCommand(view),
     ...[...view.ownUnits]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((unit) => () => unitMoveCommand(view, unit)),

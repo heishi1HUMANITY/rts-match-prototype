@@ -65,6 +65,10 @@ function sightSources(
   const visionBonus = ownerFaction
     ? researchEffectValue(ownerFaction, state.rules, 'vision-bonus')
     : 0;
+  const abilityJamPercent =
+    ownerFaction && ownerFaction.jammedUntilTick > state.elapsedTicks
+      ? state.rules.tacticalAbilities.jam.visionPercent
+      : 100;
   for (const unit of state.units) {
     if (unit.factionId !== factionId || unit.hp <= 0) continue;
     sources.push({
@@ -119,10 +123,27 @@ function sightSources(
         y: f.cell.y * 1024 + 512,
         radius: state.rules.facilities.definitions[f.kind].vision + visionBonus,
       });
-  return sources.map((source) => ({
-    ...source,
-    radius: source.radius * 0.5 ** jamCount(source.x, source.y),
-  }));
+  const activeSurveys = state.surveys
+    .filter(
+      (survey) =>
+        survey.factionId === factionId &&
+        survey.expiresAtTick > state.elapsedTicks,
+    )
+    .map((survey) => ({
+      x: survey.cell.x * POSITION_SCALE + 512,
+      y: survey.cell.y * POSITION_SCALE + 512,
+      radius: survey.radius,
+    }));
+  return [
+    ...sources.map((source) => ({
+      ...source,
+      radius:
+        source.radius *
+        0.5 ** jamCount(source.x, source.y) *
+        (abilityJamPercent / 100),
+    })),
+    ...activeSurveys,
+  ];
 }
 
 function isPointVisible(
@@ -144,6 +165,12 @@ export function isUnitVisibleToFaction(
   factionId: CombatantId,
 ): boolean {
   if (unit.hp <= 0) return false;
+  if (
+    factionId !== unit.factionId &&
+    (unit.smokeUntilTick ?? 0) > state.elapsedTicks &&
+    (unit.attack?.phase ?? 'idle') === 'idle'
+  )
+    return false;
   const concealed = state.facilities.some(
     (f) =>
       f.kind === 'jammer' &&
