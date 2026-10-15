@@ -79,7 +79,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       commit: 'test',
       dirty: false,
       rulesVersion: RULES_VERSION,
-      schemaVersion: 23,
+      schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       rules: {
@@ -177,12 +177,12 @@ describe('G2 presentation and diagnostic boundaries', () => {
       commit: 'test',
       dirty: false,
       rulesVersion: RULES_VERSION,
-      schemaVersion: 23,
+      schemaVersion: 22,
     });
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 23,
+        schemaVersion: 22,
         rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
@@ -244,8 +244,8 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 23 as const,
-      rulesVersion: RULES_VERSION,
+      schemaVersion: 22 as const,
+      rulesVersion: 'f16-v4' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
     };
@@ -270,7 +270,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(() =>
       replay({
         ...input,
-        rulesVersion: 'f16-v4',
+        rulesVersion: 'f16-v3',
       } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>

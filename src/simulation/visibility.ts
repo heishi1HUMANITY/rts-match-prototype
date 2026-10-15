@@ -70,10 +70,7 @@ function sightSources(
     sources.push({
       x: unitPositionX1024(unit),
       y: unitPositionY1024(unit),
-      radius:
-        state.rules.units[unit.kind].vision +
-        visionBonus +
-        (unit.rank ?? 0) * state.rules.unitBehavior.rankVisionBonus,
+      radius: state.rules.units[unit.kind].vision + visionBonus,
     });
   }
   for (const base of state.bases) {

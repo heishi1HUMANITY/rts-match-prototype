@@ -10,7 +10,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 23 as const;
+export const SCHEMA_VERSION = 22 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 export const MAP_WIDTH = 40;
@@ -443,5 +443,4 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f19-capture',
   'f11-facilities',
   'f18-garrison',
-  'f13-behavior',
 ];

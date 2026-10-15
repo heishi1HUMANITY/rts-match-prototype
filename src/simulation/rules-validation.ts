@@ -58,7 +58,6 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
-    'unitBehavior',
     'facilities',
     'baseUpgrades',
     'units',
@@ -200,23 +199,6 @@ export function validateRules(input: unknown): ValidationResult {
           };
         });
       }
-      if (path.endsWith('.rankThresholdsCenti')) {
-        if (
-          value.length !== 3 ||
-          value.some((entry) => !isInteger(entry) || entry <= 0) ||
-          value.some(
-            (entry, index) =>
-              index > 0 && Number(entry) <= Number(value[index - 1]),
-          )
-        )
-          issues.push({
-            key: path,
-            message: '昇格経験値は昇順の正整数3段階にしてください',
-          });
-        return value.length === 3 && value.every(isInteger)
-          ? [...value]
-          : [...defaults];
-      }
       if (path.endsWith('.attackTargets')) {
         const allowed: readonly CombatTargetKind[] = [
           'unit',
@@ -324,7 +306,6 @@ export function validateRules(input: unknown): ValidationResult {
             !fieldPath.endsWith('startTick') &&
             !fieldPath.endsWith('startCentiPerTick') &&
             !fieldPath.endsWith('unitsPerOwnedBase');
-          const allowZeroBehavior = fieldPath.endsWith('rankVisionBonus');
           const max = fieldPath.endsWith('.garrisonCapacity')
             ? 64
             : fieldPath === 'rules.capture.restoredHpPercent'
@@ -349,16 +330,11 @@ export function validateRules(input: unknown): ValidationResult {
                       fieldPath.endsWith('endCentiPerTick')
                     ? 10_000
                     : 1_000_000_000;
-          const number = numberField(
-            actual,
-            0,
-            max,
-            positive && !allowZeroBehavior,
-          );
+          const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
               key: fieldPath,
-              message: `整数で${positive && !allowZeroBehavior ? '1以上' : '0以上'}${max}以下にしてください`,
+              message: `整数で${positive ? '1以上' : '0以上'}${max}以下にしてください`,
             });
           output[key] = number ?? expected;
         } else if (typeof expected === 'string') {
@@ -375,17 +351,6 @@ export function validateRules(input: unknown): ValidationResult {
           output[key] = typeof actual === 'string' ? actual : expected;
         } else output[key] = actual;
       }
-    }
-    if (path === 'rules.unitBehavior') {
-      if (
-        typeof value.retreatBelowHpPercent === 'number' &&
-        typeof value.returnAboveHpPercent === 'number' &&
-        value.returnAboveHpPercent <= value.retreatBelowHpPercent
-      )
-        issues.push({
-          key: `${path}.returnAboveHpPercent`,
-          message: '復帰閾値は退避閾値より大きくしてください',
-        });
     }
     return output;
   };
@@ -582,8 +547,7 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 16 &&
       input.masterSchemaVersion !== 17 &&
       input.masterSchemaVersion !== 18 &&
-      input.masterSchemaVersion !== 19 &&
-      input.masterSchemaVersion !== 20)
+      input.masterSchemaVersion !== 19)
   )
     return {
       ok: false,
@@ -677,14 +641,6 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
-    if (
-      input.masterSchemaVersion <= 20 &&
-      !Object.hasOwn(migrationCandidate, 'unitBehavior')
-    )
-      migrationCandidate = {
-        ...migrationCandidate,
-        unitBehavior: DEFAULT_RULES.unitBehavior,
-      };
     if (input.masterSchemaVersion === 15) {
       const oldEnabled = migrationCandidate.garrisonEnabled !== false;
       const { garrisonEnabled: _legacy, ...withoutLegacy } = migrationCandidate;
