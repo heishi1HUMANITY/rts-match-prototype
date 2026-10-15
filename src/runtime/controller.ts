@@ -149,45 +149,6 @@ function safeCommand(value: unknown): {
       summary: `stop ${item.unitId.slice(0, 64)}`,
     };
   if (
-    item.type === 'set-stance' &&
-    typeof item.unitId === 'string' &&
-    ['aggressive', 'hold', 'retreat'].includes(String(item.stance))
-  )
-    return {
-      command: {
-        type: 'set-stance',
-        unitId: item.unitId.slice(0, 64),
-        stance: item.stance as 'aggressive' | 'hold' | 'retreat',
-      },
-      summary: `態勢 ${String(item.stance)}`,
-    };
-  if (
-    item.type === 'set-rally' &&
-    (item.target === null ||
-      (typeof item.target === 'object' &&
-        item.target !== null &&
-        !Array.isArray(item.target)))
-  ) {
-    const target = item.target as Record<string, unknown> | null;
-    if (
-      target === null ||
-      (typeof target.x === 'number' &&
-        Number.isInteger(target.x) &&
-        typeof target.y === 'number' &&
-        Number.isInteger(target.y))
-    )
-      return {
-        command: {
-          type: 'set-rally',
-          target:
-            target === null
-              ? null
-              : { x: Number(target.x), y: Number(target.y) },
-        },
-        summary: target ? `集結点 ${target.x},${target.y}` : '集結点解除',
-      };
-  }
-  if (
     item.type === 'garrison' &&
     typeof item.unitId === 'string' &&
     typeof item.baseId === 'string'
@@ -410,13 +371,6 @@ export class MatchRuntime {
     return this.dispatchBatch('stop', unitIds);
   }
 
-  groupStance(
-    stance: 'aggressive' | 'hold' | 'retreat',
-    unitIds: readonly string[] = this.selectedUnitIds,
-  ): BatchCommandResult {
-    return this.dispatchBatch('set-stance', unitIds, stance);
-  }
-
   startLoop(): void {
     if (this.started) return;
     this.started = true;
@@ -540,7 +494,7 @@ export class MatchRuntime {
   }
 
   private dispatchBatch(
-    type: 'move' | 'stop' | 'march' | 'garrison' | 'set-stance',
+    type: 'move' | 'stop' | 'march' | 'garrison',
     unitIds: readonly string[],
     target?: Cell | MarchTarget | string,
   ): BatchCommandResult {
@@ -562,13 +516,7 @@ export class MatchRuntime {
             ? { type, unitId, target: target as MarchTarget }
             : type === 'garrison'
               ? { type, unitId, baseId: target as string }
-              : type === 'set-stance'
-                ? {
-                    type,
-                    unitId,
-                    stance: target as 'aggressive' | 'hold' | 'retreat',
-                  }
-                : { type, unitId };
+              : { type, unitId };
       const result = this.dispatchCommand(input);
       if (result.ok) accepted.push(unitId);
       else rejected.push({ unitId, reason: result.reason });
@@ -711,7 +659,7 @@ function uniqueSortedIds(unitIds: readonly string[]): string[] {
 }
 
 function batchMessage(
-  type: 'move' | 'stop' | 'march' | 'garrison' | 'set-stance',
+  type: 'move' | 'stop' | 'march' | 'garrison',
   accepted: readonly string[],
   rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
   state?: MatchState,
@@ -724,9 +672,7 @@ function batchMessage(
         ? '追跡/進軍指示'
         : type === 'garrison'
           ? '駐留指示'
-          : type === 'set-stance'
-            ? '態勢変更'
-            : '停止指示';
+          : '停止指示';
   const prefix = `${accepted.length}部隊に${acceptedLabel}`;
   if (rejected.length === 0) return prefix;
   const details = rejected

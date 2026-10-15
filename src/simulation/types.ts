@@ -23,8 +23,7 @@ export type ScenarioId =
   | 'f10-base-upgrades'
   | 'f19-capture'
   | 'f11-facilities'
-  | 'f18-garrison'
-  | 'f13-behavior';
+  | 'f18-garrison';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -203,7 +202,6 @@ export interface FactionState extends EliminationStatus {
   readonly completedResearchIds: readonly ResearchId[];
   readonly nextUnitSerial: number;
   readonly nextJobSerial: number;
-  readonly rallyPoint?: Cell | null;
 }
 export type Faction = FactionState;
 
@@ -239,10 +237,6 @@ export interface UnitState {
   /** Set while this unit is defending a friendly base from its garrison slot. */
   readonly garrisonedAtBaseId?: string | null;
   readonly attack?: AttackState;
-  readonly stance?: 'aggressive' | 'hold' | 'retreat';
-  readonly retreating?: boolean;
-  readonly experienceCenti?: number;
-  readonly rank?: number;
 }
 
 export interface MarchTarget {
@@ -313,7 +307,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 23;
+  readonly schemaVersion: 22;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -410,7 +404,6 @@ export interface OwnFactionView extends EliminationStatus {
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
   readonly completedResearchIds: readonly ResearchId[];
-  readonly rallyPoint?: Cell | null;
 }
 
 export interface FactionView {
@@ -503,12 +496,6 @@ export interface FacilityView extends FacilityState {
 }
 
 export type Command =
-  | {
-      readonly type: 'set-stance';
-      readonly unitId: string;
-      readonly stance: 'aggressive' | 'hold' | 'retreat';
-    }
-  | { readonly type: 'set-rally'; readonly target: Cell | null }
   | {
       readonly type: 'build-facility';
       readonly kind: FacilityKind;
