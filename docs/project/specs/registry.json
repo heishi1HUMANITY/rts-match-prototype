@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "specs": [
+    {
+      "id": "MATCH",
+      "features": ["CORE", "F16"],
+      "document": "docs/project/specs/MATCH.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/match.ts": "0868f00751156da541a432b639b97c880cb06aa3d1a7b6014fb05e271fe1bc3b",
+        "src/simulation/step.ts": "ae9d9ebaf3887370141ed68968f5a43cdd5c8c1cae8e3f849651a14ec922f73f",
+        "src/simulation/tickets.ts": "e3fffc7d03711853a4c91d6466030be516dea9791655be012a21c5902f44bbd4",
+        "src/simulation/outcome.ts": "86b4a058705f5dfa80baee0bc05b9ca706ff3b282d205e0b4f197121acff8ec9",
+        "src/simulation/random.ts": "f671a8ec73bdb9b7a64b263543cac6a706cb4851cf253016e7cab81cc3b4c8d9",
+        "src/runtime/advance.ts": "2aa34fc37aeb3358b3b4014d2f922d2b2646689aebb232ff16c3ff2a5d3dbe84",
+        "src/runtime/clock.ts": "db311b314f5a4fe5f24588c51d69b7b3b800dd461966f1f1d03649628019d45d"
+      }
+    },
+    {
+      "id": "ORDERS",
+      "features": ["F01", "F02", "F18"],
+      "document": "docs/project/specs/ORDERS.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/commands.ts": "4171722b5774576bd840a5e8890169653dcaec223989f075215e0a4d47b3964d",
+        "src/simulation/march.ts": "e58fafc0ecf7f6c8562f3a8c3a1d0a4ae02906675a95adc2ed5d8a53d702af52",
+        "src/runtime/controller.ts": "ef5f04a766268e29d45789acb67fb43f50a2fa160de499d9686e6f8681fec5cc",
+        "src/ui/input.ts": "53094236483d821acf20761d8d70e2f366190513fc04b264b8141aeb44a973a1",
+        "src/ui/march-target.ts": "93b672d9757a50ecf7938c07cb784867c1c7cce144199e3522c45ae1079a2e5b",
+        "src/simulation/step.ts": "ae9d9ebaf3887370141ed68968f5a43cdd5c8c1cae8e3f849651a14ec922f73f"
+      }
+    },
+    {
+      "id": "WORLD",
+      "features": ["F03", "F04"],
+      "document": "docs/project/specs/WORLD.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/map.ts": "9ffaf27f0b0109c7d84fbb6c6fe4348e6ea30a31ab7aea641c1510f972f58d09",
+        "src/simulation/pathfinding.ts": "73272a794cdd410efb0283dafd59b0618f296082677882c1c4ea70cc1bea6a0d",
+        "src/simulation/crossings.ts": "8784a98c60824b54d387f16bf665088475620443bf20377e9c5bfe810f529bb3"
+      }
+    },
+    {
+      "id": "COMBAT",
+      "features": ["F08"],
+      "document": "docs/project/specs/COMBAT.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
+        "src/simulation/unit-capabilities.ts": "ff140b668418c8a501d9d40b9fa45e93481c95a651f57f635b4228f24af46f6e",
+        "src/simulation/step.ts": "ae9d9ebaf3887370141ed68968f5a43cdd5c8c1cae8e3f849651a14ec922f73f"
+      }
+    },
+    {
+      "id": "BASES",
+      "features": ["F05", "F10", "F11", "F19"],
+      "document": "docs/project/specs/BASES.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/capture.ts": "ad4b68211d25f46320c90027f4549b595eaf2b03d2eb2bb82db600c1f491c888",
+        "src/simulation/base-upgrades.ts": "72b10fd424d1bec9935e9026eb3919517dd61596822850f4339d905ec48f5bff",
+        "src/simulation/facilities.ts": "be8133d30e3cb2b674adfa102fdf0962064c888ea5e79912cd38773bf59f3bd6",
+        "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
+        "src/simulation/outcome.ts": "86b4a058705f5dfa80baee0bc05b9ca706ff3b282d205e0b4f197121acff8ec9",
+        "src/ui/facilities.ts": "d9524a4ff05ca38ed8c9bb86ba0273e5dc4ff871f22bd58edd8d93f192ae913c"
+      }
+    },
+    {
+      "id": "ECONOMY",
+      "features": ["F09", "F21"],
+      "document": "docs/project/specs/ECONOMY.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/economy.ts": "682ddbd549ba3c61adce8b65188c749d94ccc3ed4880b3a01a0d6da40ec0c3f0",
+        "src/simulation/production.ts": "6f98128fa7f1eef51dd2b9ac61d23d9cc3425dea83a86afc7630bc5ea88a288f",
+        "src/simulation/research.ts": "6adbd2ff619d1c2252eb514b8fecf6f324792724b7f3aade838bfaee8af6021c",
+        "src/ui/research-editor.ts": "fc3874947b02c3c322d62fc312c20c1cb6416dd5321d40a46c88bd704d4eebbf"
+      }
+    },
+    {
+      "id": "NPC",
+      "features": ["F06", "F07", "F20"],
+      "document": "docs/project/specs/NPC.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/ai/strategy.ts": "5d1555c7150f49d33f65c1cb4e70d577e7291fdfd4a7c067317103443496a75b",
+        "src/ai/local-faction.ts": "316f318aa8e3a8abf8420ddc7fd4f4bcad323d38fde4f5ef543d2c4bc664fe4c",
+        "src/simulation/local-faction.ts": "38c998c33b28b8d774d7a274385015f292a9e9534f3620b531b643fcf39cf97f",
+        "src/runtime/advance.ts": "2aa34fc37aeb3358b3b4014d2f922d2b2646689aebb232ff16c3ff2a5d3dbe84",
+        "scripts/run-selfplay.mjs": "7fb6b187232bea675dc61c703131b148f2e543b2f42a2a527ef69184ce50751d"
+      }
+    },
+    {
+      "id": "TACTICS",
+      "features": ["F15"],
+      "document": "docs/project/specs/TACTICS.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/tactical-abilities.ts": "0aecc6e911f1db8328672684e0c4f3072ba0ac03a2f465354e709eb37da70d53",
+        "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
+        "src/simulation/visibility.ts": "3c10f3f836e6c9d446df9425d051f9ff6c7f5c83d08507ec9cbaaaa9f13290d3",
+        "src/simulation/production.ts": "6f98128fa7f1eef51dd2b9ac61d23d9cc3425dea83a86afc7630bc5ea88a288f",
+        "src/ai/strategy.ts": "5d1555c7150f49d33f65c1cb4e70d577e7291fdfd4a7c067317103443496a75b"
+      }
+    },
+    {
+      "id": "MASTER",
+      "features": ["F17"],
+      "document": "docs/project/specs/MASTER.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/simulation/rules-validation.ts": "bad196169bbcf8e4f1e92e616cf2604528192eca087daf9dfe6bf290ce969b31",
+        "src/runtime/strict-json.ts": "1e35911f5178ff59df1a7423c7cb84da51d643731edfafdbdc4087e3684c7b1d",
+        "src/runtime/master-store.ts": "966aa95d31548c619dd3a4d60362f44728d7e41de54a5898dd2f74e3c06bdd51",
+        "src/runtime/diagnostics.ts": "4df9076f12ab77ce2a387dfc7f73f3667c4a666b093be35e05b6a938c52f811d",
+        "src/runtime/controller.ts": "ef5f04a766268e29d45789acb67fb43f50a2fa160de499d9686e6f8681fec5cc",
+        "src/ui/master-editor.ts": "08afa03e57bd4c1c5dc5fd7c88ca3571114cec252d6d072978570ad7959dafd3",
+        "src/ui/research-editor.ts": "fc3874947b02c3c322d62fc312c20c1cb6416dd5321d40a46c88bd704d4eebbf",
+        "scripts/build-info.mjs": "d1eef8103f3e2266292b60b464b740b7af60aad60e3bd25d00bcaebac8f48eaf"
+      }
+    },
+    {
+      "id": "INTERFACE",
+      "features": ["UI", "F12", "F13", "F14"],
+      "document": "docs/project/specs/INTERFACE.md",
+      "sources": {
+        "src/simulation/types.ts": "f31608811b509ba1090cd0f1a281f9bffd5fbddab180caadb4e3604a5f49fe99",
+        "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
+        "src/simulation/config.ts": "f5b7989d03ac1828ee88cf57f68c6a1c48fb28368ae5364965c4521a294b3ae4",
+        "src/main.ts": "9b42ec11cccece3ecef51cd11947169881d47f4500d08c987cb3469c88739f00",
+        "src/render/board.ts": "4e8e19e2b73ae1b1446f06c0983b049997be2bbea77549e271e6aefd869de141",
+        "src/render/view-model.ts": "e2c4808cb471528168a1bc205d7fcb4629254ae58d7c836c710a66a6d323435c",
+        "src/simulation/view.ts": "d91d453fa491a12ae4c0e7c55f0a170e4a2dae4818e246d8d2b04aaafae1bd7d",
+        "src/simulation/visibility.ts": "3c10f3f836e6c9d446df9425d051f9ff6c7f5c83d08507ec9cbaaaa9f13290d3",
+        "src/assets/manifest.ts": "29e7f0e7c19a333c64f0720e55e863a366004e310f4fe3a2c2378011ab2e8f2c",
+        "src/ui/hud.ts": "f65e153a88019cb082e553b32ca3b92a68faa142c571ae4212942045f1fda4ab",
+        "src/ui/styles.css": "c879700d0d208d99e9440d3db11ba3ffe01768a5780b20de9c2ad9deaf72a0fb",
+        "src/ui/input.ts": "53094236483d821acf20761d8d70e2f366190513fc04b264b8141aeb44a973a1",
+        "src/ui/tickets.ts": "fd9234757e170ef52d6572513997aff3a0ffda999ebcc2ed374889fa3242431f",
+        "src/runtime/clock.ts": "db311b314f5a4fe5f24588c51d69b7b3b800dd461966f1f1d03649628019d45d"
+      }
+    }
+  ]
+}

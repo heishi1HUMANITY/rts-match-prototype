@@ -6,11 +6,11 @@
 
 進捗の唯一の正は [全体Issue #12の「マージ済み」「プレイ検証済み」](https://github.com/heishi1HUMANITY/rts-match-prototype/issues/12) です。[網羅表](docs/project/GAMEPLAY_COVERAGE.md) は機能と仕様参照の索引です。建築・中立NPC・兵種/研究などを含み、最小試作だけで全体完成とはしません。
 
-通常設定はNPC2陣営と5分制で対戦し、結果から再戦できます。[G3の画面確認手順](docs/project/inspection/G3_SCENARIOS.md)を参照してください。
+現在の動作は [現行機能仕様](docs/project/specs/README.md) を参照してください。時間・性能の標準値はマスタ、進行中の適用値は試合のrulesが正本です。過去のG1〜G3設計・検査資料は作成時点の記録です。
 
 F02では部隊を可視の敵へドロップして追跡、拠点へドロップして進軍できます。見失った敵は最終確認位置まで進んで保留し、再発見すると追跡を再開します。地面への移動や停止で解除します。[F02の画面確認手順](docs/project/inspection/F02_SCENARIOS.md)を参照してください。
 
-研究は選択中の対象へポイントを充填し、必要量で即完了します。未指定ならバンク、指定解除でも進捗は残り、再選択でバンクを充填して続けます。基本研究収入は拠点なしでも0.2/秒、所有拠点ごとに＋1/秒です。
+研究の充填・収入・定義編集は [ECONOMY仕様](docs/project/specs/ECONOMY.md)、設定の保存と適用は [MASTER仕様](docs/project/specs/MASTER.md) を参照してください。
 
 ## 起動
 
@@ -26,6 +26,7 @@ npm run dev
 ```sh
 npm run check             # 整形、型検査、ルールテスト、ビルド
 npm run references:check  # 引き継ぎ資料のスナップショット検査
+npm run specs:check       # 現行仕様のリンク・更新確認・実装割当検査
 npm run test:watch
 npm run build
 npm run preview
@@ -49,6 +50,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 
 ## 最初に読む文書
 
+- [現行機能仕様](docs/project/specs/README.md): 機能ID別の現在の動作と実装参照。仕様変更時も同じ入口を使う
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md): 盤面・移動・入力・検査の契約
