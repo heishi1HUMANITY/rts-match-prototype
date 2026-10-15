@@ -158,7 +158,10 @@ input = new CanvasInput(
   {
     canvas: board.canvas,
     onPointerDown: ({ x, y }): GestureOrigin => {
-      if (pendingAbilityTarget !== null) return { kind: 'none' };
+      if (pendingAbilityTarget !== null) {
+        dragCancelled = false;
+        return { kind: 'tap-only' };
+      }
       dragCancelled = false;
       activeMovePreview = null;
       activeDragUnitId = null;

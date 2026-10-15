@@ -267,4 +267,37 @@ describe('shared tactical abilities', () => {
       ),
     ).toBe(true);
   });
+
+  it('accumulates fractional production progress for non-divisor boost percentages', () => {
+    const rules = {
+      ...DEFAULT_RULES,
+      tacticalAbilities: {
+        ...DEFAULT_RULES.tacticalAbilities,
+        surge: {
+          ...DEFAULT_RULES.tacticalAbilities.surge,
+          productionTimePercent: 75,
+        },
+      },
+    };
+    const initial = createMatch(42, { rules });
+    const started = applyCommand(initial, 'A', { type: 'start' });
+    if (!started.ok) throw new Error('match did not start');
+    const queued = enqueueProduction(started.state, 'A', 'HQ-A', 'scout');
+    expect(queued.ok).toBe(true);
+    if (!queued.ok) return;
+    const surge = applyCommand(queued.state, 'A', {
+      type: 'activate-ability',
+      abilityId: 'surge',
+    });
+    expect(surge.ok).toBe(true);
+    if (!surge.ok) return;
+
+    let afterThreeTicks: MatchState = surge.state;
+    for (let tick = 0; tick < 3; tick += 1)
+      afterThreeTicks = advanceProduction(afterThreeTicks);
+    expect(afterThreeTicks.factions[0]!.productionJobs[0]!.remainingTicks).toBe(
+      DEFAULT_RULES.units.scout.buildTicks - 4,
+    );
+    expect(afterThreeTicks.factions[0]!.productionProgressRemainder).toBe(0);
+  });
 });

@@ -14,6 +14,7 @@ export type GestureOrigin =
     }
   | { readonly kind: 'enemy' }
   | { readonly kind: 'ground' }
+  | { readonly kind: 'tap-only' }
   | { readonly kind: 'none' };
 export type GestureResult =
   | { readonly kind: 'tap'; readonly point: Point }
@@ -125,7 +126,7 @@ export class GestureTracker {
       else if (origin?.kind === 'unit' && origin.movable) {
         this.mode = 'move';
         this.moveUnitId = origin.unitId;
-      } else this.mode = 'blocked';
+      } else if (origin?.kind !== 'tap-only') this.mode = 'blocked';
     }
     if (this.mode === 'pan' && this.last !== null)
       callbacks.onPan(this.last, { x: pointer.x, y: pointer.y });
@@ -155,7 +156,7 @@ export class GestureTracker {
         this.moveUnitId = origin.unitId;
         callbacks.onMovePreview(origin.unitId, { x: pointer.x, y: pointer.y });
       } else if (origin?.kind === 'ground') this.mode = 'pan';
-      else this.mode = 'blocked';
+      else if (origin?.kind !== 'tap-only') this.mode = 'blocked';
     }
     const result: GestureResult =
       this.mode === 'move' && this.moveUnitId !== null
@@ -167,7 +168,7 @@ export class GestureTracker {
         : this.mode === 'tap' &&
             this.active.size === 1 &&
             this.hudPointers.size === 0 &&
-            this.origin?.kind === 'ground'
+            (this.origin?.kind === 'ground' || this.origin?.kind === 'tap-only')
           ? { kind: 'tap', point: { x: pointer.x, y: pointer.y } }
           : this.mode === 'tap' &&
               this.active.size === 1 &&

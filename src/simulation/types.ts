@@ -220,6 +220,9 @@ export interface FactionState extends EliminationStatus {
   readonly nextJobSerial: number;
   readonly abilityReadyAtTick: Readonly<Record<TacticalAbilityId, number>>;
   readonly productionBoostUntilTick: number;
+  /** Fractional production-tick progress, with denominator productionProgressPercent. */
+  readonly productionProgressRemainder: number;
+  readonly productionProgressPercent: number;
   readonly bulwarkUntilTick: number;
   readonly jammedUntilTick: number;
 }

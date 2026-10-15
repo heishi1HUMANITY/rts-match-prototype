@@ -92,6 +92,8 @@ function freshFactions(
       TACTICAL_ABILITY_IDS.map((abilityId) => [abilityId, 0]),
     ) as FactionState['abilityReadyAtTick'],
     productionBoostUntilTick: 0,
+    productionProgressRemainder: 0,
+    productionProgressPercent: 100,
     bulwarkUntilTick: 0,
     jammedUntilTick: 0,
   }));
