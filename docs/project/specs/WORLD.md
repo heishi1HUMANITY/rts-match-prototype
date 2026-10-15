@@ -17,4 +17,4 @@
 
 数値: `crossings.*` の費用・建設/解体tick・HP・回復・視界。研究解放は `research.definitions.*.effects`。通行兵種集合は [crossings.ts](../../../src/simulation/crossings.ts) の `CROSSING_ALLOWED_UNIT_KINDS`。
 
-実装: [map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。マップの距離・対戦バランス合格はここから推測しない。
+実装: [map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。配置の詳細はconfig.tsとmap.tsを参照する。

@@ -18,6 +18,6 @@
 
 ## 設定・参照
 
-数値: `match`、`tickets`、`units.*.lossTicketsCenti`。既定値は [rules.ts](../../../src/simulation/rules.ts)。時間・強さ・公平性の調整は暫定で、マージ済みをプレイ合格と扱わない。
+数値: `match`、`tickets`、`units.*.lossTicketsCenti`。既定値は [rules.ts](../../../src/simulation/rules.ts)。時間・強さ・公平性に関わる数値は調整可能な暫定値。
 
 実装: [step.ts](../../../src/simulation/step.ts)、[tickets.ts](../../../src/simulation/tickets.ts)、[outcome.ts](../../../src/simulation/outcome.ts)。検証: [step.test.ts](../../../src/simulation/step.test.ts)、[tickets.test.ts](../../../src/simulation/tickets.test.ts)、[outcome.test.ts](../../../src/simulation/outcome.test.ts)。関連: [BASES](BASES.md)、[ECONOMY](ECONOMY.md)、[TACTICS](TACTICS.md)。

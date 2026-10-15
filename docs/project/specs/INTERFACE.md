@@ -11,8 +11,8 @@
 ## 現在提供しない機能
 
 - F12: 首都への補給線接続判定と切断による機能低下はない。所有稼働拠点の収入に補給線条件を加えない。
-- F13: PR #71の態勢・集結点・自動退避・練度はPR #74で取消済み。通常の首都近傍回復と駐留は残る。型やUIへ取り消した仕様を復活させない。
+- F13: 態勢・集結点・自動退避・練度は提供しない。通常の首都近傍回復と駐留は利用できる。
 - F14: 行軍先の戦闘予測は未提供。追跡・行軍操作を予測機能と読み替えない。
-- 試合外メタ、オンライン通信、世界観、課金は対象外。現地勢力・徘徊NPCの現状は [NPC](NPC.md)。今後の採否・進捗は最新Issueを読む。
+- 試合外メタ、オンライン通信、世界観、課金は対象外。現地勢力・徘徊NPCの現状は [NPC](NPC.md)。本資料は現在の動作だけを記載する。
 
 実装: [main.ts](../../../src/main.ts)、[input.ts](../../../src/ui/input.ts)、[hud.ts](../../../src/ui/hud.ts)、[board.ts](../../../src/render/board.ts)、[view.ts](../../../src/simulation/view.ts)、[view-model.ts](../../../src/render/view-model.ts)。検証: [input.test.ts](../../../src/ui/input.test.ts)、[view.test.ts](../../../src/simulation/view.test.ts)、[view-model.test.ts](../../../src/render/view-model.test.ts)、[e2e一覧](../../../e2e/README.md)。

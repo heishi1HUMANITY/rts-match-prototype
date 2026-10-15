@@ -2,8 +2,6 @@
 
 運用の規範は docs/project/WORKFLOW.md だけ。本書と矛盾したらWORKFLOWが正。開始時に読むのは本書、WORKFLOW、対象Issueの最新本文・コメント。SCOPE / ARCHITECTURE / DECISIONS / ISSUE_IMPLEMENTATION_GUIDE は対象機能に関係する節だけ読む。全文の通読や進捗表の複製をしない。
 
-現行機能の仕様は [specs/README.md](docs/project/specs/README.md) から対象IDだけ読む。仕様変更時の更新はWORKFLOWに従う。
-
 ## 目的と優先順位
 
 - ブラウザの対戦本編、人間1人＋NPC2陣営の1v1v1。世界観の知識を要求しない。プロトタイプ段階で、動く試合と体験の検証・調整可能性を優先する。細かい不具合はCP検査でNGになったものだけ直す。

@@ -50,7 +50,7 @@ F01では「複数選択」ONで部隊をタップして追加・解除できま
 
 ## 最初に読む文書
 
-- [現行機能仕様](docs/project/specs/README.md): 機能ID別の現在の動作と実装参照。仕様変更時も同じ入口を使う
+- [現行機能仕様](docs/project/specs/README.md): 開発運用から独立した機能別の参照資料
 - [実装・検査の進め方](docs/project/WORKFLOW.md): エージェントへの開始指示、あなたの検査・修正指示
 - [実装タスク一覧](docs/project/TASKS.md): 4つの検査区切りと18の内部タスク
 - [G1の具体設計](docs/project/G1_IMPLEMENTATION_DESIGN.md): 盤面・移動・入力・検査の契約
