@@ -37,6 +37,7 @@
 <script src="tank.js"></script>
 <script src="spg.js"></script>
 <script src="aa.js"></script>
+<script src="scout.js"></script>
 <script src="boat.js"></script>
 <script src="heli.js"></script>
 <script src="plant.js"></script>
@@ -60,7 +61,7 @@
 <canvas id="view"></canvas>
 
 <aside class="ui panel marks side">
-  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="spg">自走砲</button><button data-a="aa">対空車両</button><button data-a="boat">哨戒艇</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="moveline">移動線</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
+  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="spg">自走砲</button><button data-a="aa">対空車両</button><button data-a="scout">偵察</button><button data-a="boat">哨戒艇</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="moveline">移動線</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
   <div><div class="eyebrow" id="a-kind"></div><h1 id="a-title"></h1><div class="small dim" style="margin-top:3px" id="a-desc"></div></div>
   <dl class="kv" id="a-info"></dl>
   <div class="grp"><span class="eyebrow" id="a-act-label">STATE · 状態</span>
@@ -184,6 +185,20 @@ const ASSETS = {
         ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
     },
     caption: (a) => a.engaged ? (a.ready ? "対空姿勢(仰角 45°)" : "対空姿勢へ移行中") : "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  scout: {
+    kind: "ASSET VIEWER · UNIT / RECON", title: "偵察", desc: "Fennek が下敷きの 4 輪の装輪偵察車。装甲強襲・自走砲・対空車両と同じ外観の家族で、細い低い楔形の車体に、屋根の後ろの伸縮式センサーマスト(電子光学の頭部)と、前の遠隔操作の銃塔(12.7mm 重機関銃)を載せる",
+    info: [["ファイル", "mockups/3d/scout.js"], ["大きさ", "全長 約31 × 幅 約14 × 表示 2.0"], ["マスト", "3 段の伸縮柱(停車中だけ、3 秒で +12)。伸び切ると頭部が左右を走査"], ["射撃", "重機関銃の連射(約 10 発/秒)。閃光・銃身の後座・薄い煙・薬莢"]],
+    scale: 2.0, dist: 260, target: 10, tokenAt: [-160, 0, -60],
+    make: () => DreamAssets.scout(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], [a.mast ? "マストを下ろす" : "マストを上げる(観測)", () => a.setMast(!a.mast), () => a.mast], ["銃塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["機関銃", () => a.fireGun(), () => a.firing], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
+    },
+    caption: (a) => a.observing ? "観測中 — マストの頭部が走査しています" : a.mastExt > 0 ? (a.mast && !a.moving ? "マストを上げています" : "マストを下ろしています" + (a.moving ? "(下ろしきってから走り出す)" : "")) : "",
     ringParts: (a) => [a.parts.plate],
   },
   boat: {
