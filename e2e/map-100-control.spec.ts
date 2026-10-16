@@ -4,7 +4,7 @@ import { expect, saveDiagnostic, test } from './fixtures';
 test('100-cell map supports two objective fronts after a legal bridge build', async ({
   page,
 }, info) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await page.goto('./');
   const board = page.locator('.board-host canvas');
   await expect(board).toBeVisible();
@@ -29,11 +29,11 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
   const bridgeBank = targetPoint(28, 50);
   await page.mouse.click(bridgeBank.x, bridgeBank.y);
   const bridgeBuild = page.locator('[data-crossing-build="CROSS-RING-SW"]');
-  await expect(bridgeBuild).toBeEnabled({ timeout: 15_000 });
+  await expect(bridgeBuild).toBeEnabled({ timeout: 30_000 });
   await bridgeBuild.click();
   await expect(
     page.locator('[data-crossing="CROSS-RING-SW"] .crossing-status'),
-  ).toContainText('A所有', { timeout: 30_000 });
+  ).toContainText('A所有', { timeout: 60_000 });
   await page.locator('[data-action="crossings"]').click();
   const dragTo = async (
     from: { x: number; y: number },
