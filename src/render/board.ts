@@ -10,6 +10,7 @@ import {
 } from './view-model';
 import { isCellBlocked } from '../simulation/map';
 import { terrainAt } from '../simulation/map';
+import { FOG_SURFACE_Y } from './fog-surface';
 import type {
   Cell,
   CombatantId,
@@ -1038,7 +1039,11 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       1,
       view.map.height / BOARD_SIZE,
     );
-    fogMesh.position.set(view.map.width / 2, 0.6, view.map.height / 2);
+    fogMesh.position.set(
+      view.map.width / 2,
+      FOG_SURFACE_Y,
+      view.map.height / 2,
+    );
   };
 
   const sync = (
