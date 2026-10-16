@@ -1,8 +1,58 @@
 import { describe, expect, it } from 'vitest';
 import { MatchRuntime } from './controller';
-import { assertReplayMatches } from './diagnostics';
+import { assertReplayMatches, createDiagnostic } from './diagnostics';
 
 describe('MatchRuntime diagnostic history', () => {
+  it('measures tick work in runtime diagnostics outside the simulation state', () => {
+    let frame: FrameRequestCallback | null = null;
+    const runtime = new MatchRuntime(
+      {
+        onChange: () => undefined,
+        requestFrame: (callback) => {
+          frame = callback;
+          return 1;
+        },
+        cancelFrame: () => undefined,
+      },
+      1,
+      'standard',
+      undefined,
+      'ring-three-fronts-100',
+    );
+    runtime.dispatch({ type: 'start' });
+    runtime.startLoop();
+    frame!(0);
+    frame!(100);
+    const snapshot = runtime.snapshot();
+    expect(snapshot.tickProcessing.tickCount).toBe(1);
+    expect(snapshot.tickProcessing.totalMs).toBeGreaterThanOrEqual(0);
+    const diagnostic = createDiagnostic(snapshot, {
+      commit: 'test',
+      dirty: false,
+      rulesVersion: 'test',
+      schemaVersion: snapshot.state.schemaVersion,
+    }) as { mapId: string; timing: { measuredTickCount: number } };
+    expect(diagnostic.mapId).toBe('ring-three-fronts-100');
+    expect(diagnostic.timing.measuredTickCount).toBe(1);
+  });
+
+  it('keeps the 100-cell definition and faction assignment through reset and replay', () => {
+    const runtime = new MatchRuntime(
+      { onChange: () => undefined },
+      1,
+      'standard',
+      undefined,
+      'ring-three-fronts-100',
+    );
+    const assignment = runtime.snapshot().state.map.startAssignment;
+    runtime.dispatch({ type: 'start' });
+    runtime.reset(1);
+    expect(runtime.snapshot().state.map.width).toBe(100);
+    expect(runtime.snapshot().state.map.startAssignment).toEqual(assignment);
+    runtime.dispatch({ type: 'start' });
+    expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
+  });
+
   it('dispatches and replays facility construction through the runtime boundary', () => {
     const runtime = new MatchRuntime(
       { onChange: () => undefined },

@@ -17,7 +17,9 @@
 
 ### 盤面と経路
 
-- 40×40セル。陸地、河岸、川、山と地形等級、中央島、港、首都/小/中/大拠点、橋・索道予定地を持つ。seedによる生成と固定配置を組み合わせる。配置・地形形状は現行マスタの編集対象外。
+- 旧40×40生成版を保持し、通常画面は試行用の `ring-three-fronts` 100×100版を使う。100版は旧版seed 0の地形・障害物を固定参照にし、各40セルの面を `[floor(2.5x), ceil(2.5(x+1)))` の2/3セル帯へ展開する。点アンカーは `round(2.5x)` へ丸め、渡河設備の岸間セルを連続再構成する。地形形状はseedで変わらない。
+- 100版ではseedを3開始地点のA/B/C割当にだけ使う。Aは常に人間。拠点所有、港、初期部隊を同じ位置スロット置換で対応させる。定義ID/版、地形、寸法、開始割当、配置はMatchStateへ保存する。
+- 40×40/100×100とも陸地、河岸、川、山と地形等級、中央島、港、首都/小/中/大拠点、橋・索道予定地を持つ。配置・地形形状は現行マスタの編集対象外。
 - 陸上は通行可能セルと完成済み渡河設備、航空は地形を無視した直線、水上は川セルで移動する。港は哨戒艇の生産先。到達不能な移動命令は拒否する。
 - 川・山の予定地表示だけでは通行権を与えない。橋3級は陸上4兵種、索道2級は斥候だけ通せる。陣営の経路計画は所有/観測済み設備を使い、実移動時にも設備状態を確認する。
 
@@ -32,4 +34,4 @@
 
 数値: `crossings.*` の費用・建設/解体tick・HP・回復・視界。研究解放は `research.definitions.*.effects`。通行兵種集合は [crossings.ts](../../../src/simulation/crossings.ts) の `CROSSING_ALLOWED_UNIT_KINDS`。
 
-実装: [map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。配置の詳細はconfig.tsとmap.tsを参照する。
+実装: [map-100.ts](../../../src/simulation/map-100.ts)、[map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map-100.test.ts](../../../src/simulation/map-100.test.ts)、[map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。

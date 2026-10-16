@@ -8,7 +8,6 @@ import {
   placeUnitLabel,
   type GroupMovePreview,
 } from './view-model';
-import { MAP_HEIGHT, MAP_WIDTH } from '../simulation/config';
 import { isCellBlocked } from '../simulation/map';
 import { terrainAt } from '../simulation/map';
 import type {
@@ -69,9 +68,10 @@ const FACTIONS = {
   local: { color: 0x66747c, symbol: '●', marker: 'circle' },
 } as const;
 const CAMERA_OFFSET = new THREE.Vector3(0, 32, 28);
+const BOARD_SIZE = 100;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 2.5;
-const MAX_ROUTE_CELLS = MAP_WIDTH * MAP_HEIGHT;
+const MAX_ROUTE_CELLS = BOARD_SIZE * BOARD_SIZE;
 
 interface UnitObjects {
   readonly marker: THREE.Mesh;
@@ -218,7 +218,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   }
 
   const canvas = renderer.domElement;
-  canvas.setAttribute('aria-label', '40×40の盤面');
+  canvas.setAttribute('aria-label', `${BOARD_SIZE}×${BOARD_SIZE}の盤面`);
   Object.assign(canvas.style, {
     display: 'block',
     width: '100%',
@@ -249,23 +249,23 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   };
 
   const groundGeometry = ownGeometry(
-    new THREE.PlaneGeometry(MAP_WIDTH, MAP_HEIGHT),
+    new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
   );
   const groundMaterial = ownMaterial(
     new THREE.MeshStandardMaterial({ color: 0xdfe5dc, roughness: 1 }),
   );
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(MAP_WIDTH / 2, 0, MAP_HEIGHT / 2);
+  ground.position.set(BOARD_SIZE / 2, 0, BOARD_SIZE / 2);
   ground.name = 'ground-pick-surface';
   scene.add(ground);
 
   const gridPositions: number[] = [];
-  for (let i = 0; i <= MAP_WIDTH; i += 1) {
-    gridPositions.push(i, 0.012, 0, i, 0.012, MAP_HEIGHT);
+  for (let i = 0; i <= BOARD_SIZE; i += 1) {
+    gridPositions.push(i, 0.012, 0, i, 0.012, BOARD_SIZE);
   }
-  for (let i = 0; i <= MAP_HEIGHT; i += 1) {
-    gridPositions.push(0, 0.012, i, MAP_WIDTH, 0.012, i);
+  for (let i = 0; i <= BOARD_SIZE; i += 1) {
+    gridPositions.push(0, 0.012, i, BOARD_SIZE, 0.012, i);
   }
   const gridGeometry = ownGeometry(new THREE.BufferGeometry());
   gridGeometry.setAttribute(
@@ -286,15 +286,17 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   grid.name = 'cell-grid';
   scene.add(grid);
 
+  let boardWidth = BOARD_SIZE;
+  let boardHeight = BOARD_SIZE;
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
-  const cameraTarget = new THREE.Vector3(MAP_WIDTH / 2, 0, MAP_HEIGHT / 2);
+  const cameraTarget = new THREE.Vector3(boardWidth / 2, 0, boardHeight / 2);
   let zoom = 1;
   const elevation = Math.atan2(CAMERA_OFFSET.y, CAMERA_OFFSET.z);
   const resizeCamera = (width: number, height: number): void => {
     const aspect = width / height;
-    const projectedBoardDepth = MAP_HEIGHT * Math.sin(elevation);
+    const projectedBoardDepth = boardHeight * Math.sin(elevation);
     const visibleHeight =
-      Math.max(projectedBoardDepth, MAP_WIDTH / aspect) * 1.25;
+      Math.max(projectedBoardDepth, boardWidth / aspect) * 1.25;
     const frustumHeight = visibleHeight / zoom;
     const frustumWidth = frustumHeight * aspect;
     camera.left = -frustumWidth / 2;
@@ -507,6 +509,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   }[] = [];
   let renderedMap: GridMap | null = null;
   const installMap = (map: GridMap): void => {
+    if (renderedMap === map) return;
     if (
       renderedMap !== null &&
       renderedMap.width === map.width &&
@@ -519,6 +522,13 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       )
     )
       return;
+    boardWidth = map.width;
+    boardHeight = map.height;
+    ground.scale.set(boardWidth / BOARD_SIZE, 1, boardHeight / BOARD_SIZE);
+    grid.scale.set(boardWidth / BOARD_SIZE, 1, boardHeight / BOARD_SIZE);
+    ground.position.set(boardWidth / 2, 0, boardHeight / 2);
+    cameraTarget.set(boardWidth / 2, 0, boardHeight / 2);
+    canvas.setAttribute('aria-label', `${boardWidth}×${boardHeight}の盤面`);
     if (mapMesh !== null) {
       scene.remove(mapMesh);
       mapMesh.geometry.dispose();
@@ -958,28 +968,38 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       updateLabelPosition(objects.label, cellPosition(base.cell, 0.3), -18);
     }
   };
-  const fogGeometry = ownGeometry(new THREE.PlaneGeometry(1, 1));
+  const fogCanvas = document.createElement('canvas');
+  const fogContext = fogCanvas.getContext('2d', { willReadFrequently: true });
+  if (!fogContext)
+    throw new Error('2D canvas is unavailable for visibility overlay');
+  const fogTexture = new THREE.CanvasTexture(fogCanvas);
+  fogTexture.colorSpace = THREE.SRGBColorSpace;
+  fogTexture.magFilter = THREE.NearestFilter;
+  fogTexture.minFilter = THREE.NearestFilter;
+  const fogGeometry = ownGeometry(
+    new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
+  );
   fogGeometry.rotateX(-Math.PI / 2);
   const fogMaterial = ownMaterial(
     new THREE.MeshBasicMaterial({
+      map: fogTexture,
       transparent: true,
-      opacity: 0.24,
+      opacity: 1,
       depthTest: false,
       depthWrite: false,
       side: THREE.DoubleSide,
     }),
   );
-  const fogMesh = new THREE.InstancedMesh(
-    fogGeometry,
-    fogMaterial,
-    MAX_ROUTE_CELLS,
-  );
+  const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
   fogMesh.name = 'visibility-fog';
   fogMesh.renderOrder = 1;
   fogMesh.frustumCulled = false;
   scene.add(fogMesh);
   let fogSignature = '';
+  let fogView: FactionView | null = null;
   const syncFog = (view: FactionView): void => {
+    if (view === fogView) return;
+    fogView = view;
     const signature = view.visible
       .map((visible, index) =>
         visible ? '2' : view.explored[index] ? '1' : '0',
@@ -987,28 +1007,38 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       .join('');
     if (signature === fogSignature) return;
     fogSignature = signature;
-    const matrix = new THREE.Matrix4();
-    const color = new THREE.Color();
-    for (let index = 0; index < MAX_ROUTE_CELLS; index += 1) {
-      matrix.makeScale(
-        view.visible[index] ? 0 : 1,
-        1,
-        view.visible[index] ? 0 : 1,
-      );
-      matrix.setPosition(
-        (index % MAP_WIDTH) + 0.5,
-        0.6,
-        Math.floor(index / MAP_WIDTH) + 0.5,
-      );
-      fogMesh.setMatrixAt(index, matrix);
-      fogMesh.setColorAt(
-        index,
-        color.setHex(view.explored[index] ? 0x8c99a2 : 0x17232d),
-      );
+    if (
+      fogCanvas.width !== view.map.width ||
+      fogCanvas.height !== view.map.height
+    ) {
+      fogCanvas.width = view.map.width;
+      fogCanvas.height = view.map.height;
     }
-    fogMesh.instanceMatrix.needsUpdate = true;
-    if (fogMesh.instanceColor !== null)
-      fogMesh.instanceColor.needsUpdate = true;
+    const image = fogContext.createImageData(view.map.width, view.map.height);
+    for (let index = 0; index < view.visible.length; index += 1) {
+      const pixel = index * 4;
+      if (view.visible[index]) {
+        image.data[pixel + 3] = 0;
+      } else if (view.explored[index]) {
+        image.data[pixel] = 140;
+        image.data[pixel + 1] = 153;
+        image.data[pixel + 2] = 162;
+        image.data[pixel + 3] = 62;
+      } else {
+        image.data[pixel] = 23;
+        image.data[pixel + 1] = 35;
+        image.data[pixel + 2] = 45;
+        image.data[pixel + 3] = 166;
+      }
+    }
+    fogContext.putImageData(image, 0, 0);
+    fogTexture.needsUpdate = true;
+    fogMesh.scale.set(
+      view.map.width / BOARD_SIZE,
+      1,
+      view.map.height / BOARD_SIZE,
+    );
+    fogMesh.position.set(view.map.width / 2, 0.6, view.map.height / 2);
   };
 
   const sync = (
@@ -1321,7 +1351,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       if (groundHit === undefined) return null;
       const x = Math.floor(groundHit.point.x);
       const y = Math.floor(groundHit.point.z);
-      if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) return null;
+      if (x < 0 || y < 0 || x >= boardWidth || y >= boardHeight) return null;
       return { kind: 'ground', cell: { x, y } };
     },
     pickGround(clientX, clientY) {
@@ -1330,7 +1360,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       if (point === null) return null;
       const x = Math.floor(point.x);
       const y = Math.floor(point.z);
-      if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) return null;
+      if (x < 0 || y < 0 || x >= boardWidth || y >= boardHeight) return null;
       return { x, y };
     },
     setMovePreview(unitId, target, path) {
@@ -1345,12 +1375,12 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       cameraTarget.x = THREE.MathUtils.clamp(
         cameraTarget.x + fromGround.x - toGround.x,
         0,
-        MAP_WIDTH,
+        boardWidth,
       );
       cameraTarget.z = THREE.MathUtils.clamp(
         cameraTarget.z + fromGround.z - toGround.z,
         0,
-        MAP_HEIGHT,
+        boardHeight,
       );
       resize();
     },
@@ -1361,7 +1391,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     },
     resetCamera() {
       clearMovePreview();
-      cameraTarget.set(MAP_WIDTH / 2, 0, MAP_HEIGHT / 2);
+      cameraTarget.set(boardWidth / 2, 0, boardHeight / 2);
       zoom = 1;
       resize();
     },
@@ -1382,7 +1412,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         scene.remove(mapMesh);
         mapMesh.dispose();
       }
-      fogMesh.dispose();
+      fogTexture.dispose();
       for (const geometry of resources.geometries) geometry.dispose();
       for (const material of resources.materials) material.dispose();
       scene.clear();

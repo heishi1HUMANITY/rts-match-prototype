@@ -1,4 +1,3 @@
-import { MAP_HEIGHT, MAP_WIDTH } from './config';
 import { researchEffectValue } from './research';
 import type {
   BaseState,
@@ -233,14 +232,30 @@ function createKnowledge(
   previous?: FactionKnowledge,
 ): FactionKnowledge {
   const sources = sightSources(state, factionId);
-  const visible = new Array<boolean>(MAP_WIDTH * MAP_HEIGHT).fill(false);
-  for (let y = 0; y < MAP_HEIGHT; y += 1) {
-    for (let x = 0; x < MAP_WIDTH; x += 1) {
-      visible[y * MAP_WIDTH + x] = isPointVisible(
-        sources,
-        POSITION_SCALE * x + POSITION_SCALE / 2,
-        POSITION_SCALE * y + POSITION_SCALE / 2,
-      );
+  const visible = new Array<boolean>(state.map.width * state.map.height).fill(
+    false,
+  );
+  for (const source of sources) {
+    const centerX = source.x / POSITION_SCALE;
+    const centerY = source.y / POSITION_SCALE;
+    const radius = source.radius + 1;
+    const minX = Math.max(0, Math.floor(centerX - radius));
+    const maxX = Math.min(state.map.width - 1, Math.ceil(centerX + radius));
+    const minY = Math.max(0, Math.floor(centerY - radius));
+    const maxY = Math.min(state.map.height - 1, Math.ceil(centerY + radius));
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const index = y * state.map.width + x;
+        if (
+          !visible[index] &&
+          isPointVisible(
+            sources,
+            POSITION_SCALE * x + POSITION_SCALE / 2,
+            POSITION_SCALE * y + POSITION_SCALE / 2,
+          )
+        )
+          visible[index] = true;
+      }
     }
   }
   const explored = visible.map(
@@ -254,7 +269,7 @@ function createKnowledge(
   );
   const baseMemory = state.bases
     .map((base) => {
-      const index = base.cell.y * MAP_WIDTH + base.cell.x;
+      const index = base.cell.y * state.map.width + base.cell.x;
       if (visible[index]) return memoryFromVisible(base, state.elapsedTicks);
       const old = oldMemory.get(base.id);
       if (
@@ -273,9 +288,9 @@ function createKnowledge(
       );
       if (!site) return null;
       const isVisible =
-        site.cells.some((cell) => visible[cell.y * MAP_WIDTH + cell.x]) ||
-        visible[site.bankA.y * MAP_WIDTH + site.bankA.x] ||
-        visible[site.bankB.y * MAP_WIDTH + site.bankB.x];
+        site.cells.some((cell) => visible[cell.y * state.map.width + cell.x]) ||
+        visible[site.bankA.y * state.map.width + site.bankA.x] ||
+        visible[site.bankB.y * state.map.width + site.bankB.x];
       if (crossing.owner === factionId || isVisible)
         return { ...crossing, seenTick: state.elapsedTicks };
       return oldCrossingMemory.get(crossing.siteId) ?? null;
@@ -285,11 +300,11 @@ function createKnowledge(
     (previous?.facilityMemory ?? []).map((f) => [f.id, f]),
   );
   for (const [id, f] of memories)
-    if (visible[f.cell.y * MAP_WIDTH + f.cell.x]) memories.delete(id);
+    if (visible[f.cell.y * state.map.width + f.cell.x]) memories.delete(id);
   for (const f of state.facilities)
     if (
       f.owner === factionId ||
-      (f.kind !== 'mine' && visible[f.cell.y * MAP_WIDTH + f.cell.x])
+      (f.kind !== 'mine' && visible[f.cell.y * state.map.width + f.cell.x])
     )
       memories.set(f.id, {
         ...f,

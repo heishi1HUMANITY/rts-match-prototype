@@ -10,11 +10,13 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 23 as const;
+export const SCHEMA_VERSION = 24 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
-export const MAP_WIDTH = 40;
-export const MAP_HEIGHT = 40;
+/** Current trial map; the original 40-cell layout remains available as LEGACY_MAP_SIZE. */
+export const LEGACY_MAP_SIZE = 40;
+export const MAP_WIDTH = LEGACY_MAP_SIZE;
+export const MAP_HEIGHT = LEGACY_MAP_SIZE;
 export const BLOCKED_CELL_PERCENT = 10;
 export const MOVE_TICKS_PER_CELL = 2;
 export const TICK_DURATION_MS = 100;

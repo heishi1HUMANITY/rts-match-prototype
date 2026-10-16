@@ -79,7 +79,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       commit: 'test',
       dirty: false,
       rulesVersion: RULES_VERSION,
-      schemaVersion: 23,
+      schemaVersion: 24,
     });
     expect(diagnostic).toMatchObject({
       rules: {
@@ -182,7 +182,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 23,
+        schemaVersion: 24,
         rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
@@ -244,7 +244,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 23 as const,
+      schemaVersion: 24 as const,
       rulesVersion: 'f15-v1' as const,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),

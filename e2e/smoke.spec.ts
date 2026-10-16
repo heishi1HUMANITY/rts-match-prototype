@@ -35,6 +35,9 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
   expect(diagnostic.seed).toBe(42);
   expect(diagnostic.scenarioId).toBe('standard');
   expect(diagnostic.phase).toBe('paused');
+  expect(diagnostic.mapId).toBe('ring-three-fronts-100');
+  expect(diagnostic.rules.width).toBe(100);
+  expect(diagnostic.timing.measuredTickCount).toBeGreaterThan(0);
   expect(diagnostic.history).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ command: { type: 'start' }, ok: true }),

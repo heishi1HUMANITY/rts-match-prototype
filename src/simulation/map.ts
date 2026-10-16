@@ -383,6 +383,11 @@ export function createMap(seed: number): GridMap {
   return {
     width: MAP_WIDTH,
     height: MAP_HEIGHT,
+    definitionId: 'legacy-40-seeded',
+    definitionVersion: 1,
+    startAssignment: { A: 'south-west', B: 'south-east', C: 'north' },
+    basePlacements: BASE_CELLS,
+    initialUnitPlacements: INITIAL_UNIT_PLACEMENTS,
     terrain,
     terrainLevel: levels,
     crossingSites: plannedCrossings,

@@ -29,8 +29,8 @@
 ### 診断と再現
 
 - 全情報診断JSONは開発用で敵情報も含む。通常UIへ渡す陣営viewとは別経路。
-- seed、scenario、順序付き命令履歴、最終tick、完全な適用rules、ルール/schema版、content ID、状態、drop時間、ビルド情報を保存する。
+- seed、scenario、マップID/版/全定義snapshot/開始地点割当、順序付き命令履歴、最終tick、完全な適用rules、ルール/schema版、content ID、状態、接敵/終了時刻と終了理由、runtime側tick処理計測、drop時間、ビルド情報を保存する。
 - replayは版とrulesの検証、正規化した内容IDの一致を要求し、現在のlocalStorageを見ない。NPC判断も共通advanceで再生成する。旧診断を暗黙移行しない。
 - content IDはキー順正規化＋FNV-1a 64-bitで、設定取り違えの検出用。署名ではない。
 
-実装: [master-store.ts](../../../src/runtime/master-store.ts)、[strict-json.ts](../../../src/runtime/strict-json.ts)、[diagnostics.ts](../../../src/runtime/diagnostics.ts)、[master-editor.ts](../../../src/ui/master-editor.ts)。検証: [master-store.test.ts](../../../src/runtime/master-store.test.ts)、[rules-validation.test.ts](../../../src/simulation/rules-validation.test.ts)、[controller.test.ts](../../../src/runtime/controller.test.ts)。
+実装: [master-store.ts](../../../src/runtime/master-store.ts)、[strict-json.ts](../../../src/runtime/strict-json.ts)、[diagnostics.ts](../../../src/runtime/diagnostics.ts)、[controller.ts](../../../src/runtime/controller.ts)、[master-editor.ts](../../../src/ui/master-editor.ts)。検証: [master-store.test.ts](../../../src/runtime/master-store.test.ts)、[rules-validation.test.ts](../../../src/simulation/rules-validation.test.ts)、[controller.test.ts](../../../src/runtime/controller.test.ts)。
