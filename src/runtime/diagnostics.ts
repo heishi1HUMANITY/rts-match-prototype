@@ -1,10 +1,5 @@
 import { applyCommand } from '../simulation/commands';
-import {
-  MAP_HEIGHT,
-  MAP_WIDTH,
-  SCHEMA_VERSION,
-  TICK_DURATION_MS,
-} from '../simulation/config';
+import { SCHEMA_VERSION, TICK_DURATION_MS } from '../simulation/config';
 import { createMatch } from '../simulation/match';
 import { cloneRules } from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
@@ -26,6 +21,7 @@ export interface ReplayInput {
   readonly rules: RulesMaster;
   readonly rulesContentId: string;
   readonly scenarioId: ScenarioId;
+  readonly mapId?: 'legacy-40' | 'ring-three-fronts-100';
   readonly seed: number;
   readonly history: readonly CommandEntry[];
   readonly finalTick: number;
@@ -77,6 +73,7 @@ export function replay(input: ReplayInput): {
     throw new Error('invalid replay rules snapshot');
   let state = createMatch(input.seed, {
     scenarioId: input.scenarioId,
+    mapId: input.mapId ?? 'legacy-40',
     rules: validation.rules,
   });
   let previousTick = 0;
@@ -131,6 +128,10 @@ export function assertReplayMatches(snapshot: RuntimeSnapshot): void {
     rules: snapshot.state.rules,
     rulesContentId: rulesContentId(snapshot.state.rules),
     scenarioId: snapshot.state.scenarioId,
+    mapId:
+      snapshot.state.map.definitionId === 'ring-three-fronts'
+        ? 'ring-three-fronts-100'
+        : 'legacy-40',
     seed: snapshot.state.seed,
     history: snapshot.history,
     finalTick: snapshot.state.elapsedTicks,
@@ -149,8 +150,8 @@ export function createDiagnostic(
     rules: {
       rulesVersion: RULES_VERSION,
       schemaVersion: SCHEMA_VERSION,
-      width: MAP_WIDTH,
-      height: MAP_HEIGHT,
+      width: snapshot.state.map.width,
+      height: snapshot.state.map.height,
       tickDurationMs: TICK_DURATION_MS,
       rulesContentId: rulesContentId(snapshot.state.rules),
       masterSchemaVersion: MASTER_SCHEMA_VERSION,
@@ -159,6 +160,22 @@ export function createDiagnostic(
     seed: snapshot.state.seed,
     phase: snapshot.state.phase,
     scenarioId: snapshot.state.scenarioId,
+    mapId:
+      snapshot.state.map.definitionId === 'ring-three-fronts'
+        ? 'ring-three-fronts-100'
+        : 'legacy-40',
+    matchOutcome: snapshot.state.result
+      ? {
+          endedAtTick: snapshot.state.result.endedAtTick,
+          reason: snapshot.state.result.reason,
+        }
+      : null,
+    timing: {
+      firstContactTick: snapshot.tickProcessing.firstContactTick,
+      measuredTickCount: snapshot.tickProcessing.tickCount,
+      tickProcessingTotalMs: snapshot.tickProcessing.totalMs,
+      tickProcessingMaxMs: snapshot.tickProcessing.maxMs,
+    },
     finalTick: snapshot.state.elapsedTicks,
     history: snapshot.history,
     state: snapshot.state,

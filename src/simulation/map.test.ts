@@ -14,7 +14,21 @@ import {
 } from './map';
 import { findPath } from './pathfinding';
 
-describe('seeded terrain map generation', () => {
+describe('declared 40-cell terrain map', () => {
+  it('keeps the declared 40-cell terrain and obstacles fixed across match seeds', () => {
+    const baseline = createMap(0);
+    for (const seed of [1, 42, 43, 0xffffffff]) {
+      const map = createMap(seed);
+      expect(map.terrain).toEqual(baseline.terrain);
+      expect(map.terrainLevel).toEqual(baseline.terrainLevel);
+      expect(map.blocked).toEqual(baseline.blocked);
+      expect(map.basePlacements).toEqual(baseline.basePlacements);
+      expect(map.initialUnitPlacements).toEqual(baseline.initialUnitPlacements);
+      expect(map.ports).toEqual(baseline.ports);
+      expect(map.crossingSites).toEqual(baseline.crossingSites);
+    }
+  });
+
   it.each([0, 42, 43, 0xffffffff])(
     'reproduces geography and local access for seed %s',
     (seed) => {

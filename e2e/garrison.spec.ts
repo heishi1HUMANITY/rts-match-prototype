@@ -37,7 +37,8 @@ test('F18-01: garrison a selected unit from the base panel and verify arrival st
   expect(
     diagnostic.state.units.find((unit: { id: string }) => unit.id === 'A-01'),
   ).toMatchObject({
-    cell: { x: 5, y: 20 },
+    // 40-cell HQ-A anchor (5, 20) maps to the 100-cell board as (13, 50).
+    cell: { x: 13, y: 50 },
     garrisonedAtBaseId: 'HQ-A',
     path: [],
   });

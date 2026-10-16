@@ -38,6 +38,12 @@ export interface RuntimeSnapshot {
   readonly droppedTimeMs: number;
   readonly contextLost: boolean;
   readonly message: string;
+  readonly tickProcessing: {
+    readonly tickCount: number;
+    readonly totalMs: number;
+    readonly maxMs: number;
+    readonly firstContactTick: number | null;
+  };
 }
 
 export interface BatchCommandResult {
@@ -66,6 +72,34 @@ export interface PlayerSnapshot {
   readonly droppedTimeMs: number;
   readonly contextLost: boolean;
   readonly message: string;
+}
+
+function hasCombatDamage(before: MatchState, after: MatchState): boolean {
+  const lost = <T extends { readonly id: string; readonly hp: number }>(
+    previous: readonly T[],
+    current: readonly T[],
+  ) => {
+    const currentById = new Map(current.map((entry) => [entry.id, entry]));
+    return previous.some(
+      (entry) => (currentById.get(entry.id)?.hp ?? 0) < entry.hp,
+    );
+  };
+  if (lost(before.units, after.units)) return true;
+  if (lost(before.bases, after.bases)) return true;
+  if (lost(before.facilities, after.facilities)) return true;
+  const crossingsAfter = new Map(
+    after.crossings.map((entry) => [entry.siteId, entry]),
+  );
+  if (
+    before.crossings.some(
+      (entry) => (crossingsAfter.get(entry.siteId)?.hp ?? 0) < entry.hp,
+    )
+  )
+    return true;
+  return before.bases.some((base) => {
+    const next = after.bases.find((entry) => entry.id === base.id);
+    return (next?.defender?.hp ?? 0) < (base.defender?.hp ?? 0);
+  });
 }
 
 function safeCommand(value: unknown): {
@@ -223,6 +257,10 @@ export class MatchRuntime {
   private frame: number | null = null;
   private started = false;
   private contextLost = false;
+  private tickProcessingTotalMs = 0;
+  private tickProcessingMaxMs = 0;
+  private measuredTickCount = 0;
+  private firstContactTick: number | null = null;
   private message = 'seed 42 · 開始待ち';
   private readonly requestFrame: (callback: FrameRequestCallback) => number;
   private readonly cancelFrame: (handle: number) => void;
@@ -232,8 +270,13 @@ export class MatchRuntime {
     seed = 42,
     scenarioId: ScenarioId = 'standard',
     rules?: RulesMaster,
+    mapId: 'legacy-40' | 'ring-three-fronts-100' = 'legacy-40',
   ) {
-    this.state = createMatch(seed, { scenarioId, ...(rules ? { rules } : {}) });
+    this.state = createMatch(seed, {
+      scenarioId,
+      mapId,
+      ...(rules ? { rules } : {}),
+    });
     this.previousTickState = this.state;
     this.requestFrame =
       options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
@@ -250,6 +293,12 @@ export class MatchRuntime {
       droppedTimeMs: this.clock.droppedTimeMs,
       contextLost: this.contextLost,
       message: this.message,
+      tickProcessing: {
+        tickCount: this.measuredTickCount,
+        totalMs: this.tickProcessingTotalMs,
+        maxMs: this.tickProcessingMaxMs,
+        firstContactTick: this.firstContactTick,
+      },
     };
   }
 
@@ -382,7 +431,21 @@ export class MatchRuntime {
         this.state.phase === 'running' && !this.contextLost,
         () => {
           previousTick = this.state;
+          const before = this.state;
+          const startedAt = performance.now();
           this.state = advanceMatch(this.state);
+          const duration = performance.now() - startedAt;
+          this.measuredTickCount += 1;
+          this.tickProcessingTotalMs += duration;
+          this.tickProcessingMaxMs = Math.max(
+            this.tickProcessingMaxMs,
+            duration,
+          );
+          if (
+            this.firstContactTick === null &&
+            hasCombatDamage(before, this.state)
+          )
+            this.firstContactTick = this.state.elapsedTicks;
         },
       );
       this.previousTickState = previousTick;
@@ -418,9 +481,20 @@ export class MatchRuntime {
     rules: RulesMaster = this.state.rules,
   ): void {
     const previous = this.state;
-    this.state = createMatch(seed, { scenarioId, rules });
+    this.state = createMatch(seed, {
+      scenarioId,
+      rules,
+      mapId:
+        this.state.map.definitionId === 'ring-three-fronts'
+          ? 'ring-three-fronts-100'
+          : 'legacy-40',
+    });
     this.previousTickState = this.state;
     this.history = [];
+    this.tickProcessingTotalMs = 0;
+    this.tickProcessingMaxMs = 0;
+    this.measuredTickCount = 0;
+    this.firstContactTick = null;
     this.selectedUnitIds = [];
     this.clock.reset(true);
     this.message = this.contextLost

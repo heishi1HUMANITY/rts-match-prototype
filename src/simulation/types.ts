@@ -111,9 +111,18 @@ export interface Cell {
   readonly y: number;
 }
 
+export type StartPositionId = 'north' | 'south-east' | 'south-west';
+
 export interface GridMap {
   readonly width: number;
   readonly height: number;
+  /** Immutable map-definition and physical-start assignment snapshot. */
+  readonly definitionId?: string;
+  readonly definitionVersion?: number;
+  readonly startAssignment?: Readonly<Record<FactionId, StartPositionId>>;
+  readonly startPoints?: Readonly<Record<StartPositionId, Cell>>;
+  readonly basePlacements?: readonly MapBasePlacement[];
+  readonly initialUnitPlacements?: readonly MapUnitPlacement[];
   /** Row-major terrain classes. */
   readonly terrain?: readonly TerrainKind[];
   /** Row-major river/mountain levels; zero for other cells. */
@@ -123,6 +132,20 @@ export interface GridMap {
   readonly ports?: readonly PortSite[];
   /** Row-major compatibility mirror: land-blocked cells. */
   readonly blocked: readonly boolean[];
+}
+
+export interface MapBasePlacement {
+  readonly id: string;
+  readonly kind: BaseKind;
+  readonly cell: Cell;
+  readonly factionId: FactionId | null;
+}
+
+export interface MapUnitPlacement {
+  readonly id: string;
+  readonly factionId: FactionId;
+  readonly kind: UnitKind;
+  readonly cell: Cell;
 }
 
 export interface PortSite {
@@ -331,7 +354,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 23;
+  readonly schemaVersion: 24;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;

@@ -1,4 +1,3 @@
-import { MAP_WIDTH } from './config';
 import { getFactionTicketLossRateCentiPerSec } from './tickets';
 import {
   getUnitPositionX1024,
@@ -32,7 +31,7 @@ function baseViews(
     knowledge.baseMemory.map((memory) => [memory.baseId, memory]),
   );
   const views = state.bases.map((base): BaseView => {
-    const cellIndex = base.cell.y * MAP_WIDTH + base.cell.x;
+    const cellIndex = base.cell.y * state.map.width + base.cell.x;
     if (base.owner === factionId) {
       return {
         visibility: 'owned',

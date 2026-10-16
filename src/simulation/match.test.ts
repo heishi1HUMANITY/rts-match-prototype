@@ -4,9 +4,9 @@ import { createMap, isCellBlocked } from './map';
 import { createMatch } from './match';
 
 describe('initial match contract', () => {
-  it('creates schema-v23 ready state with three ranked factions, typed units, and bases', () => {
+  it('creates schema-v24 ready state with three ranked factions, typed units, and bases', () => {
     const match = createMatch(42);
-    expect(match.schemaVersion).toBe(23);
+    expect(match.schemaVersion).toBe(24);
     expect(match.timeLimitTicks).toBe(12000);
     expect(match.result).toBeNull();
     expect(
@@ -63,6 +63,24 @@ describe('initial match contract', () => {
       expect(createMatch(seed)).toEqual(match);
       expect(JSON.parse(JSON.stringify(match))).toEqual(match);
     }
+  });
+
+  it('snapshots the 100-cell map, faction-to-start assignment, ownership, and ports', () => {
+    const match = createMatch(1, { mapId: 'ring-three-fronts-100' });
+    expect(match.map.width).toBe(100);
+    expect(match.map.height).toBe(100);
+    expect(match.map.definitionId).toBe('ring-three-fronts');
+    expect(match.map.startAssignment?.A).toBe('south-east');
+    expect(match.map.basePlacements).toEqual(
+      match.bases.map(({ id, kind, cell, owner }) => ({
+        id,
+        kind,
+        cell,
+        factionId: owner,
+      })),
+    );
+    expect(JSON.parse(JSON.stringify(match))).toEqual(match);
+    expect(createMatch(1, { mapId: 'ring-three-fronts-100' })).toEqual(match);
   });
 
   it('serializes research bank/progress and starts a new match without carrying them over', () => {

@@ -1,8 +1,6 @@
 import type {
   BaseKind,
-  Cell,
   CombatTargetKind,
-  FactionId,
   ResearchDomain,
   ResearchEffect,
   ResearchId,
@@ -10,11 +8,13 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 23 as const;
+export const SCHEMA_VERSION = 24 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
-export const MAP_WIDTH = 40;
-export const MAP_HEIGHT = 40;
+/** Current trial map; the original 40-cell layout remains available as LEGACY_MAP_SIZE. */
+export const LEGACY_MAP_SIZE = 40;
+export const MAP_WIDTH = LEGACY_MAP_SIZE;
+export const MAP_HEIGHT = LEGACY_MAP_SIZE;
 export const BLOCKED_CELL_PERCENT = 10;
 export const MOVE_TICKS_PER_CELL = 2;
 export const TICK_DURATION_MS = 100;
@@ -354,25 +354,8 @@ export const RESEARCH_DEFINITIONS: Readonly<
   },
 };
 
-export const BASE_CELLS: readonly {
-  readonly id: string;
-  readonly kind: BaseKind;
-  readonly cell: Cell;
-  readonly factionId: FactionId | null;
-}[] = [
-  { id: 'HQ-A', kind: 'hq', cell: { x: 5, y: 20 }, factionId: 'A' },
-  { id: 'HQ-B', kind: 'hq', cell: { x: 28, y: 33 }, factionId: 'B' },
-  { id: 'HQ-C', kind: 'hq', cell: { x: 28, y: 7 }, factionId: 'C' },
-  { id: 'HOME-A', kind: 'outpost', cell: { x: 10, y: 20 }, factionId: 'A' },
-  { id: 'HOME-B', kind: 'outpost', cell: { x: 25, y: 31 }, factionId: 'B' },
-  { id: 'HOME-C', kind: 'outpost', cell: { x: 25, y: 9 }, factionId: 'C' },
-  { id: 'OUT-01', kind: 'outpost', cell: { x: 18, y: 17 }, factionId: null },
-  { id: 'OUT-02', kind: 'large', cell: { x: 20, y: 20 }, factionId: null },
-  { id: 'OUT-03', kind: 'outpost', cell: { x: 20, y: 28 }, factionId: null },
-  { id: 'MID-01', kind: 'medium', cell: { x: 33, y: 22 }, factionId: null },
-  { id: 'MID-02', kind: 'medium', cell: { x: 12, y: 29 }, factionId: null },
-  { id: 'MID-03', kind: 'medium', cell: { x: 16, y: 10 }, factionId: null },
-];
+export { LEGACY_BASE_CELLS as BASE_CELLS } from './map-snapshot';
+export { LEGACY_INITIAL_UNIT_PLACEMENTS as INITIAL_UNIT_PLACEMENTS } from './map-snapshot';
 
 export const BASE_STATS: Readonly<
   Record<
@@ -410,20 +393,6 @@ export const BASE_STATS: Readonly<
     researchIncomeCentiPerTick: 20,
   },
 };
-
-export const INITIAL_UNIT_PLACEMENTS: readonly {
-  readonly id: string;
-  readonly factionId: FactionId;
-  readonly kind: UnitKind;
-  readonly cell: Cell;
-}[] = [
-  { id: 'A-01', factionId: 'A', kind: 'assault', cell: { x: 6, y: 20 } },
-  { id: 'A-02', factionId: 'A', kind: 'scout', cell: { x: 6, y: 21 } },
-  { id: 'B-01', factionId: 'B', kind: 'assault', cell: { x: 27, y: 33 } },
-  { id: 'B-02', factionId: 'B', kind: 'scout', cell: { x: 27, y: 32 } },
-  { id: 'C-01', factionId: 'C', kind: 'assault', cell: { x: 27, y: 7 } },
-  { id: 'C-02', factionId: 'C', kind: 'scout', cell: { x: 27, y: 8 } },
-];
 
 export const SCENARIO_IDS: readonly ScenarioId[] = [
   'standard',

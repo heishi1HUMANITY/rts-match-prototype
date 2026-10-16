@@ -9,6 +9,7 @@ import { DEFAULT_RULES, cloneRules } from './rules';
 import { validateRules } from './rules-validation';
 import type { RulesMaster } from './rules';
 import { createMap } from './map';
+import { createMap100 } from './map-100';
 import { findPath } from './pathfinding';
 import { createInitialKnowledge } from './visibility';
 import { createInitialLocalUnits } from './local-faction';
@@ -62,6 +63,7 @@ export {
 
 export interface CreateMatchOptions {
   readonly scenarioId?: ScenarioId;
+  readonly mapId?: 'legacy-40' | 'ring-three-fronts-100';
   readonly rules?: RulesMaster;
   readonly controllers?: Partial<Record<FactionId, 'human' | 'bot'>>;
 }
@@ -99,55 +101,64 @@ function freshFactions(
   }));
 }
 
-function buildBases(rules: RulesMaster): BaseState[] {
-  return BASE_CELLS.map(({ id, kind, cell, factionId }) => {
-    const owner = factionId;
-    const hq = kind === 'hq';
-    return {
+function buildBases(rules: RulesMaster, map: MatchState['map']): BaseState[] {
+  return (map.basePlacements ?? BASE_CELLS).map(
+    ({ id, kind, cell, factionId }) => {
+      const owner = factionId;
+      const hq = kind === 'hq';
+      return {
+        id,
+        kind,
+        cell: { ...cell },
+        owner,
+        hp: rules.bases[kind].maxHp,
+        maxHp: rules.bases[kind].maxHp,
+        level: 1,
+        upgradeJob: null,
+        lastDamagedTick: 0,
+        captureCandidate: null,
+        captureProgressCentiTicks: 0,
+        homeFactionId: hq ? factionId : null,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+        defender:
+          owner === null && !hq
+            ? {
+                hp: rules.defenses[kind].maxHp,
+                maxHp: rules.defenses[kind].maxHp,
+                disabledTicks: 0,
+                attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+              }
+            : null,
+      };
+    },
+  );
+}
+
+function buildUnits(rules: RulesMaster, map: MatchState['map']): UnitState[] {
+  return (map.initialUnitPlacements ?? INITIAL_UNIT_PLACEMENTS).map(
+    ({ id, factionId, kind, cell }) => ({
       id,
+      factionId,
       kind,
+      hp: rules.units[kind].maxHp,
+      maxHp: rules.units[kind].maxHp,
       cell: { ...cell },
-      owner,
-      hp: rules.bases[kind].maxHp,
-      maxHp: rules.bases[kind].maxHp,
-      level: 1,
-      upgradeJob: null,
-      lastDamagedTick: 0,
-      captureCandidate: null,
-      captureProgressCentiTicks: 0,
-      homeFactionId: hq ? factionId : null,
+      path: [],
+      edgeProgress: 0,
+      moveTicksPerCell: rules.units[kind].moveTicksPerCell,
+      marchOrder: null,
       attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
-      defender:
-        owner === null && !hq
-          ? {
-              hp: rules.defenses[kind].maxHp,
-              maxHp: rules.defenses[kind].maxHp,
-              disabledTicks: 0,
-              attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
-            }
-          : null,
-    };
-  });
+    }),
+  );
 }
 
-function buildUnits(rules: RulesMaster): UnitState[] {
-  return INITIAL_UNIT_PLACEMENTS.map(({ id, factionId, kind, cell }) => ({
-    id,
-    factionId,
-    kind,
-    hp: rules.units[kind].maxHp,
-    maxHp: rules.units[kind].maxHp,
-    cell: { ...cell },
-    path: [],
-    edgeProgress: 0,
-    moveTicksPerCell: rules.units[kind].moveTicksPerCell,
-    marchOrder: null,
-    attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
-  }));
-}
-
-function scenarioMap(seed: number, scenarioId: ScenarioId) {
-  const map = createMap(seed);
+function scenarioMap(
+  seed: number,
+  scenarioId: ScenarioId,
+  mapId: CreateMatchOptions['mapId'],
+) {
+  const map =
+    mapId === 'ring-three-fronts-100' ? createMap100(seed) : createMap(seed);
   if (
     scenarioId !== 'f02-pursuit' &&
     scenarioId !== 'g2-combat' &&
@@ -359,6 +370,7 @@ export function createMatch(
     throw new RangeError('seed must be an unsigned 32-bit integer');
   }
   const scenarioId = options.scenarioId ?? 'standard';
+  const mapId = options.mapId ?? 'legacy-40';
   if (!SCENARIO_IDS.includes(scenarioId))
     throw new RangeError('unknown scenarioId');
   const validation = validateRules(options.rules ?? DEFAULT_RULES);
@@ -367,7 +379,7 @@ export function createMatch(
       `invalid rules: ${validation.issues.map(({ key }) => key).join(', ')}`,
     );
   const rules = cloneRules(validation.rules);
-  const map = scenarioMap(seed, scenarioId);
+  const map = scenarioMap(seed, scenarioId, mapId);
   const initial = configuredFixture(
     {
       schemaVersion: SCHEMA_VERSION,
@@ -383,8 +395,8 @@ export function createMatch(
       phase: 'ready',
       result: null,
       map,
-      units: buildUnits(rules),
-      bases: buildBases(rules),
+      units: buildUnits(rules, map),
+      bases: buildBases(rules, map),
       facilities: [],
       scheduledStrikes: [],
       surveys: [],

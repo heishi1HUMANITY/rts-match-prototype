@@ -69,6 +69,7 @@ runtime = new MatchRuntime(
   42,
   'standard',
   loadedMaster.envelope.rules,
+  'ring-three-fronts-100',
 );
 updateHud(hud, runtime.playerSnapshot());
 if (bootError !== null) runtime.notify(bootError);

@@ -1,4 +1,3 @@
-import { MAP_HEIGHT, MAP_WIDTH } from './config';
 import { isCellVisibleToFaction } from './visibility';
 import type {
   Cell,
@@ -54,9 +53,12 @@ function withCooldown(
   };
 }
 
-function inBounds(cell: Cell): boolean {
+function inBounds(cell: Cell, state: MatchState): boolean {
   return (
-    cell.x >= 0 && cell.y >= 0 && cell.x < MAP_WIDTH && cell.y < MAP_HEIGHT
+    cell.x >= 0 &&
+    cell.y >= 0 &&
+    cell.x < state.map.width &&
+    cell.y < state.map.height
   );
 }
 
@@ -89,7 +91,8 @@ export function activateTacticalAbility(
     if (!target || typeof target === 'string')
       return reject(state, 'ABILITY_TARGET_INVALID');
     cellTarget = target;
-    if (!inBounds(cellTarget)) return reject(state, 'ABILITY_TARGET_INVALID');
+    if (!inBounds(cellTarget, state))
+      return reject(state, 'ABILITY_TARGET_INVALID');
     if (!isCellVisibleToFaction(state, cellTarget, actor))
       return reject(state, 'ABILITY_TARGET_NOT_VISIBLE');
   } else if (abilityId === 'jam') {
