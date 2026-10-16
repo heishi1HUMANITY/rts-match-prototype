@@ -150,7 +150,7 @@
         "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
         "src/simulation/config.ts": "75caf0776f65bb3a082bd1347b226b3f2ac4829dcdc7b818170ceedb48c8346c",
         "src/main.ts": "04ff6fa9282313413dad6a3ef9bc677079c69f346f4a24e2b3804e418166b1dd",
-        "src/render/board.ts": "44d304c12725954e212de8560f2d44fe142522fff9d0fce3a756433e845c08be",
+        "src/render/board.ts": "e4f10854bca74c4b419e7d93c3d44af2695426b15ae5088178f6809ccddea488",
         "src/render/view-model.ts": "e2c4808cb471528168a1bc205d7fcb4629254ae58d7c836c710a66a6d323435c",
         "src/simulation/view.ts": "26e7326b985094e22d4733c3adb8aa1e2e8b6fe9852fddd6025226105b3e70ce",
         "src/simulation/visibility.ts": "b8ffaa739acd956a78e3c760ab08501c780f8a13294ea94549011c68249331ef",
@@ -159,7 +159,8 @@
         "src/ui/styles.css": "c879700d0d208d99e9440d3db11ba3ffe01768a5780b20de9c2ad9deaf72a0fb",
         "src/ui/input.ts": "53094236483d821acf20761d8d70e2f366190513fc04b264b8141aeb44a973a1",
         "src/ui/tickets.ts": "fd9234757e170ef52d6572513997aff3a0ffda999ebcc2ed374889fa3242431f",
-        "src/runtime/clock.ts": "db311b314f5a4fe5f24588c51d69b7b3b800dd461966f1f1d03649628019d45d"
+        "src/runtime/clock.ts": "db311b314f5a4fe5f24588c51d69b7b3b800dd461966f1f1d03649628019d45d",
+        "src/render/fog-surface.ts": "dc1249107f2ed24720afe924d190a5e4501fe225c938c796a15c1a9b02c89d11"
       }
     }
   ]
