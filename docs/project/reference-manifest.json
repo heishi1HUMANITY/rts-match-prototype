@@ -382,6 +382,16 @@
       "sha256": "e03fb4116e0fe8c47c85d3894de69765e285410da0e4c2eb5705c3e151f04825"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/aa.js",
+      "bytes": 22923,
+      "sha256": "bdeb5b76446b361490b4c59f807717b1a934c3c744477492f2b5167a52f01260"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/boat.js",
+      "bytes": 21424,
+      "sha256": "64981d1fe8e39095ddf19634239f85f7222cc8d3162aacf747f0f6c41a0f7d61"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/boss.js",
       "bytes": 19283,
       "sha256": "da26d877ee37769360265a1d97a0ddaf58e17dc74b28d786e1afeef313791fe3"
@@ -392,9 +402,14 @@
       "sha256": "5a5d898b4bdd8c0ebb93a78a2ee4b9e34d585122b809fc49be9ff7436e6383d8"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/chassis.js",
+      "bytes": 5660,
+      "sha256": "bfe9b0ff19ad1dd91514eec91c388644f3f712e202ad35b8a7781c6272bfe035"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/common.js",
-      "bytes": 20126,
-      "sha256": "a157c16188a81719962a70b86a05b17c595498f7e381f3cd56e1c0918c5e2793"
+      "bytes": 57136,
+      "sha256": "bb4a18c80d27a1f640f2a94711ae66ca9ef8d06f6fb921b42748e8079d1dcd2f"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/factory.js",
@@ -423,8 +438,8 @@
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/heli.js",
-      "bytes": 12766,
-      "sha256": "09b61fcbf3529539a0b39439d1444c8a01611192472cadd455c3bb37d1a20e0b"
+      "bytes": 31685,
+      "sha256": "50fbf8e8ae5d07dfcbbd1b16c2e79db517821a7d79ea3423f80654340c89caf6"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/hub.js",
@@ -447,14 +462,19 @@
       "sha256": "6d5d56326af7c2985de78f2f187638ef09972ab67c09c6eaf8f16470f124a6a2"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/moveline.js",
+      "bytes": 29301,
+      "sha256": "d2d87a6ab85cc17d721975eeb4746e76b07d3bc7d16e06d03d5193cbcd6c3440"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/plant.js",
       "bytes": 13544,
       "sha256": "b42aaf8f66c8a5e4b1cae2d79cdca1ffce9ca4646e8b6b6de1182992739e6b20"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/plate.js",
-      "bytes": 16913,
-      "sha256": "06573fe1223c2b3e3d34c5ebfc96f5d382e76d8cfd4d1578dc932da6f19c5dc8"
+      "bytes": 17075,
+      "sha256": "a695d969aa25559ee652f2f2f721aba1183d680595d254c3d51d882b266bf543"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/port.js",
@@ -472,9 +492,14 @@
       "sha256": "aa1eb0a80cb7b2fbc75f99835b5e21cc4bd1395ac676b16aa33f6d68c236342d"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/spg.js",
+      "bytes": 25330,
+      "sha256": "5d91d6b18f2505771a93371fae3f2e22d6e8d85e501457fb843f57727b512000"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/tank.js",
-      "bytes": 14735,
-      "sha256": "4e88e23b3161b27def56cc995fde1ca607fb9e1d2920e3ee9e1e776f09824f44"
+      "bytes": 37018,
+      "sha256": "7b65b346567b202c362fefe7008fa3df51cfb59a023699e5966eb47cc1d70601"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/terrain.js",
@@ -483,18 +508,68 @@
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/viewer.html",
-      "bytes": 36203,
-      "sha256": "51e60931c9adb8604cfc59feb47a7a7af936c574d615e03df8a6dca454373225"
+      "bytes": 45853,
+      "sha256": "4a78843af1d6b1eb795e36dfe800b7e7d1373c9bd3619499918fe33025266d2d"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/3d/進捗.md",
-      "bytes": 10524,
-      "sha256": "57757704cfa2d29d5bfca9d8aa1ea31ad65f1c9c8389ab024c6de61d227a13e3"
+      "bytes": 12745,
+      "sha256": "a680f28cf22aaab779553ae6ec0c6375fec7eed75519ed884abfcc5dabbfb7bc"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/UIモック検討メモ.md",
-      "bytes": 105341,
-      "sha256": "c349a33d045afa8b7c6a4ce0d777e697d77db2f1d898f7bd77b3f2d3cfed49aa"
+      "bytes": 154829,
+      "sha256": "27ed58bc5882b1a23ebf80e423f84349691e3e58e307fe2a22ad7ca5472d79f6"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_aa_fire_real_burst.png",
+      "bytes": 60167,
+      "sha256": "4dc0947731a91cb2c4623a87defeb9762a6ed4a47ffb3fa7fe756d83b5177c56"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_aa_fire_real_tracers.png",
+      "bytes": 60471,
+      "sha256": "c32246de830c3a0f8330585b012fe8348c835992ce6a80f63f9bf56df90284e0"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_fire.png",
+      "bytes": 122766,
+      "sha256": "43617929fe1410991068dec5f098294324670a638e16431aca251d94b3283585"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_fire_real_flash.png",
+      "bytes": 82727,
+      "sha256": "b697afbcf92f261cb2c292684a87027a69a6159f81aa92338e9c1d462ea5ba7e"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_fire_real_smoke.png",
+      "bytes": 76169,
+      "sha256": "6b22b9441bf64a2109a3aada7e7554c5dcb29ae6fef876f6c5619165648f3f79"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_moving_game.png",
+      "bytes": 128252,
+      "sha256": "d265603bde07f735b993cee839ce83bf0a0db6550fe1b22a6bdd2789387444b2"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_quarter.png",
+      "bytes": 116620,
+      "sha256": "95f1e43c8f26cd89c443390001b5bc5e5ea9cd9b22330c4a6f865242a36ee3df"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_white_front.png",
+      "bytes": 144832,
+      "sha256": "180c0351d4f55a0e7b19fedbea97edf3f5ad9b1d32071fe8f186a9105a1d84ee"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_white_rear.png",
+      "bytes": 136953,
+      "sha256": "59ddab00767703bb30bf6d08f4159c330731490c04d7d6fef150dc0eb316a1cb"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boat_white_side.png",
+      "bytes": 116323,
+      "sha256": "bdadab3711b3a0add00e50dba6cce3e8a8a30502aa2ca3440bfee4a352851c97"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_boss_damaged.png",
@@ -782,9 +857,69 @@
       "sha256": "741a5c8e6ef07b90486a0077d3223cf9614ec2986ee78cdfc4a080696700c69b"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_gun_real.png",
+      "bytes": 42356,
+      "sha256": "cd156a45abcdb988f2267d868798baefdddc45d5a1ff1486f0210a63abfdd72f"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_missile_real_flight.png",
+      "bytes": 44618,
+      "sha256": "62d76e25c24ac0d22d288df704b5e8be4a701b89f204ad10701f9af6d86f9c98"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_missile_real_launch.png",
+      "bytes": 42296,
+      "sha256": "0c8a64adc0afe1351b593f82e26ab1578302d3caa59eca1b1dae5687c2511c26"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_missile_real_trail.png",
+      "bytes": 59964,
+      "sha256": "b4f719e22cbfcfac97f4fbc446092f86edfbf95be99a8ce0c640225f333b3bb5"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_stealth.png",
       "bytes": 20034,
       "sha256": "a0ffdefb73f31987428bf88c8b23b68c3268c22d8ed65362dff91911e0b7cbab"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_front.png",
+      "bytes": 119208,
+      "sha256": "9b3c7dd9f2e6f666a0b07ee5f7e29fe6e1463b7c2f658fc9c1b9d35e8edefb8f"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_game_fire.png",
+      "bytes": 117023,
+      "sha256": "e854d2699a49df2a1bfa413e89a2f6044cbd7d51a9cd9c3244071d59eff79b89"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_gun.png",
+      "bytes": 109837,
+      "sha256": "d01df8504734fa9bc4d4af3d0c1d432ce6f32ea0112f1b06b137c820c21f8127"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_landed.png",
+      "bytes": 102657,
+      "sha256": "c2ddc9ca56ea23917d786549c18945d93d0905e1b3b86648ed1003de05568964"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_missile.png",
+      "bytes": 99805,
+      "sha256": "bfbd827310372b39989a56a9953a45bcec8cf70928dcfa8029c3e5440e7dff6f"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_nose.png",
+      "bytes": 109271,
+      "sha256": "854b632968cb461fcce2affcc9862e991ada9ff58a02d86e728bccfc16b44fbd"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_rack.png",
+      "bytes": 107223,
+      "sha256": "a464ea544197584d352e1a4213f216853d85851a263310de441cf155e47a78b1"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_v2_white_side.png",
+      "bytes": 108790,
+      "sha256": "a0fd61f20f5385aa2221a2c40e2cdcb3caf5cf9d8c087541bf884d7240b0fced"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_heli_white_fire.png",
@@ -830,6 +965,96 @@
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_mine_pit.png",
       "bytes": 106753,
       "sha256": "2bfe81e07c9c9fdf831b9c12e939c3597162708312628406e90f1060af197d3a"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_arrow_close.png",
+      "bytes": 120084,
+      "sha256": "f73b77ef7806285943ec5e5e9af074e4c24d9f7cd44b6c7c1357207aedca1496"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_drag_preview.png",
+      "bytes": 285945,
+      "sha256": "51090c4524b1d48ac48e1426d2a2a901452e5bdcc4bc1125fde37f35e1713bc6"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_dropped.png",
+      "bytes": 268733,
+      "sha256": "e1715d41d08c3b0e1df8c9ffa77cb3ddcbe5eb575fae492498d2746215bb4f12"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_invalid.png",
+      "bytes": 98782,
+      "sha256": "5839c9038eee0b642ff4e22c962252ac62ed31272e3bf3e7c0a0766c67c85b84"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_mountain.png",
+      "bytes": 79237,
+      "sha256": "08e9045c217bf8c1d46580a739f1be7fd3e6d119d11ede4e36bf0570f3f1a3bd"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_move_close.png",
+      "bytes": 367003,
+      "sha256": "01f8f4fce292804fa41c1a7fbf5026da583690d49baffbb2ae518e4aa9d7e66b"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_move_marks.png",
+      "bytes": 83189,
+      "sha256": "86b5585a0debfd893eddf26d1c613dedd5c3aba56bacdd971a3bf5975a4e3b9c"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_move_run.png",
+      "bytes": 268969,
+      "sha256": "0f5ae15cc6eee9db705af3f20515abca7d1b7f596d9352d1529e6f5fbf448c16"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_move_start.png",
+      "bytes": 255673,
+      "sha256": "0f87cf287617836440735913180ee8393ba3a2bf93bc8d3c07708aa1352a7ce2"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_move_turn.png",
+      "bytes": 264969,
+      "sha256": "bb14d582ed32d77792b305eae16db4df71ea705a4cd5a82e37df9d8e67347683"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_moving.png",
+      "bytes": 273513,
+      "sha256": "f3b8ad4883d1b7e4967996816b6b3a0448c787e000adc06ae40d56b28490f4ad"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_pivot_1.png",
+      "bytes": 264780,
+      "sha256": "00731ef7766ae78fdbd2b30a8ecdd6567843d905fea4ee06122378802f446800"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_pivot_2.png",
+      "bytes": 257000,
+      "sha256": "095a31f909b236ab38b80b0f3f0c24babecdfa5e046fb48b3a7001543c0ed29a"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_pivot_3.png",
+      "bytes": 266325,
+      "sha256": "182979f5363296910ae2a3ea656aa6b4f244d840a7e85ee65631b3f48c638259"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_pivot_marks.png",
+      "bytes": 290074,
+      "sha256": "01f84a2fea0515ba3dc8e1b2b5f472a86600319c17dd813acefd5d247d64dba9"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_river.png",
+      "bytes": 269866,
+      "sha256": "f8a18f79a7ee5c5d121a27a2f0c0fd79f37f0086e3c1ee5c10f52b9bdb3d0c49"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_river_top.png",
+      "bytes": 84938,
+      "sha256": "d898820a91056ce3f303c9651a09d0130e3c1a7a195fe38627a9050069116980"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_moveline_rock_edit.png",
+      "bytes": 78688,
+      "sha256": "b0288295f84ad64033e76dbaebb2d3891a8eee6ff42e038ab0098958ee097413"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_plant.png",
@@ -967,6 +1192,56 @@
       "sha256": "3ce176ed59fda0fb194ca237c7cac0b852a2a256499166c24aebef5ddfb6a722"
     },
     {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_deployed.png",
+      "bytes": 137417,
+      "sha256": "de8f9871557077071a162becfa76f63540ebe33e89879fad7566ae5e4e57cfd3"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_flash.png",
+      "bytes": 126088,
+      "sha256": "57e3bbbc0a5aff954aa37b9dc65a4d68d82b6caedeeb8484b8a69f59a8b53555"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_real_ball.png",
+      "bytes": 123255,
+      "sha256": "825fa44331680d31d7e2d25b58acd4426211dd020de7262e9bbe99ce2b4e52f9"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_real_flash.png",
+      "bytes": 118141,
+      "sha256": "6336c55c39f2798d77a6d6121f57189f74439a8bcac095704ccf9fc36bcdbae8"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_real_smoke.png",
+      "bytes": 116535,
+      "sha256": "dd85b229651c0a103d21123f5cfa49990c57cbfa9f166f46d3206544aa6df9e4"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_ring.png",
+      "bytes": 132604,
+      "sha256": "45d6f687d75518255c51a3dfda4c6b5ef9b3325a184cfd8e39a4e65c7d8dfe05"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_fire_smoke.png",
+      "bytes": 134269,
+      "sha256": "3a04025558693a7c9a9992822ebd89d92f5b3a0c1c4cb6c2c60303f791a545f2"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_game_fire.png",
+      "bytes": 124125,
+      "sha256": "2c6dd63eee4a6405f00222bd1acc3e498ca91bc7c803148c1b45cd3f97f348a5"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_rear.png",
+      "bytes": 133609,
+      "sha256": "ee3f2c2c5b9a5174b956a4070663ecc68a11dcc17ece4a6a0258a5776719d9e9"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_spg_travel_white.png",
+      "bytes": 132087,
+      "sha256": "e52712a068cd2c41c4b188fc4fa4ac38f556a690735d0fd43209b9fade97764a"
+    },
+    {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_gun.png",
       "bytes": 26327,
       "sha256": "c5522dcd2c590a4d58a8b503f6f0a9c6a1330bfd477ace616e834a0c5095439d"
@@ -980,6 +1255,96 @@
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_stealth_fire.png",
       "bytes": 26567,
       "sha256": "9619ae896e6c324f48f9a544b2b1628016b04af58747fda8c0cc719c2ebac6c9"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_charge.png",
+      "bytes": 114678,
+      "sha256": "0e72e44f5b3b0e8bc5c6f8994d4b941ad1dc14aa93ae424f3beae83d850097f7"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_flash.png",
+      "bytes": 115551,
+      "sha256": "4779985a354b7f962f6c9d946f8ef47027d3921ba53b2d20fde8e55c2c8bf64e"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_game.png",
+      "bytes": 126038,
+      "sha256": "9b222ad1b7ec62bdbe1547ae68dcf2af5c9d1578d8964bf32314e9eb1f40f642"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_real_ball.png",
+      "bytes": 79607,
+      "sha256": "ab5918ec7bda53a4688416a672e57103f45352fb1da42f0bf9623d9ea9d62ac0"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_real_flash.png",
+      "bytes": 83163,
+      "sha256": "7cdb685c84138b73b1b185c7eaa77b32e5aa87c08c62527abbc4aaec29c944e6"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_real_game.png",
+      "bytes": 79701,
+      "sha256": "5e857103f25494aacb13f4a5f1ede8862f63690f7c173cc0c290a57426358a93"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_real_smoke.png",
+      "bytes": 91379,
+      "sha256": "4f38436cccaab9bb9973891cddae4737add354ba4c9748d8dd5291ce89964b3a"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_real_sparks.png",
+      "bytes": 90750,
+      "sha256": "88e23300101fd9698b2239cc945f85d8c319822babf397d65fe4e03ae514715f"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_smoke.png",
+      "bytes": 121923,
+      "sha256": "39a0c02d39c2338c14236782347eb524c8571899c20f890258e4bbd8b73ed025"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_fire_sparks.png",
+      "bytes": 120699,
+      "sha256": "b7ec7fdc3994545a7ea5a6e27e0e2e2399eb180904d9d7e4b132ad5e2b8ea9a1"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_front.png",
+      "bytes": 128105,
+      "sha256": "daab775f92f536dc1aea8d93d50677e139fb7dc3be6a9a5fd4834538a12ffb1d"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_game.png",
+      "bytes": 115406,
+      "sha256": "c5996be5b967bd3d04f715baf2e2d54fc70bbc29ecabfcce715bffaa0bd52df0"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_gun.png",
+      "bytes": 111421,
+      "sha256": "0d450d5e7b5a82c5dcecaee47f44dbf84ec7b050afeb89b00d0051638e56a84a"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_moving.png",
+      "bytes": 117262,
+      "sha256": "195d9cf897dc57c1cc1aec249a251759fa223b6e7736942ed701559a0a6ffbf4"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_rear.png",
+      "bytes": 126821,
+      "sha256": "7c7fa2615c9a039e52c2dac4d0b292e997b865ce330a23950d46292af0e715e8"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_side.png",
+      "bytes": 87231,
+      "sha256": "525454f7ba4a769233fbf22609612f0651bfdcfa205f033e0ad75e80da4a2546"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_top.png",
+      "bytes": 111505,
+      "sha256": "fc8c5e420647fba06d6aa1a68bb5aa66c33bf6043368ccae4238937baa012710"
+    },
+    {
+      "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_v3_white.png",
+      "bytes": 127510,
+      "sha256": "47c6f818c5849249f885b8c5a809247d00326b8e3cc085ce76a09c7b7f5beedd"
     },
     {
       "path": "docs/mockups-20261009T133540Z-1-001/mockups/screens/3d_tank_viewer.png",

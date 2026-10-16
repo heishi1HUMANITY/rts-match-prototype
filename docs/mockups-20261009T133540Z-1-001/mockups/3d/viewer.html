@@ -33,13 +33,18 @@
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
 <script src="common.js"></script>
 <script src="floodgate.js"></script>
+<script src="chassis.js"></script>
 <script src="tank.js"></script>
+<script src="spg.js"></script>
+<script src="aa.js"></script>
+<script src="boat.js"></script>
 <script src="heli.js"></script>
 <script src="plant.js"></script>
 <script src="hub.js"></script>
 <script src="bridge.js"></script>
 <script src="ropeway.js"></script>
 <script src="plate.js"></script>
+<script src="moveline.js"></script>
 <script src="port.js"></script>
 <script src="mine.js"></script>
 <script src="lab.js"></script>
@@ -55,7 +60,7 @@
 <canvas id="view"></canvas>
 
 <aside class="ui panel marks side">
-  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
+  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="spg">自走砲</button><button data-a="aa">対空車両</button><button data-a="boat">哨戒艇</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="moveline">移動線</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
   <div><div class="eyebrow" id="a-kind"></div><h1 id="a-title"></h1><div class="small dim" style="margin-top:3px" id="a-desc"></div></div>
   <dl class="kv" id="a-info"></dl>
   <div class="grp"><span class="eyebrow" id="a-act-label">STATE · 状態</span>
@@ -140,29 +145,73 @@ const ASSETS = {
     ringParts: (a) => [a.parts.ring, a.parts.disc],
   },
   tank: {
-    kind: "ASSET VIEWER · UNIT / ARMOR", title: "装甲強襲(装軌案)v2", desc: "低い車高のレールガン戦車。ステルス艦のような面構成と光る継ぎ目、平たく縦長の角断面の砲身",
-    info: [["ファイル", "mockups/3d/tank.js"], ["大きさ", "全長 約42 × 表示 2.0"], ["構成", "断面の連結(loft)+ Box / Cylinder"], ["履帯", "履板 InstancedMesh(片側 約70枚)"]],
+    kind: "ASSET VIEWER · UNIT / ARMOR", title: "装甲強襲(装軌案)v3", desc: "低い車高のレールガン戦車。ステルス艦のような面構成と光る継ぎ目に、戦車らしい装備(スカート、ハッチ、照準器、発煙弾発射機、バスケット)を足した版",
+    info: [["ファイル", "mockups/3d/tank.js"], ["大きさ", "全長 約42 × 表示 2.0"], ["構成", "断面の連結(loft)+ Box / Cylinder"], ["装備", "光らない暗いガラスのセンサー、固定アンテナ"], ["発射演出", "デフォルメ(既定)/ リアル(スプライトの火球・煙・砂塵、跳ねる火花、車体を照らす点光源)を切替"]],
     scale: 2.0, dist: 290, target: 10, tokenAt: [-175, 0, -60],
     make: () => DreamAssets.tank(THREE),
     actLabel: "ACTION · 動作", progress: false,
     actions: (a) => {
       const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
-      return [["走行", () => a.setMoving(!a.moving), () => a.moving], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃(充電→発射)", () => a.fire(), () => a.charging], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false]];
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃(充電→発射)", () => a.fire(), () => a.charging], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
     },
-    caption: (a) => a.charging ? "レールガン 充電中" : "",
+    caption: (a) => a.charging ? "レールガン 充電中" + (a.fxStyle === "real" ? "(演出: リアル)" : "") : "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  spg: {
+    kind: "ASSET VIEWER · UNIT / ARTILLERY", title: "自走砲", desc: "装甲強襲と共通の装軌車体に 155mm 級 52 口径の長砲身を載せた自走榴弾砲(K9 / PzH 2000 が下敷き)。走行時は車首の固定具に砲身を載せ、展開で 40° に上げて撃つ",
+    info: [["ファイル", "mockups/3d/spg.js(足回りは chassis.js)"], ["大きさ", "全長 約56(砲身込み) × 表示 2.0"], ["主砲", "排煙器、2 室式マズルブレーキ、長い後座と復座"], ["射撃", "展開完了後のみ。閃光・炎・煙の輪・砂塵・車体の揺れ"]],
+    scale: 2.0, dist: 320, target: 12, tokenAt: [-175, 0, -60],
+    make: () => DreamAssets.spg(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], [a.deployed ? "収納(走行姿勢)" : "展開(射撃姿勢)", () => a.setDeployed(!a.deployed), () => a.deployed], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃", () => a.fire(), () => false], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
+    },
+    caption: (a) => a.deployed ? (a.ready ? "展開完了・射撃可" : "展開中") : "走行姿勢(砲身は固定具の上)",
+    ringParts: (a) => [a.parts.plate],
+  },
+  aa: {
+    kind: "ASSET VIEWER · UNIT / AIR DEFENSE", title: "対空車両", desc: "装甲強襲・自走砲と共通の装軌車体に、4 連装機関砲の幅広い箱形砲塔を載せた自走対空砲(ZSU-23-4 シルカが下敷き)。前面いっぱいの防盾に 6 門(左右 3 門ずつ、◀ ▶ の三角形)を集め、対空姿勢で 45° まで上げて撃つ",
+    info: [["ファイル", "mockups/3d/aa.js(足回りは chassis.js)"], ["大きさ", "全長 約42 × 表示 2.0"], ["武装", "機関砲 6 門(3 門 × 2、冷却筒つき)"], ["射撃", "6 門が左右交互に連射。閃光・砲身の後座・薄い煙"]],
+    scale: 2.0, dist: 300, target: 12, tokenAt: [-175, 0, -60],
+    make: () => DreamAssets.aa(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], [a.engaged ? "走行姿勢" : "対空姿勢", () => a.setEngaged(!a.engaged), () => a.engaged], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["機関砲", () => a.fireGun(), () => a.firing], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
+    },
+    caption: (a) => a.engaged ? (a.ready ? "対空姿勢(仰角 45°)" : "対空姿勢へ移行中") : "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  boat: {
+    kind: "ASSET VIEWER · UNIT / NAVAL", title: "哨戒艇", desc: "ヴィスビュー級・スクヨル級が下敷きのステルス高速艇。細長く低い船体と面一の楔形の上部構造、低い菱形断面のマスト、前甲板のステルス砲塔、後甲板のミサイルのハッチ、船尾の噴射推進。川の水面 y=3 に浮かぶ",
+    info: [["ファイル", "mockups/3d/boat.js"], ["大きさ", "全長 約53・幅 約9.4 × 表示 2.0"], ["水面", "川と同じ水(確認用)"], ["動作", "停泊の揺れ、航行(船首上げ・船首波・航跡)、砲塔旋回、射撃"]],
+    scale: 2.0, dist: 300, target: 12, tokenAt: [-175, 0, -60],
+    make: () => DreamAssets.boat(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
+      return [["航行", () => a.setMoving(!a.moving), () => a.moving], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃", () => a.fire(), () => false], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
+    },
+    caption: () => "",
     ringParts: (a) => [a.parts.plate],
   },
   heli: {
-    kind: "ASSET VIEWER · UNIT / AIR", title: "攻撃ヘリ", desc: "装甲強襲 v2 と同じ方向性のステルス攻撃ヘリ。縦列複座、内蔵式の尾部ファン、武装ポッド。高度 20(表示で 40)に浮かぶ",
-    info: [["ファイル", "mockups/3d/heli.js"], ["大きさ", "全長 約44 × 表示 2.0"], ["構成", "断面の連結(loft)+ Box / Cylinder"], ["リング", "ローターの円まで囲む"]],
+    kind: "ASSET VIEWER · UNIT / AIR", title: "攻撃ヘリ v2", desc: "ステルス攻撃ヘリに実在機の装備(機関砲塔、センサー、ナセル、固定脚、ミサイルラック、ロケット弾ポッド)を足した版。攻撃はミサイルと機関砲の 2 種",
+    info: [["ファイル", "mockups/3d/heli.js"], ["大きさ", "全長 約44 × 表示 2.0"], ["武装", "対戦車ミサイル 4 連 ×2、ロケット弾ポッド ×2、3 砲身機関砲"], ["リング", "ローターの円まで囲む"]],
     scale: 2.0, dist: 330, target: 36, tokenAt: [-170, 0, -70],
     make: () => DreamAssets.heli(THREE),
     actLabel: "ACTION · 動作", progress: false,
     actions: (a) => {
       const PAINTS = { stealth: "ステルス", team: "チーム色", white: "白+線" }, next = { stealth: "team", team: "white", white: "stealth" };
-      return [[a.flying ? "着陸" : "離陸", () => a.setFlying(!a.flying), () => false], ["前進", () => a.setForward(!a.forward), () => a.forward], ["ミサイル", () => a.fire(), () => false], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false]];
+      return [[a.flying ? "着陸" : "離陸", () => a.setFlying(!a.flying), () => false], ["前進", () => a.setForward(!a.forward), () => a.forward], ["ミサイル", () => a.fire(), () => false], ["機関砲", () => a.setGunFiring(!a.gunFiring), () => a.gunFiring], ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false],
+        ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
     },
-    caption: () => "",
+    caption: (a) => a.gunFiring ? "機関砲 射撃中" : "",
     ringParts: (a) => [a.parts.plate],
   },
   plant: {
@@ -217,6 +266,18 @@ const ASSETS = {
     actions: (a) => [["通常", () => a.setState("idle"), () => a.state === "idle"], ["選択", () => a.setState("selected"), () => a.state === "selected"], ["交戦", () => a.setState("engaged"), () => a.state === "engaged"], ["損傷", () => a.setState("damaged"), () => a.state === "damaged"],
       ["練度 " + ("∨".repeat(a.rank) || "0"), () => a.setRank((a.rank + 1) % 4), () => false], ["部隊 " + (a.unit.group.visible ? "表示" : "なし"), () => { a.unit.group.visible = !a.unit.group.visible; }, () => false]],
     caption: () => "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  moveline: {
+    kind: "ASSET VIEWER · UNIT / MOVE LINE", title: "移動線(クレヨン)", desc: "部隊をドラッグして目的地へ引くと、ベースプレートと同じクレヨンの手描きで経路を描く。経路はゲームと同じ 4 方向の最短路で、川(橋だけ渡れる)や岩を迂回する。地面のクリックで岩を置く / 消す。線の先端に塗りの矢じり、目的地にぐるぐるの輪",
+    info: [["ファイル", "mockups/3d/moveline.js(線の描き方は plate.js と共用)"], ["大きさ", "セル 80 × 線の幅 約 4(帯 12)、矢じり 約 25"], ["構成", "経路に沿った帯 1 枚(線のタイルを繰り返す)+ 矢じり・輪・× の板。水は共通の水面"], ["操作", "部隊をドラッグ: 目的地 / 地面をクリック: 岩の切替"]],
+    scale: 1, dist: 820, target: 0, tokenAt: [-420, 0, -360],
+    make: () => DreamAssets.moveline(THREE, { cell: 80 }),
+    actLabel: "MAP / MOVE", progress: false,
+    actions: (a) => [["マップ: なし", () => a.setMap("none"), () => a.map === "none"], ["川と橋", () => a.setMap("river"), () => a.map === "river"], ["山", () => a.setMap("mountain"), () => a.map === "mountain"], ["岩を消す", () => a.clearRocks(), () => false],
+      [a.moving ? "停止" : "進む ▶", () => a.setMoving(!a.moving), () => a.moving], ["描き直す", () => a.setState("ordered"), () => false],
+      ["セルの格子", () => { a.parts.grid.visible = !a.parts.grid.visible; }, () => a.parts.grid.visible]],
+    caption: (a) => a.state === "invalid" ? "そこへは行けない(障害物か、たどり着けないセル)" : a.state === "preview" ? "プレビュー — 離すと確定" : a.state === "idle" ? "部隊をドラッグして目的地へ。地面のクリックで岩を置く" : "",
     ringParts: (a) => [a.parts.plate],
   },
   port: {
@@ -366,6 +427,23 @@ function applyToggles() {
 for (const id of ["edges", "ring", "scale", "wire", "spin"]) $(id).addEventListener("change", applyToggles);
 $("bake").addEventListener("change", () => { DreamAssets.util.noBake = !$("bake").checked; load(curKey); });   // 作り直して比べる
 
+// ドラッグ操作(アセットが hitUnit / dragStart / dragTo / dragEnd / clickCell を持つとき): 部隊をつかんで目的地へ引く。地面のクリックはアセットに渡す(岩の切替など)
+// OrbitControls より先に受けるため capture で登録し、部隊をつかんだ間だけカメラ操作を止める
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const groundHit = (e) => { const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera); const p = new THREE.Vector3(); return raycaster.ray.intersectPlane(groundPlane, p) ? p : null; };
+let drag = null;
+canvas.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || !cur?.dragStart) return; const p = groundHit(e); if (!p) return;
+  drag = { start: p, moved: false, unit: cur.hitUnit(p.x, p.z) };
+  if (drag.unit) { controls.enabled = false; cur.dragStart(p.x, p.z); try { canvas.setPointerCapture(e.pointerId); } catch {} }
+}, { capture: true });
+canvas.addEventListener("pointermove", (e) => { if (!drag) return; const p = groundHit(e); if (!p) return; if (p.distanceTo(drag.start) > 6) drag.moved = true; if (drag.unit) cur.dragTo(p.x, p.z); });
+canvas.addEventListener("pointerup", (e) => {
+  if (!drag) return; const p = groundHit(e);
+  if (drag.unit) { cur.dragEnd(); controls.enabled = true; } else if (!drag.moved && p) cur.clickCell?.(p.x, p.z);
+  drag = null; drawActions();
+});
+
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize); resize();
 load(new URLSearchParams(location.search).get("asset") in ASSETS ? new URLSearchParams(location.search).get("asset") : "tank");
@@ -397,6 +475,7 @@ function frame() {
 }
 frame();
 window.__asset = () => cur; window.__load = load; window.__views = VIEWS; window.__camera = camera; window.__controls = controls;
+window.__project = (x, y, z) => { const p = new THREE.Vector3(x, y, z).project(camera); return [(p.x * 0.5 + 0.5) * innerWidth, (-p.y * 0.5 + 0.5) * innerHeight]; };   // 撮影用: 世界座標 → 画面座標
 </script>
 </body>
 </html>

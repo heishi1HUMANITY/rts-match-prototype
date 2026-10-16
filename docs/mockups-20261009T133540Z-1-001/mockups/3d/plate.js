@@ -222,4 +222,5 @@
   }
 
   (window.DreamAssets ??= {}).plate = plate;
+  DreamAssets.crayon = { crayon, loop, jitter, grain, alphaTexture, layer, FRAMES };   // 同じクレヨンの描き方を他のアセット(移動線)で使う
 })();
