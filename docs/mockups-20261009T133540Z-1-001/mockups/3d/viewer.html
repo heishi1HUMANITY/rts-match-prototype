@@ -35,9 +35,11 @@
 <script src="floodgate.js"></script>
 <script src="chassis.js"></script>
 <script src="tank.js"></script>
+<script src="tank_hd.js"></script>
 <script src="spg.js"></script>
 <script src="aa.js"></script>
 <script src="scout.js"></script>
+<script src="scout_hd.js"></script>
 <script src="boat.js"></script>
 <script src="heli.js"></script>
 <script src="plant.js"></script>
@@ -61,7 +63,7 @@
 <canvas id="view"></canvas>
 
 <aside class="ui panel marks side">
-  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="heli">攻撃ヘリ</button><button data-a="spg">自走砲</button><button data-a="aa">対空車両</button><button data-a="scout">偵察</button><button data-a="boat">哨戒艇</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="moveline">移動線</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
+  <div class="row" id="assets"><button data-a="tank">装甲強襲</button><button data-a="tank_hd">装甲強襲(写実)</button><button data-a="heli">攻撃ヘリ</button><button data-a="spg">自走砲</button><button data-a="aa">対空車両</button><button data-a="scout">偵察</button><button data-a="scout_hd">偵察(写実)</button><button data-a="boat">哨戒艇</button><button data-a="floodgate">中央水門</button><button data-a="plant">発電所</button><button data-a="hub">物流ハブ</button><button data-a="bridge">橋</button><button data-a="ropeway">索道</button><button data-a="plate">ベースプレート</button><button data-a="moveline">移動線</button><button data-a="port">港</button><button data-a="mine">鉱山</button><button data-a="lab">研究所</button><button data-a="factory">工場</button><button data-a="terrain">地形</button><button data-a="guard">守備NPC</button><button data-a="raider">徘徊NPC</button><button data-a="boss">大拠点の守備</button><button data-a="floor">床タイル</button><button data-a="fog">霧</button></div>
   <div><div class="eyebrow" id="a-kind"></div><h1 id="a-title"></h1><div class="small dim" style="margin-top:3px" id="a-desc"></div></div>
   <dl class="kv" id="a-info"></dl>
   <div class="grp"><span class="eyebrow" id="a-act-label">STATE · 状態</span>
@@ -88,6 +90,7 @@
     <label class="chk"><input type="checkbox" id="wire">ワイヤーフレーム</label>
     <label class="chk"><input type="checkbox" id="bake" checked>部品の焼き込み(描画呼び出しを減らす。外すと元の部品のまま)</label>
     <label class="chk"><input type="checkbox" id="spin">自動回転</label>
+    <label class="chk" id="photo-row"><input type="checkbox" id="photo" checked>フォトリアル(空・地面・環境遮蔽・後処理。写実版だけ)</label>
   </div>
 </aside>
 
@@ -101,6 +104,15 @@
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { Sky } from "three/addons/objects/Sky.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 
 const canvas = document.getElementById("view");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
@@ -112,11 +124,114 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 30; controls.maxDistance = 2400;
 
 // ゲームと同じ照明の考え方: 半球光 + 斜めの平行光(影は落とさない)
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6));
+const hemi = new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(-300, 600, 200); scene.add(sun);
 // 製図の床
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf2f4f6 }));
 floor.position.y = -0.2; scene.add(floor);
+// 写実表示(アセットの realistic: true のときだけ): 環境の映り込み、トーンマッピング、柔らかい影、影を受ける床
+const shadowGround = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.32 }));
+shadowGround.position.y = -0.02; shadowGround.receiveShadow = true; shadowGround.visible = false; scene.add(shadowGround);
+let envTex = null;
+function setRealistic(A) {
+  const on = !!A.realistic;
+  if (on && !envTex) envTex = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = on ? envTex : null;
+  renderer.toneMapping = on ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; renderer.toneMappingExposure = on ? 1.05 : 1;
+  renderer.shadowMap.enabled = on; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  sun.castShadow = on; shadowGround.visible = on;
+  if (on) { const r = A.shadowR ?? 60, c = sun.shadow.camera; c.left = c.bottom = -r; c.right = c.top = r; c.near = 100; c.far = 1400; c.updateProjectionMatrix(); sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 3; sun.shadow.map?.dispose(); sun.shadow.map = null; }
+  hemi.intensity = on ? 0.35 : 1.6; sun.intensity = on ? 2.8 : 1.5;
+  controls.minDistance = A.minDist ?? 30;
+  setPhoto(on && $("photo").checked);
+}
+camera.layers.enable(1);   // 層 1 = 半透明の粒・光・ベースプレート(環境遮蔽の計算からだけ外す)
+
+// フォトリアル表示(写実版のアセットで「フォトリアル」を入れたとき): 物理的な空と、その空から作る環境光・映り込み、影を受ける土と草の地面、遠くのかすみ、
+// 後処理(GTAO の環境遮蔽 → わずかな光のにじみ → トーンマッピング → SMAA → 周辺減光と粒子感)。画像ファイルは使わない
+const PHOTO = { on: false, built: false };
+function buildPhoto() {
+  if (PHOTO.built) return; PHOTO.built = true;
+  const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 34), THREE.MathUtils.degToRad(-150));   // 高度 34°、左後ろ寄りから
+  const sky = new Sky(); sky.scale.setScalar(4500);
+  Object.assign(sky.material.uniforms, {}); const su = sky.material.uniforms;
+  su.turbidity.value = 2.2; su.rayleigh.value = 1.6; su.mieCoefficient.value = 0.004; su.mieDirectionalG.value = 0.82; su.sunPosition.value.copy(sunDir);
+  // 環境光: 空と、下半分に土の色の円盤を置いた場面から PMREM を作る(車体の下側に土の色が回り込む)
+  const envScene = new THREE.Scene(), sky2 = new Sky(); sky2.scale.setScalar(900); Object.assign(sky2.material.uniforms, THREE.UniformsUtils.clone(su)); sky2.material.uniforms.sunPosition.value.copy(sunDir); envScene.add(sky2);
+  const envGround = new THREE.Mesh(new THREE.CircleGeometry(800, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5c5444 })); envGround.position.y = -2; envScene.add(envGround);
+  PHOTO.env = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.02, 0.1, 2000).texture;
+  // 地面: 乾いた土と草の斑、小石、深い凹凸。車両の周り(半径 40〜80)は踏み固めた裸地
+  const gu = { uD1: { value: new THREE.Color(0x977f5c) }, uD2: { value: new THREE.Color(0x6a5440) }, uG1: { value: new THREE.Color(0x5d6a35) }, uG2: { value: new THREE.Color(0x3d4826) }, uPb: { value: new THREE.Color(0x9c978b) } };
+  const gm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0 });
+  gm.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, gu);
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vGP;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvGP = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
+      varying vec3 vGP; uniform vec3 uD1, uD2, uG1, uG2, uPb;
+      float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+      float vn(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+      float fbm(vec3 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * vn(p); p *= 2.03; a *= 0.5; } return s; }
+      float gH(vec3 p) { return fbm(p * 0.05) * 0.5 + fbm(p * 0.45) * 0.35 + smoothstep(0.72, 0.86, vn(p * 1.3)) * 0.45 + vn(p * 4.0) * 0.06; }`)
+      .replace("#include <color_fragment>", `#include <color_fragment>
+        vec3 gp = vec3(vGP.x, 0.0, vGP.z);
+        float fw = length(fwidth(vGP.xz)), near = 1.0 - smoothstep(0.08, 0.6, fw), mid = 1.0 - smoothstep(0.6, 3.0, fw);   // 画素あたりの地面の幅で細かい模様を弱める(遠くのちらつき防止)
+        float n1 = fbm(gp * 0.012), n2 = fbm(gp * 0.07 + 3.0), n3 = mix(0.5, fbm(gp * 0.5 + 7.0), mid);
+        float bare = 1.0 - smoothstep(45.0, 110.0, length(vGP.xz));
+        float g = smoothstep(0.5, 0.62, n1 + 0.18 * n3) * (1.0 - bare * 0.85);
+        vec3 col = mix(mix(uD1, uD2, n2), mix(uG1, uG2, n3), g);
+        col = mix(col, uPb, smoothstep(0.74, 0.88, vn(gp * 1.3)) * 0.3 * (1.0 - g) * mid);
+        col *= 0.82 + 0.36 * n3;
+        diffuseColor.rgb = col;`)
+      .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
+        { float fw = length(fwidth(vGP.xz)); float hb = gH(vec3(vGP.x, 0.0, vGP.z)) * (1.0 - smoothstep(0.1, 0.8, fw)); vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+          vec3 grad = sign(det) * (dFdx(hb) * r1 + dFdy(hb) * r2); normal = normalize(abs(det) * normal - grad * 0.9); }`);
+  };
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), gm); ground.position.y = -0.02; ground.receiveShadow = true;
+  PHOTO.objs = [sky, ground]; for (const o of PHOTO.objs) { o.visible = false; scene.add(o); }
+  PHOTO.sunDir = sunDir; PHOTO.fog = new THREE.FogExp2(0xb8c7d6, 0.00024);
+  // 後処理
+  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 0 }));
+  composer.addPass(new RenderPass(scene, camera));
+  PHOTO.aoCam = camera.clone(); PHOTO.aoCam.layers.set(0);
+  const gtao = new GTAOPass(scene, PHOTO.aoCam, 1, 1);
+  gtao.updateGtaoMaterial({ radius: 7, distanceExponent: 2, thickness: 3, scale: 1.1, samples: 16, distanceFallOff: 1 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+  gtao.blendIntensity = 1.0; composer.addPass(gtao);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.25, 0.5, 2.5); composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+  PHOTO.smaa = new SMAAPass(1, 1); composer.addPass(PHOTO.smaa);
+  PHOTO.grain = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uTime: { value: 0 } }, vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv;
+      void main() { vec4 c = texture2D(tDiffuse, vUv); vec2 d = vUv - 0.5; c.rgb *= 1.0 - dot(d, d) * 0.6;
+        float n = fract(sin(dot(vUv * vec2(1280.0, 720.0) + uTime * 61.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5; c.rgb += n * 0.014; gl_FragColor = c; }` });
+  composer.addPass(PHOTO.grain);
+  PHOTO.composer = composer; PHOTO.gtao = gtao; PHOTO.bloom = bloom;
+  resizePhoto();
+}
+function resizePhoto() {
+  if (!PHOTO.built) return;
+  const w = innerWidth, h = innerHeight, pr = renderer.getPixelRatio();
+  PHOTO.composer.setPixelRatio(pr); PHOTO.composer.setSize(w, h);
+}
+function setPhoto(on) {
+  if (on) buildPhoto();
+  PHOTO.on = on;
+  for (const o of PHOTO.objs ?? []) o.visible = on;
+  floor.visible = g1.visible = g2.visible = !on;
+  scene.background = on ? null : new THREE.Color(0xe9edf1);
+  scene.fog = on ? PHOTO.fog : null;
+  if (on) {
+    scene.environment = PHOTO.env;
+    sun.position.copy(PHOTO.sunDir).multiplyScalar(700); sun.color.set(0xfff0dc); sun.intensity = 3.4; hemi.intensity = 0.0;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+    shadowGround.visible = false; camera.fov = 38;
+  } else {
+    sun.position.set(-300, 600, 200); sun.color.set(0xffffff); camera.fov = 50;
+  }
+  camera.updateProjectionMatrix();
+  if (typeof applyToggles === "function" && cur) applyToggles();
+}
 const g1 = new THREE.GridHelper(2400, 100, 0xd6dce2, 0xe0e5ea); g1.position.y = -0.1; scene.add(g1);
 const g2 = new THREE.GridHelper(2400, 25, 0xc3cbd3, 0xc3cbd3); g2.position.y = -0.05; scene.add(g2);
 
@@ -159,6 +274,20 @@ const ASSETS = {
     caption: (a) => a.charging ? "レールガン 充電中" + (a.fxStyle === "real" ? "(演出: リアル)" : "") : "",
     ringParts: (a) => [a.parts.plate],
   },
+  tank_hd: {
+    kind: "ASSET VIEWER · UNIT / ARMOR · REALISTIC", title: "装甲強襲(写実版)", desc: "レールガン戦車(装甲強襲 v3)を、盤面の模型の約束を外して実車に寄せて作り込んだ PC 表示向けの版。履板・転輪・起動輪まで作った足回り、スカート、砲塔の装備、密閉筐体の主砲",
+    info: [["ファイル", "mockups/3d/tank_hd.js(材質は common.js の U.realKit)"], ["大きさ", "tank.js と同じ(全長 約42 × 表示 2.0)"], ["材質", "MeshStandardMaterial、迷彩・汚れはシェーダー(画像なし)"], ["表示", "環境マップ・ACES・柔らかい影(このアセットだけ)"]],
+    scale: 2.0, dist: 190, target: 10, tokenAt: [-175, 0, -60], realistic: true, shadowR: 70, minDist: 6,
+    make: () => DreamAssets.tankHD(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { camo: "3色迷彩", olive: "オリーブ", desert: "砂漠", stealth: "ステルス" }, next = { camo: "olive", olive: "desert", desert: "stealth", stealth: "camo" }, DIRT = ["なし", "普通", "多い"];
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], ["砲塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["射撃(充電→発射)", () => a.fire(), () => a.charging],
+        ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false], ["汚れ: " + DIRT[a.dirt], () => a.setDirt((a.dirt + 1) % 3), () => false]];
+    },
+    caption: (a) => a.charging ? "レールガン 充電中" : "",
+    ringParts: (a) => [a.parts.plate],
+  },
   spg: {
     kind: "ASSET VIEWER · UNIT / ARTILLERY", title: "自走砲", desc: "装甲強襲と共通の装軌車体に 155mm 級 52 口径の長砲身を載せた自走榴弾砲(K9 / PzH 2000 が下敷き)。走行時は車首の固定具に砲身を載せ、展開で 40° に上げて撃つ",
     info: [["ファイル", "mockups/3d/spg.js(足回りは chassis.js)"], ["大きさ", "全長 約56(砲身込み) × 表示 2.0"], ["主砲", "排煙器、2 室式マズルブレーキ、長い後座と復座"], ["射撃", "展開完了後のみ。閃光・炎・煙の輪・砂塵・車体の揺れ"]],
@@ -199,6 +328,20 @@ const ASSETS = {
         ["演出: " + (a.fxStyle === "real" ? "リアル" : "デフォルメ"), () => a.setFxStyle(a.fxStyle === "real" ? "stylized" : "real"), () => a.fxStyle === "real"]];
     },
     caption: (a) => a.observing ? "観測中 — マストの頭部が走査しています" : a.mastExt > 0 ? (a.mast && !a.moving ? "マストを上げています" : "マストを下ろしています" + (a.moving ? "(下ろしきってから走り出す)" : "")) : "",
+    ringParts: (a) => [a.parts.plate],
+  },
+  scout_hd: {
+    kind: "ASSET VIEWER · UNIT / RECON · REALISTIC", title: "偵察(写実版)", desc: "偵察の車両を、盤面の模型の約束を外して実車に寄せて作り込んだ PC 表示向けの版。物理ベースの材質と環境の映り込み・影、迷彩と砂ぼこりの塗り分け、追従する懸架、銃塔とマストの細部",
+    info: [["ファイル", "mockups/3d/scout_hd.js"], ["大きさ", "scout.js と同じ(全長 約31 × 表示 2.0)"], ["材質", "MeshStandardMaterial、迷彩・汚れはシェーダー(画像なし)"], ["表示", "環境マップ・ACES・柔らかい影(このアセットだけ)"]],
+    scale: 2.0, dist: 150, target: 10, tokenAt: [-160, 0, -60], realistic: true, shadowR: 55, minDist: 6,
+    make: () => DreamAssets.scoutHD(THREE),
+    actLabel: "ACTION · 動作", progress: false,
+    actions: (a) => {
+      const PAINTS = { camo: "3色迷彩", olive: "オリーブ", desert: "砂漠", stealth: "ステルス" }, next = { camo: "olive", olive: "desert", desert: "stealth", stealth: "camo" }, DIRT = ["なし", "普通", "多い"];
+      return [["走行", () => a.setMoving(!a.moving), () => a.moving], ["操舵", () => a.setSteering(!a.steering), () => a.steering], [a.mast ? "マストを下ろす" : "マストを上げる(観測)", () => a.setMast(!a.mast), () => a.mast], ["銃塔旋回", () => a.setTraverse(!a.traverse), () => a.traverse], ["機関銃", () => a.fireGun(), () => a.firing],
+        ["塗り: " + PAINTS[a.paint], () => a.setPaint(next[a.paint]), () => false], ["汚れ: " + DIRT[a.dirt], () => a.setDirt((a.dirt + 1) % 3), () => false]];
+    },
+    caption: (a) => a.observing ? "観測中 — マストの頭部が走査しています" : a.mastExt > 0 ? (a.mast && !a.moving ? "マストを上げています" : "マストを下ろしています") : "",
     ringParts: (a) => [a.parts.plate],
   },
   boat: {
@@ -405,7 +548,7 @@ const $ = (id) => document.getElementById(id);
 function load(key) {
   if (cur) scene.remove(cur.group);
   const A = ASSETS[key]; curKey = key;
-  cur = A.make(); cur.group.scale.setScalar(A.scale); scene.add(cur.group);
+  cur = A.make(); cur.group.scale.setScalar(A.scale); scene.add(cur.group); setRealistic(A);
   cur.setTeam(teamColor);
   token.position.set(...A.tokenAt);
   $("a-kind").textContent = A.kind; $("a-title").textContent = A.title; $("a-desc").textContent = A.desc;
@@ -436,10 +579,12 @@ $("team").addEventListener("click", (e) => { const b = e.target.closest("button"
 $("cam").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; currentView = b.dataset.v; VIEWS[currentView](); pick("cam", b); });
 function applyToggles() {
   cur.group.traverse((o) => { if ((o.isLineSegments && o.parent?.isMesh) || o.userData.edges) o.visible = $("edges").checked; if (o.isMesh && o.material && "wireframe" in o.material) o.material.wireframe = $("wire").checked; });
-  for (const p of ASSETS[curKey].ringParts(cur)) p.visible = $("ring").checked;
-  token.visible = $("scale").checked; controls.autoRotate = $("spin").checked;
+  for (const p of ASSETS[curKey].ringParts(cur)) p.visible = $("ring").checked && !PHOTO.on;
+  token.visible = $("scale").checked && !PHOTO.on; controls.autoRotate = $("spin").checked;
+  $("photo-row").style.display = ASSETS[curKey].realistic ? "" : "none";
 }
 for (const id of ["edges", "ring", "scale", "wire", "spin"]) $(id).addEventListener("change", applyToggles);
+$("photo").addEventListener("change", () => setRealistic(ASSETS[curKey]));
 $("bake").addEventListener("change", () => { DreamAssets.util.noBake = !$("bake").checked; load(curKey); });   // 作り直して比べる
 
 // ドラッグ操作(アセットが hitUnit / dragStart / dragTo / dragEnd / clickCell を持つとき): 部隊をつかんで目的地へ引く。地面のクリックはアセットに渡す(岩の切替など)
@@ -459,7 +604,7 @@ canvas.addEventListener("pointerup", (e) => {
   drag = null; drawActions();
 });
 
-function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); resizePhoto(); }
 addEventListener("resize", resize); resize();
 load(new URLSearchParams(location.search).get("asset") in ASSETS ? new URLSearchParams(location.search).get("asset") : "tank");
 
@@ -470,7 +615,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.1);
   cur.update(dt);
   controls.update();
-  renderer.render(scene, camera);
+  if (PHOTO.on) { PHOTO.aoCam.copy(camera); PHOTO.aoCam.layers.set(0); PHOTO.grain.uniforms.uTime.value += dt; PHOTO.composer.render(dt); } else renderer.render(scene, camera);
   if ((uiT -= dt) <= 0) {   // 状態の表示を同期(動作ボタンの点灯、進捗、字幕)
     uiT = 0.1;
     const acts = ASSETS[curKey].actions(cur);

@@ -667,5 +667,151 @@
     return { root, fire, fireAt, tracer, spawn, update, get active() { return active; } };
   };
 
+  // ── 写実版の共通部品(2026-10-17。偵察・装甲強襲の写実版で共用。PC 表示向け) ──
+  // 物理ベースの材質(MeshStandardMaterial)に、塗装(3 色迷彩 / 単色)と「下ほど濃い砂ぼこり」・塗りのむらをシェーダーで足す。画像ファイルは使わない。
+  //   const K = U.realKit(THREE, { sign: "偵" }); K.parent = body;   // rod / pipe / grab / seam の既定の親
+  //   K.M.paint ...(材質)、K.cbox / rod / pipe / grab / bolt / boltRow / seam(部品)、K.setLook({ paint, dirt, team })、K.finish(group)(ボルトと影)、K.tick(group)(毎フレーム)
+  // 汚れの高さは group の表示倍率で割った模型の単位で測る(tick が group の拡大率を読む)。迷彩の柄は部品の所有者(焼いたあとの車体・砲塔など)の座標で作る
+  U.REAL_PAINTS = {
+    camo: { camo: 1, c: [0x48553a, 0x5c4a36, 0x24261f] },     // NATO 3 色迷彩(緑・茶・黒)
+    olive: { camo: 0, c: [0x4d5237, 0x4d5237, 0x4d5237] },
+    desert: { camo: 0, c: [0xa88f68, 0xa88f68, 0xa88f68] },
+    stealth: { camo: 0, c: [0x30373d, 0x30373d, 0x30373d] },  // ゲームの「ステルス」と同じ黒鉛色
+  };
+  const REAL_GLSL = `
+    varying vec3 vCP; varying float vCH; varying vec3 vWN;
+    uniform vec3 uC1, uC2, uC3, uDust; uniform float uCamo, uTint, uDustAmt, uDustK, uDustH, uScale, uBump;
+    float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float vn(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+                 mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+    float fbm(vec3 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * vn(p); p *= 2.03; a *= 0.5; } return s; }
+  `;
+  U.realKit = function (THREE, { sign = "", dustH = 5.0 } = {}) {
+    const K = {};
+    const UNIT = { value: 2 }, DUSTK = { value: 0.6 }, DUSTH = { value: dustH }, DUST = { value: new THREE.Color(0x9a8a6c) };
+    const paintU = { c1: { value: new THREE.Color() }, c2: { value: new THREE.Color() }, c3: { value: new THREE.Color() }, camo: { value: 1 } };
+    const std = (c, roughness, metalness, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness, metalness, ...extra });
+    // painted: 迷彩の色を使う(塗装面)。dust: 汚れの付きやすさ。tint: 塗装の明るさ(付属品は少し暗い)。頂点色は塗装面以外で掛かる
+    // bump: 表面の細かい凹凸の強さ(塗装の肌・鋳物の肌・ゴムの肌。法線をシェーダーで揺らす)
+    const patch = (mat, { painted = false, dust = 0.8, tint = 1, bump = 0.03 } = {}) => {
+      const u = { uC1: paintU.c1, uC2: paintU.c2, uC3: paintU.c3, uCamo: painted ? paintU.camo : { value: -1 }, uTint: { value: tint }, uDust: DUST, uDustAmt: { value: dust }, uDustK: DUSTK, uDustH: DUSTH, uScale: { value: 0.11 }, uBump: { value: bump }, uUnit: UNIT };
+      mat.userData.u = u;
+      mat.onBeforeCompile = (sh) => {
+        Object.assign(sh.uniforms, u);
+        sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vCP; varying float vCH; varying vec3 vWN; uniform float uUnit;")
+          .replace("#include <begin_vertex>", `#include <begin_vertex>
+            vec4 cpos = vec4(transformed, 1.0);
+            vec3 cnrm = objectNormal;
+            #ifdef USE_INSTANCING
+              cpos = instanceMatrix * cpos; cnrm = mat3(instanceMatrix) * cnrm;
+            #endif
+            vCP = cpos.xyz; vCH = (modelMatrix * cpos).y / uUnit; vWN = normalize(mat3(modelMatrix) * cnrm);`);
+        sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\n" + REAL_GLSL)
+          .replace("#include <color_fragment>", `#include <color_fragment>
+            float camoDust = 0.0;
+            {
+              vec3 col = diffuseColor.rgb;
+              if (uCamo > -0.5) {   // 塗装面: 迷彩(または単色)
+                col = uC1;
+                if (uCamo > 0.5) { vec3 p = vCP * uScale; col = mix(col, uC2, smoothstep(0.50, 0.53, fbm(p))); col = mix(col, uC3, smoothstep(0.585, 0.615, fbm(p * 1.13 + vec3(7.3, 1.7, 3.1)))); }
+                col *= uTint;
+              }
+              col *= 0.86 + 0.28 * fbm(vCP * 0.85 + 11.0);   // 塗りと汚れのむら
+              float up = smoothstep(0.55, 0.95, vWN.y);
+              col *= 1.0 - 0.2 * smoothstep(0.55, 0.78, fbm(vec3(vCP.x * 1.7, vCP.y * 0.12, vCP.z * 1.7) + 5.0)) * (1.0 - up);   // 縦の汚れの筋(雨だれ)
+              float h = clamp((uDustH - vCH) / uDustH, 0.0, 1.0);
+              camoDust = clamp(h * h * 1.7 * (0.5 + fbm(vCP * 0.45 + 3.0)) - 0.12, 0.0, 1.0);
+              camoDust = max(camoDust, up * smoothstep(0.35, 0.75, fbm(vCP * 0.7 + 9.0)) * 0.45);   // 上を向いた面に積もるほこり
+              camoDust *= uDustAmt * uDustK;
+              col = mix(col, uDust, camoDust);
+              diffuseColor.rgb = col;
+            }`)
+          .replace("#include <metalnessmap_fragment>", "#include <metalnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (0.82 + 0.36 * fbm(vCP * 2.3 + 17.0)), 0.04, 1.0); roughnessFactor = mix(roughnessFactor, 0.97, camoDust); metalnessFactor = mix(metalnessFactor, 0.0, camoDust);")
+          .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
+            if (uBump > 0.0) {   // 表面の細かい凹凸: 高さの場の微分で法線を傾ける(three の bumpMap と同じ式。画像なし)
+              float hb = fbm(vCP * 3.1) * 0.6 + fbm(vCP * 12.0 + 3.7) * 0.4 + camoDust * fbm(vCP * 6.0) * 0.8;
+              vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
+              vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
+              float det = dot(dpx, r1);
+              vec3 grad = sign(det) * (dFdx(hb) * r1 + dFdy(hb) * r2);
+              normal = normalize(abs(det) * normal - grad * uBump * faceDirection);
+            }`);
+      };
+      return mat;
+    };
+    const basic = (c, extra = {}) => new THREE.MeshBasicMaterial({ color: c, ...extra });
+    const M = {
+      paint: patch(std(0x48553a, 0.68, 0.05), { painted: true, dust: 1, bump: 0.04 }),
+      trim: patch(std(0x48553a, 0.62, 0.08), { painted: true, dust: 0.9, tint: 0.86 }),
+      rim: patch(std(0x48553a, 0.6, 0.1), { painted: true, dust: 1.1, tint: 0.9 }),
+      metal: patch(std(0x33373a, 0.48, 0.7), { dust: 0.6 }),
+      steel: patch(std(0x80858a, 0.32, 0.9), { dust: 0.4 }),
+      black: patch(std(0x1a1c1e, 0.62, 0.15), { dust: 0.5 }),
+      rubber: patch(std(0x1d1e1f, 0.92, 0), { dust: 1.2, bump: 0.12 }),
+      seam: std(0x0b0d0e, 0.9, 0),
+      glass: std(0x0b1512, 0.04, 0.35, { envMapIntensity: 2.4 }),
+      lens: std(0x0d1418, 0.06, 0.7, { envMapIntensity: 2 }),
+      lensIR: std(0x2c2b33, 0.12, 0.95, { envMapIntensity: 2 }),
+      lamp: std(0xe6ecef, 0.03, 0.1, { transparent: true, opacity: 0.35, envMapIntensity: 2 }),
+      chrome: std(0xdde1e4, 0.1, 1.0),
+      amber: std(0xd88a1c, 0.15, 0, { emissive: 0x2a1500 }),
+      red: std(0x9c1d15, 0.15, 0, { emissive: 0x200402 }),
+      brass: std(0xb8913f, 0.32, 0.9),
+      canvas: patch(std(0x53573d, 0.96, 0), { dust: 0.7, bump: 0.15 }),
+      strap: patch(std(0x393c2b, 0.9, 0), { dust: 0.5 }),
+      mast: patch(std(0x70746a, 0.38, 0.65), { dust: 0.15 }),
+      team: std(0xff6a1a, 0.85, 0),
+      teamPaint: patch(std(0xff6a1a, 0.55, 0.05), { dust: 0.7 }),
+      ring: basic(0xff6a1a, { transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }),
+      glow: basic(0xff6a1a, { transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }),
+      sign: new THREE.MeshBasicMaterial({ map: U.signTexture(THREE, sign), transparent: true }),
+    };
+    const STATIC = [M.paint, M.trim, M.rim, M.metal, M.steel, M.black, M.rubber, M.seam, M.glass, M.lens, M.lensIR, M.chrome, M.amber, M.red, M.canvas, M.strap, M.mast, M.team, M.teamPaint];
+    // 部品
+    const V = (x, y, z) => new THREE.Vector3(x, y, z), UP = V(0, 1, 0);
+    const add = (geo, mat, parent, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 } = {}) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m; };
+    const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+    const cyl = (r, h, n = 16, r2 = r) => new THREE.CylinderGeometry(r, r2, h, n);
+    const cylX = (r, h, n = 16, r2 = r) => cyl(r, h, n, r2).rotateZ(Math.PI / 2);
+    const cylZ = (r, h, n = 16, r2 = r) => cyl(r, h, n, r2).rotateX(Math.PI / 2);
+    const rect = (hw, hh, c) => [[-hw + c, -hh], [hw - c, -hh], [hw, -hh + c], [hw, hh - c], [hw - c, hh], [-hw + c, hh], [-hw, hh - c], [-hw, -hh + c]];
+    const cboxCache = new Map();
+    const cbox = (w, h, d, c = 0.08) => {   // 面取りした箱(c = 面取りの幅)
+      const k = [w, h, d, c].join(); if (cboxCache.has(k)) return cboxCache.get(k);
+      c = Math.min(c, w / 3, h / 3, d / 3);
+      const g = U.loft(THREE, [{ z: -d / 2, pts: rect(w / 2 - c, h / 2 - c, c * 0.6) }, { z: -d / 2 + c, pts: rect(w / 2, h / 2, c) }, { z: d / 2 - c, pts: rect(w / 2, h / 2, c) }, { z: d / 2, pts: rect(w / 2 - c, h / 2 - c, c * 0.6) }]);
+      cboxCache.set(k, g); return g;
+    };
+    // 2 点を結ぶ棒、点列を通る管、取っ手(面から浮かせたコの字)、継ぎ目(暗い細い棒)
+    const rod = (a, b, r, mat, parent = K.parent, n = 8) => { const d = b.clone().sub(a), m = new THREE.Mesh(cyl(r, d.length(), n), mat); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, d.normalize()); parent.add(m); return m; };
+    const pipe = (pts, r, mat, parent = K.parent, seg = 24, n = 8, closed = false) => add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed, "catmullrom", 0.1), seg, r, n, closed), mat, parent);
+    const grab = (a, b, nrm, s = 0.4, r = 0.06, mat = M.steel, parent = K.parent) => pipe([a, a.clone().addScaledVector(nrm, s), b.clone().addScaledVector(nrm, s), b], r, mat, parent, 16, 6);
+    const seam = (a, b, parent = K.parent) => rod(a, b, 0.035, M.seam, parent, 4);
+    // ボルト(六角、所有者ごとに 1 つの InstancedMesh にまとめる。finish で作る)。pos = 面の上の点、nrm = 面の外向き
+    const bolts = new Map();
+    const bolt = (owner, pos, nrm, s = 1) => { const q = new THREE.Quaternion().setFromUnitVectors(UP, nrm.clone().normalize()); (bolts.get(owner) ?? bolts.set(owner, []).get(owner)).push(new THREE.Matrix4().compose(pos, q, V(s, s, s))); };
+    const boltRow = (owner, a, b, n, nrm, s = 1) => { for (let i = 0; i < n; i++) bolt(owner, a.clone().lerp(b, n === 1 ? 0.5 : i / (n - 1)), nrm, s); };
+    // 焼いたあとに呼ぶ: ボルトを所有者ごとに InstancedMesh にし、不透明な部品に影を付ける
+    function finish(group) {
+      const boltG = cyl(0.11, 0.09, 6).translate(0, 0.045, 0);
+      for (const [owner, list] of bolts) { const im = new THREE.InstancedMesh(boltG, M.trim, list.length); list.forEach((m, i) => im.setMatrixAt(i, m)); owner.add(im); }
+      group.traverse((o) => {
+        if ((o.isMesh || o.isInstancedMesh) && !o.material.transparent && !o.material.isMeshBasicMaterial && !o.material.isShaderMaterial) { o.castShadow = true; o.receiveShadow = true; }
+        else if (o.isMesh || o.isPoints || o.isLine) o.layers.set(1);   // 半透明の粒・光・ベースプレートは層 1(ビューアの環境遮蔽の計算から外す)
+      });
+    }
+    function setLook({ paint, dirt, team }) {
+      const P = U.REAL_PAINTS[paint] ?? U.REAL_PAINTS.camo;
+      paintU.camo.value = P.camo; paintU.c1.value.set(P.c[0]); paintU.c2.value.set(P.c[1]); paintU.c3.value.set(P.c[2]);
+      M.team.color.copy(team); M.teamPaint.color.copy(team).multiplyScalar(0.85); M.ring.color.copy(team); M.glow.color.copy(team);
+      DUSTK.value = [0, 0.6, 1][dirt];
+      DUST.value.set(paint === "desert" ? 0xc8b48e : 0x9a8a6c);
+    }
+    const gs = new THREE.Vector3();
+    const tick = (group) => { group.getWorldScale(gs); UNIT.value = gs.y || 1; };
+    return Object.assign(K, { M, STATIC, std, patch, basic, V, UP, add, box, cyl, cylX, cylZ, cbox, rod, pipe, grab, seam, bolt, boltRow, finish, setLook, tick, parent: null });
+  };
+
   (window.DreamAssets ??= {}).util = U;
 })();
