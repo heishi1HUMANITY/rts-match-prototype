@@ -14,6 +14,17 @@ describe('100-cell trial map definition', () => {
     expect(maps[1]?.terrain).toEqual(maps[2]?.terrain);
     expect(maps[0]?.width).toBe(100);
     expect(maps[0]?.height).toBe(100);
+    expect(maps[0]?.definitionId).toBe('ring-three-fronts');
+    expect(maps[0]?.startPoints).toEqual({
+      'south-west': { x: 13, y: 50 },
+      'south-east': { x: 70, y: 83 },
+      north: { x: 70, y: 18 },
+    });
+    expect(maps[0]?.startAssignment).toEqual({
+      A: 'south-west',
+      B: 'south-east',
+      C: 'north',
+    });
     expect(maps[0]?.basePlacements).toHaveLength(12);
     expect(maps[0]?.initialUnitPlacements).toHaveLength(6);
     for (const map of maps) {

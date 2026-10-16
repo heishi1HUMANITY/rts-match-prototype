@@ -111,15 +111,16 @@ export interface Cell {
   readonly y: number;
 }
 
+export type StartPositionId = 'north' | 'south-east' | 'south-west';
+
 export interface GridMap {
   readonly width: number;
   readonly height: number;
   /** Immutable map-definition and physical-start assignment snapshot. */
   readonly definitionId?: string;
   readonly definitionVersion?: number;
-  readonly startAssignment?: Readonly<
-    Record<FactionId, 'north' | 'south-east' | 'south-west'>
-  >;
+  readonly startAssignment?: Readonly<Record<FactionId, StartPositionId>>;
+  readonly startPoints?: Readonly<Record<StartPositionId, Cell>>;
   readonly basePlacements?: readonly MapBasePlacement[];
   readonly initialUnitPlacements?: readonly MapUnitPlacement[];
   /** Row-major terrain classes. */
