@@ -1334,3 +1334,76 @@ select:focus-visible {
 .research-editor .master-field-error {
   grid-column: 1 / -1;
 }
+
+/* Keep frequently used actions beside their content, outside the playfield. */
+.g2-shell .board-frame {
+  --strategy-dock-width: 280px;
+}
+.g2-shell .board-host {
+  right: calc(var(--strategy-dock-width) + 12px);
+}
+.g2-shell .mini-map {
+  right: calc(var(--strategy-dock-width) + 22px);
+}
+.strategy-dock {
+  position: absolute;
+  z-index: 2;
+  inset: 6px 6px 6px auto;
+  width: var(--strategy-dock-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel, #f9fafb);
+}
+.strategy-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.strategy-tabs button {
+  min-height: 44px;
+  padding: 0 4px;
+}
+.strategy-tabs button[aria-expanded='true'] {
+  background: #245f76;
+  color: #fff;
+  border-color: #245f76;
+}
+.strategy-dock .strategy-panel {
+  position: static;
+  width: auto;
+  min-height: 0;
+  flex: 1;
+  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.strategy-empty {
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+@media (max-width: 1000px) {
+  .g2-shell .board-frame {
+    --strategy-dock-width: 240px;
+  }
+  .strategy-tabs {
+    gap: 3px;
+    padding: 4px;
+  }
+  .strategy-tabs button {
+    font-size: 11px;
+  }
+}
+@media (max-width: 700px) {
+  .g2-shell .board-frame {
+    --strategy-dock-width: 210px;
+  }
+}

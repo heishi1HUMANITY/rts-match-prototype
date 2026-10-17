@@ -34,6 +34,7 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
   await page
     .getByRole('button', { name: '適用してリセット', exact: true })
     .click();
+  await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.getByRole('button', { name: '施設', exact: true }).click();
   await page.locator('[data-facility-anchor]').selectOption('base:HQ-A');

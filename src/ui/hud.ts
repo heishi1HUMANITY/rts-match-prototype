@@ -153,7 +153,10 @@ export function createHud(app: HTMLElement): HudElements {
       </div></details>
     </header>
     <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
-      <aside class="strategy-panel" aria-label="戦略操作" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
+      <aside class="strategy-dock" aria-label="戦略操作">
+        <nav class="strategy-tabs" aria-label="操作メニュー"><button data-action="production" aria-controls="strategy-content">生産</button><button data-action="research" aria-controls="strategy-content">研究</button><button data-action="bases" aria-controls="strategy-content">拠点</button><button data-action="crossings" aria-controls="strategy-content">渡河</button><button data-action="facilities" aria-controls="strategy-content">施設</button><button data-action="abilities" aria-controls="strategy-content">作戦</button></nav>
+        <p class="strategy-empty" data-dock-empty hidden>上の操作から選んでください。盤面の拠点を選ぶと、その拠点の操作を開きます。</p>
+        <div id="strategy-content" class="strategy-panel" hidden><div class="panel-heading"><strong data-panel-title></strong><button data-action="close-panel">閉じる ×</button></div><p class="panel-live"></p>
         <section data-panel="production" hidden><p class="production-summary"></p>
           <label>生産場所 <select data-production-site aria-label="部隊の生産場所"></select></label><div class="production-options"></div>
           <h3>生産キュー</h3><div class="production-queue"></div>
@@ -165,9 +168,10 @@ export function createHud(app: HTMLElement): HudElements {
         <section data-panel="facilities" hidden><p>所有拠点・完成した橋/索道へ建築します。位置は自動、建築中も枠を使います。アンカーを失うと施設は消えます。</p><label>設置先 <select data-facility-anchor aria-label="施設の設置先"></select></label><p data-facility-slots></p><div class="facility-options"></div><p data-facility-status></p></section>
         <section data-panel="base" hidden><label>拠点 <select data-base-select aria-label="表示する拠点"></select></label><div class="base-detail"></div><p data-upgrade-reason></p><button data-action="upgrade-base">拠点を強化</button><button data-action="garrison">選択部隊を駐留</button><p data-capture-help></p><button data-action="production">生産を開く</button></section>
         <section data-panel="abilities" hidden><p>6種の作戦指令は全陣営共通です。効果・費用・待ち時間はマスタで調整できます。地点を狙う指令は、ボタンを押してから盤面をタップしてください。</p><label>妨害先 <select data-ability-target aria-label="電波妨害の対象陣営"></select></label><div class="tactical-abilities"></div><p data-ability-active role="status"></p></section>
+        </div>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="production">生産</button><button data-action="research">研究</button><button data-action="bases">拠点</button><button data-action="crossings">渡河</button><button data-action="facilities">施設</button><button data-action="abilities">作戦</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
@@ -176,7 +180,7 @@ export function createHud(app: HTMLElement): HudElements {
     app.querySelector<T>(selector)!;
   const action = (id: string): HTMLButtonElement =>
     find(`[data-action="${id}"]`);
-  return {
+  const elements: HudElements = {
     root: app,
     board: find('.board-host'),
     seed: find('[data-seed]'),
@@ -197,6 +201,8 @@ export function createHud(app: HTMLElement): HudElements {
     selectedBaseId: 'HQ-A',
     multiSelect: false,
   };
+  setHudPanel(elements, 'production');
+  return elements;
 }
 export function setHudPanel(
   elements: HudElements,
@@ -207,6 +213,8 @@ export function setHudPanel(
   if (baseId !== undefined) elements.selectedBaseId = baseId;
   const host = elements.root.querySelector<HTMLElement>('.strategy-panel')!;
   host.hidden = panel === null;
+  elements.root.querySelector<HTMLElement>('[data-dock-empty]')!.hidden =
+    panel !== null;
   for (const section of host.querySelectorAll<HTMLElement>('[data-panel]'))
     section.hidden = section.dataset.panel !== panel;
   host.querySelector<HTMLElement>('[data-panel-title]')!.textContent =
@@ -228,13 +236,16 @@ export function setHudPanel(
     'crossings',
     'facilities',
     'abilities',
-  ])
-    elements.root
-      .querySelector(`[data-action="${name}"]`)
-      ?.setAttribute(
+  ]) {
+    for (const button of elements.root.querySelectorAll(
+      `[data-action="${name}"]`,
+    )) {
+      button.setAttribute(
         'aria-expanded',
         String(panel === (name === 'bases' ? 'base' : name)),
       );
+    }
+  }
 }
 function productionReason(
   view: FactionView,

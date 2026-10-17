@@ -1,5 +1,7 @@
 # Playwright シナリオ検証
 
+視界マスクは `fog-visibility.spec.ts` で画面の隅の暗さと自部隊付近の明るさを実描画ピクセルから確認する。寸法の違うGPU領域への部分更新を、DOMの表示確認だけで合格にしない。`strategy-dock.spec.ts` は操作タブの常設・切替・再選択・閉じた後の入口・盤面との非重複をPC/900×420で確認する。
+
 Node.js 24.x / npm 11〜12で実行します。
 
 ```sh
@@ -33,3 +35,5 @@ IDの出典は [G1_SCENARIOS.md](../docs/project/inspection/G1_SCENARIOS.md) で
 CIは成功・失敗にかかわらずレポートと診断成果物を14日保存します。PRのdist artifactは既存のWindows/Linux checksで保存し、main pushでは両OSのchecksとe2e成功後に同じLinuxビルドをGitHub Pagesへ配備します。PR preview URLは未導入です。
 
 NPC-R01修正のシナリオは [NPC_R01_SCENARIOS.md](../docs/project/inspection/NPC_R01_SCENARIOS.md) を参照。`npc-pacing.spec.ts` は標準マスタ復元、通常B/Cの生産・研究・行軍、診断snapshot/replayエクスポート、一時停止・再開・リセットを両viewportで検証する。厳密な判断tick、命令上限、公平巡回、現地勢力周期、旧AI診断拒否はruntime/AIユニットテストで検証し、遊びやすさはCP0プレイで判定する。
+
+CIはPCと900×420をそれぞれ2分割し、計4ランナーで並列実行する。各ランナー内はGPU競合を避けて1ワーカーとする。操作単位の待ち時間は15秒。全4分割の成功を集約したe2eチェックが公開を許可する。検査設定は適用成功時に閉じ、常設操作タブを遮らないことを施設テストで確認する。

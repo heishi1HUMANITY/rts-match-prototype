@@ -9,7 +9,7 @@ test('F15: all shared tactical abilities are visible and can be activated', asyn
     .getByRole('combobox', { name: '検査シナリオ' })
     .selectOption('f15-tactical-abilities');
   await page.getByRole('button', { name: '適用してリセット' }).click();
-  await page.getByText('検査設定', { exact: true }).click();
+  await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await page.getByRole('button', { name: '作戦', exact: true }).click();
 
   const abilities = page.locator('.tactical-ability-card');

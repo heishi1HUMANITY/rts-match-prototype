@@ -563,6 +563,7 @@ const handleClick = (event: MouseEvent): void => {
     clearActiveDrag();
     const scenario = hud.scenario.value;
     if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
+    hud.root.querySelector<HTMLDetailsElement>('.test-settings')!.open = false;
     setHudPanel(hud, null);
     runtime.reset(
       seed,
@@ -595,7 +596,7 @@ const handleClick = (event: MouseEvent): void => {
   ) {
     input.cancelGesture();
     const panel = action === 'bases' ? 'base' : action;
-    setHudPanel(hud, hud.panel === panel ? null : panel);
+    setHudPanel(hud, panel);
     updateHud(hud, runtime.playerSnapshot());
   }
 };

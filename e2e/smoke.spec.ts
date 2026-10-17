@@ -59,7 +59,10 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
 test('G1-10 / G1-11: seed changes only after valid apply', async ({ page }) => {
   await page.goto('./');
   await page.getByText('検査設定', { exact: true }).click();
-  const seed = page.getByRole('spinbutton', { name: '試合seed' });
+  const seed = page.getByRole('spinbutton', {
+    name: '試合seed',
+    includeHidden: true,
+  });
   await seed.fill('-1');
   await page.getByRole('button', { name: '適用してリセット' }).click();
   await expect(seed).toHaveAttribute('aria-invalid', 'true');
@@ -68,4 +71,5 @@ test('G1-10 / G1-11: seed changes only after valid apply', async ({ page }) => {
   await page.getByRole('button', { name: '適用してリセット' }).click();
   await expect(page.locator('.status[role="status"]')).toContainText('seed 43');
   await expect(seed).not.toHaveAttribute('aria-invalid');
+  await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
 });

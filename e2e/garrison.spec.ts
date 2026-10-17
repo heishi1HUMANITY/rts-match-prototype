@@ -13,7 +13,7 @@ test('F18-01: garrison a selected unit from the base panel and verify arrival st
   await page
     .getByRole('button', { name: '適用してリセット', exact: true })
     .click();
-  await page.getByText('検査設定', { exact: true }).click();
+  await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.locator('[data-unit="A-01"]').click();
   await page.getByRole('button', { name: '拠点', exact: true }).click();
