@@ -444,6 +444,42 @@ const handleClick = (event: MouseEvent): void => {
   }
   const buildCrossing = clickedButton?.dataset.crossingBuild;
   const dismantleCrossing = clickedButton?.dataset.crossingDismantle;
+  const crossingEndpoint = clickedButton?.dataset.crossingEndpoint;
+  if (crossingEndpoint !== undefined) {
+    const separator = crossingEndpoint.lastIndexOf(':');
+    const siteId = crossingEndpoint.slice(0, separator);
+    const endpoint = crossingEndpoint.slice(separator + 1);
+    const crossing = runtime
+      .playerSnapshot()
+      .view.map.crossingSites?.find((site) => site.id === siteId);
+    const cell = endpoint === 'A' ? crossing?.bankA : crossing?.bankB;
+    if (cell) {
+      board.focusCell(cell);
+      const snapshot = runtime.playerSnapshot();
+      const builder = snapshot.view.ownUnits
+        .filter((unit) => snapshot.selectedUnitIds.includes(unit.id))
+        .find(({ kind }) => kind === 'assault');
+      if (!builder)
+        runtime.notify(
+          `${siteId} ${endpoint}端を表示しました。移動する強襲部隊を選択してください。`,
+        );
+      else if (snapshot.view.phase !== 'running' || snapshot.contextLost)
+        runtime.notify('試合中に操作できる盤面が必要です。');
+      else {
+        const result = runtime.groupMove(cell, [builder.id]);
+        if (result.rejected.length > 0)
+          runtime.notify(
+            `${siteId} ${endpoint}端へ移動できません (${result.rejected[0]!.reason})`,
+          );
+        else
+          runtime.notify(
+            `${builder.id} を ${siteId} ${endpoint}端へ移動中です。`,
+          );
+      }
+      updateHud(hud, runtime.playerSnapshot());
+    }
+    return;
+  }
   if (buildCrossing !== undefined || dismantleCrossing !== undefined) {
     const view = runtime.playerSnapshot();
     const selected = view.view.ownUnits.filter((unit) =>

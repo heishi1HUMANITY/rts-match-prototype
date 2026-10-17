@@ -9,7 +9,7 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
   const board = page.locator('.board-host canvas');
   await expect(board).toBeVisible();
   await page.getByRole('button', { name: '開始', exact: true }).click();
-  const rect = await board.boundingBox();
+  let rect = await board.boundingBox();
   expect(rect).not.toBeNull();
   const elevationSin = 32 / Math.hypot(32, 28);
   const aspect = rect!.width / rect!.height;
@@ -26,14 +26,40 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
   });
   await page.locator('[data-action="crossings"]').click();
   await page.locator('[data-unit="A-01"]').click();
-  const bridgeBank = targetPoint(28, 50);
-  await page.mouse.click(bridgeBank.x, bridgeBank.y);
+  await page.mouse.move(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
+  await page.mouse.wheel(0, -240);
+  rect = await board.boundingBox();
+  const unseenEndpoint = page.locator(
+    '[data-map-crossing-endpoint="CROSS-RING-N:A"]',
+  );
+  await expect(unseenEndpoint).toHaveText(/\d+A/);
+  await expect(unseenEndpoint).not.toContainText('所有');
+  await expect(
+    page.locator('[data-map-crossing-endpoint="CROSS-RING-SW:B"]'),
+  ).toBeAttached();
+  await page.locator('[data-crossing-endpoint="CROSS-RING-SW:A"]').click();
   const bridgeBuild = page.locator('[data-crossing-build="CROSS-RING-SW"]');
   await expect(bridgeBuild).toBeEnabled({ timeout: 30_000 });
   await bridgeBuild.click();
   await expect(
     page.locator('[data-crossing="CROSS-RING-SW"] .crossing-status'),
   ).toContainText('A所有', { timeout: 60_000 });
+  await page.locator('[data-crossing-endpoint="CROSS-RING-SW:B"]').click();
+  const bridgeDismantle = page.locator(
+    '[data-crossing-dismantle="CROSS-RING-SW"]',
+  );
+  await expect(bridgeDismantle).toBeEnabled({ timeout: 30_000 });
+  await bridgeDismantle.click();
+  await expect(
+    page.locator('[data-crossing="CROSS-RING-SW"] .crossing-status'),
+  ).toContainText('未建設', { timeout: 60_000 });
+  await expect(bridgeBuild).toBeEnabled({ timeout: 30_000 });
+  await bridgeBuild.click();
+  await expect(
+    page.locator('[data-crossing="CROSS-RING-SW"] .crossing-status'),
+  ).toContainText('A所有', { timeout: 60_000 });
+  await page.locator('[data-action="camera"]').click();
+  rect = await board.boundingBox();
   await page.locator('[data-action="crossings"]').click();
   const dragTo = async (
     from: { x: number; y: number },
@@ -46,8 +72,8 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
     await page.mouse.move(target.x, target.y, { steps: 10 });
     await page.mouse.up();
   };
-  await dragTo({ x: 28, y: 50 }, { x: 45, y: 43 }); // A-01 → OUT-01
-  await dragTo({ x: 15, y: 53 }, { x: 50, y: 50 }); // A-02 → OUT-02
+  await dragTo({ x: 35, y: 50 }, { x: 45, y: 43 }); // A-01 → OUT-01
+  await dragTo({ x: 15, y: 53 }, { x: 30, y: 73 }); // A-02 → MID-02
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
   const path = info.outputPath('two-objective-fronts.json');
   await saveDiagnostic(page, path);
@@ -84,12 +110,12 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
       (entry: { command: { target: { id: string } } }) =>
         entry.command.target.id,
     ),
-  ).toEqual(['OUT-01', 'OUT-02']);
+  ).toEqual(['OUT-01', 'MID-02']);
   const scout = diagnostic.state.units.find(
     (unit: { id: string }) => unit.id === 'A-02',
   );
-  expect(scout.marchOrder.target.id).toBe('OUT-02');
-  expect(scout.path).toContainEqual({ x: 33, y: 50 });
+  expect(scout.marchOrder.target.id).toBe('MID-02');
+  expect(scout.path).toContainEqual({ x: 30, y: 73 });
   expect(diagnostic.timing.measuredTickCount).toBeGreaterThan(0);
   await page.screenshot({ path: info.outputPath('two-objective-fronts.png') });
 });

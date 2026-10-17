@@ -45,6 +45,7 @@ export interface BoardView {
     target: Cell,
   ): void;
   clearMovePreview(): void;
+  focusCell(cell: Cell): void;
   pan(
     from: { readonly x: number; readonly y: number },
     to: { readonly x: number; readonly y: number },
@@ -205,6 +206,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       setMovePreview: () => undefined,
       setGroupMovePreview: () => undefined,
       clearMovePreview: () => undefined,
+      focusCell: () => undefined,
       pan: () => undefined,
       zoomBy: () => undefined,
       resetCamera: () => undefined,
@@ -507,6 +509,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     readonly cell: Cell;
     readonly label: HTMLDivElement;
     readonly crossingId?: string;
+    readonly crossingEndpoint?: 'A' | 'B';
   }[] = [];
   let renderedMap: GridMap | null = null;
   const installMap = (map: GridMap): void => {
@@ -559,18 +562,27 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       labelLayer.append(label);
       mapSiteLabels.push({ cell: port.cell, label });
     }
-    for (const site of map.crossingSites ?? []) {
-      const label = document.createElement('div');
-      label.className = 'rts-map-site-label crossing-site';
-      label.textContent = site.tier.startsWith('bridge')
-        ? `⇄ 橋${site.tier.slice(-1)}`
-        : `↗ 索道${site.tier.slice(-1)}`;
-      label.setAttribute(
-        'aria-label',
-        `公開${site.tier.startsWith('bridge') ? '橋' : '索道'}予定地 ${site.id}`,
-      );
-      labelLayer.append(label);
-      mapSiteLabels.push({ cell: site.bankA, label, crossingId: site.id });
+    for (const [index, site] of (map.crossingSites ?? []).entries()) {
+      for (const [endpoint, cell] of [
+        ['A', site.bankA],
+        ['B', site.bankB],
+      ] as const) {
+        const label = document.createElement('div');
+        label.className = 'rts-map-site-label crossing-site';
+        label.textContent = `${index + 1}${endpoint}`;
+        label.setAttribute(
+          'aria-label',
+          `公開${site.tier.startsWith('bridge') ? '橋' : '索道'}予定地 ${site.id} ${endpoint}端`,
+        );
+        label.dataset.mapCrossingEndpoint = `${site.id}:${endpoint}`;
+        labelLayer.append(label);
+        mapSiteLabels.push({
+          cell,
+          label,
+          crossingId: site.id,
+          crossingEndpoint: endpoint,
+        });
+      }
     }
     renderedMap = map;
     let count = 0;
@@ -786,6 +798,43 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       element.hidden || scratchVector.z < -1 || scratchVector.z > 1
         ? 'none'
         : 'grid';
+  };
+
+  const placeMapSiteLabel = (
+    anchor: { readonly x: number; readonly y: number },
+    occupied: readonly { readonly x: number; readonly y: number }[],
+    unitLabels: readonly { readonly x: number; readonly y: number }[],
+    width: number,
+    height: number,
+  ): { x: number; y: number } => {
+    const candidates = Array.from({ length: 81 }, (_, index) => {
+      const dx = (index % 9) - 4;
+      const dy = Math.floor(index / 9) - 4;
+      return {
+        x: THREE.MathUtils.clamp(anchor.x + dx * 18, 10, width - 10),
+        y: THREE.MathUtils.clamp(anchor.y + dy * 18, 10, height - 10),
+      };
+    }).sort(
+      (a, b) =>
+        (a.x - anchor.x) ** 2 +
+        (a.y - anchor.y) ** 2 -
+        ((b.x - anchor.x) ** 2 + (b.y - anchor.y) ** 2),
+    );
+    return (
+      candidates.find(
+        (candidate) =>
+          !occupied.some(
+            (point) =>
+              Math.abs(point.x - candidate.x) < 20 &&
+              Math.abs(point.y - candidate.y) < 16,
+          ) &&
+          !unitLabels.some(
+            (point) =>
+              Math.abs(point.x - candidate.x) < 32 &&
+              Math.abs(point.y - candidate.y) < 28,
+          ),
+      ) ?? candidates[0]!
+    );
   };
 
   const facilityObjects = new Map<
@@ -1099,6 +1148,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       unitObjects.delete(id);
     }
     const occupiedLabels: { x: number; y: number }[] = [];
+    const occupiedMapSiteLabels: { x: number; y: number }[] = [];
     for (const { unit, x, z } of frames) {
       const objects = unitObjects.get(unit.id) ?? createUnitObjects(unit);
       const currentPosition = new THREE.Vector3(x, 0.17, z);
@@ -1195,23 +1245,56 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           ({ site }) => site.id === entry.crossingId,
         );
         if (crossing && crossing.visibility !== 'unknown') {
-          const prefix = crossing.site.tier.startsWith('bridge')
-            ? '⇄ 橋'
-            : '↗ 索道';
+          const kindName = crossing.site.tier.startsWith('bridge')
+            ? `橋${crossing.site.tier.slice(-1)}`
+            : `索道${crossing.site.tier.slice(-1)}`;
+          const siteNumber =
+            (current.map.crossingSites ?? []).findIndex(
+              ({ id }) => id === entry.crossingId,
+            ) + 1;
+          const endpoint = entry.crossingEndpoint ?? 'A';
           if (crossing.visibility === 'remembered') {
-            entry.label.textContent = `${prefix}${crossing.site.tier.slice(-1)} · 最終観測 T${crossing.seenTick}`;
+            entry.label.textContent = `${siteNumber}${endpoint}`;
+            entry.label.title = `${kindName} ${crossing.site.id} ${endpoint}端 · 最終観測 T${crossing.seenTick}`;
           } else if (crossing.owner === null) {
-            entry.label.textContent =
+            entry.label.textContent = `${siteNumber}${endpoint}`;
+            entry.label.title =
               crossing.job?.kind === 'build'
-                ? `${prefix}${crossing.site.tier.slice(-1)} · ${crossing.job.factionId}建設中`
-                : `${prefix}${crossing.site.tier.slice(-1)} · 未建設`;
+                ? `${kindName} ${crossing.site.id} ${endpoint}端 · ${crossing.job.factionId}建設中`
+                : `${kindName} ${crossing.site.id} ${endpoint}端 · 未建設`;
           } else {
-            entry.label.textContent = `${prefix}${crossing.site.tier.slice(-1)} · ${crossing.owner} HP${crossing.hp}`;
+            entry.label.textContent = `${siteNumber}${endpoint}`;
+            entry.label.title = `${kindName} ${crossing.site.id} ${endpoint}端 · ${crossing.owner} HP${crossing.hp}`;
           }
-          entry.label.title = entry.label.textContent;
+        } else {
+          const site = current.map.crossingSites?.find(
+            ({ id }) => id === entry.crossingId,
+          );
+          if (site) {
+            const siteNumber =
+              (current.map.crossingSites ?? []).findIndex(
+                ({ id }) => id === entry.crossingId,
+              ) + 1;
+            entry.label.title = `${site.tier.startsWith('bridge') ? '橋' : '索道'}${site.tier.slice(-1)} ${site.id} ${entry.crossingEndpoint ?? 'A'}端 · 公開予定地`;
+            entry.label.textContent = `${siteNumber}${entry.crossingEndpoint ?? 'A'}`;
+          }
         }
       }
       updateLabelPosition(entry.label, cellPosition(entry.cell, 0.05), -3);
+      const bounds = canvas.getBoundingClientRect();
+      const labelPosition = placeMapSiteLabel(
+        {
+          x: parseFloat(entry.label.style.left),
+          y: parseFloat(entry.label.style.top),
+        },
+        occupiedMapSiteLabels,
+        occupiedLabels,
+        bounds.width,
+        bounds.height,
+      );
+      entry.label.style.left = `${labelPosition.x}px`;
+      entry.label.style.top = `${labelPosition.y}px`;
+      occupiedMapSiteLabels.push(labelPosition);
     }
     syncFog(current);
     refreshMovePreview();
@@ -1387,6 +1470,14 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     },
     setGroupMovePreview,
     clearMovePreview,
+    focusCell(cell) {
+      cameraTarget.set(
+        THREE.MathUtils.clamp(cell.x + 0.5, 0, boardWidth),
+        0,
+        THREE.MathUtils.clamp(cell.y + 0.5, 0, boardHeight),
+      );
+      resize();
+    },
     pan(from, to) {
       const fromGround = groundPointAt(from.x, from.y);
       const toGround = groundPointAt(to.x, to.y);
