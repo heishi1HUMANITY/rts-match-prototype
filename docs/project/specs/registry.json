@@ -44,10 +44,11 @@
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/map.ts": "d0f13797203a83539d9bf6e32123f99d6865e86c28d458b40cc4d6dc5d197d8a",
         "src/simulation/map-100.ts": "d47e16e9e4f9108c83f0040bc5117398e38237bdc82e5ab9a65ee1f2f364d239",
-        "src/simulation/map-definitions.ts": "d20f6e14e04dd98ac015b4ce39ca53ae7dc480845517e3d958a3bf90b47a9615",
-        "src/simulation/map-snapshot.ts": "93d512bff30a8c275cf9633085450e6b22a15d589787d77f0128a14900ca427a",
+        "src/simulation/map-definitions.ts": "442884ac10679dd1ce4fbf9b55d23ffd777147ca25e3ea55dc6c48f84bbf5c52",
+        "src/simulation/map-snapshot.ts": "9de9a62daf8334f62fb655350f37edd57dd3742fe1a647575eeea9405f4f3c8f",
         "src/simulation/pathfinding.ts": "73272a794cdd410efb0283dafd59b0618f296082677882c1c4ea70cc1bea6a0d",
-        "src/simulation/crossings.ts": "8784a98c60824b54d387f16bf665088475620443bf20377e9c5bfe810f529bb3"
+        "src/simulation/crossings.ts": "8784a98c60824b54d387f16bf665088475620443bf20377e9c5bfe810f529bb3",
+        "src/simulation/expansion-routes.ts": "bef443f0c0394f431192b2514052b788a8df4edfd47c5930eefa4538083c9100"
       }
     },
     {
@@ -101,7 +102,7 @@
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
         "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
-        "src/ai/strategy.ts": "f57cb5a62388af6ebc8b0b2e2ba43c63115c5d052cb04372a96552ac1c0c2e1c",
+        "src/ai/strategy.ts": "17a3f36a169a9e2f5afcc8fe7ddb1e82845d186c0668264453f0e891ab9bdf6e",
         "src/ai/local-faction.ts": "316f318aa8e3a8abf8420ddc7fd4f4bcad323d38fde4f5ef543d2c4bc664fe4c",
         "src/simulation/local-faction.ts": "38c998c33b28b8d774d7a274385015f292a9e9534f3620b531b643fcf39cf97f",
         "src/runtime/advance.ts": "ab988579453d9e2aa296bd105eebc58c53859ea38134419595f5ec8cf3e8e0dc",
@@ -120,7 +121,7 @@
         "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
         "src/simulation/visibility.ts": "b8ffaa739acd956a78e3c760ab08501c780f8a13294ea94549011c68249331ef",
         "src/simulation/production.ts": "6f98128fa7f1eef51dd2b9ac61d23d9cc3425dea83a86afc7630bc5ea88a288f",
-        "src/ai/strategy.ts": "f57cb5a62388af6ebc8b0b2e2ba43c63115c5d052cb04372a96552ac1c0c2e1c"
+        "src/ai/strategy.ts": "17a3f36a169a9e2f5afcc8fe7ddb1e82845d186c0668264453f0e891ab9bdf6e"
       }
     },
     {
