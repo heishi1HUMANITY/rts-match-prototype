@@ -223,6 +223,32 @@ describe('stateless faction-view NPC policy', () => {
     });
   });
 
+  it('defends against visible threats beyond the legacy 40-cell bounds on the 100-cell map', () => {
+    const view = getFactionView(
+      running(createMatch(0, { mapId: 'ring-three-fronts-100' })),
+      'B',
+    );
+    expect(view.map.startAssignment?.B).toBe('south-east');
+    // Clamping this cell to the old 40-cell grid lands on river and drops the threat.
+    const enemy = {
+      control: 'enemy' as const,
+      id: 'A-01',
+      factionId: 'A' as const,
+      kind: 'assault' as const,
+      positionX1024: 66 * 1024 + 512,
+      positionY1024: 76 * 1024 + 512,
+      hp: 100,
+      maxHp: 100,
+    };
+    expect(
+      decideBotCommands({ ...view, visibleEnemies: [enemy] }),
+    ).toContainEqual({
+      type: 'march',
+      unitId: 'B-01',
+      target: { kind: 'unit', id: 'A-01' },
+    });
+  });
+
   it('tracks a visible threat and keeps the same order while it is searching', () => {
     const view = getFactionView(running(createMatch(42)), 'B');
     const enemy = {

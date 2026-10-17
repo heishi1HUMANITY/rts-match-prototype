@@ -1,0 +1,1158 @@
+{
+  "sample": "final",
+  "verdict": "pass",
+  "failures": [],
+  "mapDefinitionVersion": 6,
+  "masterVersions": ["cp12-npc-paths-v1#deb90b02436b"],
+  "tendency": "neutral",
+  "checkpointPath": "artifacts/cp12-84-v6/final-v6.jsonl",
+  "seedPolicy": "fixed preregistered final seeds 200..217; six A-seat assignments per physical start",
+  "denominatorPolicy": "18 complete 3-start games; each physical start is a participant in all 18. A-seat balance is reported separately. Tied rank-1, mutual-elimination, and unresolved-at-12000 games are non-wins in the primary win rate and reported separately.",
+  "winRateBand": {
+    "min": 0.2,
+    "max": 0.5
+  },
+  "tickLimit": 12000,
+  "expansionRoutes": {
+    "north": [
+      {
+        "baseId": "MID-03",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 37,
+        "assaultTravelTicks": 148,
+        "crossings": []
+      },
+      {
+        "baseId": "OUT-01",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 45,
+        "assaultTravelTicks": 180,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "OUT-02",
+        "kind": "large",
+        "ticketWeight": 3,
+        "defenseHp": 160,
+        "pathCells": 56,
+        "assaultTravelTicks": 224,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "OUT-03",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 63,
+        "assaultTravelTicks": 252,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "MID-01",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 94,
+        "assaultTravelTicks": 376,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ],
+        "researchBypass": {
+          "pathCells": 50,
+          "crossings": [
+            {
+              "siteId": "CROSS-BORDER-000-B2",
+              "tier": "bridge-2",
+              "costCenti": 8000,
+              "buildTicks": 240,
+              "unlockResearch": [
+                {
+                  "id": "bridge-2",
+                  "costCenti": 7200
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "baseId": "MID-02",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 103,
+        "assaultTravelTicks": 412,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ],
+        "researchBypass": {
+          "pathCells": 95,
+          "crossings": [
+            {
+              "siteId": "CROSS-RING-N",
+              "tier": "bridge-1",
+              "costCenti": 6000,
+              "buildTicks": 180,
+              "unlockResearch": []
+            },
+            {
+              "siteId": "CROSS-FLANK-SOUTH-B2",
+              "tier": "bridge-2",
+              "costCenti": 8000,
+              "buildTicks": 240,
+              "unlockResearch": [
+                {
+                  "id": "bridge-2",
+                  "costCenti": 7200
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "south-east": [
+      {
+        "baseId": "MID-01",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 41,
+        "assaultTravelTicks": 164,
+        "crossings": []
+      },
+      {
+        "baseId": "OUT-02",
+        "kind": "large",
+        "ticketWeight": 3,
+        "defenseHp": 160,
+        "pathCells": 53,
+        "assaultTravelTicks": 212,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "OUT-03",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 64,
+        "assaultTravelTicks": 256,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "OUT-01",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 66,
+        "assaultTravelTicks": 264,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "MID-03",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 88,
+        "assaultTravelTicks": 352,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "MID-02",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 104,
+        "assaultTravelTicks": 416,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ],
+        "researchBypass": {
+          "pathCells": 50,
+          "crossings": [
+            {
+              "siteId": "CROSS-BORDER-120-B2",
+              "tier": "bridge-2",
+              "costCenti": 8000,
+              "buildTicks": 240,
+              "unlockResearch": [
+                {
+                  "id": "bridge-2",
+                  "costCenti": 7200
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "south-west": [
+      {
+        "baseId": "OUT-02",
+        "kind": "large",
+        "ticketWeight": 3,
+        "defenseHp": 160,
+        "pathCells": 37,
+        "assaultTravelTicks": 148,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "MID-02",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 40,
+        "assaultTravelTicks": 160,
+        "crossings": []
+      },
+      {
+        "baseId": "OUT-01",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 44,
+        "assaultTravelTicks": 176,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "OUT-03",
+        "kind": "outpost",
+        "ticketWeight": 1,
+        "defenseHp": 60,
+        "pathCells": 44,
+        "assaultTravelTicks": 176,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      },
+      {
+        "baseId": "MID-03",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 68,
+        "assaultTravelTicks": 272,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-N",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ],
+        "researchBypass": {
+          "pathCells": 52,
+          "crossings": [
+            {
+              "siteId": "CROSS-BORDER-240-B2",
+              "tier": "bridge-2",
+              "costCenti": 8000,
+              "buildTicks": 240,
+              "unlockResearch": [
+                {
+                  "id": "bridge-2",
+                  "costCenti": 7200
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "baseId": "MID-01",
+        "kind": "medium",
+        "ticketWeight": 2,
+        "defenseHp": 100,
+        "pathCells": 75,
+        "assaultTravelTicks": 300,
+        "crossings": [
+          {
+            "siteId": "CROSS-RING-SE",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          },
+          {
+            "siteId": "CROSS-RING-SW",
+            "tier": "bridge-1",
+            "costCenti": 6000,
+            "buildTicks": 180,
+            "unlockResearch": []
+          }
+        ]
+      }
+    ]
+  },
+  "transferRoutes": {
+    "bases": [
+      {
+        "from": "HOME-A",
+        "to": "HOME-B",
+        "bridgeI": 80,
+        "bridgeII": 66
+      },
+      {
+        "from": "HOME-A",
+        "to": "HOME-C",
+        "bridgeI": 65,
+        "bridgeII": 65
+      },
+      {
+        "from": "HOME-A",
+        "to": "OUT-01",
+        "bridgeI": 32,
+        "bridgeII": 32
+      },
+      {
+        "from": "HOME-A",
+        "to": "OUT-02",
+        "bridgeI": 25,
+        "bridgeII": 25
+      },
+      {
+        "from": "HOME-A",
+        "to": "OUT-03",
+        "bridgeI": 32,
+        "bridgeII": 32
+      },
+      {
+        "from": "HOME-A",
+        "to": "MID-01",
+        "bridgeI": 63,
+        "bridgeII": 63
+      },
+      {
+        "from": "HOME-A",
+        "to": "MID-02",
+        "bridgeI": 28,
+        "bridgeII": 28
+      },
+      {
+        "from": "HOME-A",
+        "to": "MID-03",
+        "bridgeI": 56,
+        "bridgeII": 40
+      },
+      {
+        "from": "HOME-B",
+        "to": "HOME-C",
+        "bridgeI": 99,
+        "bridgeII": 95
+      },
+      {
+        "from": "HOME-B",
+        "to": "OUT-01",
+        "bridgeI": 68,
+        "bridgeII": 68
+      },
+      {
+        "from": "HOME-B",
+        "to": "OUT-02",
+        "bridgeI": 55,
+        "bridgeII": 55
+      },
+      {
+        "from": "HOME-B",
+        "to": "OUT-03",
+        "bridgeI": 66,
+        "bridgeII": 66
+      },
+      {
+        "from": "HOME-B",
+        "to": "MID-01",
+        "bridgeI": 43,
+        "bridgeII": 43
+      },
+      {
+        "from": "HOME-B",
+        "to": "MID-02",
+        "bridgeI": 106,
+        "bridgeII": 38
+      },
+      {
+        "from": "HOME-B",
+        "to": "MID-03",
+        "bridgeI": 90,
+        "bridgeII": 90
+      },
+      {
+        "from": "HOME-C",
+        "to": "OUT-01",
+        "bridgeI": 33,
+        "bridgeII": 33
+      },
+      {
+        "from": "HOME-C",
+        "to": "OUT-02",
+        "bridgeI": 44,
+        "bridgeII": 44
+      },
+      {
+        "from": "HOME-C",
+        "to": "OUT-03",
+        "bridgeI": 51,
+        "bridgeII": 51
+      },
+      {
+        "from": "HOME-C",
+        "to": "MID-01",
+        "bridgeI": 82,
+        "bridgeII": 52
+      },
+      {
+        "from": "HOME-C",
+        "to": "MID-02",
+        "bridgeI": 91,
+        "bridgeII": 83
+      },
+      {
+        "from": "HOME-C",
+        "to": "MID-03",
+        "bridgeI": 25,
+        "bridgeII": 25
+      },
+      {
+        "from": "OUT-01",
+        "to": "OUT-02",
+        "bridgeI": 13,
+        "bridgeII": 13
+      },
+      {
+        "from": "OUT-01",
+        "to": "OUT-03",
+        "bridgeI": 20,
+        "bridgeII": 20
+      },
+      {
+        "from": "OUT-01",
+        "to": "MID-01",
+        "bridgeI": 51,
+        "bridgeII": 51
+      },
+      {
+        "from": "OUT-01",
+        "to": "MID-02",
+        "bridgeI": 58,
+        "bridgeII": 50
+      },
+      {
+        "from": "OUT-01",
+        "to": "MID-03",
+        "bridgeI": 24,
+        "bridgeII": 24
+      },
+      {
+        "from": "OUT-02",
+        "to": "OUT-03",
+        "bridgeI": 11,
+        "bridgeII": 11
+      },
+      {
+        "from": "OUT-02",
+        "to": "MID-01",
+        "bridgeI": 38,
+        "bridgeII": 38
+      },
+      {
+        "from": "OUT-02",
+        "to": "MID-02",
+        "bridgeI": 51,
+        "bridgeII": 43
+      },
+      {
+        "from": "OUT-02",
+        "to": "MID-03",
+        "bridgeI": 35,
+        "bridgeII": 35
+      },
+      {
+        "from": "OUT-03",
+        "to": "MID-01",
+        "bridgeI": 49,
+        "bridgeII": 49
+      },
+      {
+        "from": "OUT-03",
+        "to": "MID-02",
+        "bridgeI": 58,
+        "bridgeII": 32
+      },
+      {
+        "from": "OUT-03",
+        "to": "MID-03",
+        "bridgeI": 42,
+        "bridgeII": 42
+      },
+      {
+        "from": "MID-01",
+        "to": "MID-02",
+        "bridgeI": 89,
+        "bridgeII": 71
+      },
+      {
+        "from": "MID-01",
+        "to": "MID-03",
+        "bridgeI": 73,
+        "bridgeII": 73
+      },
+      {
+        "from": "MID-02",
+        "to": "MID-03",
+        "bridgeI": 82,
+        "bridgeII": 66
+      }
+    ],
+    "ports": [
+      {
+        "from": "PORT-A",
+        "to": "PORT-B",
+        "cells": 36
+      },
+      {
+        "from": "PORT-A",
+        "to": "PORT-C",
+        "cells": 55
+      },
+      {
+        "from": "PORT-B",
+        "to": "PORT-C",
+        "cells": 35
+      }
+    ]
+  },
+  "outcomes": {
+    "north": {
+      "wins": 7,
+      "games": 18,
+      "winRate": 0.3888888888888889,
+      "withinBand": true
+    },
+    "south-east": {
+      "wins": 5,
+      "games": 18,
+      "winRate": 0.2777777777777778,
+      "withinBand": true
+    },
+    "south-west": {
+      "wins": 6,
+      "games": 18,
+      "winRate": 0.3333333333333333,
+      "withinBand": true
+    }
+  },
+  "winsByFactionId": {
+    "A": 5,
+    "B": 7,
+    "C": 6
+  },
+  "factionASeatCounts": {
+    "north": 6,
+    "south-east": 6,
+    "south-west": 6
+  },
+  "routesByStart": {
+    "north": {
+      "crossing": 18,
+      "field": 0
+    },
+    "south-east": {
+      "crossing": 0,
+      "field": 18
+    },
+    "south-west": {
+      "crossing": 18,
+      "field": 0
+    }
+  },
+  "crossingsByStart": {
+    "north": {
+      "CROSS-RING-N": 18
+    },
+    "south-east": {
+      "CROSS-RING-SE": 18
+    },
+    "south-west": {
+      "CROSS-FLANK-SOUTH-B2": 6,
+      "CROSS-RING-SW": 12
+    }
+  },
+  "capturesByStart": {
+    "north": {
+      "MID-03": 18,
+      "OUT-01": 18,
+      "OUT-02": 5
+    },
+    "south-east": {
+      "MID-01": 18,
+      "OUT-02": 9,
+      "OUT-01": 3
+    },
+    "south-west": {
+      "MID-02": 18,
+      "OUT-03": 7,
+      "OUT-02": 10,
+      "OUT-01": 3
+    }
+  },
+  "eliminationsByStart": {
+    "north": {
+      "tickets": 11
+    },
+    "south-east": {
+      "tickets": 13
+    },
+    "south-west": {
+      "tickets": 12
+    }
+  },
+  "ticketLossByStart": {
+    "north": {
+      "combatCenti": 309705,
+      "territoryPenaltyCenti": 44097,
+      "timeDecayCenti": 157515,
+      "clampedIntervals": 11
+    },
+    "south-east": {
+      "combatCenti": 241747,
+      "territoryPenaltyCenti": 101037,
+      "timeDecayCenti": 145213,
+      "clampedIntervals": 13
+    },
+    "south-west": {
+      "combatCenti": 311913,
+      "territoryPenaltyCenti": 52577,
+      "timeDecayCenti": 135716,
+      "clampedIntervals": 15
+    }
+  },
+  "unitLossesByStart": {
+    "north": {
+      "base:south-west": 95,
+      "base:neutral": 158,
+      "base:own": 94,
+      "unit:south-west": 30,
+      "unit:south-east": 71,
+      "base:south-east": 18,
+      "other": 4
+    },
+    "south-east": {
+      "base:neutral": 164,
+      "base:south-west": 13,
+      "unit:north": 60,
+      "unit:south-west": 31,
+      "base:north": 52,
+      "base:own": 31,
+      "other": 6
+    },
+    "south-west": {
+      "base:own": 69,
+      "base:neutral": 196,
+      "unit:south-east": 45,
+      "unit:north": 66,
+      "base:north": 77,
+      "base:south-east": 15,
+      "other": 3
+    }
+  },
+  "unresolved": 0,
+  "tied": 0,
+  "games": [
+    {
+      "seed": 200,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4620,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 201,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4540,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 202,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4290,
+      "winnerSeats": ["south-east"],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 203,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4300,
+      "winnerSeats": ["south-east"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 204,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4420,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 205,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4160,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 206,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4560,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 207,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4644,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 208,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4590,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 209,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4382,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 210,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4260,
+      "winnerSeats": ["south-east"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 211,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4540,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 212,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4430,
+      "winnerSeats": ["south-east"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 213,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4149,
+      "winnerSeats": ["south-west"],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 214,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4300,
+      "winnerSeats": ["south-east"],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 215,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4260,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 216,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4550,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 217,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4487,
+      "winnerSeats": ["north"],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    }
+  ]
+}
