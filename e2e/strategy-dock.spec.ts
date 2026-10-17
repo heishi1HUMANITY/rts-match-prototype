@@ -30,7 +30,7 @@ test('operation tabs stay beside the content and remain available after closing'
     await expect(button).toHaveAttribute('aria-expanded', 'true');
     if (label === '研究') {
       const cards = panel.locator('[data-research-details]');
-      await expect(cards).toHaveCount(27);
+      await expect(cards).toHaveCount(29);
       const first = panel.locator('[data-research-details="firepower-1"]');
       await expect(first).toContainText('必要96ポイント');
       await first.scrollIntoViewIfNeeded();
@@ -41,6 +41,16 @@ test('operation tabs stay beside the content and remain available after closing'
       await expect(specialization).toContainText('排他');
       await specialization.scrollIntoViewIfNeeded();
       await expect(specialization).toBeInViewport();
+      for (const id of [
+        'specialization-wartime-economy',
+        'specialization-logistics',
+        'specialization-information',
+        'specialization-engineering',
+        'specialization-information-warfare',
+      ])
+        await expect(
+          panel.locator(`[data-research-details="${id}"]`),
+        ).toBeAttached();
     }
     await button.click();
     await expect(panel).toBeVisible();
