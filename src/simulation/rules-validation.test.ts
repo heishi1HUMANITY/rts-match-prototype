@@ -133,7 +133,7 @@ describe('F03 rules validation', () => {
       any
     >;
     invalid.research.definitions['firepower-1'].prerequisites = ['firepower-2'];
-    invalid.research.definitions['supply-lines-1'].exclusiveWith = [];
+    invalid.research.definitions['specialization-power'].exclusiveWith = [];
     invalid.research.definitions['survey-1'].effects[0].id = 'free-units';
     const result = validateRules(invalid);
     expect(result.ok).toBe(false);
@@ -141,7 +141,7 @@ describe('F03 rules validation', () => {
     expect(result.issues.map(({ key }) => key)).toEqual(
       expect.arrayContaining([
         'rules.research.definitions.firepower-1.prerequisites',
-        'rules.research.definitions.maintenance-1.exclusiveWith',
+        'rules.research.definitions.specialization-power.exclusiveWith',
         'rules.research.definitions.survey-1.effects.0.id',
       ]),
     );
@@ -443,9 +443,12 @@ describe('F21 variable research definitions', () => {
   it('accepts an added stable ID and removing an unreferenced default node', () => {
     const rules = editable();
     delete rules.research.definitions['survey-2'];
+    rules.research.definitions['specialization-information'].prerequisites = [
+      'survey-1',
+    ];
     rules.research.definitions['custom-power'] = {
       ...rules.research.definitions['firepower-1'],
-      prerequisites: ['survey-1'],
+      prerequisites: [],
     };
     const result = validateRules(rules);
     expect(result.ok).toBe(true);
@@ -509,7 +512,7 @@ describe('F21 variable research definitions', () => {
   });
 });
 
-it('bounds variable node count and handles densely connected acyclic prerequisites', () => {
+it('bounds variable node count and accepts many same-stage independent nodes', () => {
   const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
     string,
     any
@@ -517,10 +520,7 @@ it('bounds variable node count and handles densely connected acyclic prerequisit
   for (let index = 0; index < 80; index += 1)
     rules.research.definitions[`node-${index}`] = {
       ...rules.research.definitions['firepower-1'],
-      prerequisites: Array.from(
-        { length: index },
-        (_, parent) => `node-${parent}`,
-      ),
+      prerequisites: [],
     };
   expect(validateRules(rules).ok).toBe(true);
   for (let index = 80; index < 129; index += 1)
@@ -548,6 +548,60 @@ it('rejects a research-reference array even when its coercion matches a valid ID
 });
 
 describe('F11 and F21 combined migration contract', () => {
+  it('migrates schema 21 defaults while preserving a user-edited research cost', () => {
+    const v21Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    const definitions = v21Rules.research.definitions;
+    delete definitions['firepower-3'];
+    for (const id of Object.keys(definitions))
+      if (id.startsWith('specialization-')) delete definitions[id];
+    definitions['firepower-1'].costCenti = 6_000;
+    definitions['firepower-2'].costCenti = 9_000;
+    definitions['firepower-2'].prerequisites = ['firepower-1'];
+    definitions['bridge-2'].prerequisites = ['firepower-1'];
+    definitions['supply-lines-1'].exclusiveWith = ['maintenance-1'];
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 21,
+      revision: 11,
+      rules: v21Rules,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+    expect(result.envelope.revision).toBe(11);
+    expect(
+      result.envelope.rules.research.definitions['firepower-1']!.costCenti,
+    ).toBe(9_600);
+    expect(
+      result.envelope.rules.research.definitions['firepower-3'],
+    ).toBeDefined();
+    expect(
+      result.envelope.rules.research.definitions['specialization-power'],
+    ).toBeDefined();
+    expect(
+      result.envelope.rules.research.definitions['bridge-2']!.prerequisites,
+    ).toEqual([]);
+    expect(
+      result.envelope.rules.research.definitions['supply-lines-1']!
+        .exclusiveWith,
+    ).toEqual([]);
+
+    definitions['firepower-1'].costCenti = 7_777;
+    const edited = validateEnvelope({
+      masterSchemaVersion: 21,
+      revision: 12,
+      rules: v21Rules,
+    });
+    expect(edited.ok).toBe(true);
+    if (edited.ok)
+      expect(
+        edited.envelope.rules.research.definitions['firepower-1']!.costCenti,
+      ).toBe(7_777);
+  });
+
   it('migrates schema 20 masters with default tactical ability rules', () => {
     const v20Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,

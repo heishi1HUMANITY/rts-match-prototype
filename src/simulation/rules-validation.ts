@@ -314,7 +314,8 @@ export function validateRules(input: unknown): ValidationResult {
               !fieldPath.endsWith('hqProtectionTicks') &&
               !fieldPath.endsWith('startTick') &&
               !fieldPath.endsWith('startCentiPerTick') &&
-              !fieldPath.endsWith('unitsPerOwnedBase');
+              !fieldPath.endsWith('unitsPerOwnedBase') &&
+              !fieldPath.endsWith('completionCostIncreaseBpsPerCompleted');
           const max = fieldPath.startsWith('rules.tacticalAbilities.')
             ? fieldPath.endsWith('.radius')
               ? 40
@@ -326,30 +327,32 @@ export function validateRules(input: unknown): ValidationResult {
                     fieldPath.endsWith('.visionPercent')
                   ? 1_000
                   : 1_000_000
-            : fieldPath.endsWith('.garrisonCapacity')
-              ? 64
-              : fieldPath === 'rules.capture.restoredHpPercent'
-                ? 100
-                : fieldPath.endsWith('territoryMinPercent') ||
-                    fieldPath.endsWith('territoryMaxPercent') ||
-                    fieldPath.endsWith('territoryPercentPerWeight') ||
-                    fieldPath.endsWith('captureEfficiencyPercent')
-                  ? 1_000
-                  : fieldPath.endsWith('timeLimitTicks') ||
-                      fieldPath.endsWith('hqProtectionTicks') ||
-                      fieldPath.endsWith('startTick') ||
-                      fieldPath.endsWith('endTick')
-                    ? 100_000_000
-                    : fieldPath.endsWith('moveTicksPerCell') ||
-                        fieldPath.endsWith('decisionIntervalTicks') ||
-                        fieldPath.endsWith('updateIntervalTicks') ||
-                        fieldPath.endsWith('requiredTicks') ||
-                        fieldPath.endsWith('windupTicks') ||
-                        fieldPath.endsWith('intervalTicks') ||
-                        fieldPath.endsWith('startCentiPerTick') ||
-                        fieldPath.endsWith('endCentiPerTick')
-                      ? 10_000
-                      : 1_000_000_000;
+            : fieldPath.endsWith('completionCostIncreaseBpsPerCompleted')
+              ? 10_000
+              : fieldPath.endsWith('.garrisonCapacity')
+                ? 64
+                : fieldPath === 'rules.capture.restoredHpPercent'
+                  ? 100
+                  : fieldPath.endsWith('territoryMinPercent') ||
+                      fieldPath.endsWith('territoryMaxPercent') ||
+                      fieldPath.endsWith('territoryPercentPerWeight') ||
+                      fieldPath.endsWith('captureEfficiencyPercent')
+                    ? 1_000
+                    : fieldPath.endsWith('timeLimitTicks') ||
+                        fieldPath.endsWith('hqProtectionTicks') ||
+                        fieldPath.endsWith('startTick') ||
+                        fieldPath.endsWith('endTick')
+                      ? 100_000_000
+                      : fieldPath.endsWith('moveTicksPerCell') ||
+                          fieldPath.endsWith('decisionIntervalTicks') ||
+                          fieldPath.endsWith('updateIntervalTicks') ||
+                          fieldPath.endsWith('requiredTicks') ||
+                          fieldPath.endsWith('windupTicks') ||
+                          fieldPath.endsWith('intervalTicks') ||
+                          fieldPath.endsWith('startCentiPerTick') ||
+                          fieldPath.endsWith('endCentiPerTick')
+                        ? 10_000
+                        : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -398,10 +401,10 @@ export function validateRules(input: unknown): ValidationResult {
       !['power', 'logistics', 'information', 'engineering'].includes(def.domain)
     )
       issues.push({ key: `${path}.domain`, message: '未対応の研究分野です' });
-    if (!Number.isSafeInteger(def.stage) || def.stage < 1 || def.stage > 20)
+    if (!Number.isSafeInteger(def.stage) || def.stage < 1 || def.stage > 4)
       issues.push({
         key: `${path}.stage`,
-        message: '段階は1〜20の整数にしてください',
+        message: '段階は1〜4の整数にしてください',
       });
     if (def.effects.length === 0)
       issues.push({
@@ -433,6 +436,84 @@ export function validateRules(input: unknown): ValidationResult {
       issues.push({
         key: path,
         message: '研究は自分自身を前提/排他に指定できません',
+      });
+    if (def.stage === 1 && def.prerequisites.length > 0)
+      issues.push({
+        key: `${path}.prerequisites`,
+        message: '段1に前提研究は指定できません',
+      });
+    if (def.stage < 4 && def.exclusiveWith.length > 0)
+      issues.push({
+        key: `${path}.exclusiveWith`,
+        message: '段1〜3は排他にできません',
+      });
+    if (def.stage >= 2) {
+      const previous = Object.values(rules.research.definitions).filter(
+        (candidate) =>
+          candidate.domain === def.domain &&
+          (def.stage === 4
+            ? candidate.stage >= 1 && candidate.stage <= 3
+            : candidate.stage === def.stage - 1),
+      );
+      if (
+        previous.length === 0 ||
+        !def.prerequisites.some((prerequisite) =>
+          previous.some(
+            (candidate) =>
+              rules.research.definitions[prerequisite] === candidate,
+          ),
+        )
+      )
+        issues.push({
+          key: `${path}.prerequisites`,
+          message: '同分野の前段を1つ以上 OR で指定してください',
+        });
+    }
+    for (const prerequisite of def.prerequisites) {
+      const parent = rules.research.definitions[prerequisite];
+      if (
+        parent &&
+        (parent.domain !== def.domain ||
+          (def.stage < 4 && parent.stage !== def.stage - 1) ||
+          (def.stage === 4 && (parent.stage < 1 || parent.stage > 3)))
+      )
+        issues.push({
+          key: `${path}.prerequisites`,
+          message: '前提は同分野の直前段（段4は段1〜3）から指定してください',
+        });
+    }
+  }
+  const stageFourIds = Object.entries(rules.research.definitions)
+    .filter(([, definition]) => definition.stage === 4)
+    .map(([id]) => id);
+  for (const domain of [
+    'power',
+    'logistics',
+    'information',
+    'engineering',
+  ] as const)
+    if (
+      !stageFourIds.some(
+        (id) => rules.research.definitions[id]?.domain === domain,
+      )
+    )
+      issues.push({
+        key: 'rules.research.definitions',
+        message: `${domain}分野に段4専攻が必要です`,
+      });
+  for (const id of stageFourIds) {
+    const expectedPeers = stageFourIds.filter((peer) => peer !== id).sort();
+    const actualPeers = [
+      ...(rules.research.definitions[id]?.exclusiveWith ?? []),
+    ].sort();
+    if (
+      expectedPeers.length === 0 ||
+      actualPeers.length !== expectedPeers.length ||
+      actualPeers.some((peer, index) => peer !== expectedPeers[index])
+    )
+      issues.push({
+        key: `rules.research.definitions.${id}.exclusiveWith`,
+        message: '段4は全分野を通じ、他の段4すべてと排他にしてください',
       });
   }
   const visiting = new Set<string>();
@@ -588,7 +669,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 17 &&
       input.masterSchemaVersion !== 18 &&
       input.masterSchemaVersion !== 19 &&
-      input.masterSchemaVersion !== 20)
+      input.masterSchemaVersion !== 20 &&
+      input.masterSchemaVersion !== 21)
   )
     return {
       ok: false,
@@ -1162,12 +1244,82 @@ export function validateEnvelope(
       for (const [id, definition] of Object.entries(
         DEFAULT_RULES.research.definitions,
       ))
-        if (id.startsWith('facility-') && !Object.hasOwn(converted, id))
+        if (
+          (id.startsWith('facility-') ||
+            id === 'firepower-3' ||
+            id.startsWith('specialization-')) &&
+          !Object.hasOwn(converted, id)
+        )
           converted[id] = definition;
     } else if (oldDefinitions) {
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         if (Object.hasOwn(converted, id))
           converted[id] = oldValue as ResearchDefinition;
+    }
+    if (input.masterSchemaVersion <= 21) {
+      const legacyCosts: Readonly<Record<string, number>> = {
+        'facility-engineering': 6000,
+        'firepower-1': 6000,
+        'firepower-2': 9000,
+        'bridge-2': 5000,
+        'bridge-3': 7000,
+        'ropeway-1': 4000,
+        'ropeway-2': 6000,
+        'supply-lines-1': 5000,
+        'maintenance-1': 5000,
+        'survey-1': 5000,
+        'survey-2': 8000,
+        'artillery-1': 5000,
+        'air-defense-1': 5000,
+        'aircraft-1': 5000,
+        'naval-1': 5000,
+        'base-development-1': 6000,
+        'base-development-2': 10000,
+      };
+      const defaults = DEFAULT_RULES.research.definitions;
+      const stageFourIds = Object.entries(converted)
+        .filter(([, value]) => value.stage === 4)
+        .map(([id]) => id);
+      for (const [id, value] of Object.entries(converted)) {
+        const base = defaults[id];
+        if (!base) continue;
+        const legacyCost = legacyCosts[id];
+        const migratedCost =
+          legacyCost !== undefined && value.costCenti === legacyCost
+            ? base.costCenti
+            : value.costCenti;
+        converted[id] = {
+          ...value,
+          costCenti: migratedCost,
+          prerequisites:
+            value.stage === 1
+              ? []
+              : value.prerequisites.filter((parent) => {
+                  const previous = converted[parent];
+                  return (
+                    previous !== undefined &&
+                    previous.domain === value.domain &&
+                    (value.stage === 4
+                      ? previous.stage >= 1 && previous.stage <= 3
+                      : previous.stage === value.stage - 1)
+                  );
+                }),
+          exclusiveWith:
+            value.stage === 4 ? stageFourIds.filter((peer) => peer !== id) : [],
+        };
+        if (value.stage >= 2 && converted[id]!.prerequisites.length === 0) {
+          const validParents = Object.entries(converted)
+            .filter(
+              ([, candidate]) =>
+                candidate.domain === value.domain &&
+                (value.stage === 4
+                  ? candidate.stage >= 1 && candidate.stage <= 3
+                  : candidate.stage === value.stage - 1),
+            )
+            .map(([parent]) => parent);
+          converted[id] = { ...converted[id]!, prerequisites: validParents };
+        }
+      }
     }
     candidateRules = {
       ...candidateRules,

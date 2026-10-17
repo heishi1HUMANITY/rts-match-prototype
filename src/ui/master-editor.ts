@@ -458,6 +458,8 @@ function fieldsFor(rules: RulesMaster): {
     defenses: '中立守備',
     'research.definitions': '研究',
     'research.baseIncomeCentiPerTick': '研究',
+    'research.completionCostIncreaseBpsPerCompleted':
+      '研究必要量増加（bp/完了）',
     crossings: '渡河設備',
     match: '試合',
     limits: '上限',

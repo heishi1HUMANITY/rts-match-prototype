@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 21 as const;
-export const RULES_VERSION = 'f15-v1' as const;
+export const MASTER_SCHEMA_VERSION = 22 as const;
+export const RULES_VERSION = 'cp12-research-v1' as const;
 
 export interface TacticalAbilityRules {
   readonly costCenti: number;
@@ -164,6 +164,7 @@ export interface RulesMaster {
   };
   readonly research: {
     readonly baseIncomeCentiPerTick: number;
+    readonly completionCostIncreaseBpsPerCompleted: number;
     readonly definitions: Readonly<Record<ResearchId, ResearchDefinition>>;
   };
   readonly crossings: Readonly<
@@ -438,6 +439,7 @@ export const DEFAULT_RULES: RulesMaster = {
   },
   research: {
     baseIncomeCentiPerTick: BASE_RESEARCH_INCOME_CENTI_PER_TICK,
+    completionCostIncreaseBpsPerCompleted: 450,
     definitions: {
       ...(Object.fromEntries(
         Object.entries(RESEARCH_DEFINITIONS).map(([id, definition]) => [

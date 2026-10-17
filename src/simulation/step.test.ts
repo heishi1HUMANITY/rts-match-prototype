@@ -152,7 +152,7 @@ describe('G2 fixed-tick integration', () => {
       activeResearch: { researchId: 'firepower-1' },
       researchCenti: 0,
       researchProgressCenti: {
-        'firepower-1': 5_998,
+        'firepower-1': 9_588,
         'firepower-2': 0,
         'bridge-2': 0,
         'bridge-3': 0,

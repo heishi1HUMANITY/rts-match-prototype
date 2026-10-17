@@ -113,7 +113,7 @@ export function renderResearchEditor(
   heading.textContent = '研究ノード';
   const help = document.createElement('p');
   help.textContent =
-    '研究は1〜128件。削除は参照を自動変更しません。前提・排他・兵種/拠点の参照を修正してから保存してください。排他は両側に設定します。';
+    '研究は1〜128件。段1〜3は同分野の前段いずれかを前提に取得でき、排他はありません。段4は全分野で1つだけ取得できます。削除は参照を自動変更しないため、前提・専攻排他・兵種/拠点の参照を修正してから保存してください。';
   const add = document.createElement('div');
   add.className = 'research-actions';
   const idInput = document.createElement('input');
@@ -180,7 +180,7 @@ export function renderResearchEditor(
           ['power', '戦力'],
           ['logistics', '兵站'],
           ['information', '情報'],
-          ['engineering', '工学'],
+          ['engineering', '工兵'],
         ],
         node.domain,
         (domain) =>
@@ -207,8 +207,8 @@ export function renderResearchEditor(
       ),
     );
     for (const [key, label] of [
-      ['prerequisites', '前提研究（複数選択）'],
-      ['exclusiveWith', '排他研究（両側で設定）'],
+      ['prerequisites', '前提研究（いずれかで可）'],
+      ['exclusiveWith', '専攻排他（両側で設定）'],
     ] as const) {
       const choices = select(
         [
