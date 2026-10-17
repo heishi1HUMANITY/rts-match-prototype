@@ -11,6 +11,7 @@ import type {
   FactionId,
   FactionKnowledge,
   FactionView,
+  GridMap,
   MatchState,
   CrossingView,
 } from './types';
@@ -294,6 +295,25 @@ export function getFactionView(
     map: {
       width: state.map.width,
       height: state.map.height,
+      ...(state.map.definitionId
+        ? { definitionId: state.map.definitionId }
+        : {}),
+      ...(state.map.definitionVersion !== undefined
+        ? { definitionVersion: state.map.definitionVersion }
+        : {}),
+      ...(state.map.startAssignment
+        ? { startAssignment: { ...state.map.startAssignment } }
+        : {}),
+      ...(state.map.startPoints
+        ? {
+            startPoints: Object.fromEntries(
+              Object.entries(state.map.startPoints).map(([position, cell]) => [
+                position,
+                { ...cell },
+              ]),
+            ) as NonNullable<GridMap['startPoints']>,
+          }
+        : {}),
       ...(state.map.terrain ? { terrain: [...state.map.terrain] } : {}),
       ...(state.map.terrainLevel
         ? { terrainLevel: [...state.map.terrainLevel] }

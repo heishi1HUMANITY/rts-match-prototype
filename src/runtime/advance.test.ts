@@ -36,8 +36,8 @@ describe('advanceMatch NPC orchestration', () => {
         unitKind: 'assault',
         remainingTicks: 199,
       });
-      expect(faction.activeResearch).toEqual({ researchId: 'firepower-1' });
-      expect(faction.researchProgressCenti['firepower-1']).toBe(12);
+      expect(faction.activeResearch).toEqual({ researchId: 'bridge-2' });
+      expect(faction.researchProgressCenti['bridge-2']).toBe(12);
       expect(faction.supplyCenti).toBe(8_105);
     }
   });

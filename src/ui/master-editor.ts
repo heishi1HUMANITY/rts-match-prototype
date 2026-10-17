@@ -415,6 +415,46 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: '命令',
     help: '対戦NPC B/Cが1回に出せる命令数の上限です。必要な操作を順番に処理します。',
   },
+  selectedDifficulty: {
+    label: 'NPC難度',
+    unit: '',
+    help: '弱・標準・強の判断プリセットを選びます。資源・視界・共通command検証は変わりません。',
+  },
+  nextBestPercent: {
+    label: '次善手選択率',
+    unit: '%',
+    help: '道筋候補が近い場合に次善候補を選ぶ率です。',
+  },
+  targetSwitchGraceTicks: {
+    label: '標的切替猶予',
+    unit: 'tick (0.1秒)',
+    help: '別の戦略拠点へ命令を切り替える前に維持する猶予です。',
+  },
+  scoutUsePercent: {
+    label: '偵察活用率',
+    unit: '%',
+    help: '利用可能なsurvey作戦指令を使う率です。',
+  },
+  riverPenalty: {
+    label: '川地形係数',
+    unit: '点/セル',
+    help: '公開された川・河岸セルを道筋採点に加える重みです。',
+  },
+  mountainPenalty: {
+    label: '山地係数',
+    unit: '点/セル',
+    help: '公開された山地セルを道筋採点に加える重みです。',
+  },
+  portPreference: {
+    label: '港近接加点',
+    unit: '点',
+    help: '公開港に近い開始地点の道筋候補へ加点します。',
+  },
+  nearBestPercent: {
+    label: '近似候補幅',
+    unit: '%',
+    help: '最良候補と近似とみなしてseed選択に残す幅です。',
+  },
   baseIncomeCentiPerTick: {
     label: '定額研究収入',
     unit: '研究 pt ×100/tick',
@@ -757,7 +797,9 @@ export function createMasterEditor(
       }
       const input =
         field.path.endsWith('.prerequisite') ||
-        field.path.endsWith('.unlocksCrossing')
+        field.path.endsWith('.unlocksCrossing') ||
+        field.path.endsWith('.selectedDifficulty') ||
+        /^npc\.researchRoutes\.[^.]+\.[^.]+\.\d+$/.test(field.path)
           ? document.createElement('select')
           : document.createElement('input');
       input.dataset.masterPath = field.path;
@@ -776,9 +818,15 @@ export function createMasterEditor(
           input.inputMode = 'numeric';
         }
       } else {
-        input.innerHTML = field.path.endsWith('.unlocksCrossing')
-          ? '<option value="">なし</option><option value="bridge-2">橋 II</option><option value="bridge-3">橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>'
-          : '<option value="">前提なし</option><option value="firepower-1">戦力研究 I</option><option value="firepower-2">戦力研究 II</option><option value="bridge-2">架橋 II</option><option value="bridge-3">架橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>';
+        input.innerHTML = field.path.endsWith('.selectedDifficulty')
+          ? '<option value="weak">弱</option><option value="standard">標準</option><option value="strong">強</option>'
+          : /^npc\.researchRoutes\.[^.]+\.[^.]+\.\d+$/.test(field.path)
+            ? Object.keys(draft.research.definitions)
+                .map((id) => `<option value="${id}">${id}</option>`)
+                .join('')
+            : field.path.endsWith('.unlocksCrossing')
+              ? '<option value="">なし</option><option value="bridge-2">橋 II</option><option value="bridge-3">橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>'
+              : '<option value="">前提なし</option><option value="firepower-1">戦力研究 I</option><option value="firepower-2">戦力研究 II</option><option value="bridge-2">架橋 II</option><option value="bridge-3">架橋 III</option><option value="ropeway-1">索道 I</option><option value="ropeway-2">索道 II</option>';
         input.value = field.value === null ? '' : String(field.value);
       }
       const fieldError = document.createElement('small');

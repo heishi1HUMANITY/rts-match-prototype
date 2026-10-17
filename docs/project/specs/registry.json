@@ -7,14 +7,14 @@
       "document": "docs/project/specs/MATCH.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/match.ts": "559bc19895d2aaba9c30d5eb45e1e382462f784bcdb9cbb9db39fb3cf47cd564",
         "src/simulation/step.ts": "ae9d9ebaf3887370141ed68968f5a43cdd5c8c1cae8e3f849651a14ec922f73f",
         "src/simulation/tickets.ts": "e3fffc7d03711853a4c91d6466030be516dea9791655be012a21c5902f44bbd4",
         "src/simulation/outcome.ts": "86b4a058705f5dfa80baee0bc05b9ca706ff3b282d205e0b4f197121acff8ec9",
         "src/simulation/random.ts": "f671a8ec73bdb9b7a64b263543cac6a706cb4851cf253016e7cab81cc3b4c8d9",
-        "src/runtime/advance.ts": "2aa34fc37aeb3358b3b4014d2f922d2b2646689aebb232ff16c3ff2a5d3dbe84",
+        "src/runtime/advance.ts": "ab988579453d9e2aa296bd105eebc58c53859ea38134419595f5ec8cf3e8e0dc",
         "src/runtime/clock.ts": "db311b314f5a4fe5f24588c51d69b7b3b800dd461966f1f1d03649628019d45d"
       }
     },
@@ -24,7 +24,7 @@
       "document": "docs/project/specs/ORDERS.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/commands.ts": "4171722b5774576bd840a5e8890169653dcaec223989f075215e0a4d47b3964d",
         "src/simulation/march.ts": "e58fafc0ecf7f6c8562f3a8c3a1d0a4ae02906675a95adc2ed5d8a53d702af52",
@@ -40,7 +40,7 @@
       "document": "docs/project/specs/WORLD.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/map.ts": "d0f13797203a83539d9bf6e32123f99d6865e86c28d458b40cc4d6dc5d197d8a",
         "src/simulation/map-100.ts": "d47e16e9e4f9108c83f0040bc5117398e38237bdc82e5ab9a65ee1f2f364d239",
@@ -56,7 +56,7 @@
       "document": "docs/project/specs/COMBAT.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
         "src/simulation/unit-capabilities.ts": "ff140b668418c8a501d9d40b9fa45e93481c95a651f57f635b4228f24af46f6e",
@@ -69,7 +69,7 @@
       "document": "docs/project/specs/BASES.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/capture.ts": "ad4b68211d25f46320c90027f4549b595eaf2b03d2eb2bb82db600c1f491c888",
         "src/simulation/base-upgrades.ts": "72b10fd424d1bec9935e9026eb3919517dd61596822850f4339d905ec48f5bff",
@@ -85,7 +85,7 @@
       "document": "docs/project/specs/ECONOMY.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/economy.ts": "93a40c7957eefac7ee38495021ea8fac51d190851e6c65eb82832f02d1416251",
         "src/simulation/production.ts": "6f98128fa7f1eef51dd2b9ac61d23d9cc3425dea83a86afc7630bc5ea88a288f",
@@ -99,12 +99,12 @@
       "document": "docs/project/specs/NPC.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
-        "src/ai/strategy.ts": "060ab25b30e3da8e58c0522356d842882db55fd85dfaa552117eae5f8c7fbf4b",
+        "src/ai/strategy.ts": "f57cb5a62388af6ebc8b0b2e2ba43c63115c5d052cb04372a96552ac1c0c2e1c",
         "src/ai/local-faction.ts": "316f318aa8e3a8abf8420ddc7fd4f4bcad323d38fde4f5ef543d2c4bc664fe4c",
         "src/simulation/local-faction.ts": "38c998c33b28b8d774d7a274385015f292a9e9534f3620b531b643fcf39cf97f",
-        "src/runtime/advance.ts": "2aa34fc37aeb3358b3b4014d2f922d2b2646689aebb232ff16c3ff2a5d3dbe84",
+        "src/runtime/advance.ts": "ab988579453d9e2aa296bd105eebc58c53859ea38134419595f5ec8cf3e8e0dc",
         "scripts/run-selfplay.mjs": "7fb6b187232bea675dc61c703131b148f2e543b2f42a2a527ef69184ce50751d"
       }
     },
@@ -114,13 +114,13 @@
       "document": "docs/project/specs/TACTICS.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/tactical-abilities.ts": "1aca13f05f00f19f98fa84b17b177d95db3c7bce658b3daed19060ffc48ff89c",
         "src/simulation/combat.ts": "7b556ec0fd8acef82e1f1968cd858731befae36d4beeb006d984da5a5f405383",
         "src/simulation/visibility.ts": "b8ffaa739acd956a78e3c760ab08501c780f8a13294ea94549011c68249331ef",
         "src/simulation/production.ts": "6f98128fa7f1eef51dd2b9ac61d23d9cc3425dea83a86afc7630bc5ea88a288f",
-        "src/ai/strategy.ts": "060ab25b30e3da8e58c0522356d842882db55fd85dfaa552117eae5f8c7fbf4b"
+        "src/ai/strategy.ts": "f57cb5a62388af6ebc8b0b2e2ba43c63115c5d052cb04372a96552ac1c0c2e1c"
       }
     },
     {
@@ -129,14 +129,14 @@
       "document": "docs/project/specs/MASTER.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
-        "src/simulation/rules-validation.ts": "2781f65ba3d0c26ba56d3ab9b2259ae2914383e379df2e240009f203c0ca19af",
+        "src/simulation/rules-validation.ts": "ade75a80358d1f3204c7ca3d2833edaf0e324d6e8bf79e5f3e35d08ede799271",
         "src/runtime/strict-json.ts": "1e35911f5178ff59df1a7423c7cb84da51d643731edfafdbdc4087e3684c7b1d",
         "src/runtime/master-store.ts": "966aa95d31548c619dd3a4d60362f44728d7e41de54a5898dd2f74e3c06bdd51",
         "src/runtime/diagnostics.ts": "9bef114304241f2496879c215c8808b6f026ede142f50bf1d732254fbb0b133c",
         "src/runtime/controller.ts": "a753ee2177cba561fe603b838cd6248ee3ecc24be4b55b1afa4d6b5cc4bc69df",
-        "src/ui/master-editor.ts": "d17bd6f4826136b43b99bfd0c32c45010fd0b5474f4c6f1fedf9f82e4b3ed054",
+        "src/ui/master-editor.ts": "1caaa3a24cf025fae737aa73790b4b12861e7df6f559eb5645e43182c4a27fd5",
         "src/ui/research-editor.ts": "17e25521247c5bb2ae66e99ed1ef6d514448db7739b9d8636312e17eeea2f044",
         "scripts/build-info.mjs": "d1eef8103f3e2266292b60b464b740b7af60aad60e3bd25d00bcaebac8f48eaf"
       }
@@ -147,12 +147,12 @@
       "document": "docs/project/specs/INTERFACE.md",
       "sources": {
         "src/simulation/types.ts": "297eff159dc1751d8e9e67d52d9e7b11aeed43c5a37468befe4ed73ff86e0e16",
-        "src/simulation/rules.ts": "acf58cf2f0767154275e041ceaab035837b3b77c5530be0d312373391bd6c23e",
+        "src/simulation/rules.ts": "8d92c71b688058c75edf3b0587c7b0a52d2031136cb370e8881db01b7d10530d",
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/main.ts": "9deb888388198793cd177d4230fc5f264e271b50521e57d2ac3f06813b7c7ff8",
         "src/render/board.ts": "e35d38a22904f3bee80493e82f4a7443b3c93a3fe9b14401e7557ea3233dc175",
         "src/render/view-model.ts": "e2c4808cb471528168a1bc205d7fcb4629254ae58d7c836c710a66a6d323435c",
-        "src/simulation/view.ts": "1ab266eb9ef49a90671285e6aff2148785597a94e10880a2b322c5f324a6b839",
+        "src/simulation/view.ts": "230e7f0b93e3808281aa73749482f00cf44c1a0343fcc3ae7a5e6f6cc1110ef3",
         "src/simulation/visibility.ts": "b8ffaa739acd956a78e3c760ab08501c780f8a13294ea94549011c68249331ef",
         "src/assets/manifest.ts": "29e7f0e7c19a333c64f0720e55e863a366004e310f4fe3a2c2378011ab2e8f2c",
         "src/ui/hud.ts": "779c3ea01f769d65db0deb058a68aa3233e8c5eb28d1c1f6b61ae7ba4539c573",
