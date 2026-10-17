@@ -8,7 +8,7 @@ type Change = (update: ResearchDraftUpdate, structural: boolean) => void;
 const EFFECTS: readonly [ResearchEffectId, string][] = [
   ['damage-bonus', '部隊攻撃加算'],
   ['vision-bonus', '視界加算'],
-  ['supply-income-bonus', '補給収入加算'],
+  ['supply-income-bonus', '定額補給収入加算'],
   ['upkeep-reduction', '維持費減額'],
   ['crossing-unlock', '渡河解放'],
   ['unit-unlock', '兵種解放'],

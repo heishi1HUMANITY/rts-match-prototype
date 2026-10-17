@@ -62,7 +62,7 @@ describe('G2 fixed-tick integration', () => {
     expect(stepMatch(paused)).toBe(paused);
   });
 
-  it('adds present unit capture efficiencies and includes capture income', () => {
+  it('adds present unit capture efficiencies while income stays flat', () => {
     let state = running(
       createMatch(42, {
         scenarioId: 'g2-capture',
@@ -82,8 +82,8 @@ describe('G2 fixed-tick integration', () => {
     for (let i = 0; i < 15; i += 1) state = stepMatch(state);
     expect(state.elapsedTicks).toBe(30);
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
-      supplyCenti: 21_670,
-      researchCenti: 520,
+      supplyCenti: 23_150,
+      researchCenti: 360,
     });
   });
 
@@ -235,7 +235,7 @@ describe('G2 fixed-tick integration', () => {
       hp: 0,
     });
     expect(state.factions.find(({ id }) => id === 'B')).toMatchObject({
-      supplyCenti: 11_020,
+      supplyCenti: 11_120,
       productionJobs: [],
       ticketsCenti: 0,
       eliminationReason: 'hq',

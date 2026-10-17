@@ -25,8 +25,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 22 as const;
-export const RULES_VERSION = 'cp12-research-v1' as const;
+export const MASTER_SCHEMA_VERSION = 23 as const;
+export const RULES_VERSION = 'cp12-economy-v1' as const;
 
 export interface TacticalAbilityRules {
   readonly costCenti: number;
@@ -85,6 +85,9 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly economy: {
+    readonly flatSupplyIncomeCentiPerTick: number;
+  };
   readonly facilities: {
     readonly slotsPerAnchor: number;
     readonly maxPerFaction: number;
@@ -247,6 +250,7 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  economy: { flatSupplyIncomeCentiPerTick: 120 },
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,
@@ -273,7 +277,7 @@ export const DEFAULT_RULES: RulesMaster = {
           maxHpPercent: 160,
           supplyIncomePercent: 150,
           researchIncomePercent: 150,
-          turretDamage: 50,
+          turretDamage: 120,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -402,7 +406,7 @@ export const DEFAULT_RULES: RulesMaster = {
     }),
   ) as unknown as RulesMaster['units'],
   bases: {
-    hq: { ...BASE_STATS.hq, ticketWeight: 0, garrisonCapacity: 2 },
+    hq: { ...BASE_STATS.hq, ticketWeight: 0, garrisonCapacity: 5 },
     outpost: { ...BASE_STATS.outpost, ticketWeight: 1, garrisonCapacity: 1 },
     medium: { ...BASE_STATS.medium, ticketWeight: 2, garrisonCapacity: 2 },
     large: { ...BASE_STATS.large, ticketWeight: 3, garrisonCapacity: 3 },

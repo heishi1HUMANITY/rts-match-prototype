@@ -1,42 +1,23 @@
 import type { CombatantId, MatchState } from './types';
 import { researchEffectValue } from './research';
-import { upgradedIncome } from './base-upgrades';
 
-/** Applies income from surviving owned bases and upkeep for surviving units. */
+/** Applies fixed faction income and surviving-unit upkeep, independent of territory. */
 export function applyEconomyTick(state: MatchState): MatchState {
   const income = new Map<CombatantId, { supply: number; research: number }>();
   for (const faction of state.factions) {
     if (faction.eliminatedAtTick !== null) continue;
+    const supplyBonus = researchEffectValue(
+      faction,
+      state.rules,
+      'supply-income-bonus',
+    );
     income.set(faction.id, {
-      supply: 0,
+      supply: state.rules.economy.flatSupplyIncomeCentiPerTick + supplyBonus,
       research: state.rules.research.baseIncomeCentiPerTick,
     });
   }
   if (state.localFaction.active && !state.localFaction.defeated)
     income.set('local', { supply: 0, research: 0 });
-  for (const base of state.bases) {
-    if (base.owner === null || base.hp <= 0) continue;
-    const entry = income.get(base.owner);
-    if (entry === undefined) continue;
-    const stats = state.rules.bases[base.kind];
-    const faction = state.factions.find(({ id }) => id === base.owner);
-    const supplyBonus = faction
-      ? researchEffectValue(faction, state.rules, 'supply-income-bonus')
-      : 0;
-    entry.supply +=
-      upgradedIncome(
-        base,
-        stats.supplyIncomeCentiPerTick,
-        state.rules,
-        'supply',
-      ) + supplyBonus;
-    entry.research += upgradedIncome(
-      base,
-      stats.researchIncomeCentiPerTick,
-      state.rules,
-      'research',
-    );
-  }
   for (const unit of state.units) {
     if (unit.hp <= 0) continue;
     const entry = income.get(unit.factionId);

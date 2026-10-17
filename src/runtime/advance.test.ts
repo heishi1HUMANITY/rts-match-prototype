@@ -38,7 +38,7 @@ describe('advanceMatch NPC orchestration', () => {
       });
       expect(faction.activeResearch).toEqual({ researchId: 'firepower-1' });
       expect(faction.researchProgressCenti['firepower-1']).toBe(12);
-      expect(faction.supplyCenti).toBeLessThan(8_100);
+      expect(faction.supplyCenti).toBe(8_105);
     }
   });
 

@@ -416,9 +416,14 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     help: '対戦NPC B/Cが1回に出せる命令数の上限です。必要な操作を順番に処理します。',
   },
   baseIncomeCentiPerTick: {
-    label: '基礎研究収入',
+    label: '定額研究収入',
     unit: '研究 pt ×100/tick',
-    help: '各陣営が拠点とは別に得る研究収入です。',
+    help: '拠点数や種別によらず、各陣営が毎tick得る研究収入です。',
+  },
+  flatSupplyIncomeCentiPerTick: {
+    label: '定額補給収入',
+    unit: '補給 ×100/tick',
+    help: '拠点数や種別によらず、各陣営が毎tick得る補給です。部隊維持費はここから差し引きます。',
   },
 };
 
@@ -451,6 +456,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    economy: '経済',
     facilities: '防御施設',
     baseUpgrades: '拠点強化',
     units: '兵種',
@@ -472,6 +478,13 @@ function fieldsFor(rules: RulesMaster): {
   const result: { group: string; path: string; value: unknown }[] = [];
   const visit = (value: unknown, path: string, group: string): void => {
     if (path === 'research.definitions') return;
+    if (
+      path.endsWith('.supplyIncomeCentiPerTick') ||
+      path.endsWith('.researchIncomeCentiPerTick') ||
+      path.endsWith('.supplyIncomePercent') ||
+      path.endsWith('.researchIncomePercent')
+    )
+      return;
     if (Array.isArray(value)) {
       if (path.endsWith('.attackTargets')) {
         result.push({ group, path, value });
@@ -598,7 +611,7 @@ function fieldLabel(path: string): string {
     const effectNames: Record<string, string> = {
       'damage-bonus': '攻撃上昇',
       'vision-bonus': '視界上昇',
-      'supply-income-bonus': '拠点補給収入',
+      'supply-income-bonus': '定額補給加算',
       'upkeep-reduction': '維持費減額',
       'crossing-unlock': '渡河解放（数値なし）',
       'unit-unlock': '兵種解放（数値なし）',

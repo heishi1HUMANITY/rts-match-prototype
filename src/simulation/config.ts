@@ -8,7 +8,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 25 as const;
+export const SCHEMA_VERSION = 26 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 /** Current trial map; the original 40-cell layout remains available as LEGACY_MAP_SIZE. */
@@ -22,8 +22,8 @@ export const TICK_DURATION_MS = 100;
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;
 export const INITIAL_TICKETS_CENTI = 30_000;
-export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 2;
-export const BASE_UNITS = 3;
+export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 12;
+export const BASE_UNITS = 5;
 export const UNITS_PER_OWNED_BASE = 1;
 export const MAX_UNITS = 9;
 export const UNIT_LIMIT = MAX_UNITS;
@@ -473,26 +473,26 @@ export const BASE_STATS: Readonly<
   hq: {
     maxHp: 1200,
     vision: 6,
-    supplyIncomeCentiPerTick: 40,
+    supplyIncomeCentiPerTick: 0,
     researchIncomeCentiPerTick: 0,
   },
   outpost: {
     maxHp: 300,
     vision: 4,
-    supplyIncomeCentiPerTick: 20,
-    researchIncomeCentiPerTick: 10,
+    supplyIncomeCentiPerTick: 0,
+    researchIncomeCentiPerTick: 0,
   },
   medium: {
     maxHp: 500,
     vision: 5,
-    supplyIncomeCentiPerTick: 30,
-    researchIncomeCentiPerTick: 15,
+    supplyIncomeCentiPerTick: 0,
+    researchIncomeCentiPerTick: 0,
   },
   large: {
     maxHp: 800,
     vision: 6,
-    supplyIncomeCentiPerTick: 40,
-    researchIncomeCentiPerTick: 20,
+    supplyIncomeCentiPerTick: 0,
+    researchIncomeCentiPerTick: 0,
   },
 };
 

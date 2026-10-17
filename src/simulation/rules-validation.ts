@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'economy',
     'facilities',
     'baseUpgrades',
     'units',
@@ -544,6 +545,16 @@ export function validateRules(input: unknown): ValidationResult {
       key: 'rules.limits.maxUnits',
       message: '最大部隊数は基本部隊数以上にしてください',
     });
+  if (rules.limits.baseUnits * 2 <= rules.limits.maxUnits)
+    issues.push({
+      key: 'rules.limits.baseUnits',
+      message: '2×基本部隊数は最大部隊数を超える必要があります',
+    });
+  if (rules.economy.flatSupplyIncomeCentiPerTick < 0)
+    issues.push({
+      key: 'rules.economy.flatSupplyIncomeCentiPerTick',
+      message: '定額補給収入は0以上にしてください',
+    });
   if (rules.tickets.decay.startTick > rules.tickets.decay.endTick)
     issues.push({
       key: 'rules.tickets.decay.startTick',
@@ -670,7 +681,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 18 &&
       input.masterSchemaVersion !== 19 &&
       input.masterSchemaVersion !== 20 &&
-      input.masterSchemaVersion !== 21)
+      input.masterSchemaVersion !== 21 &&
+      input.masterSchemaVersion !== 22)
   )
     return {
       ok: false,
@@ -1145,6 +1157,50 @@ export function validateEnvelope(
         };
       }
     }
+    if (
+      input.masterSchemaVersion <= 22 &&
+      isRecord(migrationCandidate.limits) &&
+      migrationCandidate.limits.baseUnits === 3 &&
+      migrationCandidate.limits.maxUnits === 9
+    ) {
+      migrationCandidate = {
+        ...migrationCandidate,
+        limits: {
+          ...migrationCandidate.limits,
+          baseUnits: DEFAULT_RULES.limits.baseUnits,
+        },
+      };
+    }
+    if (
+      input.masterSchemaVersion <= 22 &&
+      isRecord(migrationCandidate.research) &&
+      migrationCandidate.research.baseIncomeCentiPerTick === 2
+    ) {
+      migrationCandidate = {
+        ...migrationCandidate,
+        research: {
+          ...migrationCandidate.research,
+          baseIncomeCentiPerTick: DEFAULT_RULES.research.baseIncomeCentiPerTick,
+        },
+      };
+    }
+    if (
+      input.masterSchemaVersion <= 22 &&
+      isRecord(migrationCandidate.bases) &&
+      isRecord(migrationCandidate.bases.hq) &&
+      migrationCandidate.bases.hq.garrisonCapacity === 2
+    ) {
+      migrationCandidate = {
+        ...migrationCandidate,
+        bases: {
+          ...migrationCandidate.bases,
+          hq: {
+            ...migrationCandidate.bases.hq,
+            garrisonCapacity: DEFAULT_RULES.bases.hq.garrisonCapacity,
+          },
+        },
+      };
+    }
     candidateRules = migrationCandidate;
   }
   if (
@@ -1330,6 +1386,14 @@ export function validateEnvelope(
       },
     };
   }
+  if (isRecord(candidateRules))
+    candidateRules = {
+      ...candidateRules,
+      economy: {
+        ...DEFAULT_RULES.economy,
+        ...(isRecord(candidateRules.economy) ? candidateRules.economy : {}),
+      },
+    };
   const result = validateRules(candidateRules);
   return result.ok
     ? {
