@@ -580,9 +580,36 @@ export const MAP_DEFINITIONS = {
   },
   ring100: {
     id: 'ring-three-fronts',
-    version: 1,
+    version: 6,
     width: 100,
     height: 100,
+    terrainPatches: [
+      {
+        kind: 'mountain',
+        cells: [
+          { x: 28, y: 55 },
+          { x: 29, y: 55 },
+        ],
+      },
+      {
+        kind: 'mountain',
+        cells: [
+          { x: 65, y: 69 },
+          { x: 66, y: 69 },
+          { x: 65, y: 70 },
+          { x: 66, y: 70 },
+        ],
+      },
+      {
+        kind: 'mountain',
+        cells: [
+          { x: 57, y: 24 },
+          { x: 58, y: 24 },
+          { x: 57, y: 25 },
+          { x: 58, y: 25 },
+        ],
+      },
+    ],
     terrainRows: [
       '....................rrrrr...........................................................................',
       '....................rrrrr...........................................................................',
@@ -948,8 +975,8 @@ export const MAP_DEFINITIONS = {
         id: 'OUT-01',
         kind: 'outpost',
         cell: {
-          x: 45,
-          y: 43,
+          x: 47,
+          y: 40,
         },
         factionId: null,
       },
@@ -966,8 +993,8 @@ export const MAP_DEFINITIONS = {
         id: 'OUT-03',
         kind: 'outpost',
         cell: {
-          x: 50,
-          y: 70,
+          x: 48,
+          y: 59,
         },
         factionId: null,
       },
@@ -1494,6 +1521,22 @@ export const MAP_DEFINITIONS = {
             x: 32,
             y: 13,
           },
+        ],
+      },
+      {
+        id: 'CROSS-FLANK-SOUTH-B2',
+        tier: 'bridge-2',
+        bankA: { x: 31, y: 60 },
+        bankB: { x: 40, y: 60 },
+        cells: [
+          { x: 32, y: 60 },
+          { x: 33, y: 60 },
+          { x: 34, y: 60 },
+          { x: 35, y: 60 },
+          { x: 36, y: 60 },
+          { x: 37, y: 60 },
+          { x: 38, y: 60 },
+          { x: 39, y: 60 },
         ],
       },
     ],

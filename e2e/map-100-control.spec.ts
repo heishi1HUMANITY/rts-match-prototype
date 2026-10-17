@@ -72,7 +72,7 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
     await page.mouse.move(target.x, target.y, { steps: 10 });
     await page.mouse.up();
   };
-  await dragTo({ x: 35, y: 50 }, { x: 45, y: 43 }); // A-01 → OUT-01
+  await dragTo({ x: 35, y: 50 }, { x: 47, y: 40 }); // A-01 → OUT-01
   await dragTo({ x: 15, y: 53 }, { x: 30, y: 73 }); // A-02 → MID-02
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
   const path = info.outputPath('two-objective-fronts.json');

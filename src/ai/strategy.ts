@@ -510,10 +510,16 @@ function isNear(cell: Cell, bank: Cell): boolean {
   return Math.abs(cell.x - bank.x) + Math.abs(cell.y - bank.y) <= 1;
 }
 
-function enemyCell(enemy: VisibleEnemyUnitView): Cell {
+function enemyCell(view: FactionView, enemy: VisibleEnemyUnitView): Cell {
   return {
-    x: Math.max(0, Math.min(39, Math.floor(enemy.positionX1024 / 1024))),
-    y: Math.max(0, Math.min(39, Math.floor(enemy.positionY1024 / 1024))),
+    x: Math.max(
+      0,
+      Math.min(view.map.width - 1, Math.floor(enemy.positionX1024 / 1024)),
+    ),
+    y: Math.max(
+      0,
+      Math.min(view.map.height - 1, Math.floor(enemy.positionY1024 / 1024)),
+    ),
   };
 }
 
@@ -549,7 +555,7 @@ function enemyDefenseGoal(
   const enemy = view.visibleEnemies
     .filter((entry) => entry.factionId !== view.viewerFactionId)
     .filter((entry) => isNearFriendlyPosition(view, entry, unit))
-    .map((entry) => ({ enemy: entry, cell: enemyCell(entry) }))
+    .map((entry) => ({ enemy: entry, cell: enemyCell(view, entry) }))
     .sort((a, b) => {
       const da = distanceSquared(currentCell(unit), a.cell);
       const db = distanceSquared(currentCell(unit), b.cell);
@@ -610,7 +616,7 @@ function unitMoveCommand(
       .filter(
         (enemy) => view.rules.units[enemy.kind].movementDomain === 'water',
       )
-      .map((enemy) => ({ enemy, cell: enemyCell(enemy) }))
+      .map((enemy) => ({ enemy, cell: enemyCell(view, enemy) }))
       .map((entry) => ({
         ...entry,
         route: findPath(view.map, from, entry.cell, { domain: 'water' }),
@@ -633,6 +639,8 @@ function unitMoveCommand(
         target: { kind: 'unit', id: enemyGoal.enemy.id },
       };
     }
+    const centerX = Math.floor(view.map.width / 2);
+    const centerY = Math.floor(view.map.height / 2);
     const riverCells = (view.map.terrain ?? [])
       .flatMap((kind, index) =>
         kind === 'river'
@@ -646,9 +654,9 @@ function unitMoveCommand(
       )
       .sort(
         (a, b) =>
-          Math.abs(a.x - 20) +
-          Math.abs(a.y - 20) -
-          (Math.abs(b.x - 20) + Math.abs(b.y - 20)),
+          Math.abs(a.x - centerX) +
+          Math.abs(a.y - centerY) -
+          (Math.abs(b.x - centerX) + Math.abs(b.y - centerY)),
       );
     for (const target of riverCells) {
       const route = findPath(view.map, from, target, { domain: 'water' });
