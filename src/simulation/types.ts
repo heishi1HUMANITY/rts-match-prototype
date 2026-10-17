@@ -24,7 +24,8 @@ export type ScenarioId =
   | 'f19-capture'
   | 'f11-facilities'
   | 'f18-garrison'
-  | 'f15-tactical-abilities';
+  | 'f15-tactical-abilities'
+  | 'f86-point-fire';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -290,6 +291,13 @@ export interface UnitState {
   readonly garrisonedAtBaseId?: string | null;
   readonly smokeUntilTick?: number;
   readonly attack?: AttackState;
+  /** A ground-cell bombardment order. Only the artillery owner may see it. */
+  readonly bombardOrder?: ArtilleryBombardOrder | null;
+}
+
+export interface ArtilleryBombardOrder {
+  readonly cell: Cell;
+  readonly fireAtTick: number;
 }
 
 export interface MarchTarget {
@@ -399,6 +407,17 @@ export interface ScheduledStrike {
   readonly factionId: FactionId;
   readonly cell: Cell;
   readonly impactTick: number;
+  readonly centerX1024?: number;
+  readonly centerY1024?: number;
+  readonly radius?: number;
+  readonly unitDamage?: number;
+  readonly structureDamage?: number;
+  readonly sourceUnitId?: string;
+}
+
+export interface ImpactWarning {
+  readonly cell: Cell;
+  readonly impactTick: number;
 }
 
 export interface SurveyEffect {
@@ -495,6 +514,7 @@ export interface OwnFactionView extends EliminationStatus {
   readonly activeSmokeUntilTick: number;
   readonly activeSurveyUntilTick: number;
   readonly pendingStrikes: readonly ScheduledStrike[];
+  readonly incomingArtilleryWarnings: readonly ImpactWarning[];
 }
 
 export interface FactionView {
@@ -623,6 +643,11 @@ export type Command =
       readonly target: MarchTarget;
     }
   | { readonly type: 'stop'; readonly unitId: string }
+  | {
+      readonly type: 'point-fire';
+      readonly unitId: string;
+      readonly cell: Cell;
+    }
   | {
       readonly type: 'garrison';
       readonly unitId: string;

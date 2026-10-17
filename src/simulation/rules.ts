@@ -26,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 25 as const;
-export const RULES_VERSION = 'cp12-npc-paths-v1' as const;
+export const MASTER_SCHEMA_VERSION = 26 as const;
+export const RULES_VERSION = 'cp13-point-artillery-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -49,6 +49,19 @@ export interface TacticalAbilityRules {
   readonly productionTimePercent: number;
   readonly damageTakenPercent: number;
   readonly visionPercent: number;
+}
+
+export interface ArtilleryBombardmentRules {
+  readonly range: number;
+  readonly preparationTicks: number;
+  readonly intervalTicks: number;
+  readonly observedImpactTicks: number;
+  readonly unobservedImpactTicks: number;
+  readonly observedScatterRadius1024: number;
+  readonly unobservedScatterRadius1024: number;
+  readonly blastRadius1024: number;
+  readonly unitDamage: number;
+  readonly structureDamage: number;
 }
 
 export interface BaseUpgradeTier {
@@ -95,6 +108,7 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly artilleryBombardment: ArtilleryBombardmentRules;
   readonly airDefense: {
     readonly deployTicks: number;
     readonly recognitionGraceTicks: number;
@@ -283,6 +297,18 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  artilleryBombardment: {
+    range: 8,
+    preparationTicks: 10,
+    intervalTicks: 80,
+    observedImpactTicks: 30,
+    unobservedImpactTicks: 50,
+    observedScatterRadius1024: 512,
+    unobservedScatterRadius1024: 2048,
+    blastRadius1024: 1024,
+    unitDamage: 100,
+    structureDamage: 150,
+  },
   airDefense: {
     deployTicks: 20,
     recognitionGraceTicks: 30,

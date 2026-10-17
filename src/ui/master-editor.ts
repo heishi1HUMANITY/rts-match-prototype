@@ -38,6 +38,41 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  preparationTicks: {
+    label: '砲撃準備時間',
+    unit: 'tick (0.1秒)',
+    help: '地点を指定してから砲弾を発射するまでの時間です。',
+  },
+  intervalTicks: {
+    label: '共通攻撃間隔',
+    unit: 'tick (0.1秒)',
+    help: '通常攻撃と地点砲撃で共有する再攻撃までの時間です。',
+  },
+  observedImpactTicks: {
+    label: '観測中の着弾時間',
+    unit: 'tick (0.1秒)',
+    help: '発射時に指定地点を観測している場合の飛翔時間です。',
+  },
+  unobservedImpactTicks: {
+    label: '未観測時の着弾時間',
+    unit: 'tick (0.1秒)',
+    help: '発射時に指定地点を観測していない場合の飛翔時間です。',
+  },
+  observedScatterRadius1024: {
+    label: '観測中の散布半径',
+    unit: 'マス ×1024',
+    help: '観測射撃の着弾散布範囲です。',
+  },
+  unobservedScatterRadius1024: {
+    label: '未観測時の散布半径',
+    unit: 'マス ×1024',
+    help: '未観測射撃の着弾散布範囲です。',
+  },
+  blastRadius1024: {
+    label: '爆発半径',
+    unit: 'マス ×1024',
+    help: '着弾時にdamageを与える範囲です。',
+  },
   deployTicks: {
     label: '対空展開時間',
     unit: 'tick (0.1秒)',
@@ -521,6 +556,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    artilleryBombardment: '地点砲撃',
     airDefense: '航空・対空',
     economy: '経済',
     facilities: '防御施設',
