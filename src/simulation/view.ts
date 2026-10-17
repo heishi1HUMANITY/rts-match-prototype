@@ -249,6 +249,11 @@ export function getFactionView(
     tick: state.elapsedTicks,
     timeLimitTicks: state.timeLimitTicks,
     rules: JSON.parse(JSON.stringify(state.rules)) as MatchState['rules'],
+    researchAnnouncements: (state.researchAnnouncements ?? []).map(
+      (notice) => ({
+        ...notice,
+      }),
+    ),
     result:
       state.result === null
         ? null
@@ -331,6 +336,9 @@ export function getFactionView(
       supplyCenti: faction.supplyCenti,
       researchCenti: faction.researchCenti,
       researchProgressCenti: { ...faction.researchProgressCenti },
+      ...(faction.researchRequiredCenti
+        ? { researchRequiredCenti: { ...faction.researchRequiredCenti } }
+        : {}),
       ticketsCenti: faction.ticketsCenti,
       eliminatedAtTick: faction.eliminatedAtTick,
       eliminationReason: faction.eliminationReason,

@@ -10,7 +10,11 @@ import type {
   UnitKind,
 } from '../simulation/types';
 import { crossingResearchComplete } from '../simulation/crossings';
-import { researchEffectValue, isUnitUnlocked } from '../simulation/research';
+import {
+  researchCostForFaction,
+  researchEffectValue,
+  isUnitUnlocked,
+} from '../simulation/research';
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
 import { TACTICAL_ABILITY_LABELS } from '../simulation/tactical-abilities';
 import { TACTICAL_ABILITY_IDS } from '../simulation/types';
@@ -98,6 +102,10 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'naval-1': '哨戒艇',
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
+    'specialization-power': '専攻・戦力',
+    'specialization-logistics': '専攻・兵站',
+    'specialization-information': '専攻・情報',
+    'specialization-engineering': '専攻・工兵',
   }).find(([key]) => key === id)?.[1] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
@@ -171,7 +179,7 @@ export function createHud(app: HTMLElement): HudElements {
         </div>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
       <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
@@ -434,14 +442,14 @@ export function updateHud(
       } as const
     )[def.domain];
     const prerequisite = def.prerequisites.length
-      ? ` · 前提 ${def.prerequisites.map((id) => researchName(id, view)).join('・')}`
+      ? ` · 前提いずれか ${def.prerequisites.map((id) => researchName(id, view)).join('・')}`
       : '';
     const exclusions = def.exclusiveWith.length
       ? ` · 排他 ${def.exclusiveWith.map((id) => researchName(id, view)).join('・')}`
       : '';
     text(
       `[data-research-details="${id}"]`,
-      `${domainName} ${def.stage} · 必要${amount(def.costCenti)}ポイント · ${def.effects.map(effectLabel).join('、')}${prerequisite}${exclusions}`,
+      `${domainName} ${def.stage} · 次の充填時に必要${amount(researchCostForFaction(view.rules, own, id))}ポイント · ${def.effects.map(effectLabel).join('、')}${prerequisite}${exclusions}`,
     );
   }
   text(
@@ -491,6 +499,13 @@ export function updateHud(
       : own.activeResearch
         ? `${researchName(own.activeResearch.researchId, view)} 充填 ${((own.researchProgressCenti[own.activeResearch.researchId] ?? 0) / 100).toFixed(1)}pt`
         : `バンク中 · 研究完了 ${own.completedResearchIds.length}/${Object.keys(view.rules.research.definitions).length}`,
+  );
+  const latestResearchNotice = view.researchAnnouncements?.at(-1);
+  text(
+    '[data-research-announcement]',
+    latestResearchNotice
+      ? `専攻完成 · ${latestResearchNotice.factionId} ${researchName(latestResearchNotice.researchId, view)}`
+      : '',
   );
   const selected = selectedUnits[0];
   text(
@@ -672,6 +687,7 @@ export function updateHud(
     own.eliminatedAtTick !== null;
   for (const id of researchIds) {
     const def = view.rules.research.definitions[id]!;
+    const cost = researchCostForFaction(view.rules, own, id);
     const done = own.completedResearchIds.includes(id);
     const active = own.activeResearch?.researchId === id;
     const progress = own.researchProgressCenti[id] ?? 0;
@@ -682,11 +698,11 @@ export function updateHud(
           ? `完了 · ${def.effects.map(effectLabel).join('、')}`
           : view.phase !== 'running'
             ? '開始・再開後に選択できます'
-            : def.prerequisites.some(
-                  (id) => !own.completedResearchIds.includes(id),
+            : def.prerequisites.length > 0 &&
+                !def.prerequisites.some((id) =>
+                  own.completedResearchIds.includes(id),
                 )
-              ? `前提：${def.prerequisites
-                  .filter((id) => !own.completedResearchIds.includes(id))
+              ? `前提いずれか：${def.prerequisites
                   .map((id) => researchName(id, view))
                   .join('・')}が必要です`
               : def.exclusiveWith.some((id) =>
@@ -706,12 +722,12 @@ export function updateHud(
     text(
       `[data-research-reason="${id}"]`,
       reason ??
-        `${active ? '充填中' : progress > 0 ? '進捗保持' : '選択可能'} · ${(progress / 100).toFixed(1)} / ${def.costCenti / 100}pt`,
+        `${active ? '充填中' : progress > 0 ? '進捗保持' : '選択可能'} · ${(progress / 100).toFixed(1)} / ${(cost / 100).toFixed(1)}pt`,
     );
     const bar = elements.root.querySelector<HTMLProgressElement>(
       `[data-research-progress="${id}"]`,
     )!;
-    bar.value = (100 * progress) / def.costCenti;
+    bar.value = (100 * progress) / cost;
     bar.setAttribute('aria-label', `${researchName(id)}の充填率`);
   }
   const jammedUnits = view.ownUnits.filter((unit) => unit.jammed);

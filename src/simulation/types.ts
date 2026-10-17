@@ -235,6 +235,8 @@ export interface FactionState extends EliminationStatus {
   readonly supplyCenti: number;
   readonly researchCenti: number;
   readonly researchProgressCenti: Readonly<Record<ResearchId, number>>;
+  /** Requirement fixed when the first point is committed to a research node. */
+  readonly researchRequiredCenti?: Readonly<Record<ResearchId, number>>;
   readonly ticketsCenti: number;
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
@@ -354,7 +356,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 24;
+  readonly schemaVersion: 25;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -370,8 +372,15 @@ export interface MatchState {
   readonly facilities: readonly FacilityState[];
   readonly scheduledStrikes: readonly ScheduledStrike[];
   readonly surveys: readonly SurveyEffect[];
+  readonly researchAnnouncements?: readonly ResearchAnnouncement[];
   readonly knowledge: readonly FactionKnowledge[];
   readonly result: MatchResult | null;
+}
+
+export interface ResearchAnnouncement {
+  readonly factionId: FactionId;
+  readonly researchId: ResearchId;
+  readonly tick: number;
 }
 
 export interface ScheduledStrike {
@@ -462,6 +471,7 @@ export interface OwnFactionView extends EliminationStatus {
   readonly supplyCenti: number;
   readonly researchCenti: number;
   readonly researchProgressCenti: Readonly<Record<ResearchId, number>>;
+  readonly researchRequiredCenti?: Readonly<Record<ResearchId, number>>;
   readonly ticketsCenti: number;
   readonly productionJobs: readonly ProductionJob[];
   readonly activeResearch: ActiveResearch | null;
@@ -483,6 +493,7 @@ export interface FactionView {
   readonly tick: number;
   readonly timeLimitTicks: number;
   readonly rules: RulesMaster;
+  readonly researchAnnouncements?: readonly ResearchAnnouncement[];
   readonly result: MatchResult | null;
   /** Public elimination status, without hidden force counts or resources. */
   readonly publicEliminations: Readonly<Record<FactionId, EliminationStatus>>;

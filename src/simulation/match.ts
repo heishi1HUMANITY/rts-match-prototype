@@ -400,6 +400,7 @@ export function createMatch(
       facilities: [],
       scheduledStrikes: [],
       surveys: [],
+      researchAnnouncements: [],
       crossings: (map.crossingSites ?? []).map((site) => ({
         siteId: site.id,
         owner: null,
@@ -459,9 +460,12 @@ export function createMatch(
           factions: withLocalUnits.factions.map((f) => ({
             ...f,
             supplyCenti: 1000000,
-            completedResearchIds: Object.keys(
-              rules.research.definitions,
-            ).filter((id) => id !== 'facility-engineering'),
+            completedResearchIds: Object.entries(rules.research.definitions)
+              .filter(
+                ([id, definition]) =>
+                  id !== 'facility-engineering' && definition.stage !== 4,
+              )
+              .map(([id]) => id),
           })),
           rules: {
             ...rules,

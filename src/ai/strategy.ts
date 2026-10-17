@@ -81,9 +81,10 @@ function researchCommand(view: FactionView): Command | undefined {
     return (
       !faction.completedResearchIds.includes(id) &&
       faction.activeResearch?.researchId !== id &&
-      definition.prerequisites.every((prerequisite) =>
-        faction.completedResearchIds.includes(prerequisite),
-      ) &&
+      (definition.prerequisites.length === 0 ||
+        definition.prerequisites.some((prerequisite) =>
+          faction.completedResearchIds.includes(prerequisite),
+        )) &&
       !definition.exclusiveWith.some((excluded) =>
         faction.completedResearchIds.includes(excluded),
       )

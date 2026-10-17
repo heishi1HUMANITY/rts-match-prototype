@@ -17,6 +17,23 @@ function isResearchId(state: MatchState, value: string): value is ResearchId {
   );
 }
 
+/** Base cost grows with the number complete when the node receives its first point. */
+export function researchCostForFaction(
+  rules: RulesMaster,
+  faction: Pick<FactionState, 'completedResearchIds' | 'researchRequiredCenti'>,
+  researchId: ResearchId,
+): number {
+  const locked = faction.researchRequiredCenti?.[researchId];
+  if (locked !== undefined) return locked;
+  const definition = rules.research.definitions[researchId]!;
+  const increase = rules.research.completionCostIncreaseBpsPerCompleted;
+  return Math.ceil(
+    (definition.costCenti *
+      (10_000 + faction.completedResearchIds.length * increase)) /
+      10_000,
+  );
+}
+
 function fillSelectedResearch(
   state: MatchState,
   faction: FactionState,
@@ -24,20 +41,26 @@ function fillSelectedResearch(
 ): FactionState {
   if (selection === null) return { ...faction, activeResearch: null };
   const { researchId } = selection;
-  const definition = state.rules.research.definitions[researchId]!;
   const progress = faction.researchProgressCenti[researchId] ?? 0;
-  const required = Math.max(0, definition.costCenti - progress);
+  const cost = researchCostForFaction(state.rules, faction, researchId);
+  const required = Math.max(0, cost - progress);
   const consumed = Math.min(faction.researchCenti, required);
   const nextProgress = progress + consumed;
   const researchProgressCenti = {
     ...faction.researchProgressCenti,
     [researchId]: nextProgress,
   };
-  const completed = nextProgress >= definition.costCenti;
+  const completed = nextProgress >= cost;
+  const researchRequiredCenti =
+    nextProgress > 0 &&
+    faction.researchRequiredCenti?.[researchId] === undefined
+      ? { ...faction.researchRequiredCenti, [researchId]: cost }
+      : faction.researchRequiredCenti;
   return {
     ...faction,
     researchCenti: faction.researchCenti - consumed,
     researchProgressCenti,
+    ...(researchRequiredCenti ? { researchRequiredCenti } : {}),
     activeResearch: completed ? null : selection,
     completedResearchIds:
       completed && !faction.completedResearchIds.includes(researchId)
@@ -79,24 +102,38 @@ export function startResearch(
   }
   const definition = state.rules.research.definitions[researchId]!;
   if (
-    !definition.prerequisites.every((id) =>
-      faction.completedResearchIds.includes(id),
-    )
-  ) {
-    return { ok: false, state, reason: 'PREREQUISITE_MISSING' };
-  }
-  if (
     definition.exclusiveWith.some((id) =>
       faction.completedResearchIds.includes(id),
     )
   )
     return { ok: false, state, reason: 'RESEARCH_EXCLUDED' };
+  if (
+    definition.prerequisites.length > 0 &&
+    !definition.prerequisites.some((id) =>
+      faction.completedResearchIds.includes(id),
+    )
+  ) {
+    return { ok: false, state, reason: 'PREREQUISITE_MISSING' };
+  }
   const selection: ActiveResearch = { researchId };
   const updatedFaction = fillSelectedResearch(state, faction, selection);
+  const completedNow =
+    !faction.completedResearchIds.includes(researchId) &&
+    updatedFaction.completedResearchIds.includes(researchId);
+  const completedIsSpecialization =
+    state.rules.research.definitions[researchId]!.stage === 4;
   return {
     ok: true,
     state: {
       ...state,
+      ...(completedNow && completedIsSpecialization
+        ? {
+            researchAnnouncements: [
+              ...(state.researchAnnouncements ?? []),
+              { factionId: actor, researchId, tick: state.elapsedTicks },
+            ].slice(-32),
+          }
+        : {}),
       factions: state.factions.map((entry) =>
         entry === faction ? updatedFaction : entry,
       ),
@@ -107,15 +144,32 @@ export function startResearch(
 /** Applies banked tick income to selected research after combat/capture/economy. */
 export function advanceResearch(state: MatchState): MatchState {
   let changed = false;
+  const researchAnnouncements = [...(state.researchAnnouncements ?? [])];
   const factions = state.factions.map((faction) => {
     if (faction.eliminatedAtTick !== null) return faction;
     const active = faction.activeResearch;
     if (active === null) return faction;
     const updated = fillSelectedResearch(state, faction, active);
     if (updated !== faction) changed = true;
+    const completedNow = updated.completedResearchIds.filter(
+      (id) => !faction.completedResearchIds.includes(id),
+    );
+    for (const researchId of completedNow)
+      if (state.rules.research.definitions[researchId]?.stage === 4)
+        researchAnnouncements.push({
+          factionId: faction.id,
+          researchId,
+          tick: state.elapsedTicks,
+        });
     return updated;
   });
-  return changed ? { ...state, factions } : state;
+  return changed
+    ? {
+        ...state,
+        factions,
+        researchAnnouncements: researchAnnouncements.slice(-32),
+      }
+    : state;
 }
 
 export function firepowerBonus(

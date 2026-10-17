@@ -28,6 +28,20 @@ test('operation tabs stay beside the content and remain available after closing'
     await button.click();
     await expect(panel.locator('[data-panel-title]')).toHaveText(heading);
     await expect(button).toHaveAttribute('aria-expanded', 'true');
+    if (label === '研究') {
+      const cards = panel.locator('[data-research-details]');
+      await expect(cards).toHaveCount(27);
+      const first = panel.locator('[data-research-details="firepower-1"]');
+      await expect(first).toContainText('必要96ポイント');
+      await first.scrollIntoViewIfNeeded();
+      await expect(first).toBeInViewport();
+      const specialization = panel.locator(
+        '[data-research-details="specialization-power"]',
+      );
+      await expect(specialization).toContainText('排他');
+      await specialization.scrollIntoViewIfNeeded();
+      await expect(specialization).toBeInViewport();
+    }
     await button.click();
     await expect(panel).toBeVisible();
   }
@@ -37,5 +51,8 @@ test('operation tabs stay beside the content and remain available after closing'
   await tabs.getByRole('button', { name: '研究', exact: true }).click();
   await expect(panel).toBeVisible();
   await expect(page.locator('.tick-readout')).toContainText('TICK 0');
+  await panel
+    .locator('[data-research-details="specialization-power"]')
+    .scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('strategy-dock.png') });
 });
