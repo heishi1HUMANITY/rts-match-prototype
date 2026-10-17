@@ -8,6 +8,7 @@ import { createMatch } from '../simulation/match';
 import { getFactionView } from '../simulation/view';
 import { applyCommand } from '../simulation/commands';
 import { findPath } from '../simulation/pathfinding';
+import { updateFactionKnowledge } from '../simulation/visibility';
 import type { FactionView, MatchState } from '../simulation/types';
 
 function running(state: MatchState): MatchState {
@@ -29,6 +30,47 @@ function replaceOwnFaction(
 }
 
 describe('stateless faction-view NPC policy', () => {
+  it('uses point fire only against currently observed ground targets', () => {
+    const initial = running(createMatch(108, { scenarioId: 'g2-combat' }));
+    const artillery = {
+      ...initial.units.find(({ id }) => id === 'B-01')!,
+      id: 'B-GUN',
+      kind: 'artillery' as const,
+      cell: { x: 20, y: 20 },
+      path: [],
+      edgeProgress: 0,
+      attack: { targetId: null, phase: 'idle' as const, phaseEndsTick: 0 },
+    };
+    const enemy = {
+      ...initial.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: 22, y: 20 },
+      path: [],
+      edgeProgress: 0,
+    };
+    let state: MatchState = {
+      ...initial,
+      units: [artillery, enemy],
+      factions: initial.factions.map((faction) =>
+        faction.id === 'B'
+          ? { ...faction, completedResearchIds: ['specialization-power'] }
+          : faction,
+      ),
+    };
+    state = { ...state, knowledge: updateFactionKnowledge(state) };
+    const view = getFactionView(state, 'B');
+    const commands = decideBotCommands(view);
+    expect(commands).toContainEqual({
+      type: 'point-fire',
+      unitId: 'B-GUN',
+      cell: { x: 22, y: 20 },
+    });
+    expect(
+      decideBotCommands({ ...view, visibleEnemies: [] }).some(
+        (command) => command.type === 'point-fire',
+      ),
+    ).toBe(false);
+  });
+
   it('routes helicopters around remembered AA while unseen AA has no influence', () => {
     const base = running(createMatch(103, { mapId: 'ring-three-fronts-100' }));
     const template = base.units[0]!;

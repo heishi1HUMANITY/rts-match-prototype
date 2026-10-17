@@ -158,6 +158,7 @@ describe('initial match contract', () => {
     'f05-neutral-defense',
     'f10-base-upgrades',
     'f18-garrison',
+    'f86-point-fire',
   ] as const)('reproduces scenario fixture %s', (scenarioId) => {
     const match = createMatch(42, { scenarioId });
     expect(createMatch(42, { scenarioId })).toEqual(match);
@@ -175,6 +176,14 @@ describe('initial match contract', () => {
 
   it('applies only the specified fixture differences', () => {
     const standard = createMatch(42);
+    const pointFire = createMatch(42, { scenarioId: 'f86-point-fire' });
+    expect(pointFire.units.find(({ id }) => id === 'A-01')).toMatchObject({
+      kind: 'artillery',
+      cell: { x: 20, y: 20 },
+    });
+    expect(
+      pointFire.factions.find(({ id }) => id === 'A')!.completedResearchIds,
+    ).toContain('specialization-power');
     const capture = createMatch(42, { scenarioId: 'g2-capture' });
     expect(capture.units.find(({ id }) => id === 'A-01')!.cell).toEqual({
       x: 20,

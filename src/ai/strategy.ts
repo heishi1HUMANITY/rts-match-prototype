@@ -990,6 +990,66 @@ function tacticalAbilityCommand(view: FactionView): Command | undefined {
   return undefined;
 }
 
+function artilleryBombardCommand(
+  view: FactionView,
+  unit: FactionView['ownUnits'][number],
+): Command | undefined {
+  if (
+    unit.kind !== 'artillery' ||
+    unit.bombardOrder ||
+    unit.path.length > 0 ||
+    unit.garrisonedAtBaseId ||
+    !view.ownFaction.completedResearchIds.includes('specialization-power')
+  )
+    return undefined;
+  const range = view.rules.artilleryBombardment.range;
+  const targets = [
+    ...view.visibleEnemies
+      .filter(
+        (enemy) =>
+          view.rules.units[enemy.kind].movementDomain !== 'air' &&
+          enemy.factionId !== 'local',
+      )
+      .map((enemy) => ({
+        x: Math.floor(enemy.positionX1024 / 1024),
+        y: Math.floor(enemy.positionY1024 / 1024),
+      })),
+    ...view.bases
+      .filter(
+        (base) =>
+          base.visibility === 'visible' &&
+          base.owner !== null &&
+          base.owner !== view.viewerFactionId,
+      )
+      .map((base) => base.cell),
+    ...view.facilities
+      .filter(
+        (facility) =>
+          facility.visibility === 'visible' &&
+          facility.owner !== view.viewerFactionId,
+      )
+      .map((facility) => facility.cell),
+  ];
+  const eligible = targets
+    .filter(
+      (cell) =>
+        view.visible[cell.y * view.map.width + cell.x] === true &&
+        (cell.x - unit.cell.x) ** 2 + (cell.y - unit.cell.y) ** 2 <= range ** 2,
+    )
+    .sort(
+      (a, b) =>
+        (a.x - unit.cell.x) ** 2 +
+          (a.y - unit.cell.y) ** 2 -
+          ((b.x - unit.cell.x) ** 2 + (b.y - unit.cell.y) ** 2) ||
+        a.y - b.y ||
+        a.x - b.x,
+    );
+  const target = eligible[0];
+  return target
+    ? { type: 'point-fire', unitId: unit.id, cell: target }
+    : undefined;
+}
+
 /**
  * Stateless NPC policy. Its sole input is the faction-limited snapshot; all
  * resulting actions still pass through the shared command validator.
@@ -1012,7 +1072,10 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
     () => tacticalAbilityCommand(view),
     ...[...view.ownUnits]
       .sort((a, b) => a.id.localeCompare(b.id))
-      .map((unit) => () => unitMoveCommand(view, unit)),
+      .map(
+        (unit) => () =>
+          artilleryBombardCommand(view, unit) ?? unitMoveCommand(view, unit),
+      ),
   ];
   const decision = Math.floor(
     view.tick / difficultyProfile(view).decisionIntervalTicks,

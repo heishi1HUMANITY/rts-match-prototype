@@ -18,6 +18,7 @@ import type {
   FacilityState,
   FactionId,
   MatchState,
+  ScheduledStrike,
   UnitState,
 } from './types';
 import { LOCAL_STRONGHOLD_ID } from './local-faction';
@@ -52,6 +53,40 @@ export interface HitReservation {
   readonly damage: number;
   readonly attackerFactionId: CombatantId;
   readonly facilityId?: string;
+}
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function artilleryScatter(
+  seed: number,
+  unitId: string,
+  tick: number,
+  radius1024: number,
+): { readonly x: number; readonly y: number } {
+  const hash = stableHash(`${seed}:${unitId}:${tick}`);
+  const distance = Math.floor(((hash >>> 3) / 0x1fffffff) * radius1024);
+  const directions = [
+    [1024, 0],
+    [724, 724],
+    [0, 1024],
+    [-724, 724],
+    [-1024, 0],
+    [-724, -724],
+    [0, -1024],
+    [724, -724],
+  ] as const;
+  const direction = directions[hash & 7]!;
+  return {
+    x: Math.round((direction[0] * distance) / 1024),
+    y: Math.round((direction[1] * distance) / 1024),
+  };
 }
 
 export function attackerStateModifierPercent(
@@ -781,15 +816,65 @@ export function resolveCombat(state: MatchState): MatchState {
   const tick = snapshot.elapsedTicks;
 
   const hitReservations: HitReservation[] = [];
-  for (const strike of snapshot.scheduledStrikes) {
+  const firedArtillery: ScheduledStrike[] = [];
+  const artilleryAttackByUnit = new Map<string, AttackState>();
+  for (const unit of snapshot.units) {
+    const order = unit.bombardOrder;
+    if (
+      !order ||
+      unit.kind !== 'artillery' ||
+      unit.hp <= 0 ||
+      unit.path.length > 0 ||
+      unit.edgeProgress > 0 ||
+      tick < order.fireAtTick
+    )
+      continue;
+    const config = snapshot.rules.artilleryBombardment;
+    const observed = isCellVisibleToFaction(
+      snapshot,
+      order.cell,
+      unit.factionId,
+    );
+    const scatter = artilleryScatter(
+      snapshot.seed,
+      unit.id,
+      tick,
+      observed
+        ? config.observedScatterRadius1024
+        : config.unobservedScatterRadius1024,
+    );
+    firedArtillery.push({
+      factionId: unit.factionId as FactionId,
+      cell: { ...order.cell },
+      centerX1024: order.cell.x * 1024 + 512 + scatter.x,
+      centerY1024: order.cell.y * 1024 + 512 + scatter.y,
+      impactTick:
+        tick +
+        (observed ? config.observedImpactTicks : config.unobservedImpactTicks),
+      radius: config.blastRadius1024,
+      unitDamage: config.unitDamage,
+      structureDamage: config.structureDamage,
+      sourceUnitId: unit.id,
+    });
+    artilleryAttackByUnit.set(unit.id, {
+      targetId: null,
+      phase: 'cooldown',
+      phaseEndsTick: tick + config.intervalTicks,
+    });
+  }
+  const strikes = [...snapshot.scheduledStrikes, ...firedArtillery];
+  for (const strike of strikes) {
     if (strike.impactTick > tick) continue;
     const owner = snapshot.factions.find(({ id }) => id === strike.factionId);
     if (!owner || owner.eliminatedAtTick !== null || owner.ticketsCenti <= 0)
       continue;
     const config = snapshot.rules.tacticalAbilities.artillery;
-    const centerX = strike.cell.x * 1024 + 512;
-    const centerY = strike.cell.y * 1024 + 512;
-    const radiusSquared = (config.radius * 1024) ** 2;
+    const centerX = strike.centerX1024 ?? strike.cell.x * 1024 + 512;
+    const centerY = strike.centerY1024 ?? strike.cell.y * 1024 + 512;
+    const radius1024 = strike.radius ?? config.radius * 1024;
+    const radiusSquared = radius1024 ** 2;
+    const unitDamage = strike.unitDamage ?? config.unitDamage;
+    const structureDamage = strike.structureDamage ?? config.structureDamage;
     const reserve = (target: Target, damage: number): HitReservation => ({
       tick,
       target: { kind: 'target', target },
@@ -808,10 +893,7 @@ export function resolveCombat(state: MatchState): MatchState {
         (getUnitPositionY1024(unit) - centerY) ** 2;
       if (distanceSquared <= radiusSquared)
         hitReservations.push(
-          reserve(
-            { kind: 'unit', id: unit.id, distanceSquared },
-            config.unitDamage,
-          ),
+          reserve({ kind: 'unit', id: unit.id, distanceSquared }, unitDamage),
         );
     }
     for (const base of snapshot.bases) {
@@ -829,7 +911,7 @@ export function resolveCombat(state: MatchState): MatchState {
         hitReservations.push(
           reserve(
             { kind: 'base', id: base.id, distanceSquared },
-            config.structureDamage,
+            structureDamage,
           ),
         );
     }
@@ -848,7 +930,7 @@ export function resolveCombat(state: MatchState): MatchState {
         hitReservations.push(
           reserve(
             { kind: 'crossing', id: crossing.siteId, distanceSquared },
-            config.structureDamage,
+            structureDamage,
           ),
         );
     }
@@ -861,7 +943,7 @@ export function resolveCombat(state: MatchState): MatchState {
         hitReservations.push(
           reserve(
             { kind: 'facility', id: facility.id, distanceSquared },
-            config.structureDamage,
+            structureDamage,
           ),
         );
     }
@@ -878,6 +960,14 @@ export function resolveCombat(state: MatchState): MatchState {
       continue;
     }
     const stats = snapshot.rules.units[attacker.kind];
+    if (attacker.bombardOrder) {
+      const firedAttack = artilleryAttackByUnit.get(attacker.id);
+      updatedUnits.push({
+        ...attacker,
+        ...(firedAttack ? { attack: firedAttack, bombardOrder: null } : {}),
+      });
+      continue;
+    }
     const profile: AttackProfile = {
       windupTicks: stats.windupTicks ?? 0,
       intervalTicks: stats.intervalTicks ?? 1,
@@ -1421,6 +1511,7 @@ export function resolveCombat(state: MatchState): MatchState {
 
   let next: MatchState = {
     ...snapshot,
+    scheduledStrikes: strikes,
     units,
     facilities: updatedFacilities
       .map((f) => ({

@@ -162,7 +162,8 @@ function scenarioMap(
   if (
     scenarioId !== 'f02-pursuit' &&
     scenarioId !== 'g2-combat' &&
-    scenarioId !== 'f15-tactical-abilities'
+    scenarioId !== 'f15-tactical-abilities' &&
+    scenarioId !== 'f86-point-fire'
   )
     return map;
   return {
@@ -303,6 +304,41 @@ function configuredFixture(
     factions = factions.map((faction) =>
       faction.id === 'A'
         ? { ...faction, supplyCenti: 50_000, researchCenti: 20_000 }
+        : faction,
+    );
+  } else if (scenarioId === 'f86-point-fire') {
+    const center = Math.floor(state.map.width / 2);
+    units = units.map((unit) => {
+      if (unit.id === 'A-01')
+        return {
+          ...unit,
+          kind: 'artillery',
+          cell: {
+            x: state.map.width >= 100 ? center - 2 : center,
+            y: center,
+          },
+          path: [],
+          edgeProgress: 0,
+          attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+          hp: state.rules.units.artillery.maxHp,
+          maxHp: state.rules.units.artillery.maxHp,
+          moveTicksPerCell: state.rules.units.artillery.moveTicksPerCell,
+        };
+      if (unit.id === 'B-01')
+        return {
+          ...unit,
+          cell: {
+            x: state.map.width >= 100 ? center + 6 : center + 5,
+            y: center + 2,
+          },
+        };
+      return unit;
+    });
+    units = units.filter((unit) => unit.id === 'A-01');
+    bases = bases.filter((base) => base.kind === 'hq');
+    factions = factions.map((faction) =>
+      faction.id === 'A'
+        ? { ...faction, completedResearchIds: ['specialization-power'] }
         : faction,
     );
   } else if (scenarioId === 'f19-capture') {

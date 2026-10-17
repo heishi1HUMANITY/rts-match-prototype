@@ -143,6 +143,22 @@ function parseCommand(input: unknown): ParsedCommand | null {
       : null;
   }
   if (
+    input.type === 'point-fire' &&
+    hasExactKeys(input, ['type', 'unitId', 'cell']) &&
+    typeof input.unitId === 'string' &&
+    isRecord(input.cell) &&
+    hasExactKeys(input.cell, ['x', 'y']) &&
+    typeof input.cell.x === 'number' &&
+    Number.isInteger(input.cell.x) &&
+    typeof input.cell.y === 'number' &&
+    Number.isInteger(input.cell.y)
+  )
+    return {
+      type: 'point-fire',
+      unitId: input.unitId,
+      cell: { x: input.cell.x, y: input.cell.y },
+    };
+  if (
     input.type === 'garrison' &&
     hasExactKeys(input, ['type', 'unitId', 'baseId']) &&
     typeof input.unitId === 'string' &&
@@ -409,6 +425,47 @@ export function applyCommand(
     );
   }
 
+  if (command.type === 'point-fire') {
+    const config = state.rules.artilleryBombardment;
+    const targetFaction = state.factions.find(({ id }) => id === actor);
+    if (
+      unit.kind !== 'artillery' ||
+      !targetFaction?.completedResearchIds.includes('specialization-power')
+    )
+      return reject(state, 'INVALID_TARGET');
+    if (
+      unit.path.length > 0 ||
+      unit.edgeProgress > 0 ||
+      unit.garrisonedAtBaseId
+    )
+      return reject(state, 'INVALID_TARGET');
+    if (
+      command.cell.x < 0 ||
+      command.cell.y < 0 ||
+      command.cell.x >= state.map.width ||
+      command.cell.y >= state.map.height
+    )
+      return reject(state, 'OUT_OF_BOUNDS');
+    const dx = getUnitPositionX1024(unit) - (command.cell.x * 1024 + 512);
+    const dy = getUnitPositionY1024(unit) - (command.cell.y * 1024 + 512);
+    if (dx * dx + dy * dy > (config.range * 1024) ** 2)
+      return reject(state, 'INVALID_TARGET');
+    const previous = unit.attack;
+    const readyTick =
+      previous?.phase === 'cooldown'
+        ? previous.phaseEndsTick
+        : state.elapsedTicks;
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...unit,
+        bombardOrder: {
+          cell: { ...command.cell },
+          fireAtTick: readyTick + config.preparationTicks,
+        },
+      }),
+    );
+  }
+
   if (command.type === 'garrison') {
     const base = state.bases.find(({ id }) => id === command.baseId);
     if (!base) return reject(state, 'BASE_NOT_FOUND');
@@ -419,6 +476,7 @@ export function applyCommand(
       return succeed(
         copyWithUnit(state, unit, {
           ...unit,
+          bombardOrder: null,
           path: [],
           marchOrder: null,
           moveTarget: null,
@@ -439,6 +497,7 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...unit,
+        bombardOrder: null,
         path: currentEdge === undefined ? route : [currentEdge, ...route],
         marchOrder: null,
         moveTarget: { ...base.cell },
@@ -454,6 +513,7 @@ export function applyCommand(
     if (
       (unit.marchOrder === undefined || unit.marchOrder === null) &&
       (unit.moveTarget === undefined || unit.moveTarget === null) &&
+      (unit.bombardOrder === undefined || unit.bombardOrder === null) &&
       stoppedPath.length === unit.path.length &&
       stoppedPath.every((cell, index) => cell === unit.path[index])
     ) {
@@ -462,6 +522,7 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...unit,
+        bombardOrder: null,
         path: stoppedPath,
         marchOrder: null,
         moveTarget: null,
@@ -526,6 +587,7 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...march,
+        bombardOrder: null,
         waypoints: [],
         ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
       }),
@@ -587,6 +649,7 @@ export function applyCommand(
       return succeed(
         copyWithUnit(state, unit, {
           ...unit,
+          bombardOrder: null,
           path: [],
           edgeProgress: 0,
           marchOrder: null,
@@ -628,6 +691,7 @@ export function applyCommand(
   return succeed(
     copyWithUnit(state, unit, {
       ...unit,
+      bombardOrder: null,
       path,
       edgeProgress: unit.edgeProgress,
       marchOrder: null,

@@ -28,6 +28,7 @@ let activeDragUnitId: string | null = null;
 let activeDragUnitIds: string[] | null = null;
 let dragCancelled = false;
 let pendingAbilityTarget: 'artillery' | 'smoke' | 'survey' | null = null;
+let pendingPointFireUnitId: string | null = null;
 let flightRouteUnitId: string | null = null;
 let flightWaypoints: { x: number; y: number }[] = [];
 const alertedAirDefenseIds = new Set<string>();
@@ -199,6 +200,8 @@ input = new CanvasInput(
       activeDragUnitId = null;
       activeDragUnitIds = null;
       clearMoveFeedback();
+      if (pendingPointFireUnitId !== null && board.pickGround(x, y) !== null)
+        return { kind: 'ground' };
       const picked = board.pick(x, y);
       if (picked?.kind === 'unit') {
         const unit = runtime
@@ -250,6 +253,15 @@ input = new CanvasInput(
     onTap: ({ x, y }) => {
       if (dragCancelled) return;
       const cell = board.pickGround(x, y);
+      if (pendingPointFireUnitId !== null) {
+        const unitId = pendingPointFireUnitId;
+        pendingPointFireUnitId = null;
+        clearMoveFeedback();
+        if (cell !== null)
+          runtime.dispatch({ type: 'point-fire', unitId, cell });
+        updateHud(hud, runtime.playerSnapshot());
+        return;
+      }
       if (pendingAbilityTarget !== null) {
         const abilityId = pendingAbilityTarget;
         pendingAbilityTarget = null;
@@ -462,6 +474,28 @@ const handleClick = (event: MouseEvent): void => {
     const x = Number(clickedButton.dataset.x);
     const y = Number(clickedButton.dataset.y);
     if (Number.isInteger(x) && Number.isInteger(y)) board.focusCell({ x, y });
+    return;
+  }
+  if (clickedButton?.dataset.action === 'focus-artillery-warning') {
+    const x = Number(clickedButton.dataset.x);
+    const y = Number(clickedButton.dataset.y);
+    if (Number.isInteger(x) && Number.isInteger(y)) board.focusCell({ x, y });
+    return;
+  }
+  if (clickedButton?.dataset.action === 'point-fire') {
+    const selected = runtime.playerSnapshot().selectedUnitIds;
+    const unit = runtime
+      .playerSnapshot()
+      .view.ownUnits.find(
+        (candidate) => selected.length === 1 && candidate.id === selected[0],
+      );
+    if (unit?.kind === 'artillery') {
+      pendingPointFireUnitId = unit.id;
+      input.cancelGesture();
+      setHudPanel(hud, null);
+      clearMoveFeedback();
+      runtime.notify('地点砲撃 · 射程内の地面をタップしてください');
+    }
     return;
   }
   const abilityId = clickedButton?.dataset.ability;
