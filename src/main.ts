@@ -595,7 +595,7 @@ const handleClick = (event: MouseEvent): void => {
   ) {
     input.cancelGesture();
     const panel = action === 'bases' ? 'base' : action;
-    setHudPanel(hud, hud.panel === panel ? null : panel);
+    setHudPanel(hud, panel);
     updateHud(hud, runtime.playerSnapshot());
   }
 };

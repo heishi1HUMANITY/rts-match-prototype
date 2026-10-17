@@ -970,13 +970,22 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     }
   };
   const fogCanvas = document.createElement('canvas');
+  // WebGL allocates immutable texture storage on the first render. A canvas
+  // defaults to 300x150; resizing it later does not resize that GPU allocation.
+  fogCanvas.width = BOARD_SIZE;
+  fogCanvas.height = BOARD_SIZE;
   const fogContext = fogCanvas.getContext('2d', { willReadFrequently: true });
   if (!fogContext)
     throw new Error('2D canvas is unavailable for visibility overlay');
-  const fogTexture = new THREE.CanvasTexture(fogCanvas);
-  fogTexture.colorSpace = THREE.SRGBColorSpace;
-  fogTexture.magFilter = THREE.NearestFilter;
-  fogTexture.minFilter = THREE.NearestFilter;
+  const createFogTexture = (): THREE.CanvasTexture => {
+    const texture = new THREE.CanvasTexture(fogCanvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    return texture;
+  };
+  let fogTexture = createFogTexture();
   const fogGeometry = ownGeometry(
     new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
   );
@@ -1001,19 +1010,24 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   const syncFog = (view: FactionView): void => {
     if (view === fogView) return;
     fogView = view;
-    const signature = view.visible
-      .map((visible, index) =>
-        visible ? '2' : view.explored[index] ? '1' : '0',
-      )
-      .join('');
+    const signature =
+      `${view.map.width}x${view.map.height}:` +
+      view.visible
+        .map((visible, index) =>
+          visible ? '2' : view.explored[index] ? '1' : '0',
+        )
+        .join('');
     if (signature === fogSignature) return;
     fogSignature = signature;
     if (
       fogCanvas.width !== view.map.width ||
       fogCanvas.height !== view.map.height
     ) {
+      fogTexture.dispose();
       fogCanvas.width = view.map.width;
       fogCanvas.height = view.map.height;
+      fogTexture = createFogTexture();
+      fogMaterial.map = fogTexture;
     }
     const image = fogContext.createImageData(view.map.width, view.map.height);
     for (let index = 0; index < view.visible.length; index += 1) {
