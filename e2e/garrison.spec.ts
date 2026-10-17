@@ -29,7 +29,7 @@ test('F18-01: garrison a selected unit from the base panel and verify arrival st
     { timeout: 15_000 },
   );
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
-  await expect(page.locator('.base-detail')).toContainText('駐留 1/2');
+  await expect(page.locator('.base-detail')).toContainText('駐留 1/5');
 
   const path = info.outputPath('garrison-arrival.json');
   await saveDiagnostic(page, path);
