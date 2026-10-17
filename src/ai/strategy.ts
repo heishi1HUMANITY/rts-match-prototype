@@ -333,6 +333,31 @@ function productionCommand(view: FactionView): Command | undefined {
     (base): base is OwnedBaseView =>
       base.kind === 'hq' && base.visibility === 'owned' && base.hp > 0,
   );
+  const frontlineSites = faction.completedResearchIds.includes(
+    'specialization-logistics',
+  )
+    ? view.bases
+        .filter(
+          (base): base is OwnedBaseView =>
+            base.kind !== 'hq' && base.visibility === 'owned' && base.hp > 0,
+        )
+        .sort((a, b) => {
+          const nearestEnemyDistance = (base: OwnedBaseView) =>
+            Math.min(
+              ...view.visibleEnemies.map((enemy) =>
+                distanceSquared(base.cell, {
+                  x: Math.floor(enemy.positionX1024 / 1024),
+                  y: Math.floor(enemy.positionY1024 / 1024),
+                }),
+              ),
+              view.map.width * view.map.height,
+            );
+          return (
+            nearestEnemyDistance(a) - nearestEnemyDistance(b) ||
+            a.id.localeCompare(b.id)
+          );
+        })
+    : [];
   const ports = (view.map.ports ?? []).filter(
     ({ factionId }) => factionId === view.viewerFactionId,
   );
@@ -352,7 +377,10 @@ function productionCommand(view: FactionView): Command | undefined {
         faction.supplyCenti < stats.costCenti
       )
         return [];
-      const siteId = stats.movementDomain === 'water' ? ports[0]?.id : hq?.id;
+      const siteId =
+        stats.movementDomain === 'water'
+          ? ports[0]?.id
+          : (frontlineSites[0]?.id ?? hq?.id);
       if (!siteId) return [];
       const count =
         view.ownUnits.filter(({ kind: ownedKind }) => ownedKind === kind)

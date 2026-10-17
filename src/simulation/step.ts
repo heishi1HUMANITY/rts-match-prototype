@@ -57,8 +57,15 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
     })
   )
     return unit;
+  const baseMoveTicks = unit.moveTicksPerCell ?? 2;
+  const moveTicks =
+    state !== undefined &&
+    (unit.slowedUntilTick ?? 0) > state.elapsedTicks &&
+    unit.slowedMovePercent !== undefined
+      ? Math.max(1, Math.ceil((baseMoveTicks * 100) / unit.slowedMovePercent))
+      : baseMoveTicks;
   const progress = unit.edgeProgress + 1;
-  if (progress < (unit.moveTicksPerCell ?? 2))
+  if (progress < moveTicks)
     return {
       ...unit,
       edgeProgress: progress,
@@ -116,6 +123,56 @@ function recoverNearHeadquarters(
       unit.maxHp,
       unit.hp + Math.max(1, Math.ceil((unit.maxHp * 4) / 100)),
     );
+    if (hp === unit.hp) return unit;
+    changed = true;
+    return { ...unit, hp };
+  });
+  return changed ? { ...state, units } : state;
+}
+
+function recoverNearFrontlineBases(state: MatchState): MatchState {
+  if (state.elapsedTicks % 10 !== 0) return state;
+  let changed = false;
+  const radius = state.rules.cp87.frontlineRadius;
+  const units = state.units.map((unit) => {
+    const faction = state.factions.find(({ id }) => id === unit.factionId);
+    if (
+      !faction?.completedResearchIds.includes('specialization-logistics') ||
+      unit.hp <= 0 ||
+      unit.hp >= unit.maxHp ||
+      unit.path.length > 0 ||
+      state.elapsedTicks - (unit.lastDamagedTick ?? -Infinity) <
+        state.rules.cp87.frontlineRecoveryDelayTicks ||
+      state.elapsedTicks - (unit.lastAttackTick ?? -Infinity) <
+        state.rules.cp87.frontlineRecoveryDelayTicks
+    )
+      return unit;
+    const headquarters = state.bases.find(
+      (base) =>
+        base.kind === 'hq' &&
+        base.homeFactionId === unit.factionId &&
+        base.owner === unit.factionId &&
+        base.hp > 0 &&
+        Math.abs(unit.cell.x - base.cell.x) +
+          Math.abs(unit.cell.y - base.cell.y) <=
+          radius,
+    );
+    if (headquarters) return unit;
+    const forward = state.bases.some(
+      (base) =>
+        base.kind !== 'hq' &&
+        base.owner === unit.factionId &&
+        base.hp > 0 &&
+        Math.abs(unit.cell.x - base.cell.x) +
+          Math.abs(unit.cell.y - base.cell.y) <=
+          radius,
+    );
+    if (!forward) return unit;
+    const amount = Math.max(
+      1,
+      Math.ceil((unit.maxHp * state.rules.cp87.frontlineRecoveryPercent) / 100),
+    );
+    const hp = Math.min(unit.maxHp, unit.hp + amount);
     if (hp === unit.hp) return unit;
     changed = true;
     return { ...unit, hp };
@@ -261,6 +318,7 @@ export function stepMatch(state: MatchState): MatchState {
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
   next = advanceTacticalEffects(next);
   next = recoverNearHeadquarters(next, beforeCombat);
+  next = recoverNearFrontlineBases(next);
   const beforeCapture = next;
   next = releaseInvalidGarrisons(beforeCapture, advanceCapture(next));
   next = advanceBaseUpgrades(next);

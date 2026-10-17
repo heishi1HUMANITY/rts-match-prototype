@@ -30,6 +30,38 @@ function replaceOwnFaction(
 }
 
 describe('stateless faction-view NPC policy', () => {
+  it('uses the same frontline site for NPC production after logistics specialization', () => {
+    const initial = running(createMatch(109));
+    const state = {
+      ...initial,
+      bases: initial.bases.map((base) =>
+        base.id === 'OUT-03'
+          ? { ...base, owner: 'B' as const, hp: base.maxHp }
+          : base,
+      ),
+      factions: initial.factions.map((faction) =>
+        faction.id === 'B'
+          ? {
+              ...faction,
+              supplyCenti: 120_000,
+              completedResearchIds: ['specialization-logistics'],
+            }
+          : faction,
+      ),
+    };
+    const view = getFactionView(state, 'B');
+    const command = decideBotCommands(view).find(
+      (entry) => entry.type === 'enqueue-production',
+    );
+    expect(command?.type).toBe('enqueue-production');
+    if (command?.type !== 'enqueue-production') return;
+    const productionBase = view.bases.find(
+      (base) => base.id === command.baseId,
+    );
+    expect(productionBase?.visibility).toBe('owned');
+    expect(productionBase?.kind).not.toBe('hq');
+  });
+
   it('uses point fire only against currently observed ground targets', () => {
     const initial = running(createMatch(108, { scenarioId: 'g2-combat' }));
     const artillery = {

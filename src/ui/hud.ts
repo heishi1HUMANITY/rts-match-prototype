@@ -103,9 +103,11 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
     'specialization-power': '専攻・戦力',
-    'specialization-logistics': '専攻・兵站',
-    'specialization-information': '専攻・情報',
-    'specialization-engineering': '専攻・工兵',
+    'specialization-logistics': '専攻・前線展開',
+    'specialization-information': '専攻・全域観測',
+    'specialization-engineering': '専攻・封鎖',
+    'specialization-wartime-economy': '専攻・戦時経済',
+    'specialization-information-warfare': '専攻・情報戦',
   }).find(([key]) => key === id)?.[1] ??
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
@@ -124,6 +126,8 @@ const effectLabel = (effect: {
       return `視界 +${effect.value}`;
     case 'supply-income-bonus':
       return `定額補給収入 +${effect.value} centi/tick`;
+    case 'supply-income-percent':
+      return `基礎定額補給収入 +${effect.value}%`;
     case 'upkeep-reduction':
       return `維持費 -${effect.value} centi/tick/部隊`;
     case 'crossing-unlock':
@@ -134,6 +138,16 @@ const effectLabel = (effect: {
       return `${FACILITY_NAMES[effect.facilityKind as keyof typeof FACILITY_NAMES] ?? '施設'}を解放`;
     case 'facility-build-speed-percent':
       return `施設の建築速度 +${effect.value}%`;
+    case 'production-time-percent':
+      return `生産時間 -${effect.value}%`;
+    case 'frontline-deployment':
+      return '前線拠点から生産・回復';
+    case 'global-observation':
+      return '周期的な全域観測';
+    case 'blockade':
+      return '地雷の発見抑制・減速';
+    case 'information-kill-bonus':
+      return `攻撃寄与に応じて敵の損失ticket +${effect.value}%`;
     case 'base-upgrade-max':
       return `拠点をLv${effect.value}まで強化`;
     default:
@@ -155,7 +169,7 @@ export function createHud(app: HTMLElement): HudElements {
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f86-point-fire">検査：地点砲撃</option><option value="f15-tactical-abilities">検査：作戦指令</option><option value="f19-capture">検査：制圧後HP率</option><option value="f18-garrison">検査：拠点駐留・防衛</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f87-specializations">検査：CP13専攻</option><option value="f86-point-fire">検査：地点砲撃</option><option value="f15-tactical-abilities">検査：作戦指令</option><option value="f19-capture">検査：制圧後HP率</option><option value="f18-garrison">検査：拠点駐留・防衛</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
@@ -284,11 +298,16 @@ function productionReason(
     )
       return '自陣の港を選んでください';
   } else {
-    const hq = view.bases.find(
-      (base) => base.id === siteId && base.kind === 'hq',
+    const base = view.bases.find(
+      (base) => base.id === siteId && base.visibility === 'owned',
     );
-    if (hq?.visibility !== 'owned' || hq.hp <= 0)
-      return '稼働中の首都を選んでください';
+    if (!base || base.visibility !== 'owned' || base.hp <= 0)
+      return '稼働中の自軍拠点を選んでください';
+    if (
+      base.kind !== 'hq' &&
+      !view.ownFaction.completedResearchIds.includes('specialization-logistics')
+    )
+      return '前線生産には専攻・前線展開が必要です';
   }
   const ownedBases = view.bases.filter(
     (base) => base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
@@ -384,6 +403,7 @@ export function updateHud(
     'f10-base-upgrades': '拠点強化',
     'f15-tactical-abilities': '作戦指令',
     'f86-point-fire': '地点砲撃',
+    'f87-specializations': 'CP13専攻',
   };
   const npcStopped =
     view.scenarioId.startsWith('g2-') ||
@@ -392,7 +412,8 @@ export function updateHud(
     view.scenarioId === 'f08-unit-domains' ||
     view.scenarioId === 'f10-base-upgrades' ||
     view.scenarioId === 'f15-tactical-abilities' ||
-    view.scenarioId === 'f86-point-fire';
+    view.scenarioId === 'f86-point-fire' ||
+    view.scenarioId === 'f87-specializations';
   const scenarioName =
     view.scenarioId === 'standard'
       ? '通常設定 · NPC2陣営'
@@ -607,7 +628,7 @@ export function updateHud(
   );
   text(
     '.production-summary',
-    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限${unitLimit}（拠点${ownedBases}） · 首都/港で直列生産`,
+    `部隊 ${view.ownUnits.length}＋予約 ${own.productionJobs.length} / 上限${unitLimit}（拠点${ownedBases}） · 共通キュー`,
   );
   const siteSelect = elements.root.querySelector<HTMLSelectElement>(
     '[data-production-site]',
@@ -617,6 +638,14 @@ export function updateHud(
       id: `HQ-${view.viewerFactionId}`,
       label: `首都 HQ-${view.viewerFactionId}`,
     },
+    ...(own.completedResearchIds.includes('specialization-logistics')
+      ? view.bases
+          .filter(
+            (base) =>
+              base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
+          )
+          .map((base) => ({ id: base.id, label: `前線 ${base.id}` }))
+      : []),
     ...(view.map.ports ?? [])
       .filter((port) => port.factionId === view.viewerFactionId)
       .map((port) => ({ id: port.id, label: `港 ${port.id}` })),
@@ -860,6 +889,12 @@ export function updateHud(
     );
   }
   const activeAbilityEffects = [
+    own.completedResearchIds.includes('specialization-information') &&
+    view.rules.cp87.globalObservationPeriodTicks > 0 &&
+    view.tick % view.rules.cp87.globalObservationPeriodTicks <
+      view.rules.cp87.globalObservationDurationTicks
+      ? `全域観測 残り${seconds(view.rules.cp87.globalObservationDurationTicks - (view.tick % view.rules.cp87.globalObservationPeriodTicks))}`
+      : '',
     own.productionBoostUntilTick > view.tick
       ? `増産 残り${seconds(own.productionBoostUntilTick - view.tick)}`
       : '',

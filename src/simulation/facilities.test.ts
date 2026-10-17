@@ -249,7 +249,7 @@ describe('F11 facilities', () => {
       expect(out.units[0]!.hp).toBe(500 - damage);
     },
   );
-  it('unfinished facilities do not fire, completed mines trigger only once and never expose to enemy view', () => {
+  it('unfinished facilities do not fire, nearby enemies detect completed mines and mines trigger only once', () => {
     const start = {
       ...fixture(),
       elapsedTicks: 10,
@@ -258,7 +258,9 @@ describe('F11 facilities', () => {
     };
     expect(resolveCombat(start).units[0]!.hp).toBe(500);
     const armed = visible({ ...start, facilities: [facility('mine')] });
-    expect(getFactionView(armed, 'B').facilities).toEqual([]);
+    expect(getFactionView(armed, 'B').facilities.map(({ id }) => id)).toEqual([
+      'mine-A',
+    ]);
     const out = resolveCombat(armed);
     expect(out.units[0]!.hp).toBe(380);
     expect(out.facilities).toEqual([]);

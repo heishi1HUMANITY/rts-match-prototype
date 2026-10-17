@@ -25,7 +25,8 @@ export type ScenarioId =
   | 'f11-facilities'
   | 'f18-garrison'
   | 'f15-tactical-abilities'
-  | 'f86-point-fire';
+  | 'f86-point-fire'
+  | 'f87-specializations';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -65,12 +66,18 @@ export type ResearchEffectId =
   | 'damage-bonus'
   | 'vision-bonus'
   | 'supply-income-bonus'
+  | 'supply-income-percent'
   | 'upkeep-reduction'
   | 'crossing-unlock'
   | 'unit-unlock'
   | 'base-upgrade-max'
   | 'facility-unlock'
-  | 'facility-build-speed-percent';
+  | 'facility-build-speed-percent'
+  | 'production-time-percent'
+  | 'frontline-deployment'
+  | 'global-observation'
+  | 'blockade'
+  | 'information-kill-bonus';
 export interface ResearchEffect {
   readonly id: ResearchEffectId;
   readonly value: number;
@@ -280,6 +287,10 @@ export interface UnitState {
   /** Completed ticks on the current two-tick edge. */
   readonly edgeProgress: number;
   readonly moveTicksPerCell?: number;
+  readonly lastDamagedTick?: number;
+  readonly lastAttackTick?: number;
+  readonly slowedUntilTick?: number;
+  readonly slowedMovePercent?: number;
   /** Consecutive stationary simulation ticks, used by deployable anti-air. */
   readonly stationaryTicks?: number;
   readonly marchOrder?: MarchOrder | null;

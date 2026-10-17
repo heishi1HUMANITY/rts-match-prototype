@@ -159,6 +159,7 @@ describe('initial match contract', () => {
     'f10-base-upgrades',
     'f18-garrison',
     'f86-point-fire',
+    'f87-specializations',
   ] as const)('reproduces scenario fixture %s', (scenarioId) => {
     const match = createMatch(42, { scenarioId });
     expect(createMatch(42, { scenarioId })).toEqual(match);
