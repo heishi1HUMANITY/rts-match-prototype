@@ -870,6 +870,14 @@ export function updateHud(
         const title = document.createElement('strong');
         const status = document.createElement('span');
         status.className = 'crossing-status';
+        const moveA = document.createElement('button');
+        moveA.dataset.crossingEndpoint = `${site.id}:A`;
+        moveA.textContent = 'A端へ移動';
+        moveA.setAttribute('aria-label', `${site.id} A端へ移動`);
+        const moveB = document.createElement('button');
+        moveB.dataset.crossingEndpoint = `${site.id}:B`;
+        moveB.textContent = 'B端へ移動';
+        moveB.setAttribute('aria-label', `${site.id} B端へ移動`);
         const build = document.createElement('button');
         build.dataset.crossingBuild = site.id;
         build.textContent = '建設';
@@ -878,7 +886,7 @@ export function updateHud(
         dismantle.textContent = '解体';
         const reason = document.createElement('small');
         reason.className = 'crossing-reason';
-        row.append(title, status, build, dismantle, reason);
+        row.append(title, status, moveA, moveB, build, dismantle, reason);
         return row;
       }),
     );
@@ -890,8 +898,10 @@ export function updateHud(
     const row = crossingHost.querySelector<HTMLElement>(
       `[data-crossing="${site.id}"]`,
     )!;
+    const siteNumber =
+      (view.map.crossingSites ?? []).findIndex(({ id }) => id === site.id) + 1;
     row.querySelector('strong')!.textContent =
-      `${crossingName(site.tier)} · ${site.id}`;
+      `${crossingName(site.tier)} ${siteNumber} · ${site.id}`;
     let status = '未観測 · 状態不明';
     if (crossing.visibility === 'remembered')
       status = `最終観測 T${crossing.seenTick}: ${crossing.owner ?? '中立'} HP${crossing.hp}/${crossing.maxHp}`;
@@ -937,7 +947,7 @@ export function updateHud(
           1,
       )
     )
-      buildReason = '部隊を端点に隣接させてください';
+      buildReason = `部隊を端点へ移動してください (A ${site.bankA.x},${site.bankA.y} / B ${site.bankB.x},${site.bankB.y})`;
     else if (!crossingResearchComplete(own, view.rules, site.tier))
       buildReason = requiredResearch
         ? `前提研究: ${researchName(requiredResearch, view)}`

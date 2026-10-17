@@ -10,6 +10,38 @@ import { createMatch } from './match';
 import { findPath } from './pathfinding';
 
 describe('crossing construction', () => {
+  it.each(['bankA', 'bankB'] as const)(
+    'accepts bridge construction from the %s endpoint with identical rules',
+    (endpoint) => {
+      const initial = createMatch(42, { scenarioId: 'f04-crossing' });
+      const site = initial.map.crossingSites!.find(
+        ({ id }) => id === 'CROSS-RING-N',
+      )!;
+      const unitCell = site[endpoint];
+      const state = {
+        ...initial,
+        units: initial.units.map((unit) =>
+          unit.id === 'A-01' ? { ...unit, cell: unitCell } : unit,
+        ),
+      };
+      const before = state.factions.find(({ id }) => id === 'A')!.supplyCenti;
+
+      const result = beginCrossingBuild(state, 'A', site.id, 'A-01');
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(
+        result.state.crossings.find(({ siteId }) => siteId === site.id),
+      ).toMatchObject({
+        owner: null,
+        job: { kind: 'build', progressTicks: 0 },
+      });
+      expect(
+        result.state.factions.find(({ id }) => id === 'A')!.supplyCenti,
+      ).toBe(before - result.state.rules.crossings[site.tier].costCenti);
+    },
+  );
+
   it('accepts any completed custom node granting the same crossing tier', () => {
     const state = createMatch(42);
     const rules = {
