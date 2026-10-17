@@ -149,7 +149,7 @@
         "src/simulation/types.ts": "19f1ade32980ea6673f1ed89d0ae3e43e54e49d989af5701ec859d6626193620",
         "src/simulation/rules.ts": "6300b2dcc613a631e488230d010f98bdbfe5148216b12c135738f38c53e5116d",
         "src/simulation/config.ts": "75caf0776f65bb3a082bd1347b226b3f2ac4829dcdc7b818170ceedb48c8346c",
-        "src/main.ts": "1a89ff04c46c2fd2ff0f4b74b65db5032a1ef2ea7a01c2eb85b64ce811120bc1",
+        "src/main.ts": "9deb888388198793cd177d4230fc5f264e271b50521e57d2ac3f06813b7c7ff8",
         "src/render/board.ts": "e35d38a22904f3bee80493e82f4a7443b3c93a3fe9b14401e7557ea3233dc175",
         "src/render/view-model.ts": "e2c4808cb471528168a1bc205d7fcb4629254ae58d7c836c710a66a6d323435c",
         "src/simulation/view.ts": "26e7326b985094e22d4733c3adb8aa1e2e8b6fe9852fddd6025226105b3e70ce",

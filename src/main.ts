@@ -563,6 +563,7 @@ const handleClick = (event: MouseEvent): void => {
     clearActiveDrag();
     const scenario = hud.scenario.value;
     if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
+    hud.root.querySelector<HTMLDetailsElement>('.test-settings')!.open = false;
     setHudPanel(hud, null);
     runtime.reset(
       seed,

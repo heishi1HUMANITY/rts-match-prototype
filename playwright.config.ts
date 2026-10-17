@@ -11,6 +11,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173',
     browserName: 'chromium',
+    actionTimeout: 15_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

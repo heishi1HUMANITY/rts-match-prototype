@@ -34,9 +34,13 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest'
         with:
           path: dist/
-  e2e:
+  e2e-browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, landscape]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -48,16 +52,26 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
-          name: playwright-${{ github.event.pull_request.head.sha || github.sha }}
+          name: playwright-${{ matrix.project }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             playwright-report/
             test-results/
           if-no-files-found: warn
           retention-days: 14
+  e2e:
+    if: always()
+    needs: [e2e-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require both viewport suites
+        env:
+          RESULT: ${{ needs.e2e-browser.result }}
+        run: test "$RESULT" = success
   pages:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [checks, e2e]
