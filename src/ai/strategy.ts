@@ -1,4 +1,5 @@
 import { findPath } from '../simulation/pathfinding';
+import { terrainAt } from '../simulation/map';
 import { unitCapabilities } from '../simulation/unit-capabilities';
 import { crossingResearchComplete } from '../simulation/crossings';
 import type {
@@ -19,6 +20,81 @@ import type {
 } from '../simulation/types';
 import { isUnitUnlocked } from '../simulation/research';
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
+
+function difficultyProfile(view: FactionView) {
+  const selected =
+    view.rules.npc.difficultyProfiles[view.rules.npc.selectedDifficulty];
+  return view.rules.npc.selectedDifficulty === 'standard'
+    ? {
+        ...selected,
+        decisionIntervalTicks: view.rules.npc.decisionIntervalTicks,
+        maxCommandsPerDecision: view.rules.npc.maxCommandsPerDecision,
+      }
+    : selected;
+}
+
+function deterministicPercent(view: FactionView, salt: number): number {
+  let value = (view.seed ^ Math.imul(view.tick + 1, 0x9e3779b1) ^ salt) >>> 0;
+  value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+  value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+  return ((value ^ (value >>> 16)) >>> 0) % 100;
+}
+
+function recentPublicNotice(view: FactionView): boolean {
+  const delay = difficultyProfile(view).publicReactionDelayTicks;
+  return (view.researchAnnouncements ?? []).some(
+    (announcement) =>
+      announcement.factionId !== view.viewerFactionId &&
+      announcement.tick <= view.tick &&
+      view.tick - announcement.tick < delay,
+  );
+}
+
+export function selectNpcResearchRoute(
+  view: FactionView,
+): 'crossing' | 'field' {
+  const start = view.map.startAssignment?.[view.viewerFactionId] ?? 'north';
+  const origin = view.map.startPoints?.[start];
+  if (!origin) return 'field';
+  let rivers = 0;
+  let mountains = 0;
+  for (
+    let y = Math.max(0, origin.y - 12);
+    y <= Math.min(view.map.height - 1, origin.y + 12);
+    y += 1
+  )
+    for (
+      let x = Math.max(0, origin.x - 12);
+      x <= Math.min(view.map.width - 1, origin.x + 12);
+      x += 1
+    ) {
+      const kind = terrainAt(view.map, { x, y });
+      if (kind === 'river' || kind === 'riverbank') rivers += 1;
+      if (kind === 'mountain') mountains += 1;
+    }
+  const scoring = view.rules.npc.routeScoring;
+  const obstacleScore =
+    rivers * scoring.riverPenalty + mountains * scoring.mountainPenalty;
+  const nearestPort = (view.map.ports ?? []).reduce(
+    (best, port) =>
+      Math.min(
+        best,
+        Math.abs(origin.x - port.cell.x) + Math.abs(origin.y - port.cell.y),
+      ),
+    view.map.width + view.map.height,
+  );
+  const portBonus = nearestPort <= 12 ? scoring.portPreference : 0;
+  const crossingFit = obstacleScore;
+  const fieldFit = Math.max(0, 16 - obstacleScore) + portBonus;
+  const gap = Math.abs(crossingFit - fieldFit);
+  if (gap <= scoring.nearBestPercent) {
+    const seatSalt = start === 'north' ? 0 : start === 'south-east' ? 1 : 2;
+    return (Math.imul(view.seed ^ seatSalt, 0x45d9f3b) >>> 0) % 2 === 0
+      ? 'crossing'
+      : 'field';
+  }
+  return crossingFit > fieldFit ? 'crossing' : 'field';
+}
 
 function distanceSquared(a: Cell, b: Cell): number {
   const dx = a.x - b.x;
@@ -62,8 +138,17 @@ function researchCommand(view: FactionView): Command | undefined {
   const faction = view.ownFaction;
   // Selecting another topic replaces the active charge job. Let it finish.
   if (faction.activeResearch !== null) return undefined;
+  const start = view.map.startAssignment?.[view.viewerFactionId] ?? 'north';
+  const routeOrder =
+    view.rules.npc.researchRoutes[start][selectNpcResearchRoute(view)];
+  const routePriority = new Map(routeOrder.map((id, index) => [id, index]));
   const order = Object.entries(view.rules.research.definitions)
     .sort(([idA, a], [idB, b]) => {
+      const routeA =
+        routePriority.get(idA as ResearchId) ?? Number.MAX_SAFE_INTEGER;
+      const routeB =
+        routePriority.get(idB as ResearchId) ?? Number.MAX_SAFE_INTEGER;
+      if (routeA !== routeB) return routeA - routeB;
       const priority = (definition: typeof a): number =>
         definition.effects.some((effect) => effect.id === 'damage-bonus')
           ? 0
@@ -296,7 +381,7 @@ function nearestReachableGoal(
   candidates: readonly BaseView[],
 ): BaseView | undefined {
   const from = currentCell(unit);
-  return candidates
+  const candidatesWithRoutes = candidates
     .map((base) => ({
       base,
       route: findPath(view.map, from, base.cell, {
@@ -309,12 +394,57 @@ function nearestReachableGoal(
     .filter(
       (entry): entry is { base: BaseView; route: readonly Cell[] } =>
         entry.route !== null,
-    )
-    .sort((a, b) => {
-      if (a.route.length !== b.route.length)
-        return a.route.length - b.route.length;
-      return a.base.id < b.base.id ? -1 : a.base.id > b.base.id ? 1 : 0;
-    })[0]?.base;
+    );
+  if (candidatesWithRoutes.length === 0) return undefined;
+  const scoring = view.rules.npc.routeScoring;
+  const terrainScore = (route: readonly Cell[]): number => {
+    let rivers = 0;
+    let mountains = 0;
+    for (const cell of route) {
+      const kind = terrainAt(view.map, cell);
+      if (kind === 'river' || kind === 'riverbank') rivers += 1;
+      if (kind === 'mountain') mountains += 1;
+    }
+    const portDistance = (view.map.ports ?? []).reduce((best, port) => {
+      const distance = Math.min(
+        ...route.map(
+          (cell) =>
+            Math.abs(cell.x - port.cell.x) + Math.abs(cell.y - port.cell.y),
+        ),
+      );
+      return Math.min(best, distance);
+    }, view.map.width + view.map.height);
+    return (
+      route.length +
+      rivers * scoring.riverPenalty +
+      mountains * scoring.mountainPenalty -
+      (portDistance <= 3 ? scoring.portPreference : 0)
+    );
+  };
+  const ranked = candidatesWithRoutes
+    .map((entry) => ({ ...entry, score: terrainScore(entry.route) }))
+    .sort((a, b) => a.score - b.score || a.base.id.localeCompare(b.base.id));
+  const bestScore = ranked[0]!.score;
+  const eligible = ranked.filter(
+    ({ score }) =>
+      score <=
+      bestScore +
+        Math.max(1, (Math.abs(bestScore) * scoring.nearBestPercent) / 100),
+  );
+  // The public start seat and match seed pick a stable near-best route. No
+  // hidden owner, unit, resource, or research state participates in this tie-break.
+  const start = view.map.startAssignment?.[view.viewerFactionId] ?? 'north';
+  const seatSalt = start === 'north' ? 0 : start === 'south-east' ? 1 : 2;
+  let choice =
+    (Math.imul(view.seed ^ seatSalt, 0x45d9f3b) >>> 0) % eligible.length;
+  const routeChoiceRoll =
+    (Math.imul(view.seed ^ seatSalt, 0x45d9f3b) >>> 0) % 100;
+  if (
+    eligible.length > 1 &&
+    routeChoiceRoll < difficultyProfile(view).nextBestPercent
+  )
+    choice = (choice + 1) % eligible.length;
+  return eligible[choice]!.base;
 }
 
 function crossingConstructionCommand(
@@ -586,6 +716,18 @@ function unitMoveCommand(
         }
       : undefined);
   if (!goal) return crossingConstructionCommand(view, unit);
+  // Public faction notices are already part of every faction's view. Keep
+  // current orders, but let each difficulty react to new strategic routing
+  // only after its configured notice delay; visible local defense stays live.
+  if (!defense && recentPublicNotice(view) && !order) return undefined;
+  if (
+    !defense &&
+    order?.target.kind === 'base' &&
+    order.target.id !== goal.target.id &&
+    view.tick - order.lastSeenTick <
+      difficultyProfile(view).targetSwitchGraceTicks
+  )
+    return undefined;
   if (
     order &&
     order.status !== 'arrived' &&
@@ -735,7 +877,12 @@ function tacticalAbilityCommand(view: FactionView): Command | undefined {
         a.y - b.y ||
         a.x - b.x,
     )[0];
-  if (ready('survey') && surveyCell && !visibleCell(mapCenter))
+  if (
+    ready('survey') &&
+    surveyCell &&
+    !visibleCell(mapCenter) &&
+    deterministicPercent(view, 907) < difficultyProfile(view).scoutUsePercent
+  )
     return { type: 'activate-ability', abilityId: 'survey', cell: surveyCell };
   if (ready('jam')) {
     const target = (['A', 'B', 'C'] as const)
@@ -782,11 +929,14 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((unit) => () => unitMoveCommand(view, unit)),
   ];
-  const decision = Math.floor(view.tick / view.rules.npc.decisionIntervalTicks);
+  const decision = Math.floor(
+    view.tick / difficultyProfile(view).decisionIntervalTicks,
+  );
   const start = decision % slots.length;
   const commands: Command[] = [];
   for (let offset = 0; offset < slots.length; offset += 1) {
-    if (commands.length >= view.rules.npc.maxCommandsPerDecision) break;
+    if (commands.length >= difficultyProfile(view).maxCommandsPerDecision)
+      break;
     const command = slots[(start + offset) % slots.length]!();
     if (command) commands.push(command);
   }

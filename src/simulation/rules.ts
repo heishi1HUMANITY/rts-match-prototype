@@ -22,11 +22,21 @@ import type {
   CombatTargetKind,
   CrossingTierId,
   ResearchId,
+  StartPositionId,
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 23 as const;
-export const RULES_VERSION = 'cp12-economy-v1' as const;
+export const MASTER_SCHEMA_VERSION = 24 as const;
+export const RULES_VERSION = 'cp12-npc-paths-v1' as const;
+
+export interface NpcDifficultyProfile {
+  readonly decisionIntervalTicks: number;
+  readonly maxCommandsPerDecision: number;
+  readonly nextBestPercent: number;
+  readonly publicReactionDelayTicks: number;
+  readonly targetSwitchGraceTicks: number;
+  readonly scoutUsePercent: number;
+}
 
 export interface TacticalAbilityRules {
   readonly costCenti: number;
@@ -220,6 +230,22 @@ export interface RulesMaster {
     readonly decisionIntervalTicks: number;
     readonly defenseAttentionRadius: number;
     readonly maxCommandsPerDecision: number;
+    readonly selectedDifficulty: 'weak' | 'standard' | 'strong';
+    readonly difficultyProfiles: Readonly<
+      Record<'weak' | 'standard' | 'strong', NpcDifficultyProfile>
+    >;
+    readonly routeScoring: {
+      readonly riverPenalty: number;
+      readonly mountainPenalty: number;
+      readonly portPreference: number;
+      readonly nearBestPercent: number;
+    };
+    readonly researchRoutes: Readonly<
+      Record<
+        StartPositionId,
+        Readonly<Record<'crossing' | 'field', readonly ResearchId[]>>
+      >
+    >;
   };
   readonly localFaction: {
     readonly enabled: boolean;
@@ -613,6 +639,53 @@ export const DEFAULT_RULES: RulesMaster = {
     decisionIntervalTicks: 30,
     defenseAttentionRadius: 10,
     maxCommandsPerDecision: 2,
+    selectedDifficulty: 'standard',
+    difficultyProfiles: {
+      weak: {
+        decisionIntervalTicks: 50,
+        maxCommandsPerDecision: 1,
+        nextBestPercent: 75,
+        publicReactionDelayTicks: 120,
+        targetSwitchGraceTicks: 180,
+        scoutUsePercent: 10,
+      },
+      standard: {
+        decisionIntervalTicks: 30,
+        maxCommandsPerDecision: 2,
+        nextBestPercent: 35,
+        publicReactionDelayTicks: 60,
+        targetSwitchGraceTicks: 90,
+        scoutUsePercent: 40,
+      },
+      strong: {
+        decisionIntervalTicks: 20,
+        maxCommandsPerDecision: 3,
+        nextBestPercent: 10,
+        publicReactionDelayTicks: 20,
+        targetSwitchGraceTicks: 30,
+        scoutUsePercent: 75,
+      },
+    },
+    routeScoring: {
+      riverPenalty: 4,
+      mountainPenalty: 8,
+      portPreference: 5,
+      nearBestPercent: 15,
+    },
+    researchRoutes: {
+      north: {
+        crossing: ['bridge-2', 'firepower-1', 'artillery-1', 'air-defense-1'],
+        field: ['firepower-1', 'artillery-1', 'air-defense-1', 'bridge-2'],
+      },
+      'south-east': {
+        crossing: ['bridge-2', 'firepower-1', 'air-defense-1', 'artillery-1'],
+        field: ['firepower-1', 'air-defense-1', 'artillery-1', 'bridge-2'],
+      },
+      'south-west': {
+        crossing: ['bridge-2', 'air-defense-1', 'firepower-1', 'artillery-1'],
+        field: ['firepower-1', 'artillery-1', 'bridge-2', 'air-defense-1'],
+      },
+    },
   },
   localFaction: {
     enabled: false,

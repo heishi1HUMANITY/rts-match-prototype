@@ -353,7 +353,11 @@ export function validateRules(input: unknown): ValidationResult {
                           fieldPath.endsWith('startCentiPerTick') ||
                           fieldPath.endsWith('endCentiPerTick')
                         ? 10_000
-                        : 1_000_000_000;
+                        : fieldPath.endsWith('nextBestPercent') ||
+                            fieldPath.endsWith('scoutUsePercent') ||
+                            fieldPath.endsWith('nearBestPercent')
+                          ? 100
+                          : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -364,9 +368,11 @@ export function validateRules(input: unknown): ValidationResult {
         } else if (typeof expected === 'string') {
           const allowed = fieldPath.endsWith('.domain')
             ? ['power', 'logistics', 'information', 'engineering']
-            : fieldPath.endsWith('.movementDomain')
-              ? ['land', 'air', 'water']
-              : null;
+            : fieldPath.endsWith('.selectedDifficulty')
+              ? ['weak', 'standard', 'strong']
+              : fieldPath.endsWith('.movementDomain')
+                ? ['land', 'air', 'water']
+                : null;
           if (
             typeof actual !== 'string' ||
             (allowed !== null && !allowed.includes(actual))
@@ -388,6 +394,16 @@ export function validateRules(input: unknown): ValidationResult {
       unit.unlockResearchId,
       `rules.units.${kind}.unlockResearchId`,
     );
+  for (const [start, routes] of Object.entries(rules.npc.researchRoutes))
+    for (const [routeName, researchIds] of Object.entries(routes)) {
+      if (researchIds.length === 0)
+        issues.push({
+          key: `rules.npc.researchRoutes.${start}.${routeName}`,
+          message: '研究道筋には1件以上の研究が必要です',
+        });
+      for (const id of researchIds)
+        checkReference(id, `rules.npc.researchRoutes.${start}.${routeName}`);
+    }
   checkReference(
     rules.baseUpgrades.level2ResearchId,
     'rules.baseUpgrades.level2ResearchId',
@@ -682,7 +698,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 19 &&
       input.masterSchemaVersion !== 20 &&
       input.masterSchemaVersion !== 21 &&
-      input.masterSchemaVersion !== 22)
+      input.masterSchemaVersion !== 22 &&
+      input.masterSchemaVersion !== 23)
   )
     return {
       ok: false,
@@ -1392,6 +1409,31 @@ export function validateEnvelope(
       economy: {
         ...DEFAULT_RULES.economy,
         ...(isRecord(candidateRules.economy) ? candidateRules.economy : {}),
+      },
+      npc: {
+        ...DEFAULT_RULES.npc,
+        ...(isRecord(candidateRules.npc) ? candidateRules.npc : {}),
+        difficultyProfiles: {
+          ...DEFAULT_RULES.npc.difficultyProfiles,
+          ...(isRecord(candidateRules.npc) &&
+          isRecord(candidateRules.npc.difficultyProfiles)
+            ? candidateRules.npc.difficultyProfiles
+            : {}),
+        },
+        routeScoring: {
+          ...DEFAULT_RULES.npc.routeScoring,
+          ...(isRecord(candidateRules.npc) &&
+          isRecord(candidateRules.npc.routeScoring)
+            ? candidateRules.npc.routeScoring
+            : {}),
+        },
+        researchRoutes: {
+          ...DEFAULT_RULES.npc.researchRoutes,
+          ...(isRecord(candidateRules.npc) &&
+          isRecord(candidateRules.npc.researchRoutes)
+            ? candidateRules.npc.researchRoutes
+            : {}),
+        },
       },
     };
   const result = validateRules(candidateRules);

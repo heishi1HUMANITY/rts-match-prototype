@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideBotCommands } from './strategy';
+import { decideBotCommands, selectNpcResearchRoute } from './strategy';
 import { createMatch } from '../simulation/match';
 import { getFactionView } from '../simulation/view';
 import { applyCommand } from '../simulation/commands';
@@ -24,6 +24,126 @@ function replaceOwnFaction(
 }
 
 describe('stateless faction-view NPC policy', () => {
+  it('selects one of two legal, military-capable research routes from public start terrain', () => {
+    const state = running(createMatch(7, { mapId: 'ring-three-fronts-100' }));
+    const baseView = getFactionView(state, 'B');
+    for (const start of ['north', 'south-east', 'south-west'] as const) {
+      const view = {
+        ...baseView,
+        map: {
+          ...baseView.map,
+          startAssignment: {
+            ...baseView.map.startAssignment!,
+            B: start,
+          },
+        },
+      };
+      const candidates = view.rules.npc.researchRoutes[start];
+      expect(Object.keys(candidates)).toHaveLength(2);
+      expect(candidates.crossing).not.toEqual(candidates.field);
+      for (const route of Object.values(candidates)) {
+        const research = view.rules.research.definitions;
+        expect(route).toContain('artillery-1');
+        expect(route.indexOf('firepower-1')).toBeLessThan(
+          route.indexOf('artillery-1'),
+        );
+        for (const id of route) expect(research[id]).toBeDefined();
+        expect(
+          research['artillery-1']!.effects.some(
+            (effect) =>
+              effect.id === 'unit-unlock' && effect.unitKind === 'artillery',
+          ),
+        ).toBe(true);
+      }
+      expect(selectNpcResearchRoute(view)).toBe(selectNpcResearchRoute(view));
+    }
+    const southEast = {
+      ...baseView,
+      map: {
+        ...baseView.map,
+        startAssignment: {
+          ...baseView.map.startAssignment!,
+          B: 'south-east' as const,
+        },
+      },
+    };
+    const origin = southEast.map.startPoints!['south-east'];
+    const floodedTerrain = [...southEast.map.terrain!];
+    for (let y = origin.y - 10; y <= origin.y + 10; y += 1)
+      for (let x = origin.x - 10; x <= origin.x + 10; x += 1)
+        if (
+          x >= 0 &&
+          y >= 0 &&
+          x < southEast.map.width &&
+          y < southEast.map.height
+        )
+          floodedTerrain[y * southEast.map.width + x] = 'river';
+    expect(selectNpcResearchRoute(southEast)).toBe('field');
+    expect(
+      selectNpcResearchRoute({
+        ...southEast,
+        map: { ...southEast.map, terrain: floodedTerrain },
+      }),
+    ).toBe('crossing');
+  });
+
+  it('difficulty presets change the decision budget without changing the shared command pipeline', () => {
+    const base = getFactionView(running(createMatch(43)), 'B');
+    for (const difficulty of ['weak', 'standard', 'strong'] as const) {
+      const view = {
+        ...base,
+        rules: {
+          ...base.rules,
+          npc: {
+            ...base.rules.npc,
+            selectedDifficulty: difficulty,
+          },
+        },
+      };
+      const limit =
+        difficulty === 'standard'
+          ? view.rules.npc.maxCommandsPerDecision
+          : view.rules.npc.difficultyProfiles[difficulty]
+              .maxCommandsPerDecision;
+      const commands = decideBotCommands(view);
+      expect(commands.length).toBeLessThanOrEqual(limit);
+      expect(commands).toEqual(decideBotCommands(view));
+    }
+  });
+
+  it('delays new strategic orders after public notices but keeps existing orders and local defense responsive', () => {
+    const base = getFactionView(running(createMatch(43)), 'B');
+    const unit = base.ownUnits[0]!;
+    const view = {
+      ...base,
+      tick: 120,
+      ownUnits: [unit],
+      researchAnnouncements: [
+        {
+          factionId: 'A' as const,
+          researchId: 'specialization-power' as const,
+          tick: 119,
+        },
+      ],
+      rules: {
+        ...base.rules,
+        npc: { ...base.rules.npc, maxCommandsPerDecision: 8 },
+      },
+    };
+    expect(
+      decideBotCommands(view).some((command) => command.type === 'march'),
+    ).toBe(false);
+    const delayed = {
+      ...view,
+      tick:
+        view.tick +
+        view.rules.npc.difficultyProfiles.standard.publicReactionDelayTicks,
+    };
+    expect(
+      decideBotCommands(delayed).some((command) => command.type === 'march'),
+    ).toBe(true);
+  });
+
   it('is deterministic and only acts from the supplied faction view', () => {
     const state = running(createMatch(42));
     const view = getFactionView(state, 'B');
@@ -46,7 +166,7 @@ describe('stateless faction-view NPC policy', () => {
     const commands = decideBotCommands(view);
     expect(commands).toContainEqual({
       type: 'start-research',
-      researchId: 'firepower-1',
+      researchId: 'bridge-2',
     });
     expect(commands).toContainEqual({
       type: 'enqueue-production',
@@ -314,7 +434,7 @@ describe('stateless faction-view NPC policy', () => {
     });
     expect(decideBotCommands(finished)).toContainEqual({
       type: 'start-research',
-      researchId: 'survey-1',
+      researchId: 'bridge-2',
     });
   });
 

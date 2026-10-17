@@ -31,6 +31,31 @@ function legacyResearchDefinitions() {
 }
 
 describe('F03 rules validation', () => {
+  it('migrates schema 23 while preserving edited NPC pacing and adding route defaults', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    legacy.npc.decisionIntervalTicks = 45;
+    delete legacy.npc.selectedDifficulty;
+    delete legacy.npc.difficultyProfiles;
+    delete legacy.npc.routeScoring;
+    delete legacy.npc.researchRoutes;
+    const result = validateEnvelope({
+      masterSchemaVersion: 23,
+      revision: 9,
+      rules: legacy,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
+    expect(result.envelope.rules.npc.decisionIntervalTicks).toBe(45);
+    expect(result.envelope.rules.npc.selectedDifficulty).toBe('standard');
+    expect(
+      result.envelope.rules.npc.researchRoutes['south-east'].crossing,
+    ).toContain('artillery-1');
+  });
+
   it.each([0, -1, 101, 50.5, NaN, Infinity, -Infinity])(
     'rejects invalid capture HP percent %s',
     (restoredHpPercent) => {

@@ -13,6 +13,17 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   await expect(
     page.locator('[data-master-path="npc.maxCommandsPerDecision"]'),
   ).toHaveValue('2');
+  await expect(
+    page.locator('[data-master-path="npc.selectedDifficulty"]'),
+  ).toHaveValue('standard');
+  await expect(
+    page.locator(
+      '[data-master-path="npc.difficultyProfiles.weak.publicReactionDelayTicks"]',
+    ),
+  ).toHaveValue('120');
+  await expect(
+    page.locator('[data-master-path="npc.researchRoutes.north.crossing.0"]'),
+  ).toHaveValue('bridge-2');
   await page
     .getByRole('button', { name: '保存値で新しく開始', exact: true })
     .click();
@@ -38,7 +49,9 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
       (entry: { id: string }) => entry.id === id,
     );
     expect(faction.productionJobs.length).toBeGreaterThan(0);
-    expect(faction.activeResearch?.researchId).toBe('firepower-1');
+    expect(['bridge-2', 'firepower-1']).toContain(
+      faction.activeResearch?.researchId,
+    );
     expect(
       diagnostic.state.units.filter(
         (unit: { factionId: string; marchOrder: unknown }) =>
