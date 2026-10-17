@@ -17,7 +17,11 @@ import { advanceMatch } from '../src/runtime/advance';
 import { getFactionView } from '../src/simulation/view';
 import { selectNpcResearchRoute } from '../src/ai/strategy';
 import { calculateIntervalTicketLossCenti } from '../src/simulation/tickets';
-import { RULES_VERSION } from '../src/simulation/rules';
+import { DEFAULT_RULES, RULES_VERSION } from '../src/simulation/rules';
+import {
+  describeExpansionRoutes,
+  describeTransferRoutes,
+} from '../src/simulation/expansion-routes';
 import type {
   FactionId,
   MatchState,
@@ -832,6 +836,8 @@ console.log(
       denominatorPolicy: `${matches.length} complete 3-start games; each physical start is a participant in all ${matches.length}. A-seat balance is reported separately. Tied rank-1, mutual-elimination, and unresolved-at-12000 games are non-wins in the primary win rate and reported separately.`,
       winRateBand: WIN_RATE_BAND,
       tickLimit: TICK_LIMIT,
+      expansionRoutes: describeExpansionRoutes(createMap100(0), DEFAULT_RULES),
+      transferRoutes: describeTransferRoutes(createMap100(0)),
       outcomes,
       winsByFactionId,
       factionASeatCounts,

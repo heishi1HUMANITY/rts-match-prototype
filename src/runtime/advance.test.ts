@@ -86,6 +86,32 @@ describe('advanceMatch NPC orchestration', () => {
     }
   });
 
+  it('replays all-bot 100-cell matches from every start assignment', () => {
+    const run = (seed: number) => {
+      let state = running(
+        createMatch(seed, {
+          mapId: 'ring-three-fronts-100',
+          controllers: { A: 'bot', B: 'bot', C: 'bot' },
+        }),
+      );
+      for (let tick = 0; tick < 400; tick += 1) state = advanceMatch(state);
+      return state;
+    };
+    for (const seed of [0, 1, 2]) {
+      const first = run(seed);
+      expect(first.map.definitionVersion).toBe(6);
+      expect(
+        first.bases.some(
+          (base) =>
+            base.owner === 'A' &&
+            base.kind !== 'hq' &&
+            base.homeFactionId !== 'A',
+        ),
+      ).toBe(true);
+      expect(run(seed)).toEqual(first);
+    }
+  }, 60_000);
+
   it('moves bots beyond their starting bases and captures neutral territory', () => {
     const state = runTicks(42, 'standard', 180);
     expect(

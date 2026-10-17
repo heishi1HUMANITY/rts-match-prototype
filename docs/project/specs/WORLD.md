@@ -17,12 +17,12 @@
 
 ### 盤面と経路
 
-- 40×40旧版と100×100 `ring-three-fronts` 版は `src/simulation/map-definitions.ts` の明示的データを使う。同ファイルに寸法、全地形/level/障害物セル、3物理開始地点、拠点、渡河設備、港、初期部隊を保持し、seedで地形形状を変えない。100版5は各開始点のローカル拡張路に2×2の山地を加え、橋II研究後に南東/北から西側MID-02へ進める南フランク渡河地 `CROSS-FLANK-SOUTH-B2` を追加し、大型OUT-02を中央寄りの(58,41)へ移す。
+- 40×40旧版と100×100 `ring-three-fronts` 版は `src/simulation/map-definitions.ts` の明示的データを使う。同ファイルに寸法、全地形/level/障害物セル、3物理開始地点、拠点、渡河設備、港、初期部隊を保持し、seedで地形形状を変えない。100版6は中央島に北寄りOUT-01(47,40)・大型OUT-02(50,50)・南西寄りOUT-03(48,59)を置き、各開始点の手前にMID、島へは開始点ごとの環状橋I（北CROSS-RING-N・南東CROSS-RING-SE・南西CROSS-RING-SW）で入る。版5から各開始点の2×2山地と南フランク橋II `CROSS-FLANK-SOUTH-B2`（南西から島南西への迂回）を残す。
 - 100版の地形は旧版seed 0の形状を固定し、各40セルの面を `[floor(2.5x), ceil(2.5(x+1)))` の2/3セル帯へ展開した形を宣言データ化する。seedは3開始地点のA/B/C割当にだけ使う。Aは常に人間。拠点所有、港、初期部隊を同じ位置スロット置換で対応させる。定義ID/版、地形、寸法、開始地点/割当、配置はMatchStateへ保存する。
 - 40×40/100×100とも陸地、河岸、川、山と地形等級、中央島、港、首都/小/中/大拠点、橋・索道予定地を持つ。配置・地形形状は現行マスタの編集対象外。
-- 100×100の各物理開始点から中立拡張先へ、橋I予定地だけを完成扱いにした `findPath` で最近傍2候補を検査する。座標と経路長は南西からOUT-01/MID-02が39/40セル（OUT-02は54セル）、南東からOUT-03/MID-01が33/41（OUT-02は54セル）、北からMID-03/OUT-01が37/50（OUT-02は55セル）。南西から中央OUT-02はCROSS-RING-SWなしでは陸路不可、南東/北の各近傍候補は橋なしで到達する。3港間の水路はboat移動域でA↔B=36、B↔C=35、A↔C=55セル。これは施設の建設費用・占領時間・戦場競合を含む経済成立の証明ではない。
-- 対陣営HQへのtier-I環状路はSW↔SE=90、SW↔北=89、SE↔北=109セルで、SW/SE/Nの6セル橋を通る。SE↔北にはbridge-2のCROSS-BORDER-000-B2（7セル）が研究cost7200後の短絡路91セルを開く（18セル短縮）。新設した南フランクはy=60の横断河川（8セル）を通るbridge-II候補で、bridge-Iのみでは南東→MID-02が104セル、南フランク完成後は96セルに変わり、橋Iの南西ルートを迂回する。北→MID-02も103→95セルとなり、両陣営が西側拡張先へ干渉できる。これらは通行経路の比較であり、建設時間・占領・戦場の競合は別条件。拡張候補のticket weightはoutpost=1/medium=2/large=3、拠点種別に関わらず部隊上限寄与は+1。boatは港間を移動するが陸上部隊の輸送能力はなく、陸上増援経路の代替とは数えない。
-- 公平性の再現監査 `npm run audit:map-fairness` は標準NPC同士の実simulationを調整seed 0〜17で実行する。最終評価は `npm run audit:map-fairness:final` で独立seed 200〜217を実行する。各試合に3開始地点が1回ずつ現れ、各開始地点の勝率分母は18試合（A陣営の開始割当は各6試合）。seed集合は採点前に固定し、rank1複数、相互脱落、12000tick未決着は勝利に数えず、終了理由を別記録する。開始地点・陣営ID・選択道筋・seed・定義版・マスタ版・tickを出力し、チェックポイントはマップ版別に分け、距離一致で公平性を代替しない。
+- 拡張経路は `describeExpansionRoutes` が橋なし→橋I→橋IIの順で最短路を求め、経路長・強襲移動tick・通過設備の費用/建設tick・解放研究と費用・中立守備HPを出す。版6の最近傍2候補は南西がOUT-02(大型,橋I,37セル)/MID-02(陸路40)、南東がMID-01(陸路41)/OUT-02(橋I,53)、北がMID-03(陸路37)/OUT-01(橋I,45)。各開始点は陸路のMIDと自分の環状橋Iの先の島拠点を持ち、橋II研究後は隣陣営のMIDへ迂回路が開く（北→MID-01 94→50、南東→MID-02 104→50、南西→MID-03 68→52セル）。
+- `describeTransferRoutes` は非首都拠点間の増援・撤退・前線転用距離を橋I/橋II別に、港間のboat水路（A↔B=36、B↔C=35、A↔C=55セル）を出す。boatに陸上部隊の輸送能力はなく、陸上増援の代替に数えない。拡張候補のticket weightはoutpost=1/medium=2/large=3。経路表は到達性と費用の計算であり、占領・戦場競合の結果は下記の実simulation監査で見る。
+- 公平性の再現監査 `npm run audit:map-fairness` は標準NPC同士の実simulationを調整seed 0〜17、`npm run audit:map-fairness:final` は独立seed 200〜217で実行する（`--jobs=N` で並列）。各試合に3開始地点が1回ずつ現れ、勝率分母は各18試合（A陣営割当は各6）。rank1複数・相互脱落・12000tick未決着は勝利に数えない。出力は開始地点別の勝率と20〜50%帯の判定・失敗条件、陣営ID別勝利、傾向（現状neutral）、研究道筋、完成させた渡河設備、獲得拠点、脱落理由、チケット損失の内訳、部隊損失の発生源、経路表、seed・定義版・マスタ版（RULES_VERSION＋マスタhash）・tick。版6は調整N8/SE6/SW4、holdout N7/SE5/SW6で合格（`artifacts/cp12-84-v6/`）。プレイ未検証。
 - 陸上は通行可能セルと完成済み渡河設備、航空は地形を無視した直線、水上は川セルで移動する。港は哨戒艇の生産先。到達不能な移動命令は拒否する。
 - 川・山の予定地表示だけでは通行権を与えない。橋3級は陸上4兵種、索道2級は斥候だけ通せる。陣営の経路計画は所有/観測済み設備を使い、実移動時にも設備状態を確認する。
 
@@ -37,4 +37,4 @@
 
 数値: `crossings.*` の費用・建設/解体tick・HP・回復・視界。研究解放は `research.definitions.*.effects`。通行兵種集合は [crossings.ts](../../../src/simulation/crossings.ts) の `CROSSING_ALLOWED_UNIT_KINDS`。
 
-実装: [map-100.ts](../../../src/simulation/map-100.ts)、[map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map-100.test.ts](../../../src/simulation/map-100.test.ts)、[map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。
+実装: [map-100.ts](../../../src/simulation/map-100.ts)、[expansion-routes.ts](../../../src/simulation/expansion-routes.ts)、[audit-map-fairness.ts](../../../scripts/audit-map-fairness.ts)、[map.ts](../../../src/simulation/map.ts)、[pathfinding.ts](../../../src/simulation/pathfinding.ts)、[config.ts](../../../src/simulation/config.ts)。検証: [map-100.test.ts](../../../src/simulation/map-100.test.ts)、[map.test.ts](../../../src/simulation/map.test.ts)、[pathfinding.test.ts](../../../src/simulation/pathfinding.test.ts)、[crossings.test.ts](../../../src/simulation/crossings.test.ts)、[crossing-combat.test.ts](../../../src/simulation/crossing-combat.test.ts)。
