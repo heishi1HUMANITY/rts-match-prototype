@@ -100,7 +100,7 @@ describe('F10 base upgrades', () => {
     });
   });
 
-  it('changes income and only regenerates after the damage delay', () => {
+  it('does not change income and only regenerates after the damage delay', () => {
     const state = running('f10-base-upgrades');
     const base = state.bases.find(({ id }) => id === 'OUT-01')!;
     const levelOne = {
@@ -123,11 +123,11 @@ describe('F10 base upgrades', () => {
     const twoIncome = applyEconomyTick(levelTwo);
     expect(
       faction(twoIncome, 'A').supplyCenti - faction(oneIncome, 'A').supplyCenti,
-    ).toBe(6);
+    ).toBe(0);
     expect(
       faction(twoIncome, 'A').researchCenti -
         faction(oneIncome, 'A').researchCenti,
-    ).toBe(3);
+    ).toBe(0);
 
     const stillPaused = advanceBaseUpgrades({
       ...levelTwo,

@@ -12,6 +12,7 @@ import {
   RULES_VERSION,
 } from '../simulation/rules';
 import type { ScenarioId } from '../simulation/types';
+import { SCHEMA_VERSION } from '../simulation/config';
 
 function running(scenario: ScenarioId) {
   let next: FrameRequestCallback | null = null;
@@ -182,7 +183,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 25,
+        schemaVersion: 26,
         rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
@@ -244,7 +245,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       scenarioId: 'standard' as const,
       history: [],
       finalTick: 0,
-      schemaVersion: 25 as const,
+      schemaVersion: SCHEMA_VERSION,
       rulesVersion: RULES_VERSION,
       rules: DEFAULT_RULES,
       rulesContentId: rulesContentId(DEFAULT_RULES),
@@ -278,6 +279,9 @@ describe('G2 presentation and diagnostic boundaries', () => {
         ...input,
         rulesVersion: 'f16-v2',
       } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({ ...input, schemaVersion: 25 } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 21 } as unknown as typeof input),

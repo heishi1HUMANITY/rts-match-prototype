@@ -502,7 +502,7 @@ describe('F17 browser master store', () => {
       revision: 52,
       rules: {
         limits: {
-          baseUnits: 3,
+          baseUnits: 5,
           unitsPerOwnedBase: 1,
           maxUnits: 9,
           productionQueue: 3,
@@ -514,6 +514,9 @@ describe('F17 browser master store', () => {
           assault: {
             upkeepCentiPerTick: 10,
           },
+        },
+        economy: {
+          flatSupplyIncomeCentiPerTick: 120,
         },
       },
     });

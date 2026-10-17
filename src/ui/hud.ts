@@ -123,7 +123,7 @@ const effectLabel = (effect: {
     case 'vision-bonus':
       return `視界 +${effect.value}`;
     case 'supply-income-bonus':
-      return `拠点補給収入 +${effect.value} centi/tick`;
+      return `定額補給収入 +${effect.value} centi/tick`;
     case 'upkeep-reduction':
       return `維持費 -${effect.value} centi/tick/部隊`;
     case 'crossing-unlock':
@@ -460,22 +460,10 @@ export function updateHud(
     '[data-resources]',
     `補給 ${amount(own.supplyCenti)} / 研究バンク ${(own.researchCenti / 100).toFixed(1)}`,
   );
-  const bases = view.bases.filter(
-    (base) => base.visibility === 'owned' && base.hp > 0,
-  );
-  const income = bases.reduce(
-      (n, base) =>
-        n +
-        view.rules.bases[base.kind].supplyIncomeCentiPerTick +
-        researchEffectValue(own, view.rules, 'supply-income-bonus'),
-      0,
-    ),
-    rp =
-      view.rules.research.baseIncomeCentiPerTick +
-      bases.reduce(
-        (n, base) => n + view.rules.bases[base.kind].researchIncomeCentiPerTick,
-        0,
-      ),
+  const income =
+      view.rules.economy.flatSupplyIncomeCentiPerTick +
+      researchEffectValue(own, view.rules, 'supply-income-bonus'),
+    rp = view.rules.research.baseIncomeCentiPerTick,
     upkeep = view.ownUnits.reduce(
       (n, unit) =>
         n +
@@ -1027,21 +1015,7 @@ export function updateHud(
       detail = `${location}\n最終観測 TICK ${base.seenTick}：${baseOwnerName(base.owner)} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
     else {
       const level = base.level;
-      const activeTier =
-        level > 1
-          ? baseUpgradeTier(base.kind, level as 2 | 3, view.rules)
-          : null;
-      const supplyIncome = Math.floor(
-        (view.rules.bases[base.kind].supplyIncomeCentiPerTick *
-          (activeTier?.supplyIncomePercent ?? 100)) /
-          100,
-      );
-      const researchIncome = Math.floor(
-        (view.rules.bases[base.kind].researchIncomeCentiPerTick *
-          (activeTier?.researchIncomePercent ?? 100)) /
-          100,
-      );
-      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${Math.floor((base.captureProgressCentiTicks / (view.rules.capture.requiredTicks * 100)) * 100)}%` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}${base.visibility === 'owned' && base.hp > 0 ? `\n補給 +${supplyIncome / 10}/秒 · 研究 +${researchIncome / 10}/秒` : ''}`;
+      detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${Math.floor((base.captureProgressCentiTicks / (view.rules.capture.requiredTicks * 100)) * 100)}%` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}`;
       if (base.visibility === 'owned') {
         if (base.upgradeJob) {
           upgradeReason = `Lv${base.upgradeJob.targetLevel}へ強化中 · 残り${seconds(base.upgradeJob.remainingTicks)}`;
@@ -1073,7 +1047,7 @@ export function updateHud(
           } else if (own.supplyCenti < tier.costCenti) {
             upgradeReason = `補給不足 · 必要 ${amount(tier.costCenti)}`;
           } else {
-            upgradeReason = `完了後: HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · 補給/研究収入 +${tier.supplyIncomePercent - 100}% · 砲座 ${tier.turretDamage} damage`;
+            upgradeReason = `完了後: 最大HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · 砲座 ${tier.turretDamage} damage / 射程${tier.turretRange}`;
             upgradeButton.disabled =
               snapshot.contextLost || own.eliminatedAtTick !== null;
             upgradeButton.textContent = `Lv${targetLevel}へ強化 · 補給${amount(tier.costCenti)} · ${seconds(tier.buildTicks)}`;

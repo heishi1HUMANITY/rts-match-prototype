@@ -356,7 +356,7 @@ export interface FactionKnowledge {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 25;
+  readonly schemaVersion: 26;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;

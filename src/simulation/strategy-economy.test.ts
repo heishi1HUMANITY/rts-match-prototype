@@ -47,7 +47,7 @@ describe('G2 integer economy', () => {
   it('accrues HQ income minus surviving unit upkeep exactly in centi', () => {
     let state = runningMatch();
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
-    expect(faction(state).supplyCenti).toBe(20_450);
+    expect(faction(state).supplyCenti).toBe(21_050);
     expect(faction(state).researchCenti).toBe(120);
 
     const outpost = state.bases.find(({ id }) => id === 'OUT-03');
@@ -59,9 +59,9 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(owned);
-    expect(faction(next).supplyCenti).toBe(20_515);
-    expect(faction(next).researchCenti).toBe(142);
-    expect(faction(owned).supplyCenti).toBe(20_450);
+    expect(faction(next).supplyCenti).toBe(21_155);
+    expect(faction(next).researchCenti).toBe(132);
+    expect(faction(owned).supplyCenti).toBe(21_050);
   });
 
   it('clamps upkeep at zero without creating supply or damaging units', () => {
@@ -73,8 +73,30 @@ describe('G2 integer economy', () => {
       ),
     };
     const next = applyEconomyTick(withoutHq);
-    expect(faction(next).supplyCenti).toBe(5);
+    expect(faction(next).supplyCenti).toBe(105);
     expect(next.units).toBe(withoutHq.units);
+  });
+
+  it('keeps flat income unchanged across base ownership, kind, and upgrade level', () => {
+    const baseline = runningMatch();
+    const capturedAndUpgraded = {
+      ...baseline,
+      bases: baseline.bases.map((base, index) => ({
+        ...base,
+        owner: 'A' as const,
+        hp: base.maxHp,
+        level: 3 as const,
+        kind: index % 2 === 0 ? ('large' as const) : ('medium' as const),
+      })),
+    };
+    const a = applyEconomyTick(baseline).factions.find(({ id }) => id === 'A')!;
+    const b = applyEconomyTick(capturedAndUpgraded).factions.find(
+      ({ id }) => id === 'A',
+    )!;
+    expect([b.supplyCenti, b.researchCenti]).toEqual([
+      a.supplyCenti,
+      a.researchCenti,
+    ]);
   });
 });
 
@@ -364,7 +386,14 @@ describe('G2 production commands and tick helpers', () => {
 
   it('links unit limit to owned bases, enforces soft cap, pauses queue on exceed, and resumes on casualty', () => {
     let state = withFaction(runningMatch(), { supplyCenti: 100_000 });
-    // Initially baseUnits = 3, owned non-HQ bases = 1 (HOME-A) -> limit = 4.
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        limits: { ...state.rules.limits, baseUnits: 3, maxUnits: 5 },
+      },
+    };
+    // Controlled comparison: baseUnits = 3, one owned base -> limit = 4.
     // Living units: 2 (A-01, A-02).
     // Can enqueue 2 units to reach limit (2 + 2 = 4)
     state = accepted(state, {
@@ -623,17 +652,17 @@ describe('G2 research', () => {
     }
   });
 
-  it('applies completed logistics effects to base income and per-unit upkeep', () => {
+  it('applies the flat logistics bonus once and per-unit upkeep reduction', () => {
     const baseline = runningMatch();
     const expectedWithoutTech = applyEconomyTick(baseline);
     let state = withFaction(baseline, {
       completedResearchIds: ['supply-lines-1', 'maintenance-1'],
     });
     state = applyEconomyTick(state);
-    // Two owned bases each add 1 centi/tick; two units each save 1 centi/tick.
+    // The flat bonus adds 1 centi/tick once; two units each save 1 centi/tick.
     expect(
       faction(state).supplyCenti - faction(expectedWithoutTech).supplyCenti,
-    ).toBe(4);
+    ).toBe(3);
     expect(
       researchEffectValue(faction(state), state.rules, 'upkeep-reduction'),
     ).toBe(1);

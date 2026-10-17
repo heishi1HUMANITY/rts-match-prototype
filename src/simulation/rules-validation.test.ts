@@ -56,6 +56,30 @@ describe('F03 rules validation', () => {
     expect(result.rules.units.assault).not.toBe(DEFAULT_RULES.units.assault);
   });
 
+  it.each([
+    { baseUnits: 4, maxUnits: 7 },
+    { baseUnits: 5, maxUnits: 9 },
+  ])('accepts the territory comeback pair $baseUnits/$maxUnits', (limits) => {
+    const result = validateRules({
+      ...DEFAULT_RULES,
+      limits: { ...DEFAULT_RULES.limits, ...limits },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects a unit-cap pair that does not let a base army outnumber the full cap', () => {
+    const result = validateRules({
+      ...DEFAULT_RULES,
+      limits: { ...DEFAULT_RULES.limits, baseUnits: 4, maxUnits: 9 },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ key: 'rules.limits.baseUnits' }),
+      ]),
+    });
+  });
+
   it('requires each unit garrison setting to be boolean', () => {
     const result = validateRules({
       ...DEFAULT_RULES,
@@ -548,6 +572,51 @@ it('rejects a research-reference array even when its coercion matches a valid ID
 });
 
 describe('F11 and F21 combined migration contract', () => {
+  it('migrates CP12 economy defaults and preserves non-default master values', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    legacy.limits.baseUnits = 3;
+    legacy.limits.maxUnits = 9;
+    legacy.research.baseIncomeCentiPerTick = 2;
+    delete legacy.economy;
+    const migrated = validateEnvelope({
+      masterSchemaVersion: 22,
+      revision: 11,
+      rules: legacy,
+    });
+    expect(migrated).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        rules: {
+          economy: { flatSupplyIncomeCentiPerTick: 120 },
+          research: { baseIncomeCentiPerTick: 12 },
+          limits: { baseUnits: 5, maxUnits: 9 },
+        },
+      },
+    });
+
+    legacy.limits.baseUnits = 4;
+    legacy.limits.maxUnits = 7;
+    legacy.research.baseIncomeCentiPerTick = 14;
+    const customized = validateEnvelope({
+      masterSchemaVersion: 22,
+      revision: 12,
+      rules: legacy,
+    });
+    expect(customized).toMatchObject({
+      ok: true,
+      envelope: {
+        rules: {
+          research: { baseIncomeCentiPerTick: 14 },
+          limits: { baseUnits: 4, maxUnits: 7 },
+        },
+      },
+    });
+  });
+
   it('migrates schema 21 defaults while preserving a user-edited research cost', () => {
     const v21Rules = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -788,7 +857,7 @@ describe('F11 and F21 combined migration contract', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.envelope.masterSchemaVersion).toBe(MASTER_SCHEMA_VERSION);
-    expect(result.envelope.rules.limits.baseUnits).toBe(3);
+    expect(result.envelope.rules.limits.baseUnits).toBe(5);
     expect(result.envelope.rules.limits.unitsPerOwnedBase).toBe(1);
     expect(result.envelope.rules.limits.maxUnits).toBe(9);
     expect(result.envelope.rules.tickets.decay).toEqual(
