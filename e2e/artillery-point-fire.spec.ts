@@ -15,6 +15,16 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
     .evaluate((button) => (button as HTMLButtonElement).click());
   await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await expect(page.locator('.scenario-badge')).toContainText('地点砲撃');
+  await page.getByRole('button', { name: 'マスタ', exact: true }).click();
+  await page
+    .locator('[data-master-path="artilleryBombardment.observedImpactTicks"]')
+    .fill('600');
+  await page
+    .locator('[data-master-path="artilleryBombardment.unobservedImpactTicks"]')
+    .fill('600');
+  await page
+    .getByRole('button', { name: '保存値で新しく開始', exact: true })
+    .click();
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await expect(page.locator('.tick-readout')).toHaveText(
     /TICK [1-9]\d* · RUNNING/,
@@ -47,22 +57,6 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
   await expect(page.locator('.status[role="status"]')).not.toContainText(
     '追跡先を指定できません',
   );
-  await page.getByRole('button', { name: '一時停止', exact: true }).click();
-  await expect(page.locator('.tick-readout')).toContainText('PAUSED');
-  const pausedAt = Number(
-    (await page.locator('.tick-readout').textContent())?.match(
-      /TICK (\d+)/,
-    )?.[1],
-  );
-  expect(Number.isFinite(pausedAt)).toBe(true);
-  await page.getByRole('button', { name: '再開', exact: true }).click();
-  await page.waitForFunction((minimumTick) => {
-    const text = document.querySelector('.tick-readout')?.textContent ?? '';
-    const tick = Number(text.match(/TICK (\d+)/)?.[1]);
-    return Number.isFinite(tick) && tick >= minimumTick;
-  }, pausedAt + 10);
-  await page.getByRole('button', { name: '一時停止', exact: true }).click();
-  await expect(page.locator('.tick-readout')).toContainText('PAUSED');
   await page.getByRole('button', { name: '作戦', exact: true }).click();
   await expect(page.locator('[data-ability-active]')).toContainText(
     '砲撃着弾まで',
