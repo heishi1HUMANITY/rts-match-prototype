@@ -84,8 +84,14 @@ jobs:
     if: always()
     needs: [e2e-impact, e2e-browser]
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 2
     steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
       - name: Require a valid skip or all viewport shards
         env:
           IMPACT_RESULT: ${{ needs.e2e-impact.result }}
