@@ -51,6 +51,62 @@ describe('shared command validation', () => {
     expect(result).toEqual({ ok: false, state, reason: 'INVALID_COMMAND' });
   });
 
+  it('allows an aircraft route with up to eight valid waypoints and rejects invalid routes', () => {
+    const state = startMatch();
+    const airState: MatchState = {
+      ...state,
+      units: state.units.map((item) =>
+        item.id === 'A-01' ? { ...item, kind: 'helicopter' as const } : item,
+      ),
+    };
+    const route = applyCommand(airState, 'A', {
+      type: 'move',
+      unitId: 'A-01',
+      target: { x: 10, y: 10 },
+      waypoints: [
+        { x: 6, y: 6 },
+        { x: 8, y: 6 },
+      ],
+    });
+    expect(route.ok).toBe(true);
+    if (route.ok) {
+      const routed = route.state.units.find(({ id }) => id === 'A-01')!;
+      expect(routed.waypoints).toEqual([
+        { x: 6, y: 6 },
+        { x: 8, y: 6 },
+      ]);
+      const firstStop = routed.path.findIndex(({ x, y }) => x === 6 && y === 6);
+      const secondStop = routed.path.findIndex(
+        ({ x, y }) => x === 8 && y === 6,
+      );
+      const finalStop = routed.path.findIndex(
+        ({ x, y }) => x === 10 && y === 10,
+      );
+      expect(firstStop).toBeGreaterThanOrEqual(0);
+      expect(secondStop).toBeGreaterThan(firstStop);
+      expect(finalStop).toBeGreaterThan(secondStop);
+    }
+    expect(
+      applyCommand(airState, 'A', {
+        type: 'move',
+        unitId: 'A-01',
+        target: { x: 10, y: 10 },
+        waypoints: Array.from({ length: 9 }, (_, index) => ({
+          x: index + 1,
+          y: index + 1,
+        })),
+      }).ok,
+    ).toBe(false);
+    expect(
+      applyCommand(state, 'A', {
+        type: 'move',
+        unitId: 'A-01',
+        target: { x: 10, y: 10 },
+        waypoints: [{ x: 6, y: 6 }],
+      }),
+    ).toMatchObject({ ok: false, reason: 'INVALID_TARGET' });
+  });
+
   it('rejects invalid actors, wrong phases, and non-player lifecycle commands in order', () => {
     const ready = createMatch(42);
     expect(applyCommand(ready, 'invalid' as FactionId, start)).toMatchObject({

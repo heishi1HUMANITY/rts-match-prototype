@@ -279,9 +279,13 @@ export interface UnitState {
   /** Completed ticks on the current two-tick edge. */
   readonly edgeProgress: number;
   readonly moveTicksPerCell?: number;
+  /** Consecutive stationary simulation ticks, used by deployable anti-air. */
+  readonly stationaryTicks?: number;
   readonly marchOrder?: MarchOrder | null;
   /** Retains a direct order while a newly closed crossing blocks its route. */
   readonly moveTarget?: Cell | null;
+  /** Intermediate waypoints for a manually routed aircraft move. */
+  readonly waypoints?: readonly Cell[];
   /** Set while this unit is defending a friendly base from its garrison slot. */
   readonly garrisonedAtBaseId?: string | null;
   readonly smokeUntilTick?: number;
@@ -353,6 +357,14 @@ export interface FactionKnowledge {
   readonly baseMemory: readonly BaseMemory[];
   readonly crossingMemory: readonly CrossingMemory[];
   readonly facilityMemory: readonly FacilityMemory[];
+  readonly airDefenseMemory?: readonly AirDefenseMemory[];
+}
+
+export interface AirDefenseMemory {
+  readonly unitId: string;
+  readonly cell: Cell;
+  readonly range: number;
+  readonly seenTick: number;
 }
 
 export interface MatchState {
@@ -505,6 +517,7 @@ export interface FactionView {
   readonly ownFaction: OwnFactionView;
   readonly ownUnits: readonly OwnUnitView[];
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
+  readonly airDefenseMemory: readonly AirDefenseMemory[];
   readonly bases: readonly BaseView[];
   readonly localFaction: LocalFactionView;
   readonly crossings: readonly CrossingView[];
@@ -598,7 +611,12 @@ export type Command =
   | { readonly type: 'start' }
   | { readonly type: 'pause' }
   | { readonly type: 'resume' }
-  | { readonly type: 'move'; readonly unitId: string; readonly target: Cell }
+  | {
+      readonly type: 'move';
+      readonly unitId: string;
+      readonly target: Cell;
+      readonly waypoints?: readonly Cell[];
+    }
   | {
       readonly type: 'march';
       readonly unitId: string;

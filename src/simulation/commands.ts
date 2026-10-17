@@ -191,7 +191,8 @@ function parseCommand(input: unknown): ParsedCommand | null {
   }
   if (
     input.type === 'move' &&
-    hasExactKeys(input, ['type', 'unitId', 'target']) &&
+    (hasExactKeys(input, ['type', 'unitId', 'target']) ||
+      hasExactKeys(input, ['type', 'unitId', 'target', 'waypoints'])) &&
     typeof input.unitId === 'string' &&
     isRecord(input.target) &&
     hasExactKeys(input.target, ['x', 'y']) &&
@@ -202,10 +203,33 @@ function parseCommand(input: unknown): ParsedCommand | null {
     Number.isFinite(input.target.y) &&
     Number.isInteger(input.target.y)
   ) {
+    if (
+      input.waypoints !== undefined &&
+      (!Array.isArray(input.waypoints) ||
+        input.waypoints.length > 8 ||
+        input.waypoints.some(
+          (point) =>
+            !isRecord(point) ||
+            !hasExactKeys(point, ['x', 'y']) ||
+            typeof point.x !== 'number' ||
+            !Number.isInteger(point.x) ||
+            typeof point.y !== 'number' ||
+            !Number.isInteger(point.y),
+        ))
+    )
+      return null;
     return {
       type: 'move',
       unitId: input.unitId,
       target: { x: input.target.x, y: input.target.y },
+      ...(Array.isArray(input.waypoints)
+        ? {
+            waypoints: input.waypoints.map((point) => ({
+              x: (point as UnknownRecord).x as number,
+              y: (point as UnknownRecord).y as number,
+            })),
+          }
+        : {}),
     };
   }
   if (
@@ -398,6 +422,7 @@ export function applyCommand(
           path: [],
           marchOrder: null,
           moveTarget: null,
+          waypoints: [],
           garrisonedAtBaseId: base.id,
         }),
       );
@@ -417,6 +442,7 @@ export function applyCommand(
         path: currentEdge === undefined ? route : [currentEdge, ...route],
         marchOrder: null,
         moveTarget: { ...base.cell },
+        waypoints: [],
         garrisonedAtBaseId: null,
       }),
     );
@@ -439,6 +465,7 @@ export function applyCommand(
         path: stoppedPath,
         marchOrder: null,
         moveTarget: null,
+        waypoints: [],
       }),
     );
   }
@@ -499,12 +526,28 @@ export function applyCommand(
     return succeed(
       copyWithUnit(state, unit, {
         ...march,
+        waypoints: [],
         ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
       }),
     );
   }
 
   const target = command.target;
+  const waypoints = command.waypoints ?? [];
+  if (waypoints.length > 0 && unit.kind !== 'helicopter')
+    return reject(state, 'INVALID_TARGET');
+  if (waypoints.length > 8) return reject(state, 'INVALID_TARGET');
+  const routeTargets = [...waypoints, target];
+  if (
+    routeTargets.some(
+      (point) =>
+        point.x < 0 ||
+        point.y < 0 ||
+        point.x >= state.map.width ||
+        point.y >= state.map.height,
+    )
+  )
+    return reject(state, 'OUT_OF_BOUNDS');
   if (
     target.x < 0 ||
     target.y < 0 ||
@@ -520,6 +563,18 @@ export function applyCommand(
       crossings: knownActiveCrossings(state, unit.factionId),
       unitKind: unit.kind,
     })
+  )
+    return reject(state, 'BLOCKED');
+  if (
+    waypoints.some(
+      (point) =>
+        !canTraverse(state.map, point, {
+          factionId: unit.factionId,
+          domain: unitCapabilities(unit.kind, state.rules).movementDomain,
+          crossings: knownActiveCrossings(state, unit.factionId),
+          unitKind: unit.kind,
+        }),
+    )
   )
     return reject(state, 'BLOCKED');
   const baseAtTarget = state.bases.find(
@@ -548,14 +603,20 @@ export function applyCommand(
 
   const currentEdge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
   const origin = currentEdge ?? unit.cell;
-  const route = findPath(state.map, origin, target, {
-    factionId: unit.factionId,
-    domain: unitCapabilities(unit.kind, state.rules).movementDomain,
-    crossings: knownActiveCrossings(state, unit.factionId),
-    unitKind: unit.kind,
-    allowBlockedStart: true,
-  });
-  if (route === null) return reject(state, 'UNREACHABLE');
+  let route: Cell[] = [];
+  let routeStart = origin;
+  for (const routeTarget of routeTargets) {
+    const segment = findPath(state.map, routeStart, routeTarget, {
+      factionId: unit.factionId,
+      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
+      crossings: knownActiveCrossings(state, unit.factionId),
+      unitKind: unit.kind,
+      allowBlockedStart: true,
+    });
+    if (segment === null) return reject(state, 'UNREACHABLE');
+    route.push(...segment);
+    routeStart = routeTarget;
+  }
 
   const path = currentEdge === undefined ? route : [currentEdge, ...route];
   const cancelWindup =
@@ -571,6 +632,7 @@ export function applyCommand(
       edgeProgress: unit.edgeProgress,
       marchOrder: null,
       moveTarget: { ...target },
+      waypoints: waypoints.map((point) => ({ ...point })),
       garrisonedAtBaseId: null,
       ...(cancelWindup !== undefined ? { attack: cancelWindup } : {}),
     }),

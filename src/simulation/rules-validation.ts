@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'airDefense',
     'economy',
     'facilities',
     'baseUpgrades',
@@ -317,47 +318,49 @@ export function validateRules(input: unknown): ValidationResult {
               !fieldPath.endsWith('startCentiPerTick') &&
               !fieldPath.endsWith('unitsPerOwnedBase') &&
               !fieldPath.endsWith('completionCostIncreaseBpsPerCompleted');
-          const max = fieldPath.startsWith('rules.tacticalAbilities.')
-            ? fieldPath.endsWith('.radius')
-              ? 40
-              : fieldPath.endsWith('.cooldownTicks') ||
-                  fieldPath.endsWith('.durationTicks')
-                ? 100_000
-                : fieldPath.endsWith('.productionTimePercent') ||
-                    fieldPath.endsWith('.damageTakenPercent') ||
-                    fieldPath.endsWith('.visionPercent')
-                  ? 1_000
-                  : 1_000_000
-            : fieldPath.endsWith('completionCostIncreaseBpsPerCompleted')
-              ? 10_000
-              : fieldPath.endsWith('.garrisonCapacity')
-                ? 64
-                : fieldPath === 'rules.capture.restoredHpPercent'
-                  ? 100
-                  : fieldPath.endsWith('territoryMinPercent') ||
-                      fieldPath.endsWith('territoryMaxPercent') ||
-                      fieldPath.endsWith('territoryPercentPerWeight') ||
-                      fieldPath.endsWith('captureEfficiencyPercent')
+          const max = fieldPath.startsWith('rules.airDefense.')
+            ? 10_000
+            : fieldPath.startsWith('rules.tacticalAbilities.')
+              ? fieldPath.endsWith('.radius')
+                ? 40
+                : fieldPath.endsWith('.cooldownTicks') ||
+                    fieldPath.endsWith('.durationTicks')
+                  ? 100_000
+                  : fieldPath.endsWith('.productionTimePercent') ||
+                      fieldPath.endsWith('.damageTakenPercent') ||
+                      fieldPath.endsWith('.visionPercent')
                     ? 1_000
-                    : fieldPath.endsWith('timeLimitTicks') ||
-                        fieldPath.endsWith('hqProtectionTicks') ||
-                        fieldPath.endsWith('startTick') ||
-                        fieldPath.endsWith('endTick')
-                      ? 100_000_000
-                      : fieldPath.endsWith('moveTicksPerCell') ||
-                          fieldPath.endsWith('decisionIntervalTicks') ||
-                          fieldPath.endsWith('updateIntervalTicks') ||
-                          fieldPath.endsWith('requiredTicks') ||
-                          fieldPath.endsWith('windupTicks') ||
-                          fieldPath.endsWith('intervalTicks') ||
-                          fieldPath.endsWith('startCentiPerTick') ||
-                          fieldPath.endsWith('endCentiPerTick')
-                        ? 10_000
-                        : fieldPath.endsWith('nextBestPercent') ||
-                            fieldPath.endsWith('scoutUsePercent') ||
-                            fieldPath.endsWith('nearBestPercent')
-                          ? 100
-                          : 1_000_000_000;
+                    : 1_000_000
+              : fieldPath.endsWith('completionCostIncreaseBpsPerCompleted')
+                ? 10_000
+                : fieldPath.endsWith('.garrisonCapacity')
+                  ? 64
+                  : fieldPath === 'rules.capture.restoredHpPercent'
+                    ? 100
+                    : fieldPath.endsWith('territoryMinPercent') ||
+                        fieldPath.endsWith('territoryMaxPercent') ||
+                        fieldPath.endsWith('territoryPercentPerWeight') ||
+                        fieldPath.endsWith('captureEfficiencyPercent')
+                      ? 1_000
+                      : fieldPath.endsWith('timeLimitTicks') ||
+                          fieldPath.endsWith('hqProtectionTicks') ||
+                          fieldPath.endsWith('startTick') ||
+                          fieldPath.endsWith('endTick')
+                        ? 100_000_000
+                        : fieldPath.endsWith('moveTicksPerCell') ||
+                            fieldPath.endsWith('decisionIntervalTicks') ||
+                            fieldPath.endsWith('updateIntervalTicks') ||
+                            fieldPath.endsWith('requiredTicks') ||
+                            fieldPath.endsWith('windupTicks') ||
+                            fieldPath.endsWith('intervalTicks') ||
+                            fieldPath.endsWith('startCentiPerTick') ||
+                            fieldPath.endsWith('endCentiPerTick')
+                          ? 10_000
+                          : fieldPath.endsWith('nextBestPercent') ||
+                              fieldPath.endsWith('scoutUsePercent') ||
+                              fieldPath.endsWith('nearBestPercent')
+                            ? 100
+                            : 1_000_000_000;
           const number = numberField(actual, 0, max, positive);
           if (number === undefined)
             issues.push({
@@ -699,7 +702,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 20 &&
       input.masterSchemaVersion !== 21 &&
       input.masterSchemaVersion !== 22 &&
-      input.masterSchemaVersion !== 23)
+      input.masterSchemaVersion !== 23 &&
+      input.masterSchemaVersion !== 24)
   )
     return {
       ok: false,
@@ -746,7 +750,16 @@ export function validateEnvelope(
         ...fallback,
       };
     }
-    candidateRules = { ...candidateRules, units };
+    candidateRules = {
+      ...candidateRules,
+      airDefense: {
+        ...DEFAULT_RULES.airDefense,
+        ...(isRecord(candidateRules.airDefense)
+          ? candidateRules.airDefense
+          : {}),
+      },
+      units,
+    };
   }
   if (input.masterSchemaVersion === 3) {
     if (!isRecord(input.rules) || Object.hasOwn(input.rules, 'defenses'))
