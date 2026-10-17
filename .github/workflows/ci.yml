@@ -7,6 +7,21 @@ on:
 permissions:
   contents: read
 jobs:
+  e2e-impact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      shouldRun: ${{ steps.classify.outputs.shouldRun }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - id: classify
+        run: node scripts/ci-e2e-impact.mjs
   checks:
     strategy:
       matrix:
@@ -35,6 +50,8 @@ jobs:
         with:
           path: dist/
   e2e-browser:
+    needs: [e2e-impact]
+    if: ${{ always() && (needs.e2e-impact.result != 'success' || needs.e2e-impact.outputs.shouldRun != 'false') }}
     strategy:
       fail-fast: false
       matrix:
@@ -65,14 +82,16 @@ jobs:
           retention-days: 14
   e2e:
     if: always()
-    needs: [e2e-browser]
+    needs: [e2e-impact, e2e-browser]
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - name: Require all viewport shards
+      - name: Require a valid skip or all viewport shards
         env:
-          RESULT: ${{ needs.e2e-browser.result }}
-        run: test "$RESULT" = success
+          IMPACT_RESULT: ${{ needs.e2e-impact.result }}
+          SHOULD_RUN: ${{ needs.e2e-impact.outputs.shouldRun }}
+          BROWSER_RESULT: ${{ needs.e2e-browser.result }}
+        run: node scripts/ci-e2e-gate.mjs
   pages:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [checks, e2e]
