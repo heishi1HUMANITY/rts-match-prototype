@@ -19,7 +19,7 @@ import { unitCapabilities } from './unit-capabilities';
 import { advanceLocalFaction } from './local-faction';
 import { advanceBaseUpgrades } from './base-upgrades';
 import { advanceTacticalEffects } from './tactical-abilities';
-import type { MatchState, UnitState } from './types';
+import type { Cell, MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
   if (unit.path.length === 0) {
@@ -28,8 +28,22 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
       unit.cell.x === unit.moveTarget.x &&
       unit.cell.y === unit.moveTarget.y
     )
-      return { ...unit, moveTarget: null, edgeProgress: 0 };
-    return unit.edgeProgress === 0 ? unit : { ...unit, edgeProgress: 0 };
+      return {
+        ...unit,
+        moveTarget: null,
+        waypoints: [],
+        edgeProgress: 0,
+        ...(unit.kind === 'antiAir'
+          ? { stationaryTicks: (unit.stationaryTicks ?? 0) + 1 }
+          : {}),
+      };
+    return {
+      ...unit,
+      ...(unit.kind === 'antiAir'
+        ? { stationaryTicks: (unit.stationaryTicks ?? 0) + 1 }
+        : {}),
+      ...(unit.edgeProgress === 0 ? {} : { edgeProgress: 0 }),
+    };
   }
   if (
     state &&
@@ -45,7 +59,11 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
     return unit;
   const progress = unit.edgeProgress + 1;
   if (progress < (unit.moveTicksPerCell ?? 2))
-    return { ...unit, edgeProgress: progress };
+    return {
+      ...unit,
+      edgeProgress: progress,
+      ...(unit.kind === 'antiAir' ? { stationaryTicks: 0 } : {}),
+    };
 
   const [nextCell, ...remainingPath] = unit.path;
   if (nextCell === undefined) return { ...unit, edgeProgress: 0 };
@@ -54,11 +72,12 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
     cell: nextCell,
     path: remainingPath,
     edgeProgress: 0,
+    ...(unit.kind === 'antiAir' ? { stationaryTicks: 0 } : {}),
     ...(remainingPath.length === 0 &&
     unit.moveTarget &&
     nextCell.x === unit.moveTarget.x &&
     nextCell.y === unit.moveTarget.y
-      ? { moveTarget: null }
+      ? { moveTarget: null, waypoints: [] }
       : {}),
   };
 }
@@ -112,13 +131,23 @@ function revalidateRoutes(state: MatchState): MatchState {
     if (!destination) return unit;
     const edge = unit.edgeProgress > 0 ? unit.path[0] : undefined;
     const origin = edge ?? unit.cell;
-    const route = findPath(state.map, origin, destination, {
-      factionId: unit.factionId,
-      domain: unitCapabilities(unit.kind, state.rules).movementDomain,
-      crossings,
-      unitKind: unit.kind,
-      allowBlockedStart: true,
-    });
+    let route: Cell[] | null = [];
+    let routeStart = origin;
+    for (const target of [...(unit.waypoints ?? []), destination]) {
+      const segment = findPath(state.map, routeStart, target, {
+        factionId: unit.factionId,
+        domain: unitCapabilities(unit.kind, state.rules).movementDomain,
+        crossings,
+        unitKind: unit.kind,
+        allowBlockedStart: true,
+      });
+      if (segment === null) {
+        route = null;
+        break;
+      }
+      route.push(...segment);
+      routeStart = target;
+    }
     const nextPath =
       route === null ? (edge ? [edge] : []) : edge ? [edge, ...route] : route;
     if (

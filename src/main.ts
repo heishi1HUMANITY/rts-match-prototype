@@ -28,6 +28,9 @@ let activeDragUnitId: string | null = null;
 let activeDragUnitIds: string[] | null = null;
 let dragCancelled = false;
 let pendingAbilityTarget: 'artillery' | 'smoke' | 'survey' | null = null;
+let flightRouteUnitId: string | null = null;
+let flightWaypoints: { x: number; y: number }[] = [];
+const alertedAirDefenseIds = new Set<string>();
 let bootError: string | null = null;
 let lifecycleKey = 'ready:false';
 let board = createBoardView({
@@ -52,16 +55,44 @@ runtime = new MatchRuntime(
           snapshot.view.phase === 'ready' ||
           snapshot.view.ownFaction.eliminatedAtTick !== null)
       ) {
+        if (snapshot.view.phase === 'ready') {
+          alertedAirDefenseIds.clear();
+          const alert = hud.root.querySelector<HTMLButtonElement>(
+            '[data-action="focus-air-defense"]',
+          );
+          if (alert) alert.hidden = true;
+        }
         input?.reset();
         hud.multiSelect = false;
         activeMovePreview = null;
         activeDragUnitId = null;
         activeDragUnitIds = null;
         clearMoveFeedback();
+        flightRouteUnitId = null;
+        flightWaypoints = [];
       }
       lifecycleKey = nextLifecycleKey;
       updateHud(hud, snapshot);
       board.setSelections(snapshot.selectedUnitIds);
+      if (snapshot.view.phase === 'running')
+        for (const memory of snapshot.view.airDefenseMemory)
+          if (
+            memory.seenTick === snapshot.view.tick &&
+            !alertedAirDefenseIds.has(memory.unitId)
+          ) {
+            alertedAirDefenseIds.add(memory.unitId);
+            const alert = hud.root.querySelector<HTMLButtonElement>(
+              '[data-action="focus-air-defense"]',
+            );
+            if (alert) {
+              alert.dataset.x = String(memory.cell.x);
+              alert.dataset.y = String(memory.cell.y);
+              alert.hidden = false;
+            }
+            runtime.notify(
+              '対空を発見しました。通知ボタンで最終確認位置へ移動できます。',
+            );
+          }
       refreshActiveMovePreview();
     },
     onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
@@ -230,6 +261,21 @@ input = new CanvasInput(
       }
       if (cell === null) return;
       const snapshot = runtime.playerSnapshot();
+      if (flightRouteUnitId !== null) {
+        if (flightWaypoints.length >= 8) {
+          runtime.notify(
+            '経由地は最大8か所です。ヘリを最終地点へドラッグしてください。',
+          );
+          return;
+        }
+        flightWaypoints.push(cell);
+        runtime.notify(
+          '航空経路: 経由地 ' +
+            flightWaypoints.length +
+            '/8。ヘリを最終地点へドラッグして確定します。',
+        );
+        return;
+      }
       if (
         snapshot.selectedUnitIds.length > 0 &&
         snapshot.view.phase === 'running' &&
@@ -285,6 +331,20 @@ input = new CanvasInput(
         snapshot.contextLost
       )
         return;
+      if (flightRouteUnitId === unitId && !march) {
+        runtime.dispatch({
+          type: 'move',
+          unitId,
+          target,
+          waypoints: flightWaypoints,
+        });
+        flightRouteUnitId = null;
+        flightWaypoints = [];
+        hud.root
+          .querySelector<HTMLButtonElement>('[data-action="flight-route"]')
+          ?.setAttribute('aria-pressed', 'false');
+        return;
+      }
       if (march) runtime.groupMarch(march.target, unitIds);
       else runtime.groupMove(target, unitIds);
     },
@@ -398,6 +458,12 @@ const handleClick = (event: MouseEvent): void => {
   if (!(target instanceof HTMLElement)) return;
   const clickedButton = target.closest<HTMLButtonElement>('button');
   if (clickedButton?.disabled) return;
+  if (clickedButton?.dataset.action === 'focus-air-defense') {
+    const x = Number(clickedButton.dataset.x);
+    const y = Number(clickedButton.dataset.y);
+    if (Number.isInteger(x) && Number.isInteger(y)) board.focusCell({ x, y });
+    return;
+  }
   const abilityId = clickedButton?.dataset.ability;
   if (abilityId !== undefined) {
     if (
@@ -528,6 +594,28 @@ const handleClick = (event: MouseEvent): void => {
   }
   const action =
     target.closest<HTMLButtonElement>('[data-action]')?.dataset.action;
+  if (action === 'flight-route') {
+    const snapshot = runtime.playerSnapshot();
+    const selected = snapshot.view.ownUnits.filter((unit) =>
+      snapshot.selectedUnitIds.includes(unit.id),
+    );
+    if (selected.length !== 1 || selected[0]?.kind !== 'helicopter') {
+      runtime.notify('経由地を指定する攻撃ヘリを1機選択してください。');
+      return;
+    }
+    flightRouteUnitId =
+      flightRouteUnitId === selected[0].id ? null : selected[0].id;
+    flightWaypoints = [];
+    target
+      .closest<HTMLButtonElement>('[data-action="flight-route"]')
+      ?.setAttribute('aria-pressed', String(flightRouteUnitId !== null));
+    runtime.notify(
+      flightRouteUnitId
+        ? '経由地を盤面でタップし、ヘリを最終地点へドラッグして確定します。'
+        : '航空経路の入力を解除しました。',
+    );
+    return;
+  }
   if (action === 'outdated-reset') {
     masterStore.reset();
     const current = runtime.playerSnapshot().view;

@@ -26,7 +26,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 24 as const;
+export const MASTER_SCHEMA_VERSION = 25 as const;
 export const RULES_VERSION = 'cp12-npc-paths-v1' as const;
 
 export interface NpcDifficultyProfile {
@@ -95,6 +95,13 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly airDefense: {
+    readonly deployTicks: number;
+    readonly recognitionGraceTicks: number;
+    readonly jammedRecognitionGraceTicks: number;
+    readonly movingRangePercent: number;
+    readonly movingDamagePercent: number;
+  };
   readonly economy: {
     readonly flatSupplyIncomeCentiPerTick: number;
   };
@@ -276,6 +283,13 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  airDefense: {
+    deployTicks: 20,
+    recognitionGraceTicks: 30,
+    jammedRecognitionGraceTicks: 10,
+    movingRangePercent: 50,
+    movingDamagePercent: 25,
+  },
   economy: { flatSupplyIncomeCentiPerTick: 120 },
   baseUpgrades: {
     recoveryPerTick: 1,

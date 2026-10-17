@@ -38,6 +38,31 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  deployTicks: {
+    label: '対空展開時間',
+    unit: 'tick (0.1秒)',
+    help: 'このtick数だけ停止すると通常の対空射程・火力になります。',
+  },
+  recognitionGraceTicks: {
+    label: '対空初発見猶予',
+    unit: 'tick (0.1秒)',
+    help: '対空だけを識別する距離の通常猶予です。',
+  },
+  jammedRecognitionGraceTicks: {
+    label: '妨害下の対空初発見猶予',
+    unit: 'tick (0.1秒)',
+    help: '視界妨害中も保証する対空識別の最低猶予です。',
+  },
+  movingRangePercent: {
+    label: '移動対空射程',
+    unit: '%',
+    help: '展開完了前の対空車両の通常射程に対する割合です。',
+  },
+  movingDamagePercent: {
+    label: '移動対空火力',
+    unit: '%',
+    help: '展開完了前の航空damageの通常火力に対する割合です。',
+  },
   cooldownTicks: {
     label: '再使用待ち',
     unit: 'tick (0.1秒)',
@@ -496,6 +521,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    airDefense: '航空・対空',
     economy: '経済',
     facilities: '防御施設',
     baseUpgrades: '拠点強化',

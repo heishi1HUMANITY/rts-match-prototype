@@ -223,6 +223,7 @@ export function getFactionView(
           }
         : null,
       moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
+      waypoints: (unit.waypoints ?? []).map((cell) => ({ ...cell })),
       garrisonedAtBaseId: unit.garrisonedAtBaseId ?? null,
     }));
   const visibleEnemies = state.units
@@ -389,6 +390,10 @@ export function getFactionView(
     },
     ownUnits,
     visibleEnemies,
+    airDefenseMemory: (knowledge.airDefenseMemory ?? []).map((memory) => ({
+      ...memory,
+      cell: { ...memory.cell },
+    })),
     localFaction: {
       active: state.localFaction.active,
       defeated: state.localFaction.defeated,

@@ -404,6 +404,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   );
   const unitObjects = new Map<string, UnitObjects>();
   const unitRaycastTargets: THREE.Mesh[] = [];
+  const airDefenseRings = new Map<
+    string,
+    THREE.LineLoop<THREE.BufferGeometry, THREE.LineBasicMaterial>
+  >();
   const movePreviewLines = new Map<
     string,
     THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
@@ -1131,6 +1135,45 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     selectedUnitIds = ownUnitIds(current, selectedUnitIds);
     lastAlpha = Math.max(0, Math.min(1, alpha));
     installMap(current.map);
+    const memoryIds = new Set(
+      current.airDefenseMemory.map(({ unitId }) => unitId),
+    );
+    for (const [unitId, ring] of airDefenseRings) {
+      if (memoryIds.has(unitId)) continue;
+      scene.remove(ring);
+      ring.geometry.dispose();
+      ring.material.dispose();
+      resources.geometries.delete(ring.geometry);
+      resources.materials.delete(ring.material);
+      airDefenseRings.delete(unitId);
+    }
+    for (const memory of current.airDefenseMemory) {
+      let ring = airDefenseRings.get(memory.unitId);
+      if (!ring) {
+        const points = Array.from({ length: 64 }, (_, index) => {
+          const angle = (index / 64) * Math.PI * 2;
+          return new THREE.Vector3(Math.cos(angle), 0.09, Math.sin(angle));
+        });
+        const geometry = ownGeometry(
+          new THREE.BufferGeometry().setFromPoints(points),
+        );
+        const material = ownMaterial(
+          new THREE.LineBasicMaterial({
+            color: 0xf28e45,
+            transparent: true,
+            opacity: 0.82,
+          }),
+        );
+        ring = new THREE.LineLoop(geometry, material);
+        ring.name = `remembered-air-defense-${memory.unitId}`;
+        ring.renderOrder = 4;
+        ring.frustumCulled = false;
+        scene.add(ring);
+        airDefenseRings.set(memory.unitId, ring);
+      }
+      ring.position.set(memory.cell.x + 0.5, 0, memory.cell.y + 0.5);
+      ring.scale.set(memory.range, 1, memory.range);
+    }
     const frames = getUnitFrames(previous, current, lastAlpha);
     const present = new Set(frames.map(({ unit }) => unit.id));
     for (const [id, objects] of unitObjects) {

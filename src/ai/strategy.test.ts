@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { decideBotCommands, selectNpcResearchRoute } from './strategy';
+import {
+  decideBotCommands,
+  knownAirDefenseDetour,
+  selectNpcResearchRoute,
+} from './strategy';
 import { createMatch } from '../simulation/match';
 import { getFactionView } from '../simulation/view';
 import { applyCommand } from '../simulation/commands';
+import { findPath } from '../simulation/pathfinding';
 import type { FactionView, MatchState } from '../simulation/types';
 
 function running(state: MatchState): MatchState {
@@ -24,6 +29,54 @@ function replaceOwnFaction(
 }
 
 describe('stateless faction-view NPC policy', () => {
+  it('routes helicopters around remembered AA while unseen AA has no influence', () => {
+    const base = running(createMatch(103, { mapId: 'ring-three-fronts-100' }));
+    const template = base.units[0]!;
+    const helicopter = {
+      ...template,
+      id: 'B-HELI',
+      factionId: 'B' as const,
+      kind: 'helicopter' as const,
+      cell: { x: 50, y: 50 },
+      path: [],
+      edgeProgress: 0,
+      moveTarget: null,
+      waypoints: [],
+      moveTicksPerCell: base.rules.units.helicopter.moveTicksPerCell,
+    };
+    const state = { ...base, units: [helicopter] };
+    const view = getFactionView(state, 'B');
+    const noKnownAA = { ...view, airDefenseMemory: [] };
+    expect(decideBotCommands(noKnownAA)).toEqual(decideBotCommands(view));
+    const ownHelicopter = view.ownUnits[0]!;
+    const goal = { x: 80, y: 80 };
+    const route = findPath(view.map, helicopter.cell, goal, { domain: 'air' })!;
+    const middle = route[Math.floor(route.length / 2)]!;
+    expect(knownAirDefenseDetour(view, ownHelicopter, goal)).toBeUndefined();
+    const knownThreat = {
+      ...view,
+      airDefenseMemory: [
+        {
+          unitId: 'AA-B',
+          cell: middle,
+          range: 3,
+          seenTick: view.tick,
+        },
+      ],
+    };
+    const detour = knownAirDefenseDetour(knownThreat, ownHelicopter, goal);
+    expect(detour).toBeDefined();
+    const detouredRoute = findPath(view.map, ownHelicopter.cell, detour!, {
+      domain: 'air',
+    })!;
+    const lastLeg = findPath(view.map, detour!, goal, { domain: 'air' })!;
+    expect(
+      [...detouredRoute, ...lastLeg].some(
+        ({ x, y }) => (x - middle.x) ** 2 + (y - middle.y) ** 2 <= 25,
+      ),
+    ).toBe(false);
+  });
+
   it('selects one of two legal, military-capable research routes from public start terrain', () => {
     const state = running(createMatch(7, { mapId: 'ring-three-fronts-100' }));
     const baseView = getFactionView(state, 'B');

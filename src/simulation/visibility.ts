@@ -1,4 +1,5 @@
 import { researchEffectValue } from './research';
+import { airDefenseRange, isAirDefenseRecognized } from './air-defense';
 import type {
   BaseState,
   CombatantId,
@@ -180,14 +181,20 @@ export function isUnitVisibleToFaction(
         (unitPositionY1024(unit) - (f.cell.y * 1024 + 512)) ** 2 <=
         (state.rules.facilities.definitions.jammer.jamRange * 1024) ** 2,
   );
-  return isPointVisible(
-    sightSources(state, factionId).map((source) => ({
-      ...source,
-      radius:
-        source.radius * (concealed && unit.factionId !== factionId ? 0.5 : 1),
-    })),
-    unitPositionX1024(unit),
-    unitPositionY1024(unit),
+  if (
+    isPointVisible(
+      sightSources(state, factionId).map((source) => ({
+        ...source,
+        radius:
+          source.radius * (concealed && unit.factionId !== factionId ? 0.5 : 1),
+      })),
+      unitPositionX1024(unit),
+      unitPositionY1024(unit),
+    )
+  )
+    return true;
+  return (
+    unit.kind === 'antiAir' && isAirDefenseRecognized(state, unit, factionId)
   );
 }
 
@@ -313,6 +320,22 @@ function createKnowledge(
         seenTick: state.elapsedTicks,
       });
   const facilityMemory = [...memories.values()];
+  const airDefenseMemory = new Map(
+    (previous?.airDefenseMemory ?? []).map((memory) => [memory.unitId, memory]),
+  );
+  for (const unit of state.units)
+    if (
+      unit.kind === 'antiAir' &&
+      unit.factionId !== factionId &&
+      unit.hp > 0 &&
+      isUnitVisibleToFaction(state, unit, factionId)
+    )
+      airDefenseMemory.set(unit.id, {
+        unitId: unit.id,
+        cell: { ...unit.cell },
+        range: airDefenseRange(state, unit),
+        seenTick: state.elapsedTicks,
+      });
   return {
     factionId,
     visible,
@@ -320,6 +343,7 @@ function createKnowledge(
     baseMemory,
     crossingMemory,
     facilityMemory,
+    airDefenseMemory: [...airDefenseMemory.values()],
   };
 }
 

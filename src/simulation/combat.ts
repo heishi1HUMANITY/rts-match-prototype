@@ -28,6 +28,7 @@ import {
   resetBaseToLevelOne,
 } from './base-upgrades';
 import { incomingDamage } from './tactical-abilities';
+import { airDefenseDamagePercent, airDefenseRange } from './air-defense';
 
 export interface Target {
   readonly kind:
@@ -172,11 +173,15 @@ function damageAgainst(
   const unit = state.units.find(({ id }) => id === target.id);
   if (!unit) return 0;
   const domain = state.rules.units[unit.kind].movementDomain;
-  return domain === 'air'
-    ? stats.damageVsAir
-    : domain === 'water'
-      ? stats.damageVsWater
-      : stats.damageVsLand;
+  const damage =
+    domain === 'air'
+      ? stats.damageVsAir
+      : domain === 'water'
+        ? stats.damageVsWater
+        : stats.damageVsLand;
+  return attacker.kind === 'antiAir' && domain === 'air'
+    ? Math.floor((damage * airDefenseDamagePercent(state, attacker)) / 100)
+    : damage;
 }
 
 function distanceSquared(
@@ -212,7 +217,10 @@ function findTargetForUnit(
 ): Target | null {
   const x2 = getUnitPositionX1024(attacker);
   const y2 = getUnitPositionY1024(attacker);
-  const range = state.rules.units[attacker.kind].range;
+  const range =
+    attacker.kind === 'antiAir'
+      ? airDefenseRange(state, attacker)
+      : state.rules.units[attacker.kind].range;
   const rangeSquared = (1024 * range) ** 2;
 
   if (
@@ -471,7 +479,10 @@ function findTargetForTurret(
 function selectTarget(state: MatchState, attacker: UnitState): Target | null {
   const x2 = getUnitPositionX1024(attacker);
   const y2 = getUnitPositionY1024(attacker);
-  const range = state.rules.units[attacker.kind].range;
+  const range =
+    attacker.kind === 'antiAir'
+      ? airDefenseRange(state, attacker)
+      : state.rules.units[attacker.kind].range;
   const rangeSquared = (1024 * range) ** 2;
   const preferred = visibleMarchCombatTarget(state, attacker);
   if (

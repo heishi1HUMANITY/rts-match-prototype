@@ -604,6 +604,67 @@ function hasStrategicRoute(
   );
 }
 
+export function knownAirDefenseDetour(
+  view: FactionView,
+  unit: OwnUnitView,
+  goal: Cell,
+): Cell | undefined {
+  if (unit.kind !== 'helicopter' || view.airDefenseMemory.length === 0)
+    return undefined;
+  const from = currentCell(unit);
+  const routeFor = (waypoints: readonly Cell[]) => {
+    const points = [...waypoints, goal];
+    const route: Cell[] = [];
+    let cursor = from;
+    for (const point of points) {
+      const segment = findPath(view.map, cursor, point, { domain: 'air' });
+      if (!segment) return null;
+      route.push(...segment);
+      cursor = point;
+    }
+    return route;
+  };
+  const direct = routeFor([]);
+  if (!direct) return undefined;
+  const conflicts = (route: readonly Cell[]) =>
+    view.airDefenseMemory.filter(({ cell, range }) =>
+      route.some(
+        (point) =>
+          (point.x - cell.x) ** 2 + (point.y - cell.y) ** 2 <= (range + 2) ** 2,
+      ),
+    );
+  const threatened = conflicts(direct);
+  if (threatened.length === 0) return undefined;
+  const danger = threatened[0]!;
+  const radius = Math.ceil(danger.range + 3);
+  const candidates = [
+    { x: danger.cell.x - radius, y: danger.cell.y },
+    { x: danger.cell.x + radius, y: danger.cell.y },
+    { x: danger.cell.x, y: danger.cell.y - radius },
+    { x: danger.cell.x, y: danger.cell.y + radius },
+    { x: danger.cell.x - radius, y: danger.cell.y - radius },
+    { x: danger.cell.x + radius, y: danger.cell.y - radius },
+    { x: danger.cell.x - radius, y: danger.cell.y + radius },
+    { x: danger.cell.x + radius, y: danger.cell.y + radius },
+  ].filter(
+    ({ x, y }) => x >= 0 && y >= 0 && x < view.map.width && y < view.map.height,
+  );
+  const safe = candidates
+    .flatMap((waypoint) => {
+      const route = routeFor([waypoint]);
+      return route && conflicts(route).length === 0
+        ? [{ waypoint, length: route.length }]
+        : [];
+    })
+    .sort(
+      (a, b) =>
+        a.length - b.length ||
+        a.waypoint.y - b.waypoint.y ||
+        a.waypoint.x - b.waypoint.x,
+    );
+  return safe[0]?.waypoint;
+}
+
 function unitMoveCommand(
   view: FactionView,
   unit: OwnUnitView,
@@ -749,7 +810,8 @@ function unitMoveCommand(
   if (
     !defense &&
     currentEndpoint?.x === goal.cell.x &&
-    currentEndpoint.y === goal.cell.y
+    currentEndpoint.y === goal.cell.y &&
+    (!unit.waypoints?.length || unit.kind !== 'helicopter')
   ) {
     return undefined;
   }
@@ -759,6 +821,21 @@ function unitMoveCommand(
     unit.edgeProgress === 0
   ) {
     return undefined;
+  }
+  const detour = knownAirDefenseDetour(view, unit, goal.cell);
+  if (detour) {
+    if (
+      unit.moveTarget?.x === goal.cell.x &&
+      unit.moveTarget.y === goal.cell.y &&
+      unit.waypoints?.some(({ x, y }) => x === detour.x && y === detour.y)
+    )
+      return undefined;
+    return {
+      type: 'move',
+      unitId: unit.id,
+      target: goal.cell,
+      waypoints: [detour],
+    };
   }
   return { type: 'march', unitId: unit.id, target: goal.target };
 }
