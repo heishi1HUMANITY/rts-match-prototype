@@ -4,15 +4,20 @@ import {
   appendFileSync,
   existsSync,
   readFileSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { applyCommand } from '../src/simulation/commands';
 import { advanceMatch } from '../src/runtime/advance';
 import { getFactionView } from '../src/simulation/view';
 import { selectNpcResearchRoute } from '../src/ai/strategy';
 import { calculateIntervalTicketLossCenti } from '../src/simulation/tickets';
+import { RULES_VERSION } from '../src/simulation/rules';
 import type {
   FactionId,
   MatchState,
@@ -36,15 +41,20 @@ const SEEDS = requestedSeeds
   : Array.from({ length: 18 }, (_, offset) => firstSeed + offset);
 const TICK_LIMIT = 12_000;
 const mapDefinitionVersion = createMap100(0).definitionVersion;
-const northFieldPlan = process.argv.includes('--north-field-plan');
 const checkpointPath = outputArgument
   ? outputArgument.slice('--output='.length)
   : join(
       tmpdir(),
-      `cp12-map-fairness-${sample}-v${mapDefinitionVersion}${requestedSeeds ? '-selected' : '-audit3'}${northFieldPlan ? '-north-field-plan' : ''}.jsonl`,
+      `cp12-map-fairness-${sample}-v${mapDefinitionVersion}${requestedSeeds ? '-selected' : ''}.jsonl`,
     );
 const resume = process.argv.includes('--resume');
-const diagnoseNorth = process.argv.includes('--diagnose-north');
+const jobsArgument = process.argv.find((argument) =>
+  argument.startsWith('--jobs='),
+);
+const JOBS = jobsArgument ? Number(jobsArgument.slice('--jobs='.length)) : 1;
+/** Fairness band per physical start, inclusive (Issue #84 / WORLD.md). */
+const WIN_RATE_BAND = { min: 0.2, max: 0.5 } as const;
+const TENDENCY = 'neutral';
 
 interface MatchAudit {
   seed: number;
@@ -52,6 +62,7 @@ interface MatchAudit {
   mapDefinitionVersion: number | undefined;
   masterVersion: string;
   seatByFaction: MatchState['map']['startAssignment'];
+  tendencyByFaction: Partial<Record<FactionId, string>>;
   routeByFaction: Partial<Record<FactionId, 'crossing' | 'field'>>;
   ticks: number;
   phase: string;
@@ -207,45 +218,8 @@ interface MatchAudit {
     maxHp: number;
   }[];
   completedCrossings: { tick: number; factionId: FactionId; siteId: string }[];
-  northDiagnostic?: {
-    combatEvents: {
-      tick: number;
-      lossCenti: number;
-      lostUnits: {
-        id: string;
-        kind: string;
-        cell: { x: number; y: number };
-        marchTarget: string | null;
-        targetId: string | null;
-      }[];
-      visibleEnemies: {
-        id: string;
-        factionId: FactionId;
-        kind: string;
-        cell: { x: number; y: number };
-      }[];
-      out02OwnerBefore: string | null;
-      out02OwnerAfter: string | null;
-    }[];
-    out02Transitions: {
-      tick: number;
-      from: string | null;
-      to: string | null;
-      nearbyNorthUnits: {
-        id: string;
-        kind: string;
-        cell: { x: number; y: number };
-        marchTarget: string | null;
-        targetId: string | null;
-      }[];
-      visibleEnemies: {
-        id: string;
-        factionId: FactionId;
-        kind: string;
-        cell: { x: number; y: number };
-      }[];
-    }[];
-  };
+  /** Unit deaths by likely source: an enemy start targeting it, else the nearest base within 8 cells. */
+  unitLossesByFaction: Partial<Record<FactionId, Record<string, number>>>;
 }
 
 function run(seed: number): MatchAudit {
@@ -253,28 +227,7 @@ function run(seed: number): MatchAudit {
     mapId: 'ring-three-fronts-100',
     controllers: { A: 'bot', B: 'bot', C: 'bot' },
   });
-  if (northFieldPlan) {
-    state = {
-      ...state,
-      rules: {
-        ...state.rules,
-        npc: {
-          ...state.rules.npc,
-          researchRoutes: {
-            ...state.rules.npc.researchRoutes,
-            north: {
-              ...state.rules.npc.researchRoutes.north,
-              crossing: state.rules.npc.researchRoutes.north.field,
-            },
-          },
-        },
-      },
-    };
-  }
   const seatByFaction = state.map.startAssignment;
-  const northFaction = (Object.entries(seatByFaction ?? {}).find(
-    ([, seat]) => seat === 'north',
-  )?.[0] ?? undefined) as FactionId | undefined;
   const routeByFaction: MatchAudit['routeByFaction'] = {};
   const neutralCaptures: MatchAudit['neutralCaptures'] = [];
   const baseOwnershipChanges: MatchAudit['baseOwnershipChanges'] = [];
@@ -305,10 +258,13 @@ function run(seed: number): MatchAudit {
   const firstHqDamageDetails: MatchAudit['firstHqDamageDetails'] = [];
   const eliminationDetails: MatchAudit['eliminationDetails'] = [];
   const completedCrossings: MatchAudit['completedCrossings'] = [];
-  const northDiagnostic: NonNullable<MatchAudit['northDiagnostic']> = {
-    combatEvents: [],
-    out02Transitions: [],
+  const unitLossesByFaction: MatchAudit['unitLossesByFaction'] = {
+    A: {},
+    B: {},
+    C: {},
   };
+  const sourceLabel = (owner: string | null): string =>
+    owner === null ? 'neutral' : (seatByFaction?.[owner as FactionId] ?? owner);
   for (const factionId of ['A', 'B', 'C'] as const)
     routeByFaction[factionId] = selectNpcResearchRoute(
       getFactionView(state, factionId),
@@ -318,6 +274,36 @@ function run(seed: number): MatchAudit {
     const previous = state;
     state = advanceMatch(state);
     const interval = state.rules.tickets.updateIntervalTicks;
+    const survivingUnitIds = new Set(state.units.map(({ id }) => id));
+    for (const unit of previous.units) {
+      if (survivingUnitIds.has(unit.id) || unit.factionId === 'local') continue;
+      const owner = state.factions.find(({ id }) => id === unit.factionId);
+      if (owner?.eliminatedAtTick === state.elapsedTicks) continue;
+      const attacker = previous.units
+        .filter(
+          (other) =>
+            other.factionId !== unit.factionId &&
+            other.attack?.targetId === unit.id,
+        )
+        .sort((a, b) => (a.id < b.id ? -1 : 1))[0];
+      const nearestBase = previous.bases
+        .map((base) => ({
+          base,
+          distance: Math.hypot(
+            base.cell.x - unit.cell.x,
+            base.cell.y - unit.cell.y,
+          ),
+        }))
+        .filter(({ distance }) => distance <= 8)
+        .sort((a, b) => a.distance - b.distance)[0]?.base;
+      const source = attacker
+        ? `unit:${sourceLabel(attacker.factionId)}`
+        : nearestBase
+          ? `base:${nearestBase.owner === unit.factionId ? 'own' : sourceLabel(nearestBase.owner)}`
+          : 'other';
+      const losses = unitLossesByFaction[unit.factionId as FactionId]!;
+      losses[source] = (losses[source] ?? 0) + 1;
+    }
     for (const factionId of ['A', 'B', 'C'] as const) {
       const before = previous.factions.find(({ id }) => id === factionId);
       const after = state.factions.find(({ id }) => id === factionId);
@@ -346,101 +332,10 @@ function run(seed: number): MatchAudit {
       }
       const combatLoss = Math.max(0, observedLoss - formulaLoss);
       totals.combatCenti += combatLoss;
-      if (diagnoseNorth && factionId === northFaction && combatLoss > 0) {
-        const view = getFactionView(previous, factionId);
-        const previousIds = new Set(state.units.map(({ id }) => id));
-        const lostUnits = previous.units
-          .filter(
-            (unit) => unit.factionId === factionId && !previousIds.has(unit.id),
-          )
-          .map((unit) => ({
-            id: unit.id,
-            kind: unit.kind,
-            cell: unit.cell,
-            marchTarget: unit.marchOrder
-              ? `${unit.marchOrder.target.kind}:${unit.marchOrder.target.id}`
-              : null,
-            targetId: unit.attack?.targetId ?? null,
-          }));
-        const nearbyCells = lostUnits.map(({ cell }) => cell);
-        const visibleEnemies = view.visibleEnemies
-          .filter((enemy) =>
-            nearbyCells.some(
-              (cell) =>
-                Math.hypot(
-                  Math.floor(enemy.positionX1024 / 1024) - cell.x,
-                  Math.floor(enemy.positionY1024 / 1024) - cell.y,
-                ) <= 12,
-            ),
-          )
-          .map((enemy) => ({
-            id: enemy.id,
-            factionId: enemy.factionId as FactionId,
-            kind: enemy.kind,
-            cell: {
-              x: Math.floor(enemy.positionX1024 / 1024),
-              y: Math.floor(enemy.positionY1024 / 1024),
-            },
-          }));
-        const out02Before = previous.bases.find(({ id }) => id === 'OUT-02');
-        const out02After = state.bases.find(({ id }) => id === 'OUT-02');
-        northDiagnostic.combatEvents.push({
-          tick: state.elapsedTicks,
-          lossCenti: combatLoss,
-          lostUnits,
-          visibleEnemies,
-          out02OwnerBefore: out02Before?.owner ?? null,
-          out02OwnerAfter: out02After?.owner ?? null,
-        });
-      }
     }
     for (const base of state.bases) {
       const before = previous.bases.find(({ id }) => id === base.id);
       if (before && before.owner !== base.owner) {
-        if (diagnoseNorth && base.id === 'OUT-02' && northFaction) {
-          const out02Cell = before.cell;
-          const view = getFactionView(previous, northFaction);
-          northDiagnostic.out02Transitions.push({
-            tick: state.elapsedTicks,
-            from: before.owner,
-            to: base.owner,
-            nearbyNorthUnits: previous.units
-              .filter(
-                (unit) =>
-                  unit.factionId === northFaction &&
-                  Math.hypot(
-                    unit.cell.x - out02Cell.x,
-                    unit.cell.y - out02Cell.y,
-                  ) <= 12,
-              )
-              .map((unit) => ({
-                id: unit.id,
-                kind: unit.kind,
-                cell: unit.cell,
-                marchTarget: unit.marchOrder
-                  ? `${unit.marchOrder.target.kind}:${unit.marchOrder.target.id}`
-                  : null,
-                targetId: unit.attack?.targetId ?? null,
-              })),
-            visibleEnemies: view.visibleEnemies
-              .filter(
-                (enemy) =>
-                  Math.hypot(
-                    Math.floor(enemy.positionX1024 / 1024) - out02Cell.x,
-                    Math.floor(enemy.positionY1024 / 1024) - out02Cell.y,
-                  ) <= 12,
-              )
-              .map((enemy) => ({
-                id: enemy.id,
-                factionId: enemy.factionId as FactionId,
-                kind: enemy.kind,
-                cell: {
-                  x: Math.floor(enemy.positionX1024 / 1024),
-                  y: Math.floor(enemy.positionY1024 / 1024),
-                },
-              })),
-          });
-        }
         const ownerEliminated = state.factions.some(
           (faction) =>
             faction.id === before.owner &&
@@ -710,8 +605,9 @@ function run(seed: number): MatchAudit {
     seed,
     mapDefinitionId: state.map.definitionId,
     mapDefinitionVersion: state.map.definitionVersion,
-    masterVersion: state.rules.version,
+    masterVersion: `${RULES_VERSION}#${createHash('sha256').update(JSON.stringify(state.rules)).digest('hex').slice(0, 12)}`,
     seatByFaction,
+    tendencyByFaction: { A: TENDENCY, B: TENDENCY, C: TENDENCY },
     routeByFaction,
     ticks: state.elapsedTicks,
     phase: state.phase,
@@ -742,7 +638,7 @@ function run(seed: number): MatchAudit {
         maxHp: base.maxHp,
       })),
     completedCrossings,
-    ...(diagnoseNorth ? { northDiagnostic } : {}),
+    unitLossesByFaction,
   };
 }
 
@@ -754,89 +650,100 @@ if (resume && existsSync(checkpointPath))
     saved.set(match.seed, match);
   }
 if (!resume) writeFileSync(checkpointPath, '', 'utf8');
+if (JOBS > 1) {
+  // Each worker runs the same source on one seed; results merge into the checkpoint by seed.
+  const pending = SEEDS.filter((seed) => !saved.has(seed));
+  const script = fileURLToPath(import.meta.url);
+  const runSeed = (seed: number) =>
+    new Promise<void>((resolve, reject) => {
+      const part = `${checkpointPath}.seed-${seed}`;
+      const child = spawn(
+        process.execPath,
+        [
+          ...process.execArgv,
+          script,
+          `--seeds=${seed}`,
+          `--output=${part}`,
+          ...(sample === 'final' ? ['--final'] : []),
+        ],
+        { stdio: ['ignore', 'ignore', 'inherit'] },
+      );
+      child.on('error', reject);
+      child.on('exit', (code) => {
+        if (code !== 0) return reject(new Error(`seed ${seed} exited ${code}`));
+        const match = JSON.parse(readFileSync(part, 'utf8')) as MatchAudit;
+        unlinkSync(part);
+        saved.set(seed, match);
+        appendFileSync(checkpointPath, `${JSON.stringify(match)}\n`, 'utf8');
+        resolve();
+      });
+    });
+  const queue = [...pending];
+  await Promise.all(
+    Array.from({ length: Math.min(JOBS, queue.length) }, async () => {
+      for (let seed = queue.shift(); seed !== undefined; seed = queue.shift())
+        await runSeed(seed);
+    }),
+  );
+}
 for (const [index, seed] of SEEDS.entries()) {
   if (saved.has(seed)) continue;
   const match = run(seed);
   saved.set(seed, match);
   appendFileSync(checkpointPath, `${JSON.stringify(match)}\n`, 'utf8');
-  console.log(
+  console.error(
     `Completed ${sample} seed ${seed} (${index + 1}/${SEEDS.length}): ${match.reason} at ${match.ticks} ticks`,
   );
 }
 const matches = SEEDS.map((seed) => saved.get(seed)!);
-const counts = new Map<StartPositionId, { wins: number; games: number }>([
-  ['north', { wins: 0, games: 0 }],
-  ['south-east', { wins: 0, games: 0 }],
-  ['south-west', { wins: 0, games: 0 }],
-]);
-const routesByStart: Record<
-  StartPositionId,
-  Record<'crossing' | 'field', number>
-> = {
-  north: { crossing: 0, field: 0 },
-  'south-east': { crossing: 0, field: 0 },
-  'south-west': { crossing: 0, field: 0 },
-};
-const factionASeatCounts: Record<StartPositionId, number> = {
-  north: 0,
-  'south-east': 0,
-  'south-west': 0,
-};
-const eliminationsByStart: Record<StartPositionId, Record<string, number>> = {
-  north: {},
-  'south-east': {},
-  'south-west': {},
-};
-const ticketLossByStart: Record<
-  StartPositionId,
-  {
-    combatCenti: number;
-    territoryPenaltyCenti: number;
-    timeDecayCenti: number;
-    clampedIntervals: number;
-  }
-> = {
-  north: {
-    combatCenti: 0,
-    territoryPenaltyCenti: 0,
-    timeDecayCenti: 0,
-    clampedIntervals: 0,
-  },
-  'south-east': {
-    combatCenti: 0,
-    territoryPenaltyCenti: 0,
-    timeDecayCenti: 0,
-    clampedIntervals: 0,
-  },
-  'south-west': {
-    combatCenti: 0,
-    territoryPenaltyCenti: 0,
-    timeDecayCenti: 0,
-    clampedIntervals: 0,
-  },
+const STARTS: readonly StartPositionId[] = [
+  'north',
+  'south-east',
+  'south-west',
+];
+const perStart = <T>(make: () => T): Record<StartPositionId, T> => ({
+  north: make(),
+  'south-east': make(),
+  'south-west': make(),
+});
+const counts = perStart(() => ({ wins: 0, games: 0 }));
+const winsByFactionId: Record<FactionId, number> = { A: 0, B: 0, C: 0 };
+const routesByStart = perStart(() => ({ crossing: 0, field: 0 }));
+const factionASeatCounts = perStart(() => 0);
+const eliminationsByStart = perStart<Record<string, number>>(() => ({}));
+const ticketLossByStart = perStart(() => ({
+  combatCenti: 0,
+  territoryPenaltyCenti: 0,
+  timeDecayCenti: 0,
+  clampedIntervals: 0,
+}));
+/** Games in which a start completed each crossing or captured each non-home base. */
+const crossingsByStart = perStart<Record<string, number>>(() => ({}));
+const capturesByStart = perStart<Record<string, number>>(() => ({}));
+const unitLossesByStart = perStart<Record<string, number>>(() => ({}));
+const bump = (record: Record<string, number>, key: string, amount = 1) => {
+  record[key] = (record[key] ?? 0) + amount;
 };
 for (const match of matches) {
+  const startOf = (factionId: string) =>
+    match.seatByFaction?.[factionId as FactionId];
   if (match.seatByFaction?.A) factionASeatCounts[match.seatByFaction.A] += 1;
   for (const [factionId, route] of Object.entries(match.routeByFaction)) {
-    const start = match.seatByFaction?.[factionId as FactionId];
+    const start = startOf(factionId);
     if (start && route) routesByStart[start][route] += 1;
   }
-  for (const seat of Object.values(match.seatByFaction ?? {})) {
-    const result = counts.get(seat);
-    if (result) result.games += 1;
-  }
+  for (const seat of Object.values(match.seatByFaction ?? {}))
+    counts[seat].games += 1;
   for (const [factionId, reason] of Object.entries(
     match.eliminationByFaction ?? {},
   )) {
-    const start = match.seatByFaction?.[factionId as FactionId];
-    if (!start) continue;
-    eliminationsByStart[start][reason] =
-      (eliminationsByStart[start][reason] ?? 0) + 1;
+    const start = startOf(factionId);
+    if (start) bump(eliminationsByStart[start], reason);
   }
   for (const [factionId, loss] of Object.entries(
     match.ticketLossByFaction ?? {},
   )) {
-    const start = match.seatByFaction?.[factionId as FactionId];
+    const start = startOf(factionId);
     if (!start || !loss) continue;
     ticketLossByStart[start].combatCenti += loss.combatCenti;
     ticketLossByStart[start].territoryPenaltyCenti +=
@@ -844,40 +751,107 @@ for (const match of matches) {
     ticketLossByStart[start].timeDecayCenti += loss.timeDecayCenti;
     ticketLossByStart[start].clampedIntervals += loss.clampedIntervals;
   }
+  for (const [factionId, losses] of Object.entries(
+    match.unitLossesByFaction ?? {},
+  )) {
+    const start = startOf(factionId);
+    if (start && losses)
+      for (const [source, count] of Object.entries(losses))
+        bump(unitLossesByStart[start], source, count);
+  }
+  const seenCrossings = new Set<string>();
+  for (const { factionId, siteId } of match.completedCrossings) {
+    const start = startOf(factionId);
+    if (!start || seenCrossings.has(`${start}:${siteId}`)) continue;
+    seenCrossings.add(`${start}:${siteId}`);
+    bump(crossingsByStart[start], siteId);
+  }
+  const seenCaptures = new Set<string>();
+  for (const { baseId, to } of match.baseOwnershipChanges) {
+    const start = to === null ? undefined : startOf(to);
+    if (!start || seenCaptures.has(`${start}:${baseId}`)) continue;
+    seenCaptures.add(`${start}:${baseId}`);
+    bump(capturesByStart[start], baseId);
+  }
   if (match.winners.length === 1) {
+    winsByFactionId[match.winners[0]!] += 1;
     const seat = match.winnerSeats[0];
-    if (seat) {
-      const result = counts.get(seat);
-      if (result) result.wins += 1;
-    }
+    if (seat) counts[seat].wins += 1;
   }
 }
+
+const outcomes = Object.fromEntries(
+  STARTS.map((seat) => {
+    const { wins, games } = counts[seat];
+    const winRate = games > 0 ? wins / games : 0;
+    return [
+      seat,
+      {
+        wins,
+        games,
+        winRate,
+        withinBand:
+          winRate >= WIN_RATE_BAND.min && winRate <= WIN_RATE_BAND.max,
+      },
+    ];
+  }),
+);
+const failures = [
+  ...STARTS.filter((seat) => !outcomes[seat]!.withinBand).map(
+    (seat) =>
+      `${seat} win rate ${counts[seat].wins}/${counts[seat].games} is outside ${WIN_RATE_BAND.min * 100}-${WIN_RATE_BAND.max * 100}%`,
+  ),
+  ...(new Set(matches.map((match) => match.mapDefinitionVersion)).size > 1
+    ? ['mixed map definition versions in the checkpoint']
+    : []),
+  ...(new Set(matches.map((match) => match.masterVersion)).size > 1
+    ? ['mixed master versions in the checkpoint']
+    : []),
+  ...STARTS.filter((seat) => counts[seat].games !== matches.length).map(
+    (seat) => `${seat} did not take part in every game`,
+  ),
+];
 
 console.log(
   JSON.stringify(
     {
       sample,
-      northFieldPlan,
+      verdict: requestedSeeds
+        ? 'diagnostic-only'
+        : failures.length === 0
+          ? 'pass'
+          : 'fail',
+      failures,
       mapDefinitionVersion,
+      masterVersions: [...new Set(matches.map((match) => match.masterVersion))],
+      tendency: TENDENCY,
       checkpointPath,
       seedPolicy: requestedSeeds
         ? `selected diagnostic seeds ${SEEDS.join(',')}`
         : `fixed preregistered ${sample} seeds ${firstSeed}..${firstSeed + SEEDS.length - 1}; six A-seat assignments per physical start`,
       denominatorPolicy: `${matches.length} complete 3-start games; each physical start is a participant in all ${matches.length}. A-seat balance is reported separately. Tied rank-1, mutual-elimination, and unresolved-at-12000 games are non-wins in the primary win rate and reported separately.`,
+      winRateBand: WIN_RATE_BAND,
       tickLimit: TICK_LIMIT,
-      outcomes: Object.fromEntries(
-        [...counts].map(([seat, result]) => [
-          seat,
-          { ...result, winRate: result.wins / result.games },
-        ]),
-      ),
+      outcomes,
+      winsByFactionId,
       factionASeatCounts,
+      routesByStart,
+      crossingsByStart,
+      capturesByStart,
       eliminationsByStart,
       ticketLossByStart,
-      routesByStart,
+      unitLossesByStart,
       unresolved: matches.filter((match) => match.phase === 'running').length,
       tied: matches.filter((match) => match.tied).length,
-      matches,
+      games: matches.map((match) => ({
+        seed: match.seed,
+        seatByFaction: match.seatByFaction,
+        routeByFaction: match.routeByFaction,
+        reason: match.reason,
+        ticks: match.ticks,
+        winnerSeats: match.winnerSeats,
+        eliminationByFaction: match.eliminationByFaction,
+      })),
     },
     null,
     2,

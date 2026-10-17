@@ -1,0 +1,554 @@
+{
+  "sample": "tuning",
+  "verdict": "pass",
+  "failures": [],
+  "mapDefinitionVersion": 6,
+  "masterVersions": [
+    "cp12-npc-paths-v1#deb90b02436b"
+  ],
+  "tendency": "neutral",
+  "checkpointPath": "artifacts/cp12-84-v6/tuning-v6.jsonl",
+  "seedPolicy": "fixed preregistered tuning seeds 0..17; six A-seat assignments per physical start",
+  "denominatorPolicy": "18 complete 3-start games; each physical start is a participant in all 18. A-seat balance is reported separately. Tied rank-1, mutual-elimination, and unresolved-at-12000 games are non-wins in the primary win rate and reported separately.",
+  "winRateBand": {
+    "min": 0.2,
+    "max": 0.5
+  },
+  "tickLimit": 12000,
+  "outcomes": {
+    "north": {
+      "wins": 8,
+      "games": 18,
+      "winRate": 0.4444444444444444,
+      "withinBand": true
+    },
+    "south-east": {
+      "wins": 6,
+      "games": 18,
+      "winRate": 0.3333333333333333,
+      "withinBand": true
+    },
+    "south-west": {
+      "wins": 4,
+      "games": 18,
+      "winRate": 0.2222222222222222,
+      "withinBand": true
+    }
+  },
+  "winsByFactionId": {
+    "A": 5,
+    "B": 7,
+    "C": 6
+  },
+  "factionASeatCounts": {
+    "north": 6,
+    "south-east": 6,
+    "south-west": 6
+  },
+  "routesByStart": {
+    "north": {
+      "crossing": 18,
+      "field": 0
+    },
+    "south-east": {
+      "crossing": 0,
+      "field": 18
+    },
+    "south-west": {
+      "crossing": 18,
+      "field": 0
+    }
+  },
+  "crossingsByStart": {
+    "north": {
+      "CROSS-RING-N": 18
+    },
+    "south-east": {
+      "CROSS-RING-SE": 18
+    },
+    "south-west": {
+      "CROSS-RING-SW": 12,
+      "CROSS-FLANK-SOUTH-B2": 6
+    }
+  },
+  "capturesByStart": {
+    "north": {
+      "MID-03": 18,
+      "OUT-01": 18,
+      "OUT-02": 3,
+      "OUT-03": 2
+    },
+    "south-east": {
+      "MID-01": 18,
+      "OUT-02": 6,
+      "OUT-01": 5,
+      "OUT-03": 1
+    },
+    "south-west": {
+      "MID-02": 18,
+      "OUT-02": 6,
+      "OUT-03": 6,
+      "OUT-01": 3
+    }
+  },
+  "eliminationsByStart": {
+    "north": {
+      "tickets": 10
+    },
+    "south-east": {
+      "tickets": 12
+    },
+    "south-west": {
+      "tickets": 14
+    }
+  },
+  "ticketLossByStart": {
+    "north": {
+      "combatCenti": 304376,
+      "territoryPenaltyCenti": 47144,
+      "timeDecayCenti": 142151,
+      "clampedIntervals": 10
+    },
+    "south-east": {
+      "combatCenti": 246836,
+      "territoryPenaltyCenti": 97886,
+      "timeDecayCenti": 128836,
+      "clampedIntervals": 12
+    },
+    "south-west": {
+      "combatCenti": 313025,
+      "territoryPenaltyCenti": 63704,
+      "timeDecayCenti": 136438,
+      "clampedIntervals": 12
+    }
+  },
+  "unitLossesByStart": {
+    "north": {
+      "base:south-west": 61,
+      "base:own": 132,
+      "base:neutral": 167,
+      "unit:south-east": 59,
+      "other": 8,
+      "unit:south-west": 23,
+      "base:south-east": 20
+    },
+    "south-east": {
+      "base:neutral": 153,
+      "unit:south-west": 32,
+      "other": 8,
+      "base:north": 81,
+      "base:own": 14,
+      "unit:north": 54,
+      "base:south-west": 28
+    },
+    "south-west": {
+      "base:neutral": 153,
+      "base:own": 47,
+      "base:north": 135,
+      "unit:north": 54,
+      "unit:south-east": 58,
+      "other": 4,
+      "base:south-east": 17
+    }
+  },
+  "unresolved": 0,
+  "tied": 0,
+  "games": [
+    {
+      "seed": 0,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4640,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 1,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4160,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 2,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 3840,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 3,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4328,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 4,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4330,
+      "winnerSeats": [
+        "south-west"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 5,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4330,
+      "winnerSeats": [
+        "south-west"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 6,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4370,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 7,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4220,
+      "winnerSeats": [
+        "south-west"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 8,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4516,
+      "winnerSeats": [
+        "south-west"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 9,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4520,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 10,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4400,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 11,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4324,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 12,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4185,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 13,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4490,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 14,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4451,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "B": "tickets"
+      }
+    },
+    {
+      "seed": 15,
+      "seatByFaction": {
+        "A": "south-west",
+        "B": "south-east",
+        "C": "north"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "field",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4540,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "A": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 16,
+      "seatByFaction": {
+        "A": "south-east",
+        "B": "north",
+        "C": "south-west"
+      },
+      "routeByFaction": {
+        "A": "field",
+        "B": "crossing",
+        "C": "crossing"
+      },
+      "reason": "last-standing",
+      "ticks": 4350,
+      "winnerSeats": [
+        "south-east"
+      ],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    },
+    {
+      "seed": 17,
+      "seatByFaction": {
+        "A": "north",
+        "B": "south-west",
+        "C": "south-east"
+      },
+      "routeByFaction": {
+        "A": "crossing",
+        "B": "crossing",
+        "C": "field"
+      },
+      "reason": "last-standing",
+      "ticks": 4360,
+      "winnerSeats": [
+        "north"
+      ],
+      "eliminationByFaction": {
+        "B": "tickets",
+        "C": "tickets"
+      }
+    }
+  ]
+}

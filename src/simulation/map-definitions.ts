@@ -580,7 +580,7 @@ export const MAP_DEFINITIONS = {
   },
   ring100: {
     id: 'ring-three-fronts',
-    version: 5,
+    version: 6,
     width: 100,
     height: 100,
     terrainPatches: [
@@ -975,8 +975,8 @@ export const MAP_DEFINITIONS = {
         id: 'OUT-01',
         kind: 'outpost',
         cell: {
-          x: 45,
-          y: 43,
+          x: 47,
+          y: 40,
         },
         factionId: null,
       },
@@ -984,8 +984,8 @@ export const MAP_DEFINITIONS = {
         id: 'OUT-02',
         kind: 'large',
         cell: {
-          x: 58,
-          y: 41,
+          x: 50,
+          y: 50,
         },
         factionId: null,
       },
@@ -993,8 +993,8 @@ export const MAP_DEFINITIONS = {
         id: 'OUT-03',
         kind: 'outpost',
         cell: {
-          x: 50,
-          y: 70,
+          x: 48,
+          y: 59,
         },
         factionId: null,
       },
