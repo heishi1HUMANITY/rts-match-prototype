@@ -23,7 +23,7 @@
     "check": "npm run format:check && npm run typecheck && npm test && npm run test:flow && npm run build",
     "specs:check": "node scripts/check-specs.mjs && node --test scripts/check-specs.test.mjs",
     "specs:review": "node scripts/check-specs.mjs --review",
-    "test:flow": "node --test scripts/checkpoint-sync.test.mjs",
+    "test:flow": "node --test scripts/checkpoint-sync.test.mjs scripts/ci-e2e-impact.test.mjs",
     "selfplay": "node scripts/run-selfplay.mjs",
     "audit:map-fairness": "tsx scripts/audit-map-fairness.ts",
     "audit:map-fairness:final": "tsx scripts/audit-map-fairness.ts --final",
