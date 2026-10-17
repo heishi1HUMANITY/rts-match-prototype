@@ -47,7 +47,23 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
   await expect(page.locator('.status[role="status"]')).not.toContainText(
     '追跡先を指定できません',
   );
-  await expect(page.locator('.tick-readout')).toContainText('RUNNING');
+  await page.getByRole('button', { name: '一時停止', exact: true }).click();
+  await expect(page.locator('.tick-readout')).toContainText('PAUSED');
+  const pausedAt = Number(
+    (await page.locator('.tick-readout').textContent())?.match(/TICK (\d+)/)?.[1],
+  );
+  expect(Number.isFinite(pausedAt)).toBe(true);
+  await page.getByRole('button', { name: '再開', exact: true }).click();
+  await page.waitForFunction(
+    (minimumTick) => {
+      const text = document.querySelector('.tick-readout')?.textContent ?? '';
+      const tick = Number(text.match(/TICK (\d+)/)?.[1]);
+      return Number.isFinite(tick) && tick >= minimumTick;
+    },
+    pausedAt + 10,
+  );
+  await page.getByRole('button', { name: '一時停止', exact: true }).click();
+  await expect(page.locator('.tick-readout')).toContainText('PAUSED');
   await page.getByRole('button', { name: '作戦', exact: true }).click();
   await expect(page.locator('[data-ability-active]')).toContainText(
     '砲撃着弾まで',
