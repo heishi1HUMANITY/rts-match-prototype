@@ -225,6 +225,15 @@ export function getFactionView(
       moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
       waypoints: (unit.waypoints ?? []).map((cell) => ({ ...cell })),
       garrisonedAtBaseId: unit.garrisonedAtBaseId ?? null,
+      ...(unit.attack ? { attack: { ...unit.attack } } : {}),
+      ...(unit.bombardOrder
+        ? {
+            bombardOrder: {
+              ...unit.bombardOrder,
+              cell: { ...unit.bombardOrder.cell },
+            },
+          }
+        : { bombardOrder: null }),
     }));
   const visibleEnemies = state.units
     .filter(
@@ -387,6 +396,15 @@ export function getFactionView(
       pendingStrikes: state.scheduledStrikes
         .filter(({ factionId }) => factionId === faction.id)
         .map((strike) => ({ ...strike, cell: { ...strike.cell } })),
+      incomingArtilleryWarnings: state.scheduledStrikes
+        .filter(
+          (strike) =>
+            strike.sourceUnitId !== undefined &&
+            strike.factionId !== faction.id &&
+            strike.impactTick > state.elapsedTicks &&
+            isCellVisibleToFaction(state, strike.cell, faction.id),
+        )
+        .map(({ cell, impactTick }) => ({ cell: { ...cell }, impactTick })),
     },
     ownUnits,
     visibleEnemies,

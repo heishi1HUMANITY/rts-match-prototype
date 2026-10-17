@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'artilleryBombardment',
     'airDefense',
     'economy',
     'facilities',
@@ -703,7 +704,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 21 &&
       input.masterSchemaVersion !== 22 &&
       input.masterSchemaVersion !== 23 &&
-      input.masterSchemaVersion !== 24)
+      input.masterSchemaVersion !== 24 &&
+      input.masterSchemaVersion !== 25)
   )
     return {
       ok: false,
@@ -806,6 +808,11 @@ export function validateEnvelope(
         issues: [{ key: 'rules', message: '設定形式を認識できません' }],
       };
     let migrationCandidate: Record<string, unknown> = candidateRules;
+    if (!Object.hasOwn(migrationCandidate, 'artilleryBombardment'))
+      migrationCandidate = {
+        ...migrationCandidate,
+        artilleryBombardment: DEFAULT_RULES.artilleryBombardment,
+      };
     if (input.masterSchemaVersion === 15) {
       const oldEnabled = migrationCandidate.garrisonEnabled !== false;
       const { garrisonEnabled: _legacy, ...withoutLegacy } = migrationCandidate;
