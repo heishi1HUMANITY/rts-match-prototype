@@ -106,6 +106,24 @@ export function createMapSnapshot(
       return code === '1';
     },
   );
+  const terrainPatches =
+    'terrainPatches' in definition ? definition.terrainPatches : [];
+  for (const patch of terrainPatches) {
+    for (const cell of patch.cells) {
+      if (
+        cell.x < 0 ||
+        cell.y < 0 ||
+        cell.x >= definition.width ||
+        cell.y >= definition.height
+      )
+        throw new Error('terrain patch cell is outside the map definition');
+      const index = cell.y * definition.width + cell.x;
+      if (terrain[index] !== 'land')
+        throw new Error('terrain patch may only replace a land cell');
+      terrain[index] = patch.kind;
+      blocked[index] = true;
+    }
+  }
   const ports = definition.ports.map((port) => ({
     ...port,
     factionId: remap(port.factionId)!,

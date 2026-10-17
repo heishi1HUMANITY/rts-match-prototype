@@ -25,6 +25,8 @@
     "specs:review": "node scripts/check-specs.mjs --review",
     "test:flow": "node --test scripts/checkpoint-sync.test.mjs",
     "selfplay": "node scripts/run-selfplay.mjs",
+    "audit:map-fairness": "tsx scripts/audit-map-fairness.ts",
+    "audit:map-fairness:final": "tsx scripts/audit-map-fairness.ts --final",
     "references:check": "node scripts/check-references.mjs"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "@types/node": "24.19.2",
     "@types/three": "0.186.0",
     "prettier": "3.8.5",
+    "tsx": "^4.23.15",
     "typescript": "7.0.2",
     "vite": "8.3.4",
     "vitest": "5.0.3"

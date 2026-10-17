@@ -44,8 +44,8 @@
         "src/simulation/config.ts": "ed7b28503448bfaa71d0cc37c7d475836802873c39e456bfcd00eca6a4b2f3cb",
         "src/simulation/map.ts": "d0f13797203a83539d9bf6e32123f99d6865e86c28d458b40cc4d6dc5d197d8a",
         "src/simulation/map-100.ts": "d47e16e9e4f9108c83f0040bc5117398e38237bdc82e5ab9a65ee1f2f364d239",
-        "src/simulation/map-definitions.ts": "d20f6e14e04dd98ac015b4ce39ca53ae7dc480845517e3d958a3bf90b47a9615",
-        "src/simulation/map-snapshot.ts": "93d512bff30a8c275cf9633085450e6b22a15d589787d77f0128a14900ca427a",
+        "src/simulation/map-definitions.ts": "4a86125602751aca7b8185971ab72a5b7d221dc4acd458112c244f38d78d76bb",
+        "src/simulation/map-snapshot.ts": "9de9a62daf8334f62fb655350f37edd57dd3742fe1a647575eeea9405f4f3c8f",
         "src/simulation/pathfinding.ts": "73272a794cdd410efb0283dafd59b0618f296082677882c1c4ea70cc1bea6a0d",
         "src/simulation/crossings.ts": "8784a98c60824b54d387f16bf665088475620443bf20377e9c5bfe810f529bb3"
       }

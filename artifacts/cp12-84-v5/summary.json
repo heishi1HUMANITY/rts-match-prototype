@@ -1,0 +1,727 @@
+{
+  "matches": 18,
+  "northOut02InitialCaptures": 12,
+  "northOut02Losses": 12,
+  "northOut02Recaptures": 1,
+  "northRouteCounts": {
+    "crossing": 18
+  },
+  "northWeightAtElimination": {
+    "2": 2,
+    "3": 15,
+    "5": 1
+  },
+  "northEliminatedByTickets": 18,
+  "northHQHpAtElimination": [1200],
+  "ticketLossTotalsCenti": {
+    "combat": 248538,
+    "territory": 83325,
+    "time": 208137
+  },
+  "perMatch": [
+    {
+      "seed": 0,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1146,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        },
+        {
+          "tick": 2650,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "C",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 120,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 11540,
+        "territoryPenaltyCenti": 4997,
+        "timeDecayCenti": 13463,
+        "clampedIntervals": 2
+      }
+    },
+    {
+      "seed": 1,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        },
+        {
+          "tick": 2590,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "B",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 54,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13860,
+        "territoryPenaltyCenti": 3548,
+        "timeDecayCenti": 12592,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 2,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 2361,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 3940,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        },
+        {
+          "tick": 4649,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 159,
+      "northWeightAtElimination": 2,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 14046,
+        "territoryPenaltyCenti": 2720,
+        "timeDecayCenti": 13234,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 3,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 9,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 14720,
+        "territoryPenaltyCenti": 6301,
+        "timeDecayCenti": 8979,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 4,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1146,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        },
+        {
+          "tick": 2470,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "B",
+          "to": null
+        },
+        {
+          "tick": 4669,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 126,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 9666,
+        "territoryPenaltyCenti": 5700,
+        "timeDecayCenti": 14634,
+        "clampedIntervals": 0
+      }
+    },
+    {
+      "seed": 5,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1146,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 2650,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        },
+        {
+          "tick": 5039,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 76,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13540,
+        "territoryPenaltyCenti": 3821,
+        "timeDecayCenti": 12639,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 6,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 9,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 14720,
+        "territoryPenaltyCenti": 6301,
+        "timeDecayCenti": 8979,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 7,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "C",
+          "to": null
+        },
+        {
+          "tick": 4999,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 118,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13120,
+        "territoryPenaltyCenti": 6809,
+        "timeDecayCenti": 10071,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 8,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 2590,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 137,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13300,
+        "territoryPenaltyCenti": 3980,
+        "timeDecayCenti": 12720,
+        "clampedIntervals": 0
+      }
+    },
+    {
+      "seed": 9,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        },
+        {
+          "tick": 2620,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "C",
+          "to": null
+        },
+        {
+          "tick": 4132,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        }
+      ],
+      "captures": 2,
+      "firstCapture": true,
+      "recaptures": 1,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 1,
+      "northWeightAtElimination": 5,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 16420,
+        "territoryPenaltyCenti": 2520,
+        "timeDecayCenti": 11060,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 10,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "C",
+          "to": null
+        },
+        {
+          "tick": 4999,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 64,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13920,
+        "territoryPenaltyCenti": 6680,
+        "timeDecayCenti": 9400,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 11,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 2361,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 3940,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        },
+        {
+          "tick": 4829,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 72,
+      "northWeightAtElimination": 2,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 17121,
+        "territoryPenaltyCenti": 2338,
+        "timeDecayCenti": 10541,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 12,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "C"
+        },
+        {
+          "tick": 2590,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "C",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 155,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13215,
+        "territoryPenaltyCenti": 3640,
+        "timeDecayCenti": 13145,
+        "clampedIntervals": 0
+      }
+    },
+    {
+      "seed": 13,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        },
+        {
+          "tick": 2590,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "B",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 54,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13914,
+        "territoryPenaltyCenti": 3540,
+        "timeDecayCenti": 12546,
+        "clampedIntervals": 0
+      }
+    },
+    {
+      "seed": 14,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "B",
+          "to": null
+        },
+        {
+          "tick": 4999,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 71,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 14880,
+        "territoryPenaltyCenti": 6522,
+        "timeDecayCenti": 8598,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 15,
+      "northFaction": "C",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1977,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 3034,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        }
+      ],
+      "captures": 0,
+      "firstCapture": false,
+      "recaptures": 0,
+      "losses": 0,
+      "everOwnedByNorth": false,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 65,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13920,
+        "territoryPenaltyCenti": 6430,
+        "timeDecayCenti": 9650,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 16,
+      "northFaction": "B",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1050,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "B"
+        },
+        {
+          "tick": 2590,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "B",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 54,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 13860,
+        "territoryPenaltyCenti": 3548,
+        "timeDecayCenti": 12592,
+        "clampedIntervals": 1
+      }
+    },
+    {
+      "seed": 17,
+      "northFaction": "A",
+      "northRoute": "crossing",
+      "out02Transitions": [
+        {
+          "tick": 1146,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": null,
+          "to": "A"
+        },
+        {
+          "tick": 2650,
+          "baseId": "OUT-02",
+          "kind": "large",
+          "from": "A",
+          "to": null
+        }
+      ],
+      "captures": 1,
+      "firstCapture": true,
+      "recaptures": 0,
+      "losses": 1,
+      "everOwnedByNorth": true,
+      "eliminationReason": "tickets",
+      "ticketsCentiAtElimination": 356,
+      "northWeightAtElimination": 3,
+      "hqHpAtElimination": 1200,
+      "ticketLossCenti": {
+        "combatCenti": 12776,
+        "territoryPenaltyCenti": 3930,
+        "timeDecayCenti": 13294,
+        "clampedIntervals": 0
+      }
+    }
+  ]
+}
