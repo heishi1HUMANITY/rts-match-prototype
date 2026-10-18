@@ -1008,6 +1008,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         key: source.key,
         phase: source.phase ?? 'idle',
         ...(source.targetId ? { targetId: source.targetId } : {}),
+        ...(source.lastFiredTick !== undefined
+          ? { lastFiredTick: source.lastFiredTick }
+          : {}),
       })),
     ...view.facilities
       .filter(
@@ -1019,6 +1022,9 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         phase: facility.attack?.phase ?? 'idle',
         ...(facility.attack?.targetId
           ? { targetId: facility.attack.targetId }
+          : {}),
+        ...(facility.attack?.lastFiredTick !== undefined
+          ? { lastFiredTick: facility.attack.lastFiredTick }
           : {}),
       })),
   ];
