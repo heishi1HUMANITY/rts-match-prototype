@@ -232,6 +232,46 @@ summary:focus-visible {
   font-size: 9px;
   pointer-events: none;
 }
+.combat-estimate {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  top: 42px;
+  display: grid;
+  gap: 4px;
+  width: min(310px, calc(100% - 24px));
+  padding: 8px 10px;
+  border: 1px solid #8798a2;
+  border-radius: 5px;
+  background: #f8faf0f2;
+  color: #22313a;
+  font:
+    600 11px/1.35 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+.combat-estimate[hidden] {
+  display: none;
+}
+.combat-estimate strong {
+  font-size: 12px;
+}
+.combat-estimate p {
+  margin: 3px 0 0;
+  font-weight: 400;
+}
+.combat-estimate details {
+  max-width: 100%;
+  font-size: 10px;
+}
+.combat-estimate summary {
+  cursor: pointer;
+  color: #334b58;
+}
+.combat-estimate details p {
+  max-height: 150px;
+  overflow: auto;
+}
 .mini-map {
   position: absolute;
   z-index: 1;
@@ -1259,6 +1299,16 @@ select:focus-visible {
     min-height: 32px;
     padding: 0 8px;
     font-size: 10px;
+  }
+  .combat-estimate {
+    top: 36px;
+    width: min(230px, calc(100% - 16px));
+    padding: 5px 7px;
+    gap: 2px;
+    font-size: 10px;
+  }
+  .combat-estimate strong {
+    font-size: 11px;
   }
 }
 

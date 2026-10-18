@@ -10,6 +10,7 @@ import { CanvasInput } from './ui/input';
 import { createHud, setHudPanel, updateHud } from './ui/hud';
 import { createMasterEditor } from './ui/master-editor';
 import { resolveMarchTarget } from './ui/march-target';
+import { estimateCombat } from './simulation/combat-estimate';
 import './ui/styles.css';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -24,6 +25,10 @@ let activeMovePreview: {
   readonly unitIds: readonly string[];
   readonly point: Point;
 } | null = null;
+const combatEstimateCache = new Map<
+  string,
+  ReturnType<typeof estimateCombat>
+>();
 let activeDragUnitId: string | null = null;
 let activeDragUnitIds: string[] | null = null;
 let dragCancelled = false;
@@ -165,10 +170,90 @@ function updateMovePreview(unitIds: readonly string[], point: Point): void {
       : runtime.previewGroupMove(unitIds, target),
     target,
   );
+  const stableIds = [...new Set(unitIds)].sort();
+  const observationKey = JSON.stringify({
+    rules: viewForecastKey(snapshot.view),
+    selected: stableIds.map((id) => {
+      const unit = snapshot.view.ownUnits.find((entry) => entry.id === id);
+      return unit && [unit.id, unit.kind, unit.hp, unit.maxHp, unit.cell];
+    }),
+    enemies: snapshot.view.visibleEnemies.map((enemy) => [
+      enemy.id,
+      enemy.factionId,
+      enemy.kind,
+      enemy.hp,
+      enemy.maxHp,
+      enemy.positionX1024,
+      enemy.positionY1024,
+    ]),
+    bases: snapshot.view.bases
+      .filter(
+        (base) => base.visibility === 'visible' || base.visibility === 'owned',
+      )
+      .map((base) => [
+        base.id,
+        base.owner,
+        base.hp,
+        base.maxHp,
+        base.defenderHp,
+        base.level,
+      ]),
+    facilities: snapshot.view.facilities
+      .filter(
+        (facility) =>
+          facility.visibility === 'visible' || facility.visibility === 'owned',
+      )
+      .map((facility) => [
+        facility.id,
+        facility.owner,
+        facility.kind,
+        facility.hp,
+        facility.remainingBuildTicks,
+      ]),
+    cell: target,
+    ids: stableIds,
+  });
+  let estimate = combatEstimateCache.get(observationKey);
+  if (!estimate) {
+    estimate = estimateCombat(snapshot.view, stableIds, target);
+    if (combatEstimateCache.size > 96) combatEstimateCache.clear();
+    combatEstimateCache.set(observationKey, estimate);
+  }
+  renderCombatEstimate(estimate);
+}
+
+function viewForecastKey(
+  view: ReturnType<typeof runtime.playerSnapshot>['view'],
+): string {
+  return JSON.stringify({
+    maxTicks: view.rules.combatEstimate.maxTicks,
+    research: view.ownFaction.completedResearchIds,
+    publicResearch: view.researchAnnouncements?.filter(
+      ({ factionId, researchId }) =>
+        factionId !== view.viewerFactionId &&
+        view.rules.research.definitions[researchId]?.stage === 4,
+    ),
+  });
+}
+
+function renderCombatEstimate(
+  estimate: ReturnType<typeof estimateCombat>,
+): void {
+  const panel = hud.root.querySelector<HTMLElement>('.combat-estimate')!;
+  panel.hidden = false;
+  panel.querySelector<HTMLElement>('[data-estimate-result]')!.textContent =
+    estimate.status === 'unavailable'
+      ? `予測不可 · ${estimate.reason}`
+      : `${estimate.status === 'favorable' ? '有利' : estimate.status === 'unfavorable' ? '不利' : estimate.status === 'contested' ? '拮抗' : '未決着'} · ${estimate.ticks === null ? `${estimate.reason}` : `交戦 ${((estimate.ticks * 100) / 1000).toFixed(1)}秒`}`;
+  panel.querySelector<HTMLElement>('[data-estimate-losses]')!.textContent =
+    `自軍残存 ${estimate.ownRemaining} · 損耗HP ${estimate.ownLost} · 局所脅威残存 ${estimate.threatsRemaining}/${estimate.threatsIncluded}`;
+  panel.querySelector<HTMLElement>('[data-estimate-assumptions]')!.textContent =
+    [...estimate.assumptions, ...estimate.memoryNotes].join(' ');
 }
 
 function clearMoveFeedback(): void {
   board.clearMovePreview();
+  hud.root.querySelector<HTMLElement>('.combat-estimate')!.hidden = true;
   hud.root.querySelector<HTMLElement>('.board-hint')!.textContent =
     pendingAbilityTarget === null
       ? '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ'

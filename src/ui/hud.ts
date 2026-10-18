@@ -169,12 +169,12 @@ export function createHud(app: HTMLElement): HudElements {
       <div class="top-actions"><button data-action="start" class="primary">開始</button><button data-action="pause">一時停止</button><button data-action="resume" class="primary">再開</button><button data-action="reset">リセット</button><button data-action="master">マスタ</button></div>
       <details class="test-settings"><summary>検査設定</summary><div class="settings-popover">
       <label>seed <input data-seed type="number" min="0" max="4294967295" step="1" value="42" aria-label="試合seed"></label>
-        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f87-specializations">検査：CP13専攻</option><option value="f86-point-fire">検査：地点砲撃</option><option value="f15-tactical-abilities">検査：作戦指令</option><option value="f19-capture">検査：制圧後HP率</option><option value="f18-garrison">検査：拠点駐留・防衛</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
+        <label>シナリオ <select data-scenario aria-label="検査シナリオ"><option value="standard">通常設定</option><option value="f88-combat-estimate">検査：戦闘見込み</option><option value="f87-specializations">検査：CP13専攻</option><option value="f86-point-fire">検査：地点砲撃</option><option value="f15-tactical-abilities">検査：作戦指令</option><option value="f19-capture">検査：制圧後HP率</option><option value="f18-garrison">検査：拠点駐留・防衛</option><option value="f11-facilities">検査：施設建築</option><option value="f10-base-upgrades">検査：拠点強化</option><option value="f08-unit-domains">検査：6兵種・陸空水</option><option value="f06-local-faction">検査：現地勢力</option><option value="f05-neutral-defense">検査：中立守備・制圧</option><option value="f04-crossing">検査：橋の建設</option><option value="f02-pursuit">検査：移動する敵の追跡</option><option value="g2-capture">検査：制圧</option><option value="g2-combat">検査：相互交戦</option><option value="g2-economy">検査：生産・研究（NPC停止）</option><option value="g3-timeout">検査：20秒で時間切れ</option><option value="g3-elimination">検査：相手2軍脱落</option><option value="g3-mutual">検査：同時全滅</option><option value="g3-spectate">検査：自軍脱落と観戦</option></select></label>
         <button data-action="apply-seed">適用してリセット</button><button data-action="download">全情報を含む診断JSONを保存</button>
         <p>通常設定はNPC2陣営・5分制。チケット0、または首都と全部隊を失うと脱落。G2検査のみNPC停止。現地勢力検査はA/B/Cの順位へ加わらない独立勢力を表示します。短時間検査は初期チケットと制限時間を変更します。</p>
       </div></details>
     </header>
-    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><button class="air-defense-alert" data-action="focus-air-defense" hidden>対空の最終確認位置へ</button><button class="artillery-alert" data-action="focus-artillery-warning" hidden>砲撃警告</button><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><span class="scenario-badge"></span>
+    <main class="board-frame" aria-label="盤面"><div class="board-host"></div><canvas class="mini-map" width="160" height="160" aria-label="地形と公開情報のミニマップ"></canvas><div class="terrain-legend" aria-label="地形記号">▰ 陸 · ≋ 川 · ▲ 山 · ⚓ 港 · ⇄ 渡河予定 · 拠点記号の大きさ＝規模</div><button class="air-defense-alert" data-action="focus-air-defense" hidden>対空の最終確認位置へ</button><button class="artillery-alert" data-action="focus-artillery-warning" hidden>砲撃警告</button><div class="board-hint">敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ</div><aside class="combat-estimate" data-testid="combat-estimate" aria-live="polite" hidden><strong>戦闘見込み · 予測</strong><span data-estimate-result></span><span data-estimate-losses></span><details><summary>前提と限界</summary><p data-estimate-assumptions></p></details></aside><span class="scenario-badge"></span>
       <aside class="strategy-dock" aria-label="戦略操作">
         <nav class="strategy-tabs" aria-label="操作メニュー"><button data-action="production" aria-controls="strategy-content">生産</button><button data-action="research" aria-controls="strategy-content">研究</button><button data-action="bases" aria-controls="strategy-content">拠点</button><button data-action="crossings" aria-controls="strategy-content">渡河</button><button data-action="facilities" aria-controls="strategy-content">施設</button><button data-action="abilities" aria-controls="strategy-content">作戦</button></nav>
         <p class="strategy-empty" data-dock-empty hidden>上の操作から選んでください。盤面の拠点を選ぶと、その拠点の操作を開きます。</p>
@@ -404,6 +404,7 @@ export function updateHud(
     'f15-tactical-abilities': '作戦指令',
     'f86-point-fire': '地点砲撃',
     'f87-specializations': 'CP13専攻',
+    'f88-combat-estimate': '戦闘見込み',
   };
   const npcStopped =
     view.scenarioId.startsWith('g2-') ||
@@ -413,7 +414,8 @@ export function updateHud(
     view.scenarioId === 'f10-base-upgrades' ||
     view.scenarioId === 'f15-tactical-abilities' ||
     view.scenarioId === 'f86-point-fire' ||
-    view.scenarioId === 'f87-specializations';
+    view.scenarioId === 'f87-specializations' ||
+    view.scenarioId === 'f88-combat-estimate';
   const scenarioName =
     view.scenarioId === 'standard'
       ? '通常設定 · NPC2陣営'
