@@ -25,6 +25,9 @@ let activeMovePreview: {
   readonly unitIds: readonly string[];
   readonly point: Point;
 } | null = null;
+let lastEstimateTargetId: string | null = null;
+let lastSelectedIds = '';
+let keepEstimateForCancellation = false;
 const combatEstimateCache = new Map<
   string,
   ReturnType<typeof estimateCombat>
@@ -54,6 +57,29 @@ let board = createBoardView({
 runtime = new MatchRuntime(
   {
     onChange: (snapshot) => {
+      const selectedKey = [...snapshot.selectedUnitIds].sort().join('|');
+      if (selectedKey !== lastSelectedIds) {
+        if (!keepEstimateForCancellation) hideCombatEstimate();
+        keepEstimateForCancellation = false;
+        lastSelectedIds = selectedKey;
+      }
+      if (
+        lastEstimateTargetId !== null &&
+        !snapshot.view.visibleEnemies.some(
+          ({ id }) => id === lastEstimateTargetId,
+        ) &&
+        !snapshot.view.bases.some(
+          ({ id, visibility }) =>
+            id === lastEstimateTargetId &&
+            (visibility === 'visible' || visibility === 'owned'),
+        ) &&
+        !snapshot.view.facilities.some(
+          ({ id, visibility }) =>
+            id === lastEstimateTargetId &&
+            (visibility === 'visible' || visibility === 'owned'),
+        )
+      )
+        hideCombatEstimate();
       const nextLifecycleKey = `${snapshot.view.phase}:${snapshot.view.ownFaction.eliminatedAtTick !== null}`;
       if (
         nextLifecycleKey !== lifecycleKey &&
@@ -74,6 +100,7 @@ runtime = new MatchRuntime(
         activeDragUnitId = null;
         activeDragUnitIds = null;
         clearMoveFeedback();
+        hideCombatEstimate();
         flightRouteUnitId = null;
         flightWaypoints = [];
       }
@@ -150,7 +177,15 @@ function updateMovePreview(unitIds: readonly string[], point: Point): void {
     return;
   }
   const snapshot = runtime.playerSnapshot();
-  const march = resolveMarchTarget(snapshot.view, board.pick(point.x, point.y));
+  const picked = board.pick(point.x, point.y);
+  const march = resolveMarchTarget(snapshot.view, picked);
+  lastEstimateTargetId =
+    march?.target.id ??
+    (picked?.kind === 'unit'
+      ? picked.unitId
+      : picked?.kind === 'base'
+        ? picked.baseId
+        : null);
   const target = march?.cell ?? board.pickGround(point.x, point.y);
   if (
     target === null ||
@@ -219,7 +254,7 @@ function updateMovePreview(unitIds: readonly string[], point: Point): void {
     if (combatEstimateCache.size > 96) combatEstimateCache.clear();
     combatEstimateCache.set(observationKey, estimate);
   }
-  renderCombatEstimate(estimate);
+  renderCombatEstimate(estimate, false);
 }
 
 function viewForecastKey(
@@ -238,9 +273,13 @@ function viewForecastKey(
 
 function renderCombatEstimate(
   estimate: ReturnType<typeof estimateCombat>,
+  held = true,
 ): void {
   const panel = hud.root.querySelector<HTMLElement>('.combat-estimate')!;
   panel.hidden = false;
+  panel.dataset.held = String(held);
+  panel.querySelector<HTMLElement>('[data-estimate-heading]')!.textContent =
+    held ? '直前の戦闘見込み · 予測' : '戦闘見込み · 予測';
   panel.querySelector<HTMLElement>('[data-estimate-result]')!.textContent =
     estimate.status === 'unavailable'
       ? `予測不可 · ${estimate.reason}`
@@ -253,11 +292,24 @@ function renderCombatEstimate(
 
 function clearMoveFeedback(): void {
   board.clearMovePreview();
-  hud.root.querySelector<HTMLElement>('.combat-estimate')!.hidden = true;
   hud.root.querySelector<HTMLElement>('.board-hint')!.textContent =
     pendingAbilityTarget === null
       ? '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ'
       : `${pendingAbilityTarget === 'artillery' ? '砲撃支援' : pendingAbilityTarget === 'smoke' ? '煙幕' : '広域観測'} · 盤面の地点をタップ`;
+}
+
+function hideCombatEstimate(): void {
+  const panel = hud.root.querySelector<HTMLElement>('.combat-estimate');
+  if (panel) panel.hidden = true;
+  lastEstimateTargetId = null;
+}
+
+function holdCombatEstimate(): void {
+  const panel = hud.root.querySelector<HTMLElement>('.combat-estimate');
+  if (!panel || panel.hidden) return;
+  panel.dataset.held = 'true';
+  panel.querySelector<HTMLElement>('[data-estimate-heading]')!.textContent =
+    '直前の戦闘見込み · 予測';
 }
 
 function refreshActiveMovePreview(): void {
@@ -415,6 +467,7 @@ input = new CanvasInput(
       activeDragUnitId = null;
       activeDragUnitIds = null;
       clearMoveFeedback();
+      holdCombatEstimate();
       if (!isBoardPoint(point)) return;
       const snapshot = runtime.playerSnapshot();
       const march = resolveMarchTarget(
@@ -451,10 +504,12 @@ input = new CanvasInput(
       activeDragUnitId = null;
       activeDragUnitIds = null;
       clearMoveFeedback();
+      holdCombatEstimate();
     },
     onEscape: () => {
       pendingAbilityTarget = null;
       setHudPanel(hud, null);
+      keepEstimateForCancellation = true;
       runtime.select(null);
     },
   },
@@ -553,6 +608,10 @@ function openMasterEditor(): void {
 const handleClick = (event: MouseEvent): void => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
+  if (target.closest('[data-action="close-combat-estimate"]')) {
+    hideCombatEstimate();
+    return;
+  }
   const clickedButton = target.closest<HTMLButtonElement>('button');
   if (clickedButton?.disabled) return;
   if (clickedButton?.dataset.action === 'focus-air-defense') {

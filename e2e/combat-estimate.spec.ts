@@ -13,7 +13,7 @@ test('F88: drag preview shows bounded visible-force estimate and cancel adds no 
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
-    .selectOption('f88-combat-estimate');
+    .selectOption('f120-combat-estimate-ui');
   await page.getByRole('button', { name: '適用してリセット' }).click();
   await page.getByRole('button', { name: '開始', exact: true }).click();
 
@@ -45,6 +45,17 @@ test('F88: drag preview shows bounded visible-force estimate and cancel adds no 
   });
   await page.keyboard.press('Escape');
   await page.mouse.up();
+  await expect(estimate).toBeVisible();
+  await expect(estimate.locator('[data-estimate-heading]')).toHaveText(
+    '直前の戦闘見込み · 予測',
+  );
+  await estimate.getByText('前提と限界').click();
+  await expect(estimate.locator('[data-estimate-assumptions]')).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath('combat-estimate-details-after-cancel.png'),
+  });
+  await estimate.getByRole('button', { name: '戦闘見込みを閉じる' }).click();
+  await expect(estimate).toBeHidden();
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
 
   const diagnosticPath = info.outputPath('combat-estimate-cancel.json');
@@ -107,6 +118,11 @@ test('F88: drag preview shows bounded visible-force estimate and cancel adds no 
   expect(panelBounds!.x + panelBounds!.width).toBeLessThanOrEqual(
     bounds!.x + bounds!.width + 1,
   );
-  await page.keyboard.press('Escape');
   await page.mouse.up();
+  await expect(estimate).toBeVisible();
+  await expect(estimate).toHaveAttribute('data-held', 'true');
+  const assumptions = estimate.locator('[data-estimate-assumptions]');
+  if (!(await assumptions.isVisible()))
+    await estimate.getByText('前提と限界').click();
+  await expect(assumptions).toBeVisible();
 });

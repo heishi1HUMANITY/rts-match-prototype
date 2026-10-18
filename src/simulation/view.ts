@@ -16,6 +16,7 @@ import type {
   GridMap,
   MatchState,
   CrossingView,
+  VisibleCombatState,
 } from './types';
 
 function copyKnowledgeMap(knowledge: FactionKnowledge): {
@@ -25,10 +26,37 @@ function copyKnowledgeMap(knowledge: FactionKnowledge): {
   return { visible: [...knowledge.visible], explored: [...knowledge.explored] };
 }
 
+function visibleCombat(
+  attack:
+    | {
+        readonly phase: 'idle' | 'windup' | 'cooldown';
+        readonly targetId: string | null;
+        readonly lastFiredTargetId?: string;
+        readonly lastFiredTick?: number;
+      }
+    | undefined,
+  visibleEntityIds: ReadonlySet<string>,
+): VisibleCombatState | undefined {
+  if (!attack || attack.phase === 'idle') return undefined;
+  const observedTargetId = attack.targetId ?? attack.lastFiredTargetId;
+  const targetVisible =
+    observedTargetId !== null &&
+    observedTargetId !== undefined &&
+    visibleEntityIds.has(observedTargetId);
+  return {
+    phase: attack.phase,
+    ...(targetVisible ? { targetId: observedTargetId } : {}),
+    ...(targetVisible && attack.lastFiredTick !== undefined
+      ? { lastFiredTick: attack.lastFiredTick }
+      : {}),
+  };
+}
+
 function baseViews(
   state: MatchState,
   factionId: FactionId,
   knowledge: FactionKnowledge,
+  visibleEntityIds: ReadonlySet<string>,
 ): BaseView[] {
   const globalObservation = isGlobalObservationActive(state, factionId);
   const memories = new Map(
@@ -36,6 +64,11 @@ function baseViews(
   );
   const views = state.bases.map((base): BaseView => {
     const cellIndex = base.cell.y * state.map.width + base.cell.x;
+    const turretCombat = visibleCombat(base.attack, visibleEntityIds);
+    const defenderCombat = visibleCombat(
+      base.defender?.attack,
+      visibleEntityIds,
+    );
     if (base.owner === factionId) {
       return {
         visibility: 'owned',
@@ -49,6 +82,9 @@ function baseViews(
         upgradeJob: base.upgradeJob ? { ...base.upgradeJob } : null,
         defenderHp: base.defender?.hp ?? null,
         defenderMaxHp: base.defender?.maxHp ?? null,
+        lastDamagedTick: base.lastDamagedTick,
+        ...(turretCombat ? { turretCombat } : {}),
+        ...(defenderCombat ? { defenderCombat } : {}),
         captureCandidate: base.captureCandidate,
         captureProgressCentiTicks: base.captureProgressCentiTicks,
       };
@@ -65,6 +101,9 @@ function baseViews(
         level: base.level,
         defenderHp: base.defender?.hp ?? null,
         defenderMaxHp: base.defender?.maxHp ?? null,
+        lastDamagedTick: base.lastDamagedTick,
+        ...(turretCombat ? { turretCombat } : {}),
+        ...(defenderCombat ? { defenderCombat } : {}),
         captureCandidate: base.captureCandidate,
         captureProgressCentiTicks: base.captureProgressCentiTicks,
       };
@@ -195,6 +234,46 @@ export function getFactionView(
   if (!faction || !knowledge) throw new RangeError('unknown factionId');
   const masks = copyKnowledgeMap(knowledge);
   const globalObservation = isGlobalObservationActive(state, factionId);
+  const visibleEntityIds = new Set<string>();
+  for (const unit of state.units) {
+    if (
+      unit.factionId === factionId ||
+      (!unit.garrisonedAtBaseId &&
+        (isUnitVisibleToFaction(state, unit, factionId) || globalObservation))
+    )
+      visibleEntityIds.add(unit.id);
+  }
+  for (const base of state.bases) {
+    const index = base.cell.y * state.map.width + base.cell.x;
+    if (
+      base.owner === factionId ||
+      knowledge.visible[index] ||
+      globalObservation
+    )
+      visibleEntityIds.add(base.id);
+  }
+  for (const facility of state.facilities) {
+    if (
+      facility.owner === factionId ||
+      (facility.kind !== 'mine' &&
+        facility.hp > 0 &&
+        (globalObservation ||
+          isCellVisibleToFaction(state, facility.cell, factionId))) ||
+      (facility.kind === 'mine' &&
+        isMineDetectedToFaction(state, facility, factionId))
+    )
+      visibleEntityIds.add(facility.id);
+  }
+  if (
+    (state.localFaction.active || state.localFaction.defeated) &&
+    (state.localFaction.defeated ||
+      isCellVisibleToFaction(
+        state,
+        state.localFaction.stronghold.cell,
+        factionId,
+      ))
+  )
+    visibleEntityIds.add(state.localFaction.stronghold.id);
   const ownUnits = state.units
     .filter((unit) => unit.factionId === factionId && unit.hp > 0)
     .map((unit) => ({
@@ -214,6 +293,9 @@ export function getFactionView(
       kind: unit.kind,
       hp: unit.hp,
       maxHp: unit.maxHp,
+      ...(unit.lastDamagedTick !== undefined
+        ? { lastDamagedTick: unit.lastDamagedTick }
+        : {}),
       cell: { ...unit.cell },
       path: unit.path.map((cell) => ({ ...cell })),
       edgeProgress: unit.edgeProgress,
@@ -246,16 +328,23 @@ export function getFactionView(
         !unit.garrisonedAtBaseId &&
         (isUnitVisibleToFaction(state, unit, factionId) || globalObservation),
     )
-    .map((unit) => ({
-      control: 'enemy' as const,
-      id: unit.id,
-      factionId: unit.factionId,
-      kind: unit.kind,
-      positionX1024: getUnitPositionX1024(unit),
-      positionY1024: getUnitPositionY1024(unit),
-      hp: unit.hp,
-      maxHp: unit.maxHp,
-    }));
+    .map((unit) => {
+      const combat = visibleCombat(unit.attack, visibleEntityIds);
+      return {
+        control: 'enemy' as const,
+        id: unit.id,
+        factionId: unit.factionId,
+        kind: unit.kind,
+        positionX1024: getUnitPositionX1024(unit),
+        positionY1024: getUnitPositionY1024(unit),
+        hp: unit.hp,
+        maxHp: unit.maxHp,
+        ...(unit.lastDamagedTick !== undefined
+          ? { lastDamagedTick: unit.lastDamagedTick }
+          : {}),
+        ...(combat ? { combat } : {}),
+      };
+    });
   return {
     viewerFactionId: factionId,
     seed: state.seed,
@@ -470,7 +559,7 @@ export function getFactionView(
         (base) => base.owner === 'local' && base.kind !== 'hq',
       ).length,
     },
-    bases: baseViews(state, factionId, knowledge),
+    bases: baseViews(state, factionId, knowledge, visibleEntityIds),
     crossings: crossingViews(state, factionId, knowledge),
     facilities: [
       ...knowledge.facilityMemory.filter((f) => f.owner !== factionId),
@@ -483,15 +572,20 @@ export function getFactionView(
         .map((f) => ({ ...f, seenTick: state.elapsedTicks })),
     ].flatMap<FacilityView>((memory) => {
       const current = state.facilities.find((f) => f.id === memory.id);
-      if (current?.owner === factionId)
+      if (current?.owner === factionId) {
+        const { attack: sourceAttack, ...currentState } = current;
+        const attack = visibleCombat(current.attack, visibleEntityIds);
+        void sourceAttack;
         return [
           {
-            ...current,
+            ...currentState,
             anchor: { ...current.anchor },
             cell: { ...current.cell },
+            ...(attack ? { attack } : {}),
             visibility: 'owned' as const,
           },
         ];
+      }
       if (memory.owner === factionId) return [];
       const mineDetected =
         current?.kind === 'mine' &&
@@ -502,11 +596,17 @@ export function getFactionView(
         isCellVisibleToFaction(state, memory.cell, factionId);
       if ((visible && !current) || (current?.kind === 'mine' && !mineDetected))
         return [];
+      const { attack: _memoryAttack, ...memoryState } = memory;
+      const attack = visible
+        ? visibleCombat(current?.attack, visibleEntityIds)
+        : undefined;
+      void _memoryAttack;
       return [
         {
-          ...memory,
+          ...memoryState,
           anchor: { ...memory.anchor },
           cell: { ...memory.cell },
+          ...(attack ? { attack } : {}),
           visibility: visible ? ('visible' as const) : ('remembered' as const),
         },
       ];
