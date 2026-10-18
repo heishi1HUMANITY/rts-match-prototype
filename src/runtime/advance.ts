@@ -3,7 +3,7 @@ import { resolveMatchOutcome } from '../simulation/outcome';
 import { getFactionView } from '../simulation/view';
 import { stepMatch } from '../simulation/step';
 import { updateFactionKnowledge } from '../simulation/visibility';
-import { decideBotCommands } from '../ai/strategy';
+import { planBotDecision } from '../ai/strategy';
 import { advanceLocalFactionOrders } from '../ai/local-faction';
 import type { MatchState } from '../simulation/types';
 
@@ -67,14 +67,39 @@ export function advanceMatch(state: MatchState): MatchState {
           faction.eliminatedAtTick !== null ||
           faction.ticketsCenti <= 0
         ) {
-          return { factionId, commands: [] as const };
+          return {
+            factionId,
+            commands: [] as const,
+            memory: faction?.npcPolicyMemory ?? {
+              observedLeader: null,
+              observedLeaderSinceTick: prepared.elapsedTicks,
+              reactedLeader: null,
+              targetFaction: null,
+              targetChangedAtTick: prepared.elapsedTicks,
+              researchNoticeKey: null,
+              researchPriority: [],
+            },
+          };
         }
-        return {
-          factionId,
-          commands: decideBotCommands(getFactionView(prepared, factionId)),
-        };
+        const decision = planBotDecision(
+          getFactionView(prepared, factionId),
+          faction.npcPolicyMemory,
+        );
+        return { factionId, ...decision };
       },
     );
+
+    const memoryByFaction = new Map(
+      decisions.map(({ factionId, memory }) => [factionId, memory]),
+    );
+    if (memoryByFaction.size > 0)
+      prepared = {
+        ...prepared,
+        factions: prepared.factions.map((faction) => {
+          const memory = memoryByFaction.get(faction.id);
+          return memory ? { ...faction, npcPolicyMemory: memory } : faction;
+        }),
+      };
 
     for (const { factionId, commands } of decisions) {
       for (const command of commands) {

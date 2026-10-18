@@ -259,6 +259,18 @@ export interface FactionState extends EliminationStatus {
   readonly productionProgressPercent: number;
   readonly bulwarkUntilTick: number;
   readonly jammedUntilTick: number;
+  /** Public-information policy memory; contains no hidden opponent state. */
+  readonly npcPolicyMemory?: NpcPolicyMemory;
+}
+
+export interface NpcPolicyMemory {
+  readonly observedLeader: CombatantId | null;
+  readonly observedLeaderSinceTick: number;
+  readonly reactedLeader: CombatantId | null;
+  readonly targetFaction: CombatantId | null;
+  readonly targetChangedAtTick: number;
+  readonly researchNoticeKey: string | null;
+  readonly researchPriority: readonly ResearchId[];
 }
 export type Faction = FactionState;
 
@@ -388,7 +400,7 @@ export interface AirDefenseMemory {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 26;
+  readonly schemaVersion: 27;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;

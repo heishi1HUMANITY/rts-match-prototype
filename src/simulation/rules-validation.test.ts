@@ -615,7 +615,7 @@ describe('F21 variable research definitions', () => {
   });
 });
 
-describe('F88 combat estimate master migration', () => {
+describe('F89 NPC forecast master migration', () => {
   it('adds the default horizon and preserves existing and customized rules', () => {
     const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -623,6 +623,12 @@ describe('F88 combat estimate master migration', () => {
     >;
     rules.units.assault.costCenti = 4321;
     delete rules.combatEstimate;
+    delete rules.npc.forecastHorizonTicks;
+    for (const profile of Object.values(rules.npc.difficultyProfiles) as Record<
+      string,
+      any
+    >[])
+      delete profile.targetMemoryTtlTicks;
     const migrated = validateEnvelope({
       masterSchemaVersion: MASTER_SCHEMA_VERSION - 1,
       revision: 19,
@@ -635,12 +641,14 @@ describe('F88 combat estimate master migration', () => {
         revision: 19,
         rules: {
           combatEstimate: { maxTicks: 1200 },
+          npc: { forecastHorizonTicks: 90 },
           units: { assault: { costCenti: 4321 } },
         },
       },
     });
 
     rules.combatEstimate = { maxTicks: 2400 };
+    rules.npc.forecastHorizonTicks = 180;
     const customized = validateEnvelope({
       masterSchemaVersion: MASTER_SCHEMA_VERSION - 1,
       revision: 20,
@@ -649,7 +657,10 @@ describe('F88 combat estimate master migration', () => {
     expect(customized).toMatchObject({
       ok: true,
       envelope: {
-        rules: { combatEstimate: { maxTicks: 2400 } },
+        rules: {
+          combatEstimate: { maxTicks: 2400 },
+          npc: { forecastHorizonTicks: 180 },
+        },
       },
     });
   });

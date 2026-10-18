@@ -550,6 +550,16 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'tick (0.1秒)',
     help: '別の戦略拠点へ命令を切り替える前に維持する猶予です。',
   },
+  targetMemoryTtlTicks: {
+    label: '観測記憶の有効時間',
+    unit: 'tick (0.1秒)',
+    help: '最後に観測した拠点情報を標的候補として使える時間です。強難度ほど長く保持します。',
+  },
+  forecastHorizonTicks: {
+    label: '戦闘予測の上限',
+    unit: 'tick (0.1秒)',
+    help: 'NPCが一回の判断で行うFactionView限定戦闘予測の上限です。既存のプレイヤー予測上限は変えません。',
+  },
   scoutUsePercent: {
     label: '偵察活用率',
     unit: '%',

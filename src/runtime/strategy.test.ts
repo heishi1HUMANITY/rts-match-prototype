@@ -183,7 +183,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 26,
+        schemaVersion: 27,
         rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
         masterSchemaVersion: MASTER_SCHEMA_VERSION,

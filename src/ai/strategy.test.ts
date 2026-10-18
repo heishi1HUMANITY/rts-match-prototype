@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decideBotCommands,
   knownAirDefenseDetour,
+  planBotDecision,
   selectNpcResearchRoute,
 } from './strategy';
 import { createMatch } from '../simulation/match';
@@ -9,7 +10,13 @@ import { getFactionView } from '../simulation/view';
 import { applyCommand } from '../simulation/commands';
 import { findPath } from '../simulation/pathfinding';
 import { updateFactionKnowledge } from '../simulation/visibility';
-import type { FactionView, MatchState } from '../simulation/types';
+import { vi } from 'vitest';
+import * as combatEstimate from '../simulation/combat-estimate';
+import type {
+  FactionView,
+  MatchState,
+  NpcPolicyMemory,
+} from '../simulation/types';
 
 function running(state: MatchState): MatchState {
   return {
@@ -29,7 +36,7 @@ function replaceOwnFaction(
   return { ...view, ownFaction: { ...view.ownFaction, ...update } };
 }
 
-describe('stateless faction-view NPC policy', () => {
+describe('faction-view NPC policy', () => {
   it('uses the same frontline site for NPC production after logistics specialization', () => {
     const initial = running(createMatch(109));
     const state = {
@@ -238,37 +245,201 @@ describe('stateless faction-view NPC policy', () => {
     }
   });
 
-  it('delays new strategic orders after public notices but keeps existing orders and local defense responsive', () => {
+  it('reacts to a public leader only after the configured delay and respects switch grace', () => {
     const base = getFactionView(running(createMatch(43)), 'B');
-    const unit = base.ownUnits[0]!;
     const view = {
       ...base,
-      tick: 120,
-      ownUnits: [unit],
-      researchAnnouncements: [
-        {
-          factionId: 'A' as const,
-          researchId: 'specialization-power' as const,
-          tick: 119,
-        },
-      ],
+      tick: 0,
+      ticketsCenti: { A: 90_000, B: 80_000, C: 60_000 },
+    };
+    const first = planBotDecision(view);
+    expect(first.memory.reactedLeader).toBeNull();
+    const beforeDelay = planBotDecision({ ...view, tick: 59 }, first.memory);
+    expect(beforeDelay.memory.reactedLeader).toBeNull();
+    const matured = planBotDecision({ ...view, tick: 60 }, beforeDelay.memory);
+    expect(matured.memory.reactedLeader).toBe('A');
+    const changedLeader = planBotDecision(
+      {
+        ...view,
+        tick: 90,
+        ticketsCenti: { A: 50_000, B: 80_000, C: 100_000 },
+      },
+      matured.memory,
+    );
+    expect(changedLeader.memory.observedLeader).toBe('C');
+    expect(changedLeader.memory.reactedLeader).toBe('A');
+  });
+
+  it('switches at the target-grace boundary, not one tick before', () => {
+    const base = getFactionView(running(createMatch(434)), 'B');
+    const memory: NpcPolicyMemory = {
+      observedLeader: 'C',
+      observedLeaderSinceTick: 0,
+      reactedLeader: 'C',
+      targetFaction: 'A',
+      targetChangedAtTick: 0,
+      researchNoticeKey: null,
+      researchPriority: [],
+    };
+    const view = {
+      ...base,
+      ticketsCenti: { A: 90_000, B: 80_000, C: 100_000 },
       rules: {
         ...base.rules,
-        npc: { ...base.rules.npc, maxCommandsPerDecision: 8 },
+        npc: {
+          ...base.rules.npc,
+          difficultyProfiles: {
+            ...base.rules.npc.difficultyProfiles,
+            standard: {
+              ...base.rules.npc.difficultyProfiles.standard,
+              targetSwitchGraceTicks: 90,
+            },
+          },
+        },
       },
     };
     expect(
-      decideBotCommands(view).some((command) => command.type === 'march'),
-    ).toBe(false);
-    const delayed = {
-      ...view,
-      tick:
-        view.tick +
-        view.rules.npc.difficultyProfiles.standard.publicReactionDelayTicks,
-    };
+      planBotDecision({ ...view, tick: 89 }, memory).memory.targetFaction,
+    ).toBe('A');
     expect(
-      decideBotCommands(delayed).some((command) => command.type === 'march'),
-    ).toBe(true);
+      planBotDecision({ ...view, tick: 90 }, memory).memory.targetFaction,
+    ).toBe('C');
+  });
+
+  it('uses public specialization notices to alter an eligible next research command', () => {
+    const base = getFactionView(running(createMatch(431)), 'B');
+    const completedResearchIds = [
+      'firepower-1',
+      'artillery-1',
+      'air-defense-1',
+      'bridge-2',
+      'survey-1',
+      'aircraft-1',
+      'supply-lines-1',
+      'maintenance-1',
+    ];
+    const common = {
+      ...base,
+      ownFaction: { ...base.ownFaction, completedResearchIds },
+      ticketsCenti: { A: 90_000, B: 80_000, C: 60_000 },
+    };
+    const initialMemory = planBotDecision({ ...common, tick: 0 }).memory;
+    const plain = planBotDecision({ ...common, tick: 60 }, initialMemory);
+    const noticed = planBotDecision(
+      {
+        ...common,
+        tick: 60,
+        researchAnnouncements: [
+          {
+            factionId: 'A',
+            researchId: 'specialization-wartime-economy',
+            tick: 0,
+          },
+        ],
+      },
+      initialMemory,
+    );
+    const researchId = (commands: typeof plain.commands) =>
+      commands.find((command) => command.type === 'start-research');
+    expect(researchId(noticed.commands)).not.toEqual(
+      researchId(plain.commands),
+    );
+    expect(researchId(noticed.commands)).toEqual({
+      type: 'start-research',
+      researchId: 'facility-turret',
+    });
+  });
+
+  it('keeps policy evaluation independent of which faction is marked human', () => {
+    const view = getFactionView(running(createMatch(432)), 'B');
+    const swapped = {
+      ...view,
+      ownFaction: {
+        ...view.ownFaction,
+        controller:
+          view.ownFaction.controller === 'bot'
+            ? ('human' as const)
+            : ('bot' as const),
+      },
+    };
+    expect(decideBotCommands(swapped)).toEqual(decideBotCommands(view));
+  });
+
+  it('expires remembered opportunity targets from their last observed tick', () => {
+    const view = getFactionView(running(createMatch(433)), 'B');
+    const unknownBase = view.bases.find(
+      (base) => base.visibility === 'unknown',
+    );
+    expect(unknownBase).toBeDefined();
+    if (!unknownBase || unknownBase.visibility !== 'unknown') return;
+    const rememberedC = {
+      visibility: 'remembered' as const,
+      id: unknownBase.id,
+      kind: unknownBase.kind,
+      cell: view.ownUnits[0]!.cell,
+      owner: 'C' as const,
+      hp: 600,
+      seenTick: 0,
+      selfReportedLost: false,
+      defenderHp: 0,
+      defenderMaxHp: 0,
+    };
+    const memory: NpcPolicyMemory = {
+      observedLeader: 'A',
+      observedLeaderSinceTick: 0,
+      reactedLeader: 'A',
+      targetFaction: 'C',
+      targetChangedAtTick: 0,
+      researchNoticeKey: null,
+      researchPriority: [],
+    };
+    const policyView = (tick: number): FactionView => ({
+      ...view,
+      tick,
+      ticketsCenti: { A: 100_000, B: 80_000, C: 50_000 },
+      ownUnits: [{ ...view.ownUnits[0]!, cell: rememberedC.cell }],
+      rules: {
+        ...view.rules,
+        npc: {
+          ...view.rules.npc,
+          difficultyProfiles: {
+            ...view.rules.npc.difficultyProfiles,
+            standard: {
+              ...view.rules.npc.difficultyProfiles.standard,
+              targetMemoryTtlTicks: 300,
+              targetSwitchGraceTicks: 0,
+              nextBestPercent: 100,
+            },
+          },
+        },
+      },
+      bases: view.bases.map((base) =>
+        base.id === rememberedC.id ? { ...rememberedC, seenTick: 0 } : base,
+      ),
+    });
+    const estimate = vi
+      .spyOn(combatEstimate, 'estimateCombat')
+      .mockReturnValue({
+        status: 'favorable',
+        ticks: 10,
+        ownLost: 0,
+        ownRemaining: 1,
+        threatsRemaining: 0,
+        threatsIncluded: 1,
+        memoryNotes: [],
+        reason: null,
+        assumptions: [],
+      });
+    expect(planBotDecision(policyView(300), memory).memory.targetFaction).toBe(
+      'C',
+    );
+    expect(estimate).toHaveBeenCalledTimes(1);
+    estimate.mockClear();
+    expect(planBotDecision(policyView(301), memory).memory.targetFaction).toBe(
+      'A',
+    );
+    expect(estimate).not.toHaveBeenCalled();
+    estimate.mockRestore();
   });
 
   it('is deterministic and only acts from the supplied faction view', () => {
@@ -277,7 +448,26 @@ describe('stateless faction-view NPC policy', () => {
     const changedHiddenEnemy = {
       ...state,
       units: state.units.map((unit) =>
-        unit.id === 'A-01' ? { ...unit, cell: { x: 1, y: 1 } } : unit,
+        unit.id === 'A-01'
+          ? {
+              ...unit,
+              kind: 'artillery' as const,
+              cell: { x: 1, y: 1 },
+              path: [],
+              marchOrder: null,
+            }
+          : unit,
+      ),
+      factions: state.factions.map((faction) =>
+        faction.id === 'A'
+          ? {
+              ...faction,
+              completedResearchIds: [
+                ...faction.completedResearchIds,
+                'specialization-information-warfare',
+              ],
+            }
+          : faction,
       ),
     };
     const secondView = getFactionView(changedHiddenEnemy, 'B');
@@ -285,6 +475,7 @@ describe('stateless faction-view NPC policy', () => {
     expect(view.visibleEnemies.some(({ id }) => id === 'A-01')).toBe(false);
     expect(secondView).toEqual(view);
     expect(decideBotCommands(view)).toEqual(decideBotCommands(secondView));
+    expect(planBotDecision(view)).toEqual(planBotDecision(secondView));
     expect(decideBotCommands(view).length).toBeLessThanOrEqual(8);
   });
 
