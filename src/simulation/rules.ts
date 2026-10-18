@@ -26,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 28 as const;
-export const RULES_VERSION = 'cp13-nonfire-specializations-v1' as const;
+export const MASTER_SCHEMA_VERSION = 29 as const;
+export const RULES_VERSION = 'cp13-combat-estimate-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -108,6 +108,7 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly combatEstimate: { readonly maxTicks: number };
   readonly cp87: {
     readonly frontlineRadius: number;
     readonly frontlineRecoveryDelayTicks: number;
@@ -311,6 +312,7 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  combatEstimate: { maxTicks: 1200 },
   cp87: {
     frontlineRadius: 3,
     frontlineRecoveryDelayTicks: 50,

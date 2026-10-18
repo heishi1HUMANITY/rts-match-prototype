@@ -615,6 +615,46 @@ describe('F21 variable research definitions', () => {
   });
 });
 
+describe('F88 combat estimate master migration', () => {
+  it('adds the default horizon and preserves existing and customized rules', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    rules.units.assault.costCenti = 4321;
+    delete rules.combatEstimate;
+    const migrated = validateEnvelope({
+      masterSchemaVersion: MASTER_SCHEMA_VERSION - 1,
+      revision: 19,
+      rules,
+    });
+    expect(migrated).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 19,
+        rules: {
+          combatEstimate: { maxTicks: 1200 },
+          units: { assault: { costCenti: 4321 } },
+        },
+      },
+    });
+
+    rules.combatEstimate = { maxTicks: 2400 };
+    const customized = validateEnvelope({
+      masterSchemaVersion: MASTER_SCHEMA_VERSION - 1,
+      revision: 20,
+      rules,
+    });
+    expect(customized).toMatchObject({
+      ok: true,
+      envelope: {
+        rules: { combatEstimate: { maxTicks: 2400 } },
+      },
+    });
+  });
+});
+
 it('bounds variable node count and accepts many same-stage independent nodes', () => {
   const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
     string,

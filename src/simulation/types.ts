@@ -26,7 +26,8 @@ export type ScenarioId =
   | 'f18-garrison'
   | 'f15-tactical-abilities'
   | 'f86-point-fire'
-  | 'f87-specializations';
+  | 'f87-specializations'
+  | 'f88-combat-estimate';
 export type UnitKind =
   | 'assault'
   | 'scout'

@@ -616,6 +616,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    combatEstimate: '戦闘見込み',
     cp87: 'CP13 非火力専攻',
     artilleryBombardment: '地点砲撃',
     airDefense: '航空・対空',

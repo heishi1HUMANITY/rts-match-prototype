@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'combatEstimate',
     'cp87',
     'artilleryBombardment',
     'airDefense',
@@ -78,6 +79,24 @@ export function validateRules(input: unknown): ValidationResult {
     'tacticalAbilities',
   ] as const;
   exactKeys(input, rootKeys, 'rules', issues);
+  if (isRecord(input.combatEstimate)) {
+    exactKeys(
+      input.combatEstimate,
+      ['maxTicks'],
+      'rules.combatEstimate',
+      issues,
+    );
+    if (numberField(input.combatEstimate.maxTicks, 10, 12_000) === undefined)
+      issues.push({
+        key: 'rules.combatEstimate.maxTicks',
+        message: '10以上12000以下の整数が必要です',
+      });
+  } else {
+    issues.push({
+      key: 'rules.combatEstimate',
+      message: 'オブジェクトが必要です',
+    });
+  }
   if (isRecord(input.cp87)) {
     const cp87Keys = [
       'frontlineRadius',
@@ -785,7 +804,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 24 &&
       input.masterSchemaVersion !== 25 &&
       input.masterSchemaVersion !== 26 &&
-      input.masterSchemaVersion !== 27)
+      input.masterSchemaVersion !== 27 &&
+      input.masterSchemaVersion !== 28)
   )
     return {
       ok: false,
@@ -921,6 +941,12 @@ export function validateEnvelope(
       };
     migrationCandidate = {
       ...migrationCandidate,
+      combatEstimate: {
+        ...DEFAULT_RULES.combatEstimate,
+        ...(isRecord(migrationCandidate.combatEstimate)
+          ? migrationCandidate.combatEstimate
+          : {}),
+      },
       cp87: {
         ...DEFAULT_RULES.cp87,
         ...(isRecord(migrationCandidate.cp87) ? migrationCandidate.cp87 : {}),

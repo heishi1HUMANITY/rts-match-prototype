@@ -164,7 +164,8 @@ function scenarioMap(
     scenarioId !== 'g2-combat' &&
     scenarioId !== 'f15-tactical-abilities' &&
     scenarioId !== 'f86-point-fire' &&
-    scenarioId !== 'f87-specializations'
+    scenarioId !== 'f87-specializations' &&
+    scenarioId !== 'f88-combat-estimate'
   )
     return map;
   return {
@@ -410,6 +411,32 @@ function configuredFixture(
           }
         : faction,
     );
+  } else if (scenarioId === 'f88-combat-estimate') {
+    const center = Math.floor(state.map.width / 2);
+    const template = units.find((unit) => unit.id === 'A-01')!;
+    units = [
+      {
+        ...template,
+        id: 'A-01',
+        factionId: 'A',
+        kind: 'assault',
+        cell: { x: center - 1, y: center },
+        hp: 200,
+        maxHp: 200,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+      {
+        ...template,
+        id: 'B-01',
+        factionId: 'B',
+        kind: 'assault',
+        cell: { x: center + 3, y: center },
+        hp: 120,
+        maxHp: 200,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+    ];
+    bases = [];
   }
   return { ...state, factions, units, bases };
 }
