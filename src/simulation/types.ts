@@ -27,7 +27,9 @@ export type ScenarioId =
   | 'f15-tactical-abilities'
   | 'f86-point-fire'
   | 'f87-specializations'
-  | 'f88-combat-estimate';
+  | 'f88-combat-estimate'
+  | 'f120-combat-estimate-ui'
+  | 'f121-combat-visibility';
 export type UnitKind =
   | 'assault'
   | 'scout'
@@ -278,6 +280,16 @@ export interface AttackState {
   readonly targetId: string | null;
   readonly phase: 'idle' | 'windup' | 'cooldown';
   readonly phaseEndsTick: number;
+  /** Most recent completed attack, retained for observer-safe combat feedback. */
+  readonly lastFiredTargetId?: string;
+  readonly lastFiredTick?: number;
+}
+
+/** A sanitized combat summary may name only an entity already in the view. */
+export interface VisibleCombatState {
+  readonly phase: AttackState['phase'];
+  readonly targetId?: string;
+  readonly lastFiredTick?: number;
 }
 
 export interface AttackProfile {
@@ -400,7 +412,7 @@ export interface AirDefenseMemory {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 27;
+  readonly schemaVersion: 28;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -466,6 +478,8 @@ export interface VisibleEnemyUnitView {
   readonly positionY1024: number;
   readonly hp: number;
   readonly maxHp: number;
+  readonly combat?: VisibleCombatState;
+  readonly lastDamagedTick?: number;
 }
 
 export interface UnknownBaseView {
@@ -503,6 +517,9 @@ export interface VisibleBaseView {
   readonly captureProgressCentiTicks: number;
   readonly defenderHp: number | null;
   readonly defenderMaxHp: number | null;
+  readonly turretCombat?: VisibleCombatState;
+  readonly defenderCombat?: VisibleCombatState;
+  readonly lastDamagedTick?: number;
 }
 
 export interface OwnedBaseView extends Omit<
@@ -627,9 +644,10 @@ export interface FacilityState {
 export interface FacilityMemory extends FacilityState {
   readonly seenTick: number;
 }
-export interface FacilityView extends FacilityState {
+export interface FacilityView extends Omit<FacilityState, 'attack'> {
   readonly visibility: 'owned' | 'visible' | 'remembered';
   readonly seenTick?: number;
+  readonly attack?: VisibleCombatState;
 }
 
 export type Command =

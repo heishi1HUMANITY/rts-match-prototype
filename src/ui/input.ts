@@ -329,6 +329,11 @@ export class CanvasInput {
   };
   private readonly onHudDown = (event: PointerEvent): void => {
     if (
+      event.target instanceof Element &&
+      event.target.closest('.combat-estimate')
+    )
+      return;
+    if (
       event.target instanceof Node &&
       this.options.canvas.contains(event.target)
     )

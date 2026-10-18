@@ -199,6 +199,21 @@ function stepAttackActor(
   return { nextAttack: current, hit: null };
 }
 
+function retainAttackObservation(
+  next: AttackState,
+  previous: AttackState,
+  hit: { readonly target: Target } | null,
+  tick: number,
+): AttackState {
+  const lastFiredTargetId = hit?.target.id ?? previous.lastFiredTargetId;
+  const lastFiredTick = hit ? tick : previous.lastFiredTick;
+  return {
+    ...next,
+    ...(lastFiredTargetId ? { lastFiredTargetId } : {}),
+    ...(lastFiredTick !== undefined ? { lastFiredTick } : {}),
+  };
+}
+
 function damageAgainst(
   state: MatchState,
   attacker: UnitState,
@@ -1013,7 +1028,7 @@ export function resolveCombat(state: MatchState): MatchState {
 
     updatedUnits.push({
       ...attacker,
-      attack: nextAttack,
+      attack: retainAttackObservation(nextAttack, attack, hit, tick),
       ...(hit ? { lastAttackTick: tick } : {}),
     });
     if (hit) {
@@ -1111,7 +1126,10 @@ export function resolveCombat(state: MatchState): MatchState {
       tick,
     );
 
-    updatedFacilities.push({ ...f, attack: nextAttack });
+    updatedFacilities.push({
+      ...f,
+      attack: retainAttackObservation(nextAttack, attack, hit, tick),
+    });
     if (hit) {
       activatedFacilities.add(f.id);
       hitReservations.push({
@@ -1193,7 +1211,19 @@ export function resolveCombat(state: MatchState): MatchState {
         tick,
       );
 
-      defender = { ...defender, attack: nextAttack };
+      defender = {
+        ...defender,
+        attack: retainAttackObservation(
+          nextAttack,
+          defender.attack ?? {
+            targetId: null,
+            phase: 'idle',
+            phaseEndsTick: 0,
+          },
+          hit,
+          tick,
+        ),
+      };
       if (hit) {
         hitReservations.push({
           tick,
@@ -1269,7 +1299,7 @@ export function resolveCombat(state: MatchState): MatchState {
           tick,
         );
 
-        baseAttack = nextAttack;
+        baseAttack = retainAttackObservation(nextAttack, baseAttack, hit, tick);
         if (hit) {
           hitReservations.push({
             tick,

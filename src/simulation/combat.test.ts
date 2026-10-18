@@ -252,6 +252,10 @@ describe('simultaneous combat target selection', () => {
     state = resolveCombat(state);
     expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(180);
     expect(state.units.find(({ id }) => id === 'B-01')?.hp).toBe(180);
+    expect(state.units.find(({ id }) => id === 'A-01')?.attack).toMatchObject({
+      lastFiredTargetId: 'B-01',
+      lastFiredTick: 1,
+    });
     expect(state.units.find(({ id }) => id === 'A-01')?.attack?.phase).toBe(
       'cooldown',
     );
@@ -264,6 +268,12 @@ describe('simultaneous combat target selection', () => {
       state = { ...state, elapsedTicks: tick };
       state = resolveCombat(state);
       expect(state.units.find(({ id }) => id === 'A-01')?.hp).toBe(180);
+      expect(state.units.find(({ id }) => id === 'A-01')?.attack).toMatchObject(
+        {
+          lastFiredTargetId: 'B-01',
+          lastFiredTick: 1,
+        },
+      );
     }
 
     // Tick 11: second attack deals 20 damage (HP 180 -> 160)

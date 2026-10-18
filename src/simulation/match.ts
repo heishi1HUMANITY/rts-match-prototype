@@ -165,7 +165,9 @@ function scenarioMap(
     scenarioId !== 'f15-tactical-abilities' &&
     scenarioId !== 'f86-point-fire' &&
     scenarioId !== 'f87-specializations' &&
-    scenarioId !== 'f88-combat-estimate'
+    scenarioId !== 'f88-combat-estimate' &&
+    scenarioId !== 'f120-combat-estimate-ui' &&
+    scenarioId !== 'f121-combat-visibility'
   )
     return map;
   return {
@@ -433,6 +435,57 @@ function configuredFixture(
         cell: { x: center + 3, y: center },
         hp: 120,
         maxHp: 200,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+    ];
+    bases = [];
+  } else if (scenarioId === 'f120-combat-estimate-ui') {
+    const center = Math.floor(state.map.width / 2);
+    const template = units.find((unit) => unit.id === 'A-01')!;
+    units = [
+      {
+        ...template,
+        id: 'A-01',
+        factionId: 'A',
+        kind: 'assault',
+        cell: { x: center - 1, y: center },
+        hp: 5_000,
+        maxHp: 5_000,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+      {
+        ...template,
+        id: 'B-01',
+        factionId: 'B',
+        cell: { x: center + 3, y: center },
+        hp: 5_000,
+        maxHp: 5_000,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+    ];
+    bases = [];
+  } else if (scenarioId === 'f121-combat-visibility') {
+    const center = Math.floor(state.map.width / 2);
+    const template = units.find((unit) => unit.id === 'A-01')!;
+    units = [
+      {
+        ...template,
+        id: 'A-01',
+        factionId: 'A',
+        kind: 'artillery',
+        cell: { x: center - 3, y: center },
+        hp: 10_000,
+        maxHp: 10_000,
+        attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
+      },
+      {
+        ...template,
+        id: 'B-01',
+        factionId: 'B',
+        kind: 'artillery',
+        cell: { x: center + 2, y: center },
+        hp: 10_000,
+        maxHp: 10_000,
         attack: { targetId: null, phase: 'idle', phaseEndsTick: 0 },
       },
     ];

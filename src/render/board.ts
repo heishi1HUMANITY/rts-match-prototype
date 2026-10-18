@@ -321,6 +321,21 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     zIndex: '1',
   });
   container.append(labelLayer);
+  const combatSvg = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg',
+  );
+  combatSvg.classList.add('rts-combat-links');
+  Object.assign(combatSvg.style, {
+    position: 'absolute',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    zIndex: '2',
+  });
+  labelLayer.append(combatSvg);
 
   const markerGeometry = new Map<CombatantId, THREE.BufferGeometry>();
   const markerMaterial = new Map<CombatantId, THREE.MeshStandardMaterial>();
@@ -853,6 +868,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     new THREE.CylinderGeometry(0.25, 0.4, 0.5, 4),
   );
   const facilityRingGeometry = ownGeometry(new THREE.RingGeometry(0.98, 1, 64));
+  const recentCombatShots = new Map<
+    string,
+    { targetId: string; tick: number }
+  >();
   const syncFacilities = (view: FactionView): void => {
     // Defense in depth: even a malformed snapshot may not reveal enemy mines.
     const visible = view.facilities.filter(
@@ -928,9 +947,193 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.ring.position.copy(cellPosition(facility.cell, 0.08));
       objects.ring.scale.setScalar(radius);
       objects.label.textContent = `${FACTIONS[facility.owner].symbol}${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} ${facility.hp}/${facility.maxHp}${remembered ? ` 最終T${facility.seenTick}` : building ? ` 建築${(facility.remainingBuildTicks / 10).toFixed(1)}秒` : ''}`;
+      if (!remembered) {
+        const combatMark =
+          facility.attack?.phase === 'windup'
+            ? ' ⚔準備'
+            : facility.attack?.phase === 'cooldown'
+              ? ' ↻待ち'
+              : '';
+        const underFire =
+          facility.lastDamagedTick > 0 &&
+          view.tick - facility.lastDamagedTick <= 2;
+        objects.label.dataset.combat = facility.attack?.phase ?? '';
+        objects.label.dataset.underFire = String(underFire);
+        objects.label.textContent += `${combatMark}${underFire ? ' ✦被弾' : ''}`;
+      }
       objects.label.title = objects.label.textContent;
       updateLabelPosition(objects.label, cellPosition(facility.cell, 0.8), -2);
     }
+  };
+
+  const combatSources = (
+    view: FactionView,
+  ): {
+    key: string;
+    targetId?: string;
+    lastFiredTargetId?: string;
+    lastFiredTick?: number;
+    phase: string;
+  }[] => [
+    ...view.ownUnits.map((unit) => ({
+      key: `unit:${unit.id}`,
+      phase: unit.attack?.phase ?? 'idle',
+      ...((unit.attack?.targetId ?? unit.attack?.lastFiredTargetId)
+        ? { targetId: unit.attack.targetId ?? unit.attack.lastFiredTargetId! }
+        : {}),
+      ...(unit.attack?.lastFiredTargetId
+        ? { lastFiredTargetId: unit.attack.lastFiredTargetId }
+        : {}),
+      ...(unit.attack?.lastFiredTick !== undefined
+        ? { lastFiredTick: unit.attack.lastFiredTick }
+        : {}),
+    })),
+    ...view.visibleEnemies.map((unit) => ({
+      key: `unit:${unit.id}`,
+      phase: unit.combat?.phase ?? 'idle',
+      ...(unit.combat?.targetId ? { targetId: unit.combat.targetId } : {}),
+      ...(unit.combat?.lastFiredTick !== undefined
+        ? { lastFiredTick: unit.combat.lastFiredTick }
+        : {}),
+    })),
+    ...view.bases
+      .filter(
+        (base) => base.visibility === 'visible' || base.visibility === 'owned',
+      )
+      .flatMap((base) => [
+        { key: `base:${base.id}:turret`, ...base.turretCombat },
+        { key: `base:${base.id}:defender`, ...base.defenderCombat },
+      ])
+      .map((source) => ({
+        key: source.key,
+        phase: source.phase ?? 'idle',
+        ...(source.targetId ? { targetId: source.targetId } : {}),
+        ...(source.lastFiredTick !== undefined
+          ? { lastFiredTick: source.lastFiredTick }
+          : {}),
+      })),
+    ...view.facilities
+      .filter(
+        (facility) =>
+          facility.visibility === 'visible' || facility.visibility === 'owned',
+      )
+      .map((facility) => ({
+        key: `facility:${facility.id}`,
+        phase: facility.attack?.phase ?? 'idle',
+        ...(facility.attack?.targetId
+          ? { targetId: facility.attack.targetId }
+          : {}),
+        ...(facility.attack?.lastFiredTick !== undefined
+          ? { lastFiredTick: facility.attack.lastFiredTick }
+          : {}),
+      })),
+  ];
+
+  const syncCombatLinks = (
+    previous: FactionView,
+    current: FactionView,
+  ): void => {
+    const previousSources = new Map(
+      combatSources(previous).map((source) => [source.key, source]),
+    );
+    const sources = combatSources(current);
+    const visibleIds = new Set<string>();
+    const bounds = labelLayer.getBoundingClientRect();
+    const positions = new Map<string, { x: number; y: number }>();
+    const labelCenter = (label: HTMLElement): { x: number; y: number } => {
+      const rect = label.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2 - bounds.left,
+        y: rect.top + rect.height / 2 - bounds.top,
+      };
+    };
+    for (const unit of [...current.ownUnits, ...current.visibleEnemies]) {
+      const objects = unitObjects.get(unit.id);
+      if (!objects) continue;
+      visibleIds.add(unit.id);
+      positions.set(unit.id, labelCenter(objects.label));
+    }
+    for (const base of current.bases) {
+      if (base.visibility !== 'visible' && base.visibility !== 'owned')
+        continue;
+      const objects = baseObjects.get(base.id);
+      if (!objects) continue;
+      visibleIds.add(base.id);
+      positions.set(base.id, labelCenter(objects.label));
+    }
+    for (const facility of current.facilities) {
+      if (facility.visibility !== 'visible' && facility.visibility !== 'owned')
+        continue;
+      const objects = facilityObjects.get(facility.id);
+      if (!objects) continue;
+      visibleIds.add(facility.id);
+      positions.set(facility.id, labelCenter(objects.label));
+    }
+    for (const source of sources) {
+      const old = previousSources.get(source.key);
+      const targetId =
+        source.targetId ?? source.lastFiredTargetId ?? old?.targetId;
+      if (
+        old &&
+        source.lastFiredTick !== undefined &&
+        source.lastFiredTick !== old.lastFiredTick &&
+        targetId &&
+        visibleIds.has(targetId)
+      )
+        recentCombatShots.set(source.key, {
+          targetId,
+          tick: current.tick,
+        });
+    }
+    for (const [key, shot] of recentCombatShots)
+      if (current.tick - shot.tick > 12 || !visibleIds.has(shot.targetId))
+        recentCombatShots.delete(key);
+
+    combatSvg.setAttribute('viewBox', `0 0 ${bounds.width} ${bounds.height}`);
+    const lines: SVGLineElement[] = [];
+    const appendLine = (sourceId: string, targetId: string, fired: boolean) => {
+      const sourcePosition = positions.get(sourceId);
+      const targetPosition = positions.get(targetId);
+      if (!sourcePosition || !targetPosition) return;
+      const dx = targetPosition.x - sourcePosition.x;
+      const dy = targetPosition.y - sourcePosition.y;
+      const length = Math.hypot(dx, dy);
+      const inset = Math.min(23, Math.max(0, length / 2 - 1));
+      const line = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'line',
+      );
+      line.setAttribute('x1', String(sourcePosition.x + (dx / length) * inset));
+      line.setAttribute('y1', String(sourcePosition.y + (dy / length) * inset));
+      line.setAttribute('x2', String(targetPosition.x - (dx / length) * inset));
+      line.setAttribute('y2', String(targetPosition.y - (dy / length) * inset));
+      line.classList.add(fired ? 'rts-combat-shot' : 'rts-combat-target');
+      lines.push(line);
+    };
+    for (const source of sources) {
+      if (
+        (source.phase === 'windup' || source.phase === 'cooldown') &&
+        source.targetId &&
+        visibleIds.has(source.targetId)
+      ) {
+        const id = source.key.startsWith('unit:')
+          ? source.key.slice('unit:'.length)
+          : source.key.startsWith('facility:')
+            ? source.key.slice('facility:'.length)
+            : source.key.slice('base:'.length).split(':')[0]!;
+        appendLine(id, source.targetId, false);
+      }
+    }
+    for (const [key, shot] of recentCombatShots) {
+      const id = key.startsWith('unit:')
+        ? key.slice('unit:'.length)
+        : key.startsWith('facility:')
+          ? key.slice('facility:'.length)
+          : key.slice('base:'.length).split(':')[0]!;
+      appendLine(id, shot.targetId, true);
+    }
+    combatSvg.replaceChildren(...lines);
+    labelLayer.append(combatSvg);
   };
 
   const baseObjects = new Map<
@@ -1005,6 +1208,30 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         base,
         view.rules.capture.requiredTicks,
       );
+      if (base.visibility === 'visible' || base.visibility === 'owned') {
+        const combatMark =
+          base.turretCombat?.phase === 'windup' ||
+          base.defenderCombat?.phase === 'windup'
+            ? ' ⚔準備'
+            : base.turretCombat?.phase === 'cooldown' ||
+                base.defenderCombat?.phase === 'cooldown'
+              ? ' ↻待ち'
+              : '';
+        const underFire =
+          base.lastDamagedTick !== undefined &&
+          base.lastDamagedTick > 0 &&
+          view.tick - base.lastDamagedTick <= 2;
+        objects.label.dataset.combat =
+          base.turretCombat?.phase === 'windup' ||
+          base.defenderCombat?.phase === 'windup'
+            ? 'windup'
+            : base.turretCombat?.phase === 'cooldown' ||
+                base.defenderCombat?.phase === 'cooldown'
+              ? 'cooldown'
+              : '';
+        objects.label.dataset.underFire = String(underFire);
+        objects.label.textContent += `${combatMark}${underFire ? ' ✦被弾' : ''}`;
+      }
       objects.label.style.borderColor = `#${ownerColor.toString(16).padStart(6, '0')}`;
       objects.label.style.color = owner === 'local' ? '#4d5a61' : '#20252b';
       objects.label.dataset.visibility = base.visibility;
@@ -1126,6 +1353,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         current.tick < lastCurrent.tick ||
         (current.phase === 'ready' && lastCurrent.phase !== 'ready'))
     ) {
+      recentCombatShots.clear();
       selectedUnitIds = [];
       movePreviewRequest = null;
       clearPreviewObjects();
@@ -1175,6 +1403,22 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       ring.scale.set(memory.range, 1, memory.range);
     }
     const frames = getUnitFrames(previous, current, lastAlpha);
+    const visibleTargetIds = new Set([
+      ...current.ownUnits.map(({ id }) => id),
+      ...current.visibleEnemies.map(({ id }) => id),
+      ...current.bases
+        .filter(
+          ({ visibility }) =>
+            visibility === 'visible' || visibility === 'owned',
+        )
+        .map(({ id }) => id),
+      ...current.facilities
+        .filter(
+          ({ visibility }) =>
+            visibility === 'visible' || visibility === 'owned',
+        )
+        .map(({ id }) => id),
+    ]);
     const present = new Set(frames.map(({ unit }) => unit.id));
     for (const [id, objects] of unitObjects) {
       if (present.has(id)) continue;
@@ -1199,6 +1443,36 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       const march = unit.control === 'own' ? unit.marchOrder : null;
       const localUnit = unit.factionId === 'local';
       const jammed = unit.control === 'own' && unit.jammed;
+      const combat = unit.control === 'own' ? unit.attack : unit.combat;
+      const targetCandidate =
+        combat?.targetId ??
+        (unit.control === 'own' ? unit.attack?.lastFiredTargetId : undefined);
+      const visibleTargetId =
+        targetCandidate && visibleTargetIds.has(targetCandidate)
+          ? targetCandidate
+          : null;
+      const pointFireFlight =
+        unit.control === 'own'
+          ? current.ownFaction.pendingStrikes.find(
+              ({ sourceUnitId }) => sourceUnitId === unit.id,
+            )
+          : undefined;
+      const bombardMark =
+        unit.control === 'own' && unit.bombardOrder
+          ? '◎'
+          : pointFireFlight
+            ? '➤'
+            : '';
+      const underFire =
+        unit.lastDamagedTick !== undefined &&
+        unit.lastDamagedTick > 0 &&
+        current.tick - unit.lastDamagedTick <= 2;
+      const combatMark =
+        combat?.phase === 'windup'
+          ? '⚔'
+          : combat?.phase === 'cooldown'
+            ? '⚔'
+            : '';
       const glyph = (
         {
           assault: '強',
@@ -1209,8 +1483,10 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           patrolBoat: '艇',
         } as const
       )[unit.kind];
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${march ? '→' : ''}${jammed ? '⚠妨' : ''}\n${unit.hp}/${unit.maxHp}`;
-      objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${march ? ` → ${march.target.id}` : ''}`;
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${combatMark}${bombardMark}${underFire ? '✦' : ''}${march ? '→' : ''}${jammed ? '⚠妨' : ''}\n${unit.hp}/${unit.maxHp}`;
+      objects.label.dataset.combat = combatMark ? String(combat?.phase) : '';
+      objects.label.dataset.underFire = String(underFire);
+      objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${combatMark ? ` · ${combat?.phase === 'windup' ? '攻撃準備' : '攻撃後の周期待ち'}${visibleTargetId ? ` → ${visibleTargetId}` : ''}` : ''}${unit.control === 'own' && unit.bombardOrder ? ` · 地点砲撃準備 ${unit.bombardOrder.cell.x},${unit.bombardOrder.cell.y}` : pointFireFlight ? ` · 地点砲撃飛翔 ${pointFireFlight.cell.x},${pointFireFlight.cell.y}` : ''}${underFire ? ' · 被弾' : ''}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
         currentPosition.x,
@@ -1282,6 +1558,38 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     }
     syncBases(current);
     syncFacilities(current);
+    syncCombatLinks(previous, current);
+    const visibleCombatEntityIds = new Set([
+      ...current.ownUnits.map(({ id }) => id),
+      ...current.visibleEnemies.map(({ id }) => id),
+      ...current.bases
+        .filter(
+          (base) =>
+            base.visibility === 'visible' || base.visibility === 'owned',
+        )
+        .map(({ id }) => id),
+      ...current.facilities
+        .filter(
+          (facility) =>
+            facility.visibility === 'visible' ||
+            facility.visibility === 'owned',
+        )
+        .map(({ id }) => id),
+    ]);
+    const targetedVisibleIds = new Set(
+      combatSources(current)
+        .map(({ targetId }) => targetId)
+        .filter(
+          (id): id is string =>
+            id !== undefined && visibleCombatEntityIds.has(id),
+        ),
+    );
+    for (const [id, objects] of unitObjects)
+      objects.label.dataset.targeted = String(targetedVisibleIds.has(id));
+    for (const [id, objects] of baseObjects)
+      objects.label.dataset.targeted = String(targetedVisibleIds.has(id));
+    for (const [id, objects] of facilityObjects)
+      objects.label.dataset.targeted = String(targetedVisibleIds.has(id));
     for (const entry of mapSiteLabels) {
       if (entry.crossingId) {
         const crossing = current.crossings.find(

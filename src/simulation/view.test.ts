@@ -215,6 +215,96 @@ describe('faction visibility and view isolation', () => {
     expect(first.units[0]!.cell.x).not.toBe(999);
   });
 
+  it('shows visible attack phase but omits an unobserved target identifier', () => {
+    const initial = createMatch(42);
+    const moved = initial.units.map((unit) =>
+      unit.id === 'B-01'
+        ? {
+            ...unit,
+            cell: { x: 14, y: 21 },
+            path: [],
+            edgeProgress: 0,
+            attack: {
+              targetId: 'C-01',
+              phase: 'windup' as const,
+              phaseEndsTick: 20,
+            },
+          }
+        : unit.id === 'C-01'
+          ? { ...unit, cell: { x: 35, y: 5 }, path: [], edgeProgress: 0 }
+          : unit,
+    );
+    const first = { ...initial, units: moved };
+    const withKnowledge = {
+      ...first,
+      knowledge: updateFactionKnowledge(first),
+    };
+    const firstView = getFactionView(withKnowledge, 'A');
+    const visibleAttacker = firstView.visibleEnemies.find(
+      ({ id }) => id === 'B-01',
+    );
+    expect(visibleAttacker?.combat).toEqual({ phase: 'windup' });
+    expect(visibleAttacker?.combat).not.toHaveProperty('targetId');
+    expect(firstView.visibleEnemies.some(({ id }) => id === 'C-01')).toBe(
+      false,
+    );
+
+    const changed = {
+      ...withKnowledge,
+      units: withKnowledge.units.map((unit) =>
+        unit.id === 'B-01'
+          ? {
+              ...unit,
+              attack: {
+                targetId: 'secret-id',
+                phase: 'windup' as const,
+                phaseEndsTick: 99,
+              },
+            }
+          : unit.id === 'C-01'
+            ? { ...unit, hp: 1, cell: { x: 37, y: 6 } }
+            : unit,
+      ),
+    };
+    expect(getFactionView(changed, 'A')).toEqual(firstView);
+
+    const cooldownWithHiddenTarget = {
+      ...withKnowledge,
+      units: withKnowledge.units.map((unit) =>
+        unit.id === 'B-01'
+          ? {
+              ...unit,
+              attack: {
+                targetId: null,
+                lastFiredTargetId: 'C-01',
+                lastFiredTick: 12,
+                phase: 'cooldown' as const,
+                phaseEndsTick: 30,
+              },
+            }
+          : unit,
+      ),
+    };
+    const alteredHiddenShot = {
+      ...cooldownWithHiddenTarget,
+      units: cooldownWithHiddenTarget.units.map((unit) =>
+        unit.id === 'B-01'
+          ? {
+              ...unit,
+              attack: {
+                ...unit.attack!,
+                lastFiredTargetId: 'unseen-id',
+                lastFiredTick: 24,
+              },
+            }
+          : unit,
+      ),
+    };
+    expect(getFactionView(cooldownWithHiddenTarget, 'A')).toEqual(
+      getFactionView(alteredHiddenShot, 'A'),
+    );
+  });
+
   it('keeps self-reported base loss without revealing the new hidden owner', () => {
     let state = createMatch(42, { scenarioId: 'g2-economy' });
     const owned = state.bases.find(({ id }) => id === 'OUT-03')!;
@@ -238,5 +328,83 @@ describe('faction visibility and view isolation', () => {
       selfReportedLost: true,
     });
     expect(lost).not.toHaveProperty('captureProgressCentiTicks');
+  });
+
+  it('projects turret, neutral defender, and facility combat through the same visible-target filter', () => {
+    const initial = createMatch(42);
+    const enemy = {
+      ...initial.units.find(({ id }) => id === 'B-01')!,
+      cell: { x: 14, y: 21 },
+      path: [],
+      edgeProgress: 0 as const,
+    };
+    const base = initial.bases.find(({ id }) => id === 'HQ-A')!;
+    const facility = {
+      id: 'F-TEST',
+      kind: 'turret' as const,
+      owner: 'A' as const,
+      anchor: { kind: 'base' as const, id: base.id },
+      slot: 0,
+      cell: { x: 14, y: 20 },
+      hp: 100,
+      maxHp: 100,
+      remainingBuildTicks: 0,
+      lastDamagedTick: 0,
+      lastActivatedTick: 0,
+      attack: {
+        targetId: enemy.id,
+        phase: 'cooldown' as const,
+        phaseEndsTick: 20,
+        lastFiredTargetId: enemy.id,
+        lastFiredTick: 12,
+      },
+    };
+    let state = withState(initial, {
+      units: initial.units.map((unit) => (unit.id === enemy.id ? enemy : unit)),
+      bases: initial.bases.map((entry) =>
+        entry.id === base.id
+          ? {
+              ...entry,
+              attack: {
+                targetId: enemy.id,
+                phase: 'windup' as const,
+                phaseEndsTick: 18,
+              },
+              defender: {
+                hp: 100,
+                maxHp: 100,
+                disabledTicks: 0,
+                attack: {
+                  targetId: 'A-01',
+                  phase: 'cooldown' as const,
+                  phaseEndsTick: 22,
+                  lastFiredTargetId: 'A-01',
+                  lastFiredTick: 11,
+                },
+              },
+            }
+          : entry,
+      ),
+      facilities: [facility],
+    });
+    state = { ...state, knowledge: updateFactionKnowledge(state) };
+
+    const view = getFactionView(state, 'A');
+    const projectedBase = view.bases.find(({ id }) => id === base.id)!;
+    expect(projectedBase).toMatchObject({
+      turretCombat: { phase: 'windup', targetId: enemy.id },
+      defenderCombat: {
+        phase: 'cooldown',
+        targetId: 'A-01',
+        lastFiredTick: 11,
+      },
+    });
+    expect(
+      view.facilities.find(({ id }) => id === facility.id)?.attack,
+    ).toEqual({
+      phase: 'cooldown',
+      targetId: enemy.id,
+      lastFiredTick: 12,
+    });
   });
 });

@@ -128,6 +128,43 @@ describe('G2 presentation and diagnostic boundaries', () => {
     runtime.stopLoop();
   });
 
+  it('replays actual combat-shot metadata under schema 28 and rejects schema 27 headers', () => {
+    const { runtime, advance } = running('f121-combat-visibility');
+    advance(40);
+    const snapshot = runtime.snapshot();
+    const shooter = snapshot.state.units.find(({ id }) => id === 'A-01')!;
+    expect(shooter.attack).toMatchObject({
+      lastFiredTargetId: 'B-01',
+      lastFiredTick: expect.any(Number),
+    });
+    expect(() => assertReplayMatches(snapshot)).not.toThrow();
+    expect(() =>
+      replay({
+        schemaVersion: 27,
+        rulesVersion: RULES_VERSION,
+        rules: snapshot.state.rules,
+        rulesContentId: rulesContentId(snapshot.state.rules),
+        scenarioId: snapshot.state.scenarioId,
+        seed: snapshot.state.seed,
+        history: snapshot.history,
+        finalTick: snapshot.state.elapsedTicks,
+      } as never),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        schemaVersion: SCHEMA_VERSION,
+        rulesVersion: 'cp13-npc-middle-game-v1',
+        rules: snapshot.state.rules,
+        rulesContentId: rulesContentId(snapshot.state.rules),
+        scenarioId: snapshot.state.scenarioId,
+        seed: snapshot.state.seed,
+        history: snapshot.history,
+        finalTick: snapshot.state.elapsedTicks,
+      } as never),
+    ).toThrow('invalid replay header');
+    runtime.stopLoop();
+  });
+
   it('presents only the faction view, with a pure drag preview', () => {
     const { runtime } = running('standard');
     const before = runtime.snapshot();
@@ -183,7 +220,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(diagnostic).toMatchObject({
       scenarioId: 'g2-economy',
       rules: {
-        schemaVersion: 27,
+        schemaVersion: SCHEMA_VERSION,
         rulesVersion: RULES_VERSION,
         rulesContentId: rulesContentId(runtime.snapshot().state.rules),
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
@@ -282,6 +319,15 @@ describe('G2 presentation and diagnostic boundaries', () => {
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 25 } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({ ...input, schemaVersion: 27 } as unknown as typeof input),
+    ).toThrow('invalid replay header');
+    expect(() =>
+      replay({
+        ...input,
+        rulesVersion: 'cp13-npc-middle-game-v1',
+      } as unknown as typeof input),
     ).toThrow('invalid replay header');
     expect(() =>
       replay({ ...input, schemaVersion: 21 } as unknown as typeof input),

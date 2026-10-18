@@ -20,7 +20,9 @@ function enablesBots(state: MatchState): boolean {
     state.scenarioId === 'f10-base-upgrades' ||
     state.scenarioId === 'f86-point-fire' ||
     state.scenarioId === 'f87-specializations' ||
-    state.scenarioId === 'f88-combat-estimate'
+    state.scenarioId === 'f88-combat-estimate' ||
+    state.scenarioId === 'f120-combat-estimate-ui' ||
+    state.scenarioId === 'f121-combat-visibility'
   )
     return false;
   return state.scenarioId === 'standard' || state.scenarioId.startsWith('g3-');

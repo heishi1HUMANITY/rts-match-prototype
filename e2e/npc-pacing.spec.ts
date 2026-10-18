@@ -1,21 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect, saveDiagnostic } from './fixtures';
 
-test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset', async ({
+test('NPC-R01-06: public-response master values are visible at both editor sections', async ({
   page,
 }, testInfo) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '標準値へ戻す', exact: true }).click();
-  await expect(
-    page.locator('[data-master-path="npc.decisionIntervalTicks"]'),
-  ).toHaveValue('30');
-  await expect(
-    page.locator('[data-master-path="npc.maxCommandsPerDecision"]'),
-  ).toHaveValue('2');
-  await expect(
-    page.locator('[data-master-path="npc.selectedDifficulty"]'),
-  ).toHaveValue('standard');
   await expect(
     page.locator('[data-master-path="npc.forecastHorizonTicks"]'),
   ).toHaveValue('90');
@@ -39,9 +30,6 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
       '[data-master-path="npc.difficultyProfiles.weak.publicReactionDelayTicks"]',
     ),
   ).toHaveValue('120');
-  await expect(
-    page.locator('[data-master-path="npc.researchRoutes.north.crossing.0"]'),
-  ).toHaveValue('bridge-2');
   await page
     .locator('[data-master-path="npc.forecastHorizonTicks"]')
     .scrollIntoViewIfNeeded();
@@ -56,6 +44,26 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   await page.screenshot({
     path: testInfo.outputPath('npc-policy-memory-master.png'),
   });
+});
+
+test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset', async ({
+  page,
+}, testInfo) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'マスタ', exact: true }).click();
+  await page.getByRole('button', { name: '標準値へ戻す', exact: true }).click();
+  await expect(
+    page.locator('[data-master-path="npc.decisionIntervalTicks"]'),
+  ).toHaveValue('30');
+  await expect(
+    page.locator('[data-master-path="npc.maxCommandsPerDecision"]'),
+  ).toHaveValue('2');
+  await expect(
+    page.locator('[data-master-path="npc.selectedDifficulty"]'),
+  ).toHaveValue('standard');
+  await expect(
+    page.locator('[data-master-path="npc.researchRoutes.north.crossing.0"]'),
+  ).toHaveValue('bridge-2');
   await page
     .getByRole('button', { name: '保存値で新しく開始', exact: true })
     .click();
