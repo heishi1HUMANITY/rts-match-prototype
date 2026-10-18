@@ -27,7 +27,7 @@ import type {
 } from './types';
 
 export const MASTER_SCHEMA_VERSION = 30 as const;
-export const RULES_VERSION = 'cp13-npc-middle-game-v1' as const;
+export const RULES_VERSION = 'cp13-combat-observation-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;

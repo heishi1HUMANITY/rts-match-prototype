@@ -1347,6 +1347,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         current.tick < lastCurrent.tick ||
         (current.phase === 'ready' && lastCurrent.phase !== 'ready'))
     ) {
+      recentCombatShots.clear();
       selectedUnitIds = [];
       movePreviewRequest = null;
       clearPreviewObjects();

@@ -412,7 +412,7 @@ export interface AirDefenseMemory {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 27;
+  readonly schemaVersion: 28;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;

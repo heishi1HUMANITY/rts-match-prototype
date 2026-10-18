@@ -32,4 +32,11 @@ test('visible combat status and opponent link remain readable without selection'
   await page.screenshot({
     path: info.outputPath('combat-state-unselected-900x420.png'),
   });
+
+  await expect(page.locator('.rts-combat-shot')).toHaveCount(2, {
+    timeout: 15_000,
+  });
+  await page.getByRole('button', { name: '一時停止', exact: true }).click();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  await expect(page.locator('.rts-combat-shot')).toHaveCount(0);
 });
