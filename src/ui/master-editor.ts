@@ -38,6 +38,66 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  frontlineRadius: {
+    label: '前線拠点の回復半径',
+    unit: 'セル',
+    help: '所有中の拠点を中心とした部隊の回復半径です。',
+  },
+  frontlineRecoveryDelayTicks: {
+    label: '前線回復までの静穏時間',
+    unit: 'tick (0.1秒)',
+    help: '攻撃・被弾の両方からこの時間が経過してから回復します。',
+  },
+  frontlineRecoveryPercent: {
+    label: '前線回復量',
+    unit: '% / 秒',
+    help: '最大HPに対する毎秒回復率です。',
+  },
+  globalObservationPeriodTicks: {
+    label: '全域観測周期',
+    unit: 'tick (0.1秒)',
+    help: '情報専攻が全域を観測する周期です。',
+  },
+  globalObservationDurationTicks: {
+    label: '全域観測時間',
+    unit: 'tick (0.1秒)',
+    help: '敵部隊・拠点・通常施設を一時的に観測する時間です。',
+  },
+  mineDetectionRadius: {
+    label: '通常地雷発見距離',
+    unit: 'セル',
+    help: '偵察以外の部隊が封鎖地雷を発見する距離です。',
+  },
+  scoutMineDetectionRadius: {
+    label: '偵察地雷発見距離',
+    unit: 'セル',
+    help: '偵察部隊が封鎖地雷を発見する距離です。',
+  },
+  blockadeMineDetectionPercent: {
+    label: '封鎖地雷の隠蔽率',
+    unit: '%',
+    help: '地雷所有者の封鎖専攻で相手の発見距離を縮める割合です。',
+  },
+  mineDamage: {
+    label: '封鎖地雷damage',
+    unit: 'HP',
+    help: '地雷が起爆時に与えるdamageです。',
+  },
+  mineSlowPercent: {
+    label: '地雷後の移動速度',
+    unit: '%',
+    help: '起爆後の移動速度です。',
+  },
+  mineSlowDurationTicks: {
+    label: '地雷減速時間',
+    unit: 'tick (0.1秒)',
+    help: '地雷起爆後の減速時間です。',
+  },
+  informationKillBonusPercent: {
+    label: '撃破損失ボーナス',
+    unit: '%',
+    help: '撃破された敵の損失ticketから攻撃寄与に応じて得る割合です。',
+  },
   preparationTicks: {
     label: '砲撃準備時間',
     unit: 'tick (0.1秒)',
@@ -556,6 +616,7 @@ function fieldsFor(rules: RulesMaster): {
   readonly value: unknown;
 }[] {
   const labels: Record<string, string> = {
+    cp87: 'CP13 非火力専攻',
     artilleryBombardment: '地点砲撃',
     airDefense: '航空・対空',
     economy: '経済',
@@ -675,6 +736,11 @@ function fieldLabel(path: string): string {
     'naval-1': '哨戒艇',
     'base-development-1': '拠点整備',
     'base-development-2': '要塞化',
+    'specialization-wartime-economy': '専攻・戦時経済',
+    'specialization-logistics': '専攻・前線展開',
+    'specialization-information': '専攻・全域観測',
+    'specialization-engineering': '専攻・封鎖',
+    'specialization-information-warfare': '専攻・情報戦',
     level2: 'Lv2',
     level3: 'Lv3',
     stronghold: '本拠',
@@ -714,10 +780,16 @@ function fieldLabel(path: string): string {
       'damage-bonus': '攻撃上昇',
       'vision-bonus': '視界上昇',
       'supply-income-bonus': '定額補給加算',
+      'supply-income-percent': '定額補給収入%',
       'upkeep-reduction': '維持費減額',
       'crossing-unlock': '渡河解放（数値なし）',
       'unit-unlock': '兵種解放（数値なし）',
       'base-upgrade-max': '強化上限レベル',
+      'production-time-percent': '戦時経済の生産時間短縮%',
+      'frontline-deployment': '前線生産・回復',
+      'global-observation': '周期的な全域観測',
+      blockade: '地雷封鎖',
+      'information-kill-bonus': '損失ticket増幅',
     };
     return `${ids[researchId] ?? researchId} · ${effectNames[effect?.id ?? ''] ?? '効果値'}`;
   }

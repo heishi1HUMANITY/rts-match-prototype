@@ -6,7 +6,7 @@ import type {
   UnitKind,
   UnitState,
 } from './types';
-import { isUnitUnlocked } from './research';
+import { isUnitUnlocked, researchEffectValue } from './research';
 
 function isUnitKind(value: string): value is UnitKind {
   return [
@@ -54,13 +54,19 @@ export function enqueueProduction(
   if (base && base.owner !== actor) {
     return { ok: false, state, reason: 'NOT_OWNER' };
   }
-  if (base && (base.kind !== 'hq' || base.hp <= 0)) {
+  if (base && base.hp <= 0) {
     return { ok: false, state, reason: 'HQ_UNAVAILABLE' };
   }
+  const faction = state.factions.find(({ id }) => id === actor);
+  if (
+    base &&
+    base.kind !== 'hq' &&
+    !faction?.completedResearchIds.includes('specialization-logistics')
+  )
+    return { ok: false, state, reason: 'RESEARCH_REQUIRED' };
   if (!isUnitKind(requestedKind)) {
     return { ok: false, state, reason: 'INVALID_UNIT_KIND' };
   }
-  const faction = state.factions.find(({ id }) => id === actor);
   if (faction === undefined) {
     return { ok: false, state, reason: 'INVALID_ACTOR' };
   }
@@ -70,7 +76,12 @@ export function enqueueProduction(
   if (stats.movementDomain === 'water') {
     if (!port || port.factionId !== actor)
       return { ok: false, state, reason: 'PORT_UNAVAILABLE' };
-  } else if (!base || base.kind !== 'hq' || base.hp <= 0) {
+  } else if (
+    !base ||
+    base.hp <= 0 ||
+    (base.kind !== 'hq' &&
+      !faction.completedResearchIds.includes('specialization-logistics'))
+  ) {
     return { ok: false, state, reason: 'HQ_UNAVAILABLE' };
   }
   const { limit } = getFactionUnitLimit(state, actor);
@@ -161,24 +172,25 @@ export function cancelProduction(
 }
 
 /** Refunds every job of a destroyed HQ once. Safe to call again. */
-export function cancelAllProductionForDestroyedHq(
+export function cancelProductionForUnavailableBases(
   state: MatchState,
   factionId: FactionId,
 ): MatchState {
-  const hq = state.bases.find(
-    (base) => base.kind === 'hq' && base.homeFactionId === factionId,
-  );
-  if (hq === undefined || hq.hp > 0) return state;
   const faction = state.factions.find(({ id }) => id === factionId);
   if (faction === undefined || faction.productionJobs.length === 0) {
     return state;
   }
-  const cancelled = faction.productionJobs.filter(
-    ({ baseId }) => baseId === hq.id,
-  );
+  const cancelled = faction.productionJobs.filter(({ baseId }) => {
+    const base = state.bases.find(({ id }) => id === baseId);
+    const port = state.map.ports?.find(({ id }) => id === baseId);
+    return base
+      ? base.owner !== factionId || base.hp <= 0
+      : !port || port.factionId !== factionId;
+  });
   if (cancelled.length === 0) return state;
+  const cancelledIds = new Set(cancelled.map(({ id }) => id));
   const remaining = faction.productionJobs.filter(
-    ({ baseId }) => baseId !== hq.id,
+    ({ id }) => !cancelledIds.has(id),
   );
   const refund = cancelled.reduce((sum, job) => sum + job.costCenti, 0);
   return {
@@ -205,11 +217,19 @@ export function cancelAllProductionForDestroyedHq(
   };
 }
 
+/** Compatibility name for existing callers and saved tests. */
+export function cancelAllProductionForDestroyedHq(
+  state: MatchState,
+  factionId: FactionId,
+): MatchState {
+  return cancelProductionForUnavailableBases(state, factionId);
+}
+
 /** Decrements only jobs active at this tick's start; spawns at their HQ on zero. */
 export function advanceProduction(state: MatchState): MatchState {
   let next = state;
   for (const faction of state.factions) {
-    next = cancelAllProductionForDestroyedHq(next, faction.id);
+    next = cancelProductionForUnavailableBases(next, faction.id);
   }
   const spawned: UnitState[] = [];
   const factions = next.factions.map((faction) => {
@@ -231,10 +251,23 @@ export function advanceProduction(state: MatchState): MatchState {
     if (liveCount >= limit) {
       return faction;
     }
-    const boostPercent =
+    const abilityPercent =
       faction.productionBoostUntilTick > next.elapsedTicks
         ? next.rules.tacticalAbilities.surge.productionTimePercent
         : 100;
+    const specialtyPercent = faction.completedResearchIds.includes(
+      'specialization-wartime-economy',
+    )
+      ? Math.max(
+          1,
+          100 -
+            researchEffectValue(faction, next.rules, 'production-time-percent'),
+        )
+      : 100;
+    const boostPercent = Math.max(
+      1,
+      Math.floor((abilityPercent * specialtyPercent) / 100),
+    );
     const previousRemainder =
       faction.productionProgressPercent === boostPercent
         ? faction.productionProgressRemainder

@@ -11,8 +11,19 @@ export function applyEconomyTick(state: MatchState): MatchState {
       state.rules,
       'supply-income-bonus',
     );
+    const supplyPercent = researchEffectValue(
+      faction,
+      state.rules,
+      'supply-income-percent',
+    );
     income.set(faction.id, {
-      supply: state.rules.economy.flatSupplyIncomeCentiPerTick + supplyBonus,
+      supply:
+        state.rules.economy.flatSupplyIncomeCentiPerTick +
+        supplyBonus +
+        Math.floor(
+          (state.rules.economy.flatSupplyIncomeCentiPerTick * supplyPercent) /
+            100,
+        ),
       research: state.rules.research.baseIncomeCentiPerTick,
     });
   }

@@ -58,6 +58,7 @@ export function validateRules(input: unknown): ValidationResult {
       ],
     };
   const rootKeys = [
+    'cp87',
     'artilleryBombardment',
     'airDefense',
     'economy',
@@ -77,6 +78,59 @@ export function validateRules(input: unknown): ValidationResult {
     'tacticalAbilities',
   ] as const;
   exactKeys(input, rootKeys, 'rules', issues);
+  if (isRecord(input.cp87)) {
+    const cp87Keys = [
+      'frontlineRadius',
+      'frontlineRecoveryDelayTicks',
+      'frontlineRecoveryPercent',
+      'globalObservationPeriodTicks',
+      'globalObservationDurationTicks',
+      'mineDetectionRadius',
+      'scoutMineDetectionRadius',
+      'blockadeMineDetectionPercent',
+      'mineDamage',
+      'mineSlowPercent',
+      'mineSlowDurationTicks',
+      'informationKillBonusPercent',
+    ] as const;
+    exactKeys(input.cp87, cp87Keys, 'rules.cp87', issues);
+    const cp87Ranges: Readonly<
+      Record<(typeof cp87Keys)[number], readonly [number, number]>
+    > = {
+      frontlineRadius: [1, 20],
+      frontlineRecoveryDelayTicks: [0, 10_000],
+      frontlineRecoveryPercent: [0, 100],
+      globalObservationPeriodTicks: [1, 100_000],
+      globalObservationDurationTicks: [1, 100_000],
+      mineDetectionRadius: [1, 20],
+      scoutMineDetectionRadius: [1, 20],
+      blockadeMineDetectionPercent: [1, 100],
+      mineDamage: [1, 100_000],
+      mineSlowPercent: [1, 100],
+      mineSlowDurationTicks: [1, 100_000],
+      informationKillBonusPercent: [0, 100],
+    };
+    for (const key of cp87Keys) {
+      const [min, max] = cp87Ranges[key];
+      if (numberField(input.cp87[key], min, max) === undefined)
+        issues.push({
+          key: `rules.cp87.${key}`,
+          message: `${min}以上${max}以下の整数が必要です`,
+        });
+    }
+    if (
+      isInteger(input.cp87.globalObservationPeriodTicks) &&
+      isInteger(input.cp87.globalObservationDurationTicks) &&
+      input.cp87.globalObservationDurationTicks >=
+        input.cp87.globalObservationPeriodTicks
+    )
+      issues.push({
+        key: 'rules.cp87.globalObservationDurationTicks',
+        message: '観測時間は周期より短くしてください',
+      });
+  } else {
+    issues.push({ key: 'rules.cp87', message: 'オブジェクトが必要です' });
+  }
   const walk = (value: unknown, defaults: unknown, path: string): unknown => {
     if (Array.isArray(defaults)) {
       if (!Array.isArray(value)) {
@@ -115,12 +169,18 @@ export function validateRules(input: unknown): ValidationResult {
               'damage-bonus',
               'vision-bonus',
               'supply-income-bonus',
+              'supply-income-percent',
               'upkeep-reduction',
               'crossing-unlock',
               'unit-unlock',
               'base-upgrade-max',
               'facility-unlock',
               'facility-build-speed-percent',
+              'production-time-percent',
+              'frontline-deployment',
+              'global-observation',
+              'blockade',
+              'information-kill-bonus',
             ].includes(String(entry.id))
           )
             issues.push({
@@ -149,6 +209,24 @@ export function validateRules(input: unknown): ValidationResult {
             issues.push({
               key: `${effectPath}.value`,
               message: '強化上限は2または3にしてください',
+            });
+          if (
+            entry.id === 'production-time-percent' &&
+            isInteger(entry.value) &&
+            entry.value >= 100
+          )
+            issues.push({
+              key: `${effectPath}.value`,
+              message: '生産時間短縮率は100未満にしてください',
+            });
+          if (
+            entry.id === 'supply-income-percent' &&
+            isInteger(entry.value) &&
+            entry.value > 1_000
+          )
+            issues.push({
+              key: `${effectPath}.value`,
+              message: '定額補給収入率は1000以下にしてください',
             });
           if (
             unlock &&
@@ -705,7 +783,9 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 22 &&
       input.masterSchemaVersion !== 23 &&
       input.masterSchemaVersion !== 24 &&
-      input.masterSchemaVersion !== 25)
+      input.masterSchemaVersion !== 25 &&
+      input.masterSchemaVersion !== 26 &&
+      input.masterSchemaVersion !== 27)
   )
     return {
       ok: false,
@@ -839,6 +919,13 @@ export function validateEnvelope(
         ...migrationCandidate,
         tacticalAbilities: DEFAULT_RULES.tacticalAbilities,
       };
+    migrationCandidate = {
+      ...migrationCandidate,
+      cp87: {
+        ...DEFAULT_RULES.cp87,
+        ...(isRecord(migrationCandidate.cp87) ? migrationCandidate.cp87 : {}),
+      },
+    };
     if (isRecord(migrationCandidate.bases))
       migrationCandidate = {
         ...migrationCandidate,
@@ -1348,6 +1435,31 @@ export function validateEnvelope(
       for (const [id, oldValue] of Object.entries(oldDefinitions))
         if (Object.hasOwn(converted, id))
           converted[id] = oldValue as ResearchDefinition;
+    }
+    const currentSpecializationIds = new Set([
+      'specialization-logistics',
+      'specialization-information',
+      'specialization-engineering',
+      'specialization-wartime-economy',
+      'specialization-information-warfare',
+    ]);
+    for (const [id, value] of Object.entries(converted)) {
+      const defaults = DEFAULT_RULES.research.definitions[id];
+      if (!defaults || value.stage !== 4) continue;
+      converted[id] = {
+        ...value,
+        exclusiveWith: Object.keys(converted)
+          .filter((peer) => converted[peer]?.stage === 4 && peer !== id)
+          .sort(),
+        ...(currentSpecializationIds.has(id)
+          ? {
+              domain: defaults.domain,
+              stage: defaults.stage,
+              prerequisites: defaults.prerequisites,
+              effects: defaults.effects,
+            }
+          : {}),
+      };
     }
     if (input.masterSchemaVersion <= 21) {
       const legacyCosts: Readonly<Record<string, number>> = {

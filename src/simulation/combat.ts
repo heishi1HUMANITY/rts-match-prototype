@@ -7,6 +7,7 @@ import {
   getUnitPositionX1024,
   getUnitPositionY1024,
   isCellVisibleToFaction,
+  isMineDetectedToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
 import type {
@@ -704,9 +705,10 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
       .filter(
         (f) =>
           f.owner !== attacker.factionId &&
-          f.kind !== 'mine' &&
           f.hp > 0 &&
-          isCellVisibleToFaction(state, f.cell, attacker.factionId),
+          (f.kind === 'mine'
+            ? isMineDetectedToFaction(state, f, attacker.factionId)
+            : isCellVisibleToFaction(state, f.cell, attacker.factionId)),
       )
       .map((f) => ({
         kind: 'facility' as const,
@@ -964,7 +966,9 @@ export function resolveCombat(state: MatchState): MatchState {
       const firedAttack = artilleryAttackByUnit.get(attacker.id);
       updatedUnits.push({
         ...attacker,
-        ...(firedAttack ? { attack: firedAttack, bombardOrder: null } : {}),
+        ...(firedAttack
+          ? { attack: firedAttack, bombardOrder: null, lastAttackTick: tick }
+          : {}),
       });
       continue;
     }
@@ -1007,7 +1011,11 @@ export function resolveCombat(state: MatchState): MatchState {
       tick,
     );
 
-    updatedUnits.push({ ...attacker, attack: nextAttack });
+    updatedUnits.push({
+      ...attacker,
+      attack: nextAttack,
+      ...(hit ? { lastAttackTick: tick } : {}),
+    });
     if (hit) {
       hitReservations.push({
         tick,
@@ -1084,8 +1092,14 @@ export function resolveCombat(state: MatchState): MatchState {
           const domain = targetUnit
             ? snapshot.rules.units[targetUnit.kind].movementDomain
             : 'land';
-          const rawDamage =
-            domain === 'air'
+          const fortifiedMine =
+            f.kind === 'mine' &&
+            snapshot.factions
+              .find(({ id }) => id === f.owner)
+              ?.completedResearchIds.includes('specialization-engineering');
+          const rawDamage = fortifiedMine
+            ? snapshot.rules.cp87.mineDamage
+            : domain === 'air'
               ? d.damageVsAir
               : domain === 'water'
                 ? d.damageVsWater
@@ -1281,6 +1295,8 @@ export function resolveCombat(state: MatchState): MatchState {
   const baseDamage = new Map<string, number>();
   const crossingDamage = new Map<string, Map<FactionId, number>>();
   const strongholdDamage = new Map<FactionId, number>();
+  const mineSlowUntil = new Map<string, number>();
+  const mineSlowPercent = new Map<string, number>();
 
   for (const res of hitReservations) {
     if (res.target.kind === 'target') {
@@ -1318,6 +1334,27 @@ export function resolveCombat(state: MatchState): MatchState {
       const fac = snapshot.facilities.find((f) => f.id === res.facilityId);
       if (fac && fac.kind === 'mine') {
         facilityDamage.set(fac.id, fac.hp);
+        const target = res.target.kind === 'target' ? res.target.target : null;
+        const owner = snapshot.factions.find(({ id }) => id === fac.owner);
+        if (
+          target?.kind === 'unit' &&
+          owner?.completedResearchIds.includes('specialization-engineering')
+        ) {
+          mineSlowUntil.set(
+            target.id,
+            Math.max(
+              mineSlowUntil.get(target.id) ?? 0,
+              tick + snapshot.rules.cp87.mineSlowDurationTicks,
+            ),
+          );
+          mineSlowPercent.set(
+            target.id,
+            Math.min(
+              mineSlowPercent.get(target.id) ?? 100,
+              snapshot.rules.cp87.mineSlowPercent,
+            ),
+          );
+        }
       }
     }
   }
@@ -1328,13 +1365,53 @@ export function resolveCombat(state: MatchState): MatchState {
       const damage = unitDamage.get(unit.id) ?? 0;
       if (damage <= 0) return unit;
       const hp = Math.max(0, unit.hp - damage);
-      if (hp === 0 && unit.factionId !== 'local')
+      if (hp === 0 && unit.factionId !== 'local') {
+        const baseLoss = snapshot.rules.units[unit.kind].lossTicketsCenti;
+        const lethalHits = hitReservations.filter(
+          (reservation) =>
+            reservation.target.kind === 'target' &&
+            reservation.target.target.kind === 'unit' &&
+            reservation.target.target.id === unit.id,
+        );
+        const totalDamage = lethalHits.reduce(
+          (sum, reservation) => sum + reservation.damage,
+          0,
+        );
+        const bonusDamageWeight = lethalHits.reduce((sum, reservation) => {
+          const attacker = snapshot.factions.find(
+            ({ id }) => id === reservation.attackerFactionId,
+          );
+          return attacker?.completedResearchIds.includes(
+            'specialization-information-warfare',
+          )
+            ? sum + reservation.damage
+            : sum;
+        }, 0);
+        const bonusLoss =
+          totalDamage > 0
+            ? Math.floor(
+                (baseLoss *
+                  snapshot.rules.cp87.informationKillBonusPercent *
+                  bonusDamageWeight) /
+                  (100 * totalDamage),
+              )
+            : 0;
         unitLosses.set(
           unit.factionId,
-          (unitLosses.get(unit.factionId) ?? 0) +
-            snapshot.rules.units[unit.kind].lossTicketsCenti,
+          (unitLosses.get(unit.factionId) ?? 0) + baseLoss + bonusLoss,
         );
-      return { ...unit, hp };
+      }
+      return {
+        ...unit,
+        hp,
+        lastDamagedTick: tick,
+        ...((mineSlowUntil.get(unit.id) ?? 0) > tick
+          ? {
+              slowedUntilTick: mineSlowUntil.get(unit.id)!,
+              slowedMovePercent: mineSlowPercent.get(unit.id)!,
+            }
+          : {}),
+      };
     })
     .filter(({ hp }) => hp > 0);
 

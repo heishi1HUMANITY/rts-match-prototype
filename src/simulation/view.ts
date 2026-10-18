@@ -3,6 +3,8 @@ import {
   getUnitPositionX1024,
   getUnitPositionY1024,
   isCellVisibleToFaction,
+  isGlobalObservationActive,
+  isMineDetectedToFaction,
   isUnitVisibleToFaction,
 } from './visibility';
 import type {
@@ -28,6 +30,7 @@ function baseViews(
   factionId: FactionId,
   knowledge: FactionKnowledge,
 ): BaseView[] {
+  const globalObservation = isGlobalObservationActive(state, factionId);
   const memories = new Map(
     knowledge.baseMemory.map((memory) => [memory.baseId, memory]),
   );
@@ -50,7 +53,7 @@ function baseViews(
         captureProgressCentiTicks: base.captureProgressCentiTicks,
       };
     }
-    if (knowledge.visible[cellIndex]) {
+    if (knowledge.visible[cellIndex] || globalObservation) {
       return {
         visibility: 'visible',
         id: base.id,
@@ -191,6 +194,7 @@ export function getFactionView(
   );
   if (!faction || !knowledge) throw new RangeError('unknown factionId');
   const masks = copyKnowledgeMap(knowledge);
+  const globalObservation = isGlobalObservationActive(state, factionId);
   const ownUnits = state.units
     .filter((unit) => unit.factionId === factionId && unit.hp > 0)
     .map((unit) => ({
@@ -240,7 +244,7 @@ export function getFactionView(
       (unit) =>
         unit.factionId !== factionId &&
         !unit.garrisonedAtBaseId &&
-        isUnitVisibleToFaction(state, unit, factionId),
+        (isUnitVisibleToFaction(state, unit, factionId) || globalObservation),
     )
     .map((unit) => ({
       control: 'enemy' as const,
@@ -471,7 +475,11 @@ export function getFactionView(
     facilities: [
       ...knowledge.facilityMemory.filter((f) => f.owner !== factionId),
       ...state.facilities
-        .filter((f) => f.owner === factionId)
+        .filter(
+          (f) =>
+            f.owner === factionId ||
+            (globalObservation && f.kind !== 'mine' && f.hp > 0),
+        )
         .map((f) => ({ ...f, seenTick: state.elapsedTicks })),
     ].flatMap<FacilityView>((memory) => {
       const current = state.facilities.find((f) => f.id === memory.id);
@@ -485,8 +493,15 @@ export function getFactionView(
           },
         ];
       if (memory.owner === factionId) return [];
-      const visible = isCellVisibleToFaction(state, memory.cell, factionId);
-      if (visible && (!current || current.kind === 'mine')) return [];
+      const mineDetected =
+        current?.kind === 'mine' &&
+        isMineDetectedToFaction(state, current, factionId);
+      const visible =
+        mineDetected ||
+        (globalObservation && memory.kind !== 'mine') ||
+        isCellVisibleToFaction(state, memory.cell, factionId);
+      if ((visible && !current) || (current?.kind === 'mine' && !mineDetected))
+        return [];
       return [
         {
           ...memory,

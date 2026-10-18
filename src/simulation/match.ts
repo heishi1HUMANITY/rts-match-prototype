@@ -163,7 +163,8 @@ function scenarioMap(
     scenarioId !== 'f02-pursuit' &&
     scenarioId !== 'g2-combat' &&
     scenarioId !== 'f15-tactical-abilities' &&
-    scenarioId !== 'f86-point-fire'
+    scenarioId !== 'f86-point-fire' &&
+    scenarioId !== 'f87-specializations'
   )
     return map;
   return {
@@ -392,6 +393,22 @@ function configuredFixture(
     );
     factions = factions.map((faction) =>
       faction.id === 'A' ? { ...faction, supplyCenti: 120_000 } : faction,
+    );
+  } else if (scenarioId === 'f87-specializations') {
+    units = units.filter((unit) => unit.factionId === 'A');
+    bases = bases.map((base) =>
+      base.id === 'OUT-03'
+        ? { ...base, owner: 'A', hp: base.maxHp, defender: null }
+        : base,
+    );
+    factions = factions.map((faction) =>
+      faction.id === 'A'
+        ? {
+            ...faction,
+            supplyCenti: 120_000,
+            completedResearchIds: ['specialization-logistics'],
+          }
+        : faction,
     );
   }
   return { ...state, factions, units, bases };

@@ -52,6 +52,41 @@ describe('arbitrary research IDs', () => {
 });
 
 describe('stage-based research economy', () => {
+  it('measures completion against one-match research capacity despite capstone choice growth', () => {
+    const completionCapacity = (
+      definitions: RulesMaster['research']['definitions'],
+    ): number => {
+      const capstoneCount = Object.values(definitions).filter(
+        ({ stage }) => stage === 4,
+      ).length;
+      return Object.keys(definitions).length - Math.max(capstoneCount - 1, 0);
+    };
+    const definitions = DEFAULT_RULES.research.definitions;
+    const capstones = Object.entries(definitions)
+      .filter(([, definition]) => definition.stage === 4)
+      .map(([id]) => id);
+    expect(capstones).toHaveLength(6);
+    for (const id of capstones)
+      for (const peer of capstones)
+        if (peer !== id) expect(definitions[id]!.exclusiveWith).toContain(peer);
+    expect(completionCapacity(definitions)).toBe(24);
+
+    const addedCandidate = {
+      ...definitions,
+      'test-capstone': {
+        ...definitions['specialization-power']!,
+        exclusiveWith: capstones,
+      },
+    };
+    expect(completionCapacity(addedCandidate)).toBe(24);
+    const removedCandidate = Object.fromEntries(
+      Object.entries(definitions).filter(
+        ([id]) => id !== 'specialization-information-warfare',
+      ),
+    );
+    expect(completionCapacity(removedCandidate)).toBe(24);
+  });
+
   it('allows stage 1 choices, uses OR prerequisites, and locks only one global stage 4', () => {
     const initial = createMatch(45);
     let state: MatchState = {
@@ -177,9 +212,15 @@ describe('stage-based research economy', () => {
     expect(state.researchAnnouncements).toEqual([
       { factionId: 'A', researchId: 'specialization-power', tick: 6_731 },
     ]);
-    expect(
-      state.factions[0]!.completedResearchIds.length /
-        Object.keys(rules.research.definitions).length,
-    ).toBeCloseTo(10 / 27, 4);
+    const stage4Options = Object.values(rules.research.definitions).filter(
+      ({ stage }) => stage === 4,
+    ).length;
+    const attainableInOneMatch =
+      Object.keys(rules.research.definitions).length - stage4Options + 1;
+    const completionRate =
+      state.factions[0]!.completedResearchIds.length / attainableInOneMatch;
+    expect(completionRate).toBeGreaterThanOrEqual(0.35);
+    expect(completionRate).toBeLessThanOrEqual(0.45);
+    expect(completionRate).toBeCloseTo(10 / 24, 4);
   });
 });

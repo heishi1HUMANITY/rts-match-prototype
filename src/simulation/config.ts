@@ -409,8 +409,27 @@ export const RESEARCH_DEFINITIONS: Readonly<
       'specialization-logistics',
       'specialization-information',
       'specialization-engineering',
+      'specialization-wartime-economy',
+      'specialization-information-warfare',
     ],
     effects: [{ id: 'damage-bonus', value: 1 }],
+  },
+  'specialization-wartime-economy': {
+    domain: 'logistics',
+    stage: 4,
+    costCenti: 27_600,
+    prerequisites: ['supply-lines-1', 'maintenance-1'],
+    exclusiveWith: [
+      'specialization-power',
+      'specialization-logistics',
+      'specialization-information',
+      'specialization-engineering',
+      'specialization-information-warfare',
+    ],
+    effects: [
+      { id: 'supply-income-percent', value: 30 },
+      { id: 'production-time-percent', value: 20 },
+    ],
   },
   'specialization-logistics': {
     domain: 'logistics',
@@ -421,8 +440,10 @@ export const RESEARCH_DEFINITIONS: Readonly<
       'specialization-power',
       'specialization-information',
       'specialization-engineering',
+      'specialization-wartime-economy',
+      'specialization-information-warfare',
     ],
-    effects: [{ id: 'upkeep-reduction', value: 1 }],
+    effects: [{ id: 'frontline-deployment', value: 1 }],
   },
   'specialization-information': {
     domain: 'information',
@@ -433,8 +454,10 @@ export const RESEARCH_DEFINITIONS: Readonly<
       'specialization-power',
       'specialization-logistics',
       'specialization-engineering',
+      'specialization-wartime-economy',
+      'specialization-information-warfare',
     ],
-    effects: [{ id: 'vision-bonus', value: 1 }],
+    effects: [{ id: 'global-observation', value: 1 }],
   },
   'specialization-engineering': {
     domain: 'engineering',
@@ -451,8 +474,24 @@ export const RESEARCH_DEFINITIONS: Readonly<
       'specialization-power',
       'specialization-logistics',
       'specialization-information',
+      'specialization-wartime-economy',
+      'specialization-information-warfare',
     ],
-    effects: [{ id: 'facility-build-speed-percent', value: 100 }],
+    effects: [{ id: 'blockade', value: 1 }],
+  },
+  'specialization-information-warfare': {
+    domain: 'information',
+    stage: 4,
+    costCenti: 27_600,
+    prerequisites: ['survey-2', 'aircraft-1'],
+    exclusiveWith: [
+      'specialization-power',
+      'specialization-logistics',
+      'specialization-information',
+      'specialization-engineering',
+      'specialization-wartime-economy',
+    ],
+    effects: [{ id: 'information-kill-bonus', value: 50 }],
   },
 };
 
@@ -516,4 +555,5 @@ export const SCENARIO_IDS: readonly ScenarioId[] = [
   'f18-garrison',
   'f15-tactical-abilities',
   'f86-point-fire',
+  'f87-specializations',
 ];

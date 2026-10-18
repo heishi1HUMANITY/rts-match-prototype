@@ -26,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 26 as const;
-export const RULES_VERSION = 'cp13-point-artillery-v1' as const;
+export const MASTER_SCHEMA_VERSION = 28 as const;
+export const RULES_VERSION = 'cp13-nonfire-specializations-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -108,6 +108,20 @@ export interface FacilityDefinition {
   readonly jamRange: number;
 }
 export interface RulesMaster {
+  readonly cp87: {
+    readonly frontlineRadius: number;
+    readonly frontlineRecoveryDelayTicks: number;
+    readonly frontlineRecoveryPercent: number;
+    readonly globalObservationPeriodTicks: number;
+    readonly globalObservationDurationTicks: number;
+    readonly mineDetectionRadius: number;
+    readonly scoutMineDetectionRadius: number;
+    readonly blockadeMineDetectionPercent: number;
+    readonly mineDamage: number;
+    readonly mineSlowPercent: number;
+    readonly mineSlowDurationTicks: number;
+    readonly informationKillBonusPercent: number;
+  };
   readonly artilleryBombardment: ArtilleryBombardmentRules;
   readonly airDefense: {
     readonly deployTicks: number;
@@ -297,6 +311,20 @@ export interface MasterEnvelope {
 }
 
 export const DEFAULT_RULES: RulesMaster = {
+  cp87: {
+    frontlineRadius: 3,
+    frontlineRecoveryDelayTicks: 50,
+    frontlineRecoveryPercent: 2,
+    globalObservationPeriodTicks: 300,
+    globalObservationDurationTicks: 100,
+    mineDetectionRadius: 2,
+    scoutMineDetectionRadius: 4,
+    blockadeMineDetectionPercent: 50,
+    mineDamage: 120,
+    mineSlowPercent: 50,
+    mineSlowDurationTicks: 40,
+    informationKillBonusPercent: 50,
+  },
   artilleryBombardment: {
     range: 8,
     preparationTicks: 10,
@@ -714,16 +742,52 @@ export const DEFAULT_RULES: RulesMaster = {
     },
     researchRoutes: {
       north: {
-        crossing: ['bridge-2', 'firepower-1', 'artillery-1', 'air-defense-1'],
-        field: ['firepower-1', 'artillery-1', 'air-defense-1', 'bridge-2'],
+        crossing: [
+          'bridge-2',
+          'firepower-1',
+          'artillery-1',
+          'air-defense-1',
+          'specialization-engineering',
+        ],
+        field: [
+          'firepower-1',
+          'artillery-1',
+          'air-defense-1',
+          'bridge-2',
+          'specialization-information-warfare',
+        ],
       },
       'south-east': {
-        crossing: ['bridge-2', 'firepower-1', 'air-defense-1', 'artillery-1'],
-        field: ['firepower-1', 'air-defense-1', 'artillery-1', 'bridge-2'],
+        crossing: [
+          'bridge-2',
+          'firepower-1',
+          'air-defense-1',
+          'artillery-1',
+          'specialization-engineering',
+        ],
+        field: [
+          'firepower-1',
+          'air-defense-1',
+          'artillery-1',
+          'bridge-2',
+          'specialization-wartime-economy',
+        ],
       },
       'south-west': {
-        crossing: ['bridge-2', 'air-defense-1', 'firepower-1', 'artillery-1'],
-        field: ['firepower-1', 'artillery-1', 'bridge-2', 'air-defense-1'],
+        crossing: [
+          'bridge-2',
+          'air-defense-1',
+          'firepower-1',
+          'artillery-1',
+          'specialization-logistics',
+        ],
+        field: [
+          'firepower-1',
+          'artillery-1',
+          'bridge-2',
+          'air-defense-1',
+          'specialization-information',
+        ],
       },
     },
   },

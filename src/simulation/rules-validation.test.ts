@@ -31,6 +31,57 @@ function legacyResearchDefinitions() {
 }
 
 describe('F03 rules validation', () => {
+  it('migrates schema 27 CP13 specializations while preserving edited costs', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.cp87;
+    const definitions = legacy.research.definitions;
+    delete definitions['specialization-wartime-economy'];
+    delete definitions['specialization-information-warfare'];
+    definitions['specialization-logistics'].effects = [];
+    definitions['specialization-logistics'].costCenti = 31_111;
+    definitions['specialization-information'].effects = [];
+    definitions['specialization-engineering'].effects = [];
+
+    const result = validateEnvelope({
+      masterSchemaVersion: 27,
+      revision: 7,
+      rules: legacy,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const migrated = result.envelope.rules;
+    expect(migrated.cp87).toEqual(DEFAULT_RULES.cp87);
+    expect(
+      migrated.research.definitions['specialization-logistics']!.effects,
+    ).toEqual([{ id: 'frontline-deployment', value: 1 }]);
+    expect(
+      migrated.research.definitions['specialization-logistics']!.costCenti,
+    ).toBe(31_111);
+    expect(
+      migrated.research.definitions['specialization-information']!.effects,
+    ).toEqual([{ id: 'global-observation', value: 1 }]);
+    expect(
+      migrated.research.definitions['specialization-engineering']!.effects,
+    ).toEqual([{ id: 'blockade', value: 1 }]);
+    expect(
+      migrated.research.definitions['specialization-wartime-economy'],
+    ).toBeDefined();
+    expect(
+      migrated.research.definitions['specialization-information-warfare'],
+    ).toBeDefined();
+    const stageFourIds = Object.entries(migrated.research.definitions)
+      .filter(([, definition]) => definition.stage === 4)
+      .map(([id]) => id)
+      .sort();
+    for (const id of stageFourIds)
+      expect(migrated.research.definitions[id]!.exclusiveWith).toEqual(
+        stageFourIds.filter((peer) => peer !== id),
+      );
+  });
+
   it('migrates schema 23 while preserving edited NPC pacing and adding route defaults', () => {
     const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,
@@ -495,6 +546,9 @@ describe('F21 variable research definitions', () => {
     rules.research.definitions['specialization-information'].prerequisites = [
       'survey-1',
     ];
+    rules.research.definitions[
+      'specialization-information-warfare'
+    ].prerequisites = ['survey-1'];
     rules.research.definitions['custom-power'] = {
       ...rules.research.definitions['firepower-1'],
       prerequisites: [],

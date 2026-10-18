@@ -10,6 +10,49 @@ import type {
 
 const POSITION_SCALE = 1024;
 
+export function isGlobalObservationActive(
+  state: MatchState,
+  factionId: CombatantId,
+): boolean {
+  const faction = state.factions.find(({ id }) => id === factionId);
+  const period = state.rules.cp87.globalObservationPeriodTicks;
+  const duration = state.rules.cp87.globalObservationDurationTicks;
+  return !!(
+    faction?.completedResearchIds.includes('specialization-information') &&
+    period > 0 &&
+    duration > 0 &&
+    state.elapsedTicks % period < duration
+  );
+}
+
+export function isMineDetectedToFaction(
+  state: MatchState,
+  mine: MatchState['facilities'][number],
+  factionId: CombatantId,
+): boolean {
+  if (mine.kind !== 'mine' || mine.owner === factionId || mine.hp <= 0)
+    return false;
+  const concealed = state.factions
+    .find(({ id }) => id === mine.owner)
+    ?.completedResearchIds.includes('specialization-engineering');
+  const concealPercent = concealed
+    ? state.rules.cp87.blockadeMineDetectionPercent
+    : 100;
+  return state.units.some((unit) => {
+    if (unit.factionId !== factionId || unit.hp <= 0) return false;
+    const baseRadius =
+      unit.kind === 'scout'
+        ? state.rules.cp87.scoutMineDetectionRadius
+        : state.rules.cp87.mineDetectionRadius;
+    const radius = Math.floor((baseRadius * concealPercent) / 100);
+    return (
+      (getUnitPositionX1024(unit) - (mine.cell.x * 1024 + 512)) ** 2 +
+        (getUnitPositionY1024(unit) - (mine.cell.y * 1024 + 512)) ** 2 <=
+      (radius * 1024) ** 2
+    );
+  });
+}
+
 function unitPositionX1024(unit: UnitState): number {
   const next = unit.path[0];
   return (
@@ -311,7 +354,8 @@ function createKnowledge(
   for (const f of state.facilities)
     if (
       f.owner === factionId ||
-      (f.kind !== 'mine' && visible[f.cell.y * state.map.width + f.cell.x])
+      (f.kind !== 'mine' && visible[f.cell.y * state.map.width + f.cell.x]) ||
+      isMineDetectedToFaction(state, f, factionId)
     )
       memories.set(f.id, {
         ...f,
