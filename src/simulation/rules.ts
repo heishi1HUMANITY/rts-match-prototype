@@ -26,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 29 as const;
-export const RULES_VERSION = 'cp13-combat-estimate-v1' as const;
+export const MASTER_SCHEMA_VERSION = 30 as const;
+export const RULES_VERSION = 'cp13-npc-middle-game-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -35,6 +35,7 @@ export interface NpcDifficultyProfile {
   readonly nextBestPercent: number;
   readonly publicReactionDelayTicks: number;
   readonly targetSwitchGraceTicks: number;
+  readonly targetMemoryTtlTicks: number;
   readonly scoutUsePercent: number;
 }
 
@@ -264,6 +265,7 @@ export interface RulesMaster {
   };
   readonly npc: {
     readonly decisionIntervalTicks: number;
+    readonly forecastHorizonTicks: number;
     readonly defenseAttentionRadius: number;
     readonly maxCommandsPerDecision: number;
     readonly selectedDifficulty: 'weak' | 'standard' | 'strong';
@@ -707,6 +709,7 @@ export const DEFAULT_RULES: RulesMaster = {
   },
   npc: {
     decisionIntervalTicks: 30,
+    forecastHorizonTicks: 90,
     defenseAttentionRadius: 10,
     maxCommandsPerDecision: 2,
     selectedDifficulty: 'standard',
@@ -717,6 +720,7 @@ export const DEFAULT_RULES: RulesMaster = {
         nextBestPercent: 75,
         publicReactionDelayTicks: 120,
         targetSwitchGraceTicks: 180,
+        targetMemoryTtlTicks: 150,
         scoutUsePercent: 10,
       },
       standard: {
@@ -725,6 +729,7 @@ export const DEFAULT_RULES: RulesMaster = {
         nextBestPercent: 35,
         publicReactionDelayTicks: 60,
         targetSwitchGraceTicks: 90,
+        targetMemoryTtlTicks: 300,
         scoutUsePercent: 40,
       },
       strong: {
@@ -733,6 +738,7 @@ export const DEFAULT_RULES: RulesMaster = {
         nextBestPercent: 10,
         publicReactionDelayTicks: 20,
         targetSwitchGraceTicks: 30,
+        targetMemoryTtlTicks: 600,
         scoutUsePercent: 75,
       },
     },

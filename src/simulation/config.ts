@@ -8,7 +8,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 26 as const;
+export const SCHEMA_VERSION = 27 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 /** Current trial map; the original 40-cell layout remains available as LEGACY_MAP_SIZE. */

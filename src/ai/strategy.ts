@@ -14,12 +14,14 @@ import type {
   MarchTarget,
   OwnedBaseView,
   OwnUnitView,
+  NpcPolicyMemory,
   ResearchId,
   VisibleEnemyUnitView,
   UnitKind,
 } from '../simulation/types';
 import { isUnitUnlocked } from '../simulation/research';
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
+import { estimateCombat } from '../simulation/combat-estimate';
 
 function difficultyProfile(view: FactionView) {
   const selected =
@@ -40,14 +42,136 @@ function deterministicPercent(view: FactionView, salt: number): number {
   return ((value ^ (value >>> 16)) >>> 0) % 100;
 }
 
-function recentPublicNotice(view: FactionView): boolean {
+const emptyPolicyMemory = (): NpcPolicyMemory => ({
+  observedLeader: null,
+  observedLeaderSinceTick: 0,
+  reactedLeader: null,
+  targetFaction: null,
+  targetChangedAtTick: 0,
+  researchNoticeKey: null,
+  researchPriority: [],
+});
+
+const specializationCounters: Readonly<Record<string, readonly ResearchId[]>> =
+  {
+    'specialization-power': ['facility-antiair', 'survey-1', 'maintenance-1'],
+    'specialization-wartime-economy': [
+      'firepower-1',
+      'artillery-1',
+      'facility-turret',
+    ],
+    'specialization-logistics': [
+      'artillery-1',
+      'facility-turret',
+      'firepower-1',
+    ],
+    'specialization-information': [
+      'air-defense-1',
+      'facility-watchtower',
+      'survey-2',
+    ],
+    'specialization-engineering': ['naval-1', 'bridge-3', 'ropeway-2'],
+    'specialization-information-warfare': [
+      'air-defense-1',
+      'facility-antiair',
+      'artillery-1',
+    ],
+  };
+
+function nextPolicyMemory(
+  view: FactionView,
+  previous = emptyPolicyMemory(),
+): NpcPolicyMemory {
+  const contenders = (['A', 'B', 'C'] as const)
+    .filter((id) => id !== view.viewerFactionId)
+    .filter((id) => view.publicEliminations[id]?.eliminatedAtTick === null)
+    .sort(
+      (a, b) =>
+        view.ticketsCenti[b]! - view.ticketsCenti[a]! || a.localeCompare(b),
+    );
+  const leader =
+    contenders.length > 1 &&
+    view.ticketsCenti[contenders[0]!] === view.ticketsCenti[contenders[1]!]
+      ? null
+      : (contenders[0] ?? null);
+  const observedLeader =
+    leader === previous.observedLeader ? previous.observedLeader : leader;
+  const observedLeaderSinceTick =
+    leader === previous.observedLeader
+      ? previous.observedLeaderSinceTick
+      : view.tick;
   const delay = difficultyProfile(view).publicReactionDelayTicks;
-  return (view.researchAnnouncements ?? []).some(
-    (announcement) =>
-      announcement.factionId !== view.viewerFactionId &&
-      announcement.tick <= view.tick &&
-      view.tick - announcement.tick < delay,
-  );
+  const reactedLeader =
+    leader !== null && view.tick - observedLeaderSinceTick >= delay
+      ? leader
+      : previous.reactedLeader;
+  const latestNotice = (view.researchAnnouncements ?? [])
+    .filter(
+      (notice) =>
+        notice.factionId === reactedLeader && notice.tick <= view.tick,
+    )
+    .sort(
+      (a, b) => b.tick - a.tick || a.researchId.localeCompare(b.researchId),
+    )[0];
+  const noticeKey = latestNotice
+    ? `${latestNotice.factionId}:${latestNotice.researchId}:${latestNotice.tick}`
+    : null;
+  const noticeMatured =
+    latestNotice !== undefined && view.tick - latestNotice.tick >= delay;
+  const researchPriority =
+    noticeMatured && noticeKey !== previous.researchNoticeKey
+      ? [...(specializationCounters[latestNotice.researchId] ?? [])]
+      : previous.researchPriority;
+
+  // Weak adjacent opportunities are local known bases, not global hidden state.
+  const leaderTickets = leader === null ? 0 : view.ticketsCenti[leader]!;
+  const weakCandidates = contenders
+    .filter((id) => id !== leader && leaderTickets > 0)
+    .filter((id) => view.ticketsCenti[id]! * 100 <= leaderTickets * 75)
+    .map((id) => ({
+      id,
+      distance: Math.min(
+        ...view.bases
+          .filter((base) => isFreshTargetBase(view, base) && base.owner === id)
+          .map((base) =>
+            Math.min(
+              ...view.ownUnits.map(
+                (unit) =>
+                  Math.abs(unit.cell.x - base.cell.x) +
+                  Math.abs(unit.cell.y - base.cell.y),
+              ),
+            ),
+          ),
+        Number.MAX_SAFE_INTEGER,
+      ),
+    }))
+    .filter(({ distance }) => distance <= 12)
+    .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+  const opportunity = weakCandidates[0]?.id ?? null;
+  const deterministicPick =
+    deterministicPercent(view, 0x89a1) <
+    difficultyProfile(view).nextBestPercent;
+  const desiredTarget =
+    opportunity && deterministicPick ? opportunity : reactedLeader;
+  const targetFaction =
+    previous.targetFaction !== null &&
+    desiredTarget !== previous.targetFaction &&
+    view.tick - previous.targetChangedAtTick <
+      difficultyProfile(view).targetSwitchGraceTicks
+      ? previous.targetFaction
+      : desiredTarget;
+  return {
+    observedLeader,
+    observedLeaderSinceTick,
+    reactedLeader,
+    targetFaction,
+    targetChangedAtTick:
+      targetFaction === previous.targetFaction
+        ? previous.targetChangedAtTick
+        : view.tick,
+    researchNoticeKey: noticeMatured ? noticeKey : previous.researchNoticeKey,
+    researchPriority,
+  };
 }
 
 export function selectNpcResearchRoute(
@@ -124,6 +248,17 @@ function isLiveKnownBase(base: BaseView): boolean {
   return base.hp > 0;
 }
 
+function isFreshTargetBase(
+  view: FactionView,
+  base: BaseView,
+): base is Exclude<BaseView, { readonly visibility: 'unknown' }> {
+  if (base.visibility === 'unknown') return false;
+  if (base.visibility !== 'remembered') return true;
+  return (
+    view.tick - base.seenTick <= difficultyProfile(view).targetMemoryTtlTicks
+  );
+}
+
 function factionOrderDistance(a: CombatantId, b: CombatantId): number {
   const order: Record<CombatantId, number> = {
     A: 0,
@@ -134,7 +269,10 @@ function factionOrderDistance(a: CombatantId, b: CombatantId): number {
   return order[a] - order[b];
 }
 
-function researchCommand(view: FactionView): Command | undefined {
+function researchCommand(
+  view: FactionView,
+  researchPriority: readonly ResearchId[] = [],
+): Command | undefined {
   const faction = view.ownFaction;
   // Selecting another topic replaces the active charge job. Let it finish.
   if (faction.activeResearch !== null) return undefined;
@@ -148,6 +286,13 @@ function researchCommand(view: FactionView): Command | undefined {
         routePriority.get(idA as ResearchId) ?? Number.MAX_SAFE_INTEGER;
       const routeB =
         routePriority.get(idB as ResearchId) ?? Number.MAX_SAFE_INTEGER;
+      const counterA = researchPriority.indexOf(idA as ResearchId);
+      const counterB = researchPriority.indexOf(idB as ResearchId);
+      if ((counterA >= 0 || counterB >= 0) && counterA !== counterB)
+        return (
+          (counterA < 0 ? Number.MAX_SAFE_INTEGER : counterA) -
+          (counterB < 0 ? Number.MAX_SAFE_INTEGER : counterB)
+        );
       if (routeA !== routeB) return routeA - routeB;
       const priority = (definition: typeof a): number =>
         definition.effects.some((effect) => effect.id === 'damage-bonus')
@@ -389,10 +534,20 @@ function productionCommand(view: FactionView): Command | undefined {
           .length;
       return [{ kind, siteId, count }];
     })
-    .sort(
-      (a, b) =>
-        a.count - b.count || kinds.indexOf(a.kind) - kinds.indexOf(b.kind),
-    );
+    .sort((a, b) => {
+      const airThreat = view.visibleEnemies.some(
+        (enemy) =>
+          view.rules.units[enemy.kind].movementDomain === 'air' &&
+          enemy.factionId !== view.viewerFactionId,
+      );
+      return (
+        (airThreat
+          ? Number(b.kind === 'antiAir') - Number(a.kind === 'antiAir')
+          : 0) ||
+        a.count - b.count ||
+        kinds.indexOf(a.kind) - kinds.indexOf(b.kind)
+      );
+    });
   const desired = candidates[0];
   return desired
     ? {
@@ -696,6 +851,7 @@ export function knownAirDefenseDetour(
 function unitMoveCommand(
   view: FactionView,
   unit: OwnUnitView,
+  targetFaction: FactionId | null,
 ): Command | undefined {
   const factionId = view.viewerFactionId;
   if (unitCapabilities(unit.kind, view.rules).movementDomain === 'water') {
@@ -770,7 +926,19 @@ function unitMoveCommand(
           base.id !== `HQ-${factionId}` &&
           isLiveKnownBase(base),
       );
-  const strategicTargets = outposts.length > 0 ? outposts : hqs;
+  const factionTargets = targetFaction
+    ? [...outposts, ...hqs].filter(
+        (base) =>
+          isFreshTargetBase(view, base) &&
+          baseKnownOwner(base) === targetFaction,
+      )
+    : [];
+  const strategicTargets =
+    factionTargets.length > 0
+      ? factionTargets
+      : outposts.length > 0
+        ? outposts
+        : hqs;
 
   const proposedDefense = enemyDefenseGoal(view, unit);
   const defense =
@@ -813,10 +981,8 @@ function unitMoveCommand(
         }
       : undefined);
   if (!goal) return crossingConstructionCommand(view, unit);
-  // Public faction notices are already part of every faction's view. Keep
-  // current orders, but let each difficulty react to new strategic routing
-  // only after its configured notice delay; visible local defense stays live.
-  if (!defense && recentPublicNotice(view) && !order) return undefined;
+  // Public target changes honor the configured switch grace; visible defense
+  // above remains an immediate exception.
   if (
     !defense &&
     order?.target.kind === 'base' &&
@@ -1082,27 +1248,104 @@ function artilleryBombardCommand(
  * Stateless NPC policy. Its sole input is the faction-limited snapshot; all
  * resulting actions still pass through the shared command validator.
  */
-export function decideBotCommands(view: FactionView): readonly Command[] {
+export interface BotDecision {
+  readonly commands: readonly Command[];
+  readonly memory: NpcPolicyMemory;
+}
+
+function forecastGate(
+  view: FactionView,
+  memory: NpcPolicyMemory,
+): NpcPolicyMemory {
+  if (
+    memory.targetFaction === null ||
+    memory.targetFaction === memory.reactedLeader
+  )
+    return memory;
+  const target = view.bases.find(
+    (base) =>
+      isFreshTargetBase(view, base) &&
+      base.owner === memory.targetFaction &&
+      base.hp > 0,
+  );
+  if (!target) {
+    const grace = difficultyProfile(view).targetSwitchGraceTicks;
+    return view.tick - memory.targetChangedAtTick < grace
+      ? memory
+      : { ...memory, targetFaction: memory.reactedLeader };
+  }
+  const forecast = estimateCombat(
+    {
+      ...view,
+      rules: {
+        ...view.rules,
+        combatEstimate: {
+          maxTicks: Math.min(
+            view.rules.npc.forecastHorizonTicks,
+            view.rules.combatEstimate.maxTicks,
+          ),
+        },
+      },
+    },
+    view.ownUnits.map((unit) => unit.id),
+    target.cell,
+  );
+  return forecast.status === 'favorable' || forecast.status === 'contested'
+    ? memory
+    : { ...memory, targetFaction: memory.reactedLeader };
+}
+
+export function planBotDecision(
+  view: FactionView,
+  previousMemory?: NpcPolicyMemory,
+): BotDecision {
+  const memory = forecastGate(view, nextPolicyMemory(view, previousMemory));
   if (
     view.phase !== 'running' ||
     view.ownFaction.eliminatedAtTick !== null ||
     view.ownFaction.ticketsCenti <= 0
   ) {
-    return [];
+    return { commands: [], memory };
   }
 
   // Rotate fixed action slots rather than only the available commands: an
   // always-available economic action must not starve later units at low limits.
   const slots: (() => Command | undefined)[] = [
     () => productionCommand(view),
-    () => researchCommand(view),
+    () => {
+      const observedCounters: ResearchId[] = [];
+      if (
+        view.visibleEnemies.some(
+          (enemy) =>
+            enemy.factionId !== view.viewerFactionId &&
+            view.rules.units[enemy.kind].movementDomain === 'air',
+        )
+      )
+        observedCounters.push('air-defense-1');
+      if (
+        view.facilities.some(
+          (facility) =>
+            facility.visibility === 'visible' && facility.kind === 'mine',
+        )
+      )
+        observedCounters.push('survey-1');
+      return researchCommand(view, [
+        ...observedCounters,
+        ...memory.researchPriority,
+      ]);
+    },
     () => baseUpgradeCommand(view) ?? facilityConstructionCommand(view),
     () => tacticalAbilityCommand(view),
     ...[...view.ownUnits]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(
         (unit) => () =>
-          artilleryBombardCommand(view, unit) ?? unitMoveCommand(view, unit),
+          artilleryBombardCommand(view, unit) ??
+          unitMoveCommand(
+            view,
+            unit,
+            memory.targetFaction === 'local' ? null : memory.targetFaction,
+          ),
       ),
   ];
   const decision = Math.floor(
@@ -1116,5 +1359,9 @@ export function decideBotCommands(view: FactionView): readonly Command[] {
     const command = slots[(start + offset) % slots.length]!();
     if (command) commands.push(command);
   }
-  return commands;
+  return { commands, memory };
+}
+
+export function decideBotCommands(view: FactionView): readonly Command[] {
+  return planBotDecision(view).commands;
 }

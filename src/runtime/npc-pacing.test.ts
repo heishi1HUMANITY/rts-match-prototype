@@ -11,7 +11,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('NPC-R01 runtime pacing', () => {
   it('schedules B/C every 30 ticks and local orders every 10 ticks independently', () => {
-    const bots = vi.spyOn(strategy, 'decideBotCommands');
+    const bots = vi.spyOn(strategy, 'planBotDecision');
     const locals = vi.spyOn(local, 'advanceLocalFactionOrders');
     let state = { ...createMatch(42), phase: 'running' as const };
     for (let tick = 0; tick < 90; tick += 1) {
@@ -27,9 +27,14 @@ describe('NPC-R01 runtime pacing', () => {
       ['B', 60],
       ['C', 60],
     ]);
-    expect(bots.mock.results.every((result) => result.value.length <= 2)).toBe(
-      true,
-    );
+    expect(
+      bots.mock.results.every((result) => result.value.commands.length <= 2),
+    ).toBe(true);
+    expect(
+      state.factions
+        .filter(({ controller }) => controller === 'bot')
+        .every(({ npcPolicyMemory }) => npcPolicyMemory !== undefined),
+    ).toBe(true);
     expect(
       locals.mock.calls.map(([snapshot]) => snapshot.elapsedTicks),
     ).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80]);

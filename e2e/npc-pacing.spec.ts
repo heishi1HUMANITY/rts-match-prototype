@@ -17,6 +17,24 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
     page.locator('[data-master-path="npc.selectedDifficulty"]'),
   ).toHaveValue('standard');
   await expect(
+    page.locator('[data-master-path="npc.forecastHorizonTicks"]'),
+  ).toHaveValue('90');
+  await expect(
+    page.locator(
+      '[data-master-path="npc.difficultyProfiles.weak.targetMemoryTtlTicks"]',
+    ),
+  ).toHaveValue('150');
+  await expect(
+    page.locator(
+      '[data-master-path="npc.difficultyProfiles.standard.targetMemoryTtlTicks"]',
+    ),
+  ).toHaveValue('300');
+  await expect(
+    page.locator(
+      '[data-master-path="npc.difficultyProfiles.strong.targetMemoryTtlTicks"]',
+    ),
+  ).toHaveValue('600');
+  await expect(
     page.locator(
       '[data-master-path="npc.difficultyProfiles.weak.publicReactionDelayTicks"]',
     ),
@@ -24,6 +42,20 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   await expect(
     page.locator('[data-master-path="npc.researchRoutes.north.crossing.0"]'),
   ).toHaveValue('bridge-2');
+  await page
+    .locator('[data-master-path="npc.forecastHorizonTicks"]')
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('npc-policy-master.png'),
+  });
+  await page
+    .locator(
+      '[data-master-path="npc.difficultyProfiles.strong.targetMemoryTtlTicks"]',
+    )
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('npc-policy-memory-master.png'),
+  });
   await page
     .getByRole('button', { name: '保存値で新しく開始', exact: true })
     .click();
@@ -43,10 +75,14 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   expect(diagnostic.rules.rules.npc).toMatchObject({
     decisionIntervalTicks: 30,
     maxCommandsPerDecision: 2,
+    forecastHorizonTicks: 90,
   });
   for (const id of ['B', 'C']) {
     const faction = diagnostic.state.factions.find(
       (entry: { id: string }) => entry.id === id,
+    );
+    expect(faction.npcPolicyMemory).toEqual(
+      expect.objectContaining({ researchPriority: expect.any(Array) }),
     );
     expect(faction.productionJobs.length).toBeGreaterThan(0);
     expect(['bridge-2', 'firepower-1']).toContain(
