@@ -804,7 +804,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 24 &&
       input.masterSchemaVersion !== 25 &&
       input.masterSchemaVersion !== 26 &&
-      input.masterSchemaVersion !== 27)
+      input.masterSchemaVersion !== 27 &&
+      input.masterSchemaVersion !== 28)
   )
     return {
       ok: false,
