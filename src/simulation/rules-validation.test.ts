@@ -666,6 +666,55 @@ describe('F89 NPC forecast master migration', () => {
   });
 });
 
+describe('manual artillery aim master migration', () => {
+  it('adds the near dispersion ratio and keeps customized scatter values', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete rules.artilleryBombardment.nearScatterPercent;
+    delete rules.artilleryBombardment.impactBaseTicks;
+    delete rules.artilleryBombardment.impactTicksPerCell;
+    rules.artilleryBombardment.observedImpactTicks = 30;
+    rules.artilleryBombardment.unobservedImpactTicks = 50;
+    rules.artilleryBombardment.observedScatterRadius1024 = 700;
+    const migrated = validateEnvelope({
+      masterSchemaVersion: 30,
+      revision: 3,
+      rules,
+    });
+    expect(migrated).toMatchObject({
+      ok: true,
+      envelope: {
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        rules: {
+          artilleryBombardment: {
+            nearScatterPercent:
+              DEFAULT_RULES.artilleryBombardment.nearScatterPercent,
+            observedScatterRadius1024: 700,
+            impactBaseTicks: DEFAULT_RULES.artilleryBombardment.impactBaseTicks,
+          },
+        },
+      },
+    });
+    expect(
+      migrated.ok &&
+        'observedImpactTicks' in migrated.envelope.rules.artilleryBombardment,
+    ).toBe(false);
+    rules.artilleryBombardment = {
+      ...DEFAULT_RULES.artilleryBombardment,
+      nearScatterPercent: 101,
+    };
+    expect(
+      validateEnvelope({
+        masterSchemaVersion: MASTER_SCHEMA_VERSION,
+        revision: 4,
+        rules,
+      }).ok,
+    ).toBe(false);
+  });
+});
+
 it('bounds variable node count and accepts many same-stage independent nodes', () => {
   const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
     string,

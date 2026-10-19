@@ -26,8 +26,8 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 30 as const;
-export const RULES_VERSION = 'cp13-combat-observation-v1' as const;
+export const MASTER_SCHEMA_VERSION = 31 as const;
+export const RULES_VERSION = 'artillery-manual-aim-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -56,10 +56,13 @@ export interface ArtilleryBombardmentRules {
   readonly range: number;
   readonly preparationTicks: number;
   readonly intervalTicks: number;
-  readonly observedImpactTicks: number;
-  readonly unobservedImpactTicks: number;
+  /** Flight time = impactBaseTicks + impactTicksPerCell × distance. */
+  readonly impactBaseTicks: number;
+  readonly impactTicksPerCell: number;
+  /** Dispersion at max range; it shrinks toward nearScatterPercent at the gun. */
   readonly observedScatterRadius1024: number;
   readonly unobservedScatterRadius1024: number;
+  readonly nearScatterPercent: number;
   readonly blastRadius1024: number;
   readonly unitDamage: number;
   readonly structureDamage: number;
@@ -330,13 +333,14 @@ export const DEFAULT_RULES: RulesMaster = {
     informationKillBonusPercent: 50,
   },
   artilleryBombardment: {
-    range: 8,
+    range: 15,
     preparationTicks: 10,
     intervalTicks: 80,
-    observedImpactTicks: 30,
-    unobservedImpactTicks: 50,
-    observedScatterRadius1024: 512,
-    unobservedScatterRadius1024: 2048,
+    impactBaseTicks: 10,
+    impactTicksPerCell: 3,
+    observedScatterRadius1024: 2048,
+    unobservedScatterRadius1024: 5120,
+    nearScatterPercent: 25,
     blastRadius1024: 1024,
     unitDamage: 100,
     structureDamage: 150,

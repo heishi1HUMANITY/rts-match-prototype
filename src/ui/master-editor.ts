@@ -108,25 +108,30 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
     unit: 'tick (0.1秒)',
     help: '通常攻撃と地点砲撃で共有する再攻撃までの時間です。',
   },
-  observedImpactTicks: {
-    label: '観測中の着弾時間',
+  impactBaseTicks: {
+    label: '着弾時間の基礎',
     unit: 'tick (0.1秒)',
-    help: '発射時に指定地点を観測している場合の飛翔時間です。',
+    help: '距離0での砲弾の飛翔時間です。',
   },
-  unobservedImpactTicks: {
-    label: '未観測時の着弾時間',
-    unit: 'tick (0.1秒)',
-    help: '発射時に指定地点を観測していない場合の飛翔時間です。',
+  impactTicksPerCell: {
+    label: '着弾時間の距離加算',
+    unit: 'tick/マス',
+    help: '1マス遠いごとに飛翔時間へ加える時間です。',
   },
   observedScatterRadius1024: {
-    label: '観測中の散布半径',
+    label: '観測中の散布半径（最大射程）',
     unit: 'マス ×1024',
-    help: '観測射撃の着弾散布範囲です。',
+    help: '指定地点が自軍視界内のとき、最大射程での着弾散布半径です。近いほど縮みます。',
   },
   unobservedScatterRadius1024: {
-    label: '未観測時の散布半径',
+    label: '未観測時の散布半径（最大射程）',
     unit: 'マス ×1024',
-    help: '未観測射撃の着弾散布範囲です。',
+    help: '指定地点が自軍視界外のとき、最大射程での着弾散布半径です。近いほど縮みます。',
+  },
+  nearScatterPercent: {
+    label: '至近の散布率',
+    unit: '%',
+    help: '距離0での散布半径を最大射程時の何%にするかです。距離に比例して100%へ広がります。',
   },
   blastRadius1024: {
     label: '爆発半径',
@@ -628,7 +633,7 @@ function fieldsFor(rules: RulesMaster): {
   const labels: Record<string, string> = {
     combatEstimate: '戦闘見込み',
     cp87: 'CP13 非火力専攻',
-    artilleryBombardment: '地点砲撃',
+    artilleryBombardment: '手動砲撃',
     airDefense: '航空・対空',
     economy: '経済',
     facilities: '防御施設',

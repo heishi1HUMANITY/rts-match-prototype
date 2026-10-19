@@ -26,6 +26,16 @@ export type BoardPick =
   | { readonly kind: 'ground'; readonly cell: Cell }
   | { readonly kind: 'base'; readonly baseId: string };
 
+/** Manual artillery aim overlay, in cell units. */
+export interface ArtilleryAimOverlay {
+  readonly origin: Cell;
+  readonly range: number;
+  readonly target: Cell | null;
+  readonly scatterRadius: number;
+  readonly blastRadius: number;
+  readonly status: 'observed' | 'unobserved' | 'invalid';
+}
+
 export interface BoardView {
   readonly canvas: HTMLCanvasElement;
   readonly available: boolean;
@@ -45,6 +55,7 @@ export interface BoardView {
     target: Cell,
   ): void;
   clearMovePreview(): void;
+  setAimPreview(aim: ArtilleryAimOverlay | null): void;
   focusCell(cell: Cell): void;
   pan(
     from: { readonly x: number; readonly y: number },
@@ -206,6 +217,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       setMovePreview: () => undefined,
       setGroupMovePreview: () => undefined,
       clearMovePreview: () => undefined,
+      setAimPreview: () => undefined,
       focusCell: () => undefined,
       pan: () => undefined,
       zoomBy: () => undefined,
@@ -416,6 +428,78 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       opacity: 0.95,
       side: THREE.DoubleSide,
     }),
+  );
+  const aimMaterial = (
+    color: number,
+    opacity: number,
+  ): THREE.MeshBasicMaterial =>
+    ownMaterial(
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+  const aimColors = {
+    observed: 0x167a9a,
+    unobserved: 0xb87520,
+    invalid: 0xb42318,
+  } as const;
+  const aimRingMaterials = {
+    observed: aimMaterial(aimColors.observed, 0.95),
+    unobserved: aimMaterial(aimColors.unobserved, 0.95),
+    invalid: aimMaterial(aimColors.invalid, 0.95),
+  };
+  const aimFillMaterials = {
+    observed: aimMaterial(aimColors.observed, 0.18),
+    unobserved: aimMaterial(aimColors.unobserved, 0.18),
+    invalid: aimMaterial(aimColors.invalid, 0.12),
+  };
+  const aimRangeMaterial = aimMaterial(0x181c20, 0.55);
+  const aimBlastMaterial = aimMaterial(0x181c20, 0.8);
+  const aimThinRingGeometry = ownGeometry(new THREE.RingGeometry(0.985, 1, 96));
+  const aimThickRingGeometry = ownGeometry(new THREE.RingGeometry(0.93, 1, 64));
+  const aimDiscGeometry = ownGeometry(new THREE.CircleGeometry(1, 64));
+  const aimMesh = (
+    geometry: THREE.BufferGeometry,
+    material: THREE.MeshBasicMaterial,
+    name: string,
+    order: number,
+  ): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.renderOrder = order;
+    mesh.visible = false;
+    scene.add(mesh);
+    return mesh;
+  };
+  const aimRange = aimMesh(
+    aimThinRingGeometry,
+    aimRangeMaterial,
+    'aim-range',
+    5,
+  );
+  const aimScatterFill = aimMesh(
+    aimDiscGeometry,
+    aimFillMaterials.observed,
+    'aim-scatter-fill',
+    5,
+  );
+  const aimScatterRing = aimMesh(
+    aimThickRingGeometry,
+    aimRingMaterials.observed,
+    'aim-scatter',
+    6,
+  );
+  const aimBlast = aimMesh(
+    aimThinRingGeometry,
+    aimBlastMaterial,
+    'aim-blast',
+    6,
   );
   const unitObjects = new Map<string, UnitObjects>();
   const unitRaycastTargets: THREE.Mesh[] = [];
@@ -1486,7 +1570,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${combatMark}${bombardMark}${underFire ? '✦' : ''}${march ? '→' : ''}${jammed ? '⚠妨' : ''}\n${unit.hp}/${unit.maxHp}`;
       objects.label.dataset.combat = combatMark ? String(combat?.phase) : '';
       objects.label.dataset.underFire = String(underFire);
-      objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${combatMark ? ` · ${combat?.phase === 'windup' ? '攻撃準備' : '攻撃後の周期待ち'}${visibleTargetId ? ` → ${visibleTargetId}` : ''}` : ''}${unit.control === 'own' && unit.bombardOrder ? ` · 地点砲撃準備 ${unit.bombardOrder.cell.x},${unit.bombardOrder.cell.y}` : pointFireFlight ? ` · 地点砲撃飛翔 ${pointFireFlight.cell.x},${pointFireFlight.cell.y}` : ''}${underFire ? ' · 被弾' : ''}${march ? ` → ${march.target.id}` : ''}`;
+      objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${combatMark ? ` · ${combat?.phase === 'windup' ? '攻撃準備' : '攻撃後の周期待ち'}${visibleTargetId ? ` → ${visibleTargetId}` : ''}` : ''}${unit.control === 'own' && unit.bombardOrder ? ` · 手動砲撃準備 ${unit.bombardOrder.cell.x},${unit.bombardOrder.cell.y}` : pointFireFlight ? ` · 手動砲撃飛翔 ${pointFireFlight.cell.x},${pointFireFlight.cell.y}` : ''}${underFire ? ' · 被弾' : ''}${march ? ` → ${march.target.id}` : ''}`;
       objects.marker.position.copy(currentPosition);
       objects.selection.position.set(
         currentPosition.x,
@@ -1821,6 +1905,31 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     },
     setGroupMovePreview,
     clearMovePreview,
+    setAimPreview(aim) {
+      if (disposed) return;
+      aimRange.visible = aim !== null;
+      const targeted = aim !== null && aim.target !== null;
+      aimScatterRing.visible = targeted;
+      aimScatterFill.visible = targeted && aim.scatterRadius > 0;
+      aimBlast.visible = targeted;
+      if (aim !== null) {
+        aimRange.position.copy(cellPosition(aim.origin, 0.1));
+        aimRange.scale.setScalar(aim.range);
+      }
+      if (targeted) {
+        const center = cellPosition(aim.target!, 0.1);
+        const scatter = Math.max(aim.scatterRadius, 0.25);
+        aimScatterRing.material = aimRingMaterials[aim.status];
+        aimScatterFill.material = aimFillMaterials[aim.status];
+        aimScatterRing.position.copy(center);
+        aimScatterRing.scale.setScalar(scatter);
+        aimScatterFill.position.copy(center);
+        aimScatterFill.scale.setScalar(scatter);
+        aimBlast.position.copy(center);
+        aimBlast.scale.setScalar(aim.blastRadius);
+      }
+      if (!contextLost) renderer.render(scene, camera);
+    },
     focusCell(cell) {
       cameraTarget.set(
         THREE.MathUtils.clamp(cell.x + 0.5, 0, boardWidth),

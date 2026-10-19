@@ -194,7 +194,7 @@ export function createHud(app: HTMLElement): HudElements {
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
-        <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" hidden>地点砲撃</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
+        <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" aria-pressed="false" hidden>手動砲撃</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
     <dialog class="master-outdated-dialog" aria-labelledby="outdated-title"><h2 id="outdated-title">マスタ標準値の更新</h2><p>標準値が更新されています。標準値へ戻しますか？</p><div class="outdated-actions"><button type="button" data-action="outdated-reset" class="primary">戻す</button><button type="button" data-action="outdated-dismiss">このまま</button></div></dialog>`;
@@ -560,9 +560,9 @@ export function updateHud(
       (entry) => entry.sourceUnitId === selected.id,
     );
     if (selected.bombardOrder)
-      combatText = `地点砲撃準備 · ${selected.bombardOrder.cell.x},${selected.bombardOrder.cell.y} · 発射まで ${seconds(Math.max(0, selected.bombardOrder.fireAtTick - view.tick))}`;
+      combatText = `手動砲撃準備 · ${selected.bombardOrder.cell.x},${selected.bombardOrder.cell.y} · 発射まで ${seconds(Math.max(0, selected.bombardOrder.fireAtTick - view.tick))}`;
     else if (strike)
-      combatText = `地点砲撃飛翔 · ${strike.cell.x},${strike.cell.y} · 着弾まで ${seconds(Math.max(0, strike.impactTick - view.tick))}`;
+      combatText = `手動砲撃飛翔 · ${strike.cell.x},${strike.cell.y} · 着弾まで ${seconds(Math.max(0, strike.impactTick - view.tick))}`;
     else if (selected.attack?.phase === 'windup')
       combatText = `攻撃準備${visibleTarget(selected.attack.targetId) ? ` → ${visibleTarget(selected.attack.targetId)}` : ' · 対象は視界外'}`;
     else if (selected.attack?.phase === 'cooldown')
@@ -577,20 +577,16 @@ export function updateHud(
   const pointFireButton = elements.root.querySelector<HTMLButtonElement>(
     '[data-action="point-fire"]',
   )!;
-  const pointFireResearch = own.completedResearchIds.includes(
-    'specialization-power',
-  );
   pointFireButton.hidden =
-    selectedUnits.length !== 1 ||
-    selectedUnits[0]?.kind !== 'artillery' ||
-    !pointFireResearch;
+    selectedUnits.length !== 1 || selectedUnits[0]?.kind !== 'artillery';
   pointFireButton.disabled =
     view.phase !== 'running' ||
     snapshot.contextLost ||
     own.eliminatedAtTick !== null ||
     selectedUnits[0]?.path.length !== 0 ||
     selectedUnits[0]?.garrisonedAtBaseId != null;
-  pointFireButton.title = `射程${view.rules.artilleryBombardment.range} · 観測時着弾${seconds(view.rules.artilleryBombardment.observedImpactTicks)}/散布${(view.rules.artilleryBombardment.observedScatterRadius1024 / 1024).toFixed(1)} · 未観測${seconds(view.rules.artilleryBombardment.unobservedImpactTicks)}/散布${(view.rules.artilleryBombardment.unobservedScatterRadius1024 / 1024).toFixed(1)} · 待ち${seconds(view.rules.artilleryBombardment.intervalTicks)}`;
+  const bombard = view.rules.artilleryBombardment;
+  pointFireButton.title = `射程${bombard.range} · 散布は距離で広がり最大射程で観測${(bombard.observedScatterRadius1024 / 1024).toFixed(1)}/未観測${(bombard.unobservedScatterRadius1024 / 1024).toFixed(1)}マス · 着弾${seconds(bombard.impactBaseTicks)}+${seconds(bombard.impactTicksPerCell)}/マス · 待ち${seconds(bombard.intervalTicks)} · 移動中は不可`;
   let selectionInstruction: string;
   if (own.eliminatedAtTick !== null)
     selectionInstruction = '脱落 · 探索済み盤面で観戦できます';

@@ -4,6 +4,11 @@ import { resolveCombat } from './combat';
 import { createMatch } from './match';
 import { stepMatch } from './step';
 import { isCellVisibleToFaction, updateFactionKnowledge } from './visibility';
+import {
+  artilleryCenterHitPercent,
+  artilleryImpactTicks,
+  artilleryScatterRadius1024,
+} from './artillery-aim';
 import { getFactionView } from './view';
 import type { MatchState, UnitState } from './types';
 
@@ -33,11 +38,6 @@ function fixture(targetCell = { x: 27, y: 20 }): MatchState {
     facilities: [],
     crossings: [],
     units: [artillery, target],
-    factions: initial.factions.map((faction) =>
-      faction.id === 'A'
-        ? { ...faction, completedResearchIds: ['specialization-power'] }
-        : faction,
-    ),
   };
   return { ...state, knowledge: updateFactionKnowledge(state) };
 }
@@ -111,25 +111,167 @@ describe('artillery point fire', () => {
     };
     const hidden = fixture({ x: 27, y: 20 });
     const hiddenStrike = makeStrike(hidden);
-    expect(hiddenStrike.impactTick).toBe(60);
+    expect(hiddenStrike.impactTick).toBe(
+      10 + artilleryImpactTicks(hidden.rules.artilleryBombardment, 7 * 1024),
+    );
     expect(
       Math.hypot(
         hiddenStrike.centerX1024! - (27 * 1024 + 512),
         hiddenStrike.centerY1024! - (20 * 1024 + 512),
       ),
-    ).toBeLessThanOrEqual(2048);
+    ).toBeLessThanOrEqual(
+      artilleryScatterRadius1024(
+        hidden.rules.artilleryBombardment,
+        7 * 1024,
+        false,
+      ),
+    );
     expect(makeStrike(hidden)).toEqual(hiddenStrike);
 
     const observed = fixture({ x: 27, y: 20 });
     const observedCell = visibleTargetCell(observed);
     const observedStrike = makeStrike(observed, observedCell);
-    expect(observedStrike.impactTick).toBe(40);
+    expect(observedStrike.impactTick).toBe(
+      10 +
+        artilleryImpactTicks(
+          observed.rules.artilleryBombardment,
+          Math.floor(
+            Math.hypot(observedCell.x - 20, observedCell.y - 20) * 1024,
+          ),
+        ),
+    );
     expect(
       Math.hypot(
         observedStrike.centerX1024! - (observedCell.x * 1024 + 512),
         observedStrike.centerY1024! - (observedCell.y * 1024 + 512),
       ),
-    ).toBeLessThanOrEqual(512);
+    ).toBeLessThanOrEqual(
+      artilleryScatterRadius1024(
+        observed.rules.artilleryBombardment,
+        Math.ceil(Math.hypot(observedCell.x - 20, observedCell.y - 20) * 1024),
+        true,
+      ),
+    );
+  });
+
+  it('needs no research but rejects fire while moving or beyond range', () => {
+    const initial = fixture();
+    expect(
+      initial.factions.find(({ id }) => id === 'A')!.completedResearchIds,
+    ).not.toContain('specialization-power');
+    expect(issuePointFire(initial).units[0]!.bombardOrder).not.toBeNull();
+    const moving = {
+      ...initial,
+      units: [
+        { ...initial.units[0]!, path: [{ x: 21, y: 20 }] },
+        initial.units[1]!,
+      ],
+    };
+    expect(
+      applyCommand(moving, 'A', {
+        type: 'point-fire',
+        unitId: 'A-GUN',
+        cell: { x: 24, y: 20 },
+      }),
+    ).toMatchObject({ ok: false, reason: 'FIRE_WHILE_MOVING' });
+    expect(
+      applyCommand(initial, 'A', {
+        type: 'point-fire',
+        unitId: 'A-GUN',
+        cell: { x: 21 + initial.rules.artilleryBombardment.range, y: 20 },
+      }),
+    ).toMatchObject({ ok: false, reason: 'FIRE_OUT_OF_RANGE' });
+  });
+
+  it('widens dispersion with distance and tightens it inside own vision', () => {
+    const config = fixture().rules.artilleryBombardment;
+    const radius = (cells: number, observed: boolean) =>
+      artilleryScatterRadius1024(config, cells * 1024, observed);
+    expect(radius(0, true)).toBe(
+      Math.floor(
+        (config.observedScatterRadius1024 * config.nearScatterPercent) / 100,
+      ),
+    );
+    expect(radius(config.range, true)).toBe(config.observedScatterRadius1024);
+    expect(radius(config.range + 5, true)).toBe(
+      config.observedScatterRadius1024,
+    );
+    for (let cells = 1; cells <= config.range; cells++) {
+      expect(radius(cells, true)).toBeGreaterThan(radius(cells - 1, true));
+      expect(radius(cells, false)).toBeGreaterThanOrEqual(
+        2 * radius(cells, true),
+      );
+    }
+    expect(artilleryCenterHitPercent(config, radius(2, true))).toBe(100);
+    expect(
+      artilleryCenterHitPercent(config, radius(config.range, true)),
+    ).toBeLessThan(artilleryCenterHitPercent(config, radius(4, true)));
+    expect(artilleryCenterHitPercent(config, radius(4, false))).toBeLessThan(
+      artilleryCenterHitPercent(config, radius(4, true)) / 2,
+    );
+    expect(config.range).toBeGreaterThan(
+      2 * fixture().rules.units.artillery.vision,
+    );
+    const flight = (cells: number) =>
+      artilleryImpactTicks(config, cells * 1024);
+    expect(flight(0)).toBe(config.impactBaseTicks);
+    for (let cells = 1; cells <= config.range; cells++)
+      expect(flight(cells)).toBeGreaterThan(flight(cells - 1));
+  });
+
+  it('lands inside the dispersion circle with fewer hits far away or unobserved', () => {
+    const base = fixture({ x: 40, y: 40 });
+    const config = base.rules.artilleryBombardment;
+    const farVision: MatchState = {
+      ...base,
+      rules: {
+        ...base.rules,
+        units: {
+          ...base.rules.units,
+          artillery: {
+            ...base.rules.units.artillery,
+            vision: config.range + 1,
+          },
+        },
+      },
+    };
+    const hitRate = (state: MatchState, cell: { x: number; y: number }) => {
+      const observed = isCellVisibleToFaction(state, cell, 'A');
+      const radius = artilleryScatterRadius1024(
+        config,
+        Math.floor(Math.hypot(cell.x - 20, cell.y - 20) * 1024),
+        observed,
+      );
+      let hits = 0;
+      const shots = 200;
+      for (let seed = 0; seed < shots; seed++) {
+        const ordered = issuePointFire({ ...state, seed }, cell);
+        const strike = resolveCombat({
+          ...ordered,
+          elapsedTicks: 10,
+        }).scheduledStrikes.find(
+          ({ sourceUnitId }) => sourceUnitId === 'A-GUN',
+        )!;
+        const miss = Math.hypot(
+          strike.centerX1024! - (cell.x * 1024 + 512),
+          strike.centerY1024! - (cell.y * 1024 + 512),
+        );
+        expect(miss).toBeLessThanOrEqual(radius + 1);
+        if (miss <= config.blastRadius1024) hits++;
+      }
+      return hits / shots;
+    };
+    const near = { x: 22, y: 20 };
+    const far = { x: 20 + config.range, y: 20 };
+    expect(isCellVisibleToFaction(base, near, 'A')).toBe(true);
+    expect(isCellVisibleToFaction(base, far, 'A')).toBe(false);
+    expect(isCellVisibleToFaction(farVision, far, 'A')).toBe(true);
+    const observedNear = hitRate(base, near);
+    const observedFar = hitRate(farVision, far);
+    const unobservedFar = hitRate(base, far);
+    expect(observedNear).toBe(1);
+    expect(observedFar).toBeLessThan(0.7);
+    expect(unobservedFar).toBeLessThan(observedFar / 3);
   });
 
   it('resolves nearby units from the same impact snapshot and hides unseen warnings', () => {
@@ -205,7 +347,13 @@ describe('artillery point fire', () => {
     const fired = state.scheduledStrikes.find(
       ({ sourceUnitId }) => sourceUnitId === 'A-GUN',
     );
-    expect(fired?.impactTick).toBe(40);
+    expect(fired?.impactTick).toBe(
+      10 +
+        artilleryImpactTicks(
+          initial.rules.artilleryBombardment,
+          Math.floor(Math.hypot(target.x - 20, target.y - 20) * 1024),
+        ),
+    );
     expect(state.units.find(({ id }) => id === 'A-GUN')!.attack).toMatchObject({
       phase: 'cooldown',
       phaseEndsTick: 90,

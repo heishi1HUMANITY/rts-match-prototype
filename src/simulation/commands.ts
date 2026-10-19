@@ -427,18 +427,13 @@ export function applyCommand(
 
   if (command.type === 'point-fire') {
     const config = state.rules.artilleryBombardment;
-    const targetFaction = state.factions.find(({ id }) => id === actor);
-    if (
-      unit.kind !== 'artillery' ||
-      !targetFaction?.completedResearchIds.includes('specialization-power')
-    )
-      return reject(state, 'INVALID_TARGET');
+    if (unit.kind !== 'artillery') return reject(state, 'INVALID_TARGET');
     if (
       unit.path.length > 0 ||
       unit.edgeProgress > 0 ||
       unit.garrisonedAtBaseId
     )
-      return reject(state, 'INVALID_TARGET');
+      return reject(state, 'FIRE_WHILE_MOVING');
     if (
       command.cell.x < 0 ||
       command.cell.y < 0 ||
@@ -449,7 +444,7 @@ export function applyCommand(
     const dx = getUnitPositionX1024(unit) - (command.cell.x * 1024 + 512);
     const dy = getUnitPositionY1024(unit) - (command.cell.y * 1024 + 512);
     if (dx * dx + dy * dy > (config.range * 1024) ** 2)
-      return reject(state, 'INVALID_TARGET');
+      return reject(state, 'FIRE_OUT_OF_RANGE');
     const previous = unit.attack;
     const readyTick =
       previous?.phase === 'cooldown'

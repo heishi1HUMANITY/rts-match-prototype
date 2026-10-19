@@ -69,7 +69,7 @@ describe('faction-view NPC policy', () => {
     expect(productionBase?.kind).not.toBe('hq');
   });
 
-  it('uses point fire only against currently observed ground targets', () => {
+  it('uses point fire only against observed ground targets beyond gun range', () => {
     const initial = running(createMatch(108, { scenarioId: 'g2-combat' }));
     const artillery = {
       ...initial.units.find(({ id }) => id === 'B-01')!,
@@ -80,33 +80,46 @@ describe('faction-view NPC policy', () => {
       edgeProgress: 0,
       attack: { targetId: null, phase: 'idle' as const, phaseEndsTick: 0 },
     };
+    const spotter = {
+      ...artillery,
+      id: 'B-SPOT',
+      kind: 'scout' as const,
+      cell: { x: 24, y: 20 },
+    };
     const enemy = {
       ...initial.units.find(({ id }) => id === 'A-01')!,
-      cell: { x: 22, y: 20 },
+      cell: { x: 27, y: 20 },
       path: [],
       edgeProgress: 0,
     };
-    let state: MatchState = {
-      ...initial,
-      units: [artillery, enemy],
-      factions: initial.factions.map((faction) =>
-        faction.id === 'B'
-          ? { ...faction, completedResearchIds: ['specialization-power'] }
-          : faction,
-      ),
+    const viewWith = (units: MatchState['units']) => {
+      const state: MatchState = { ...initial, units };
+      return getFactionView(
+        { ...state, knowledge: updateFactionKnowledge(state) },
+        'B',
+      );
     };
-    state = { ...state, knowledge: updateFactionKnowledge(state) };
-    const view = getFactionView(state, 'B');
-    const commands = decideBotCommands(view);
-    expect(commands).toContainEqual({
+    const view = viewWith([artillery, spotter, enemy]);
+    expect(view.ownFaction.completedResearchIds).not.toContain(
+      'specialization-power',
+    );
+    expect(decideBotCommands(view)).toContainEqual({
       type: 'point-fire',
       unitId: 'B-GUN',
-      cell: { x: 22, y: 20 },
+      cell: { x: 27, y: 20 },
     });
     expect(
       decideBotCommands({ ...view, visibleEnemies: [] }).some(
         (command) => command.type === 'point-fire',
       ),
+    ).toBe(false);
+    const close = viewWith([
+      artillery,
+      spotter,
+      { ...enemy, cell: { x: 23, y: 20 } },
+    ]);
+    expect(
+      decideBotCommands(close).some((command) => command.type === 'point-fire'),
     ).toBe(false);
   });
 

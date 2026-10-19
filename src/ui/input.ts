@@ -247,6 +247,8 @@ function distanceFrom(point: Point, origin: Point): number {
 export interface CanvasInputOptions extends GestureCallbacks {
   readonly canvas: HTMLCanvasElement;
   readonly onEscape: () => void;
+  /** Mouse movement with no button pressed (no touch equivalent). */
+  readonly onHover?: (point: Point) => void;
 }
 
 /** Browser adapter: the tracker remains deterministic and independently testable. */
@@ -272,6 +274,8 @@ export class CanvasInput {
     }
   };
   private readonly onMove = (event: PointerEvent): void => {
+    if (event.pointerType === 'mouse' && event.buttons === 0)
+      this.options.onHover?.({ x: event.clientX, y: event.clientY });
     if (
       this.tracker.currentMode === 'move' &&
       !this.isCanvasHit({ x: event.clientX, y: event.clientY })

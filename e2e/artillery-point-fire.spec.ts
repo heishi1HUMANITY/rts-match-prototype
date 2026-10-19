@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-test('F86-01: selected specialized artillery exposes the point-fire command', async ({
+test('F86-01: selected artillery aims a manual shot with a dispersion reticle', async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -17,10 +17,7 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
   await expect(page.locator('.scenario-badge')).toContainText('地点砲撃');
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page
-    .locator('[data-master-path="artilleryBombardment.observedImpactTicks"]')
-    .fill('600');
-  await page
-    .locator('[data-master-path="artilleryBombardment.unobservedImpactTicks"]')
+    .locator('[data-master-path="artilleryBombardment.impactBaseTicks"]')
     .fill('600');
   await page
     .getByRole('button', { name: '保存値で新しく開始', exact: true })
@@ -34,7 +31,9 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
   const pointFire = page.locator('[data-action="point-fire"]');
   await expect(pointFire).toBeVisible();
   await expect(pointFire).toBeEnabled();
+  await expect(pointFire).toHaveText('手動砲撃');
   await pointFire.click();
+  await expect(pointFire).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.status[role="status"]')).toContainText(
     '射程内の地面をタップ',
   );
@@ -45,12 +44,16 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
     .locator('[data-unit-id="A-01"]')
     .boundingBox();
   expect(artilleryLabel).not.toBeNull();
-  await board.click({
-    position: {
-      x: artilleryLabel!.x - bounds!.x + artilleryLabel!.width / 2,
-      y: artilleryLabel!.y - bounds!.y + artilleryLabel!.height / 2,
-    },
-  });
+  const aimPoint = {
+    x: artilleryLabel!.x - bounds!.x + artilleryLabel!.width / 2,
+    y: artilleryLabel!.y - bounds!.y + artilleryLabel!.height / 2,
+  };
+  await board.hover({ position: aimPoint });
+  await expect(page.locator('.board-hint')).toContainText('中心命中');
+  await expect(page.locator('.board-hint')).toContainText('◎ 観測');
+  await page.screenshot({ path: info.outputPath('point-fire-aim.png') });
+  await board.click({ position: aimPoint });
+  await expect(pointFire).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('.status[role="status"]')).not.toContainText(
     '射程内の地面をタップ',
   );

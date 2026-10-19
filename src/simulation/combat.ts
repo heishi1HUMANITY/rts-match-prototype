@@ -31,6 +31,11 @@ import {
 } from './base-upgrades';
 import { incomingDamage } from './tactical-abilities';
 import { airDefenseDamagePercent, airDefenseRange } from './air-defense';
+import {
+  artilleryImpactTicks,
+  artilleryScatterRadius1024,
+  distance1024,
+} from './artillery-aim';
 
 export interface Target {
   readonly kind:
@@ -65,29 +70,30 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
+/** Deterministic point uniformly distributed inside the dispersion circle. */
 function artilleryScatter(
   seed: number,
   unitId: string,
   tick: number,
   radius1024: number,
 ): { readonly x: number; readonly y: number } {
-  const hash = stableHash(`${seed}:${unitId}:${tick}`);
-  const distance = Math.floor(((hash >>> 3) / 0x1fffffff) * radius1024);
-  const directions = [
-    [1024, 0],
-    [724, 724],
-    [0, 1024],
-    [-724, 724],
-    [-1024, 0],
-    [-724, -724],
-    [0, -1024],
-    [724, -724],
-  ] as const;
-  const direction = directions[hash & 7]!;
-  return {
-    x: Math.round((direction[0] * distance) / 1024),
-    y: Math.round((direction[1] * distance) / 1024),
-  };
+  const half = 0x8000;
+  const base = stableHash(`${seed}:${unitId}:${tick}`);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    // Murmur3 finalizer: FNV alone leaves neighbouring attempts correlated.
+    let hash = (base + Math.imul(attempt + 1, 0x9e3779b9)) >>> 0;
+    hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+    hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+    hash = (hash ^ (hash >>> 16)) >>> 0;
+    const x = (hash & 0xffff) - half;
+    const y = (hash >>> 16) - half;
+    if (x * x + y * y > half * half) continue;
+    return {
+      x: Math.round((x * radius1024) / half),
+      y: Math.round((y * radius1024) / half),
+    };
+  }
+  return { x: 0, y: 0 };
 }
 
 export function attackerStateModifierPercent(
@@ -852,22 +858,24 @@ export function resolveCombat(state: MatchState): MatchState {
       order.cell,
       unit.factionId,
     );
+    const distance = distance1024(
+      getUnitPositionX1024(unit),
+      getUnitPositionY1024(unit),
+      order.cell.x * 1024 + 512,
+      order.cell.y * 1024 + 512,
+    );
     const scatter = artilleryScatter(
       snapshot.seed,
       unit.id,
       tick,
-      observed
-        ? config.observedScatterRadius1024
-        : config.unobservedScatterRadius1024,
+      artilleryScatterRadius1024(config, distance, observed),
     );
     firedArtillery.push({
       factionId: unit.factionId as FactionId,
       cell: { ...order.cell },
       centerX1024: order.cell.x * 1024 + 512 + scatter.x,
       centerY1024: order.cell.y * 1024 + 512 + scatter.y,
-      impactTick:
-        tick +
-        (observed ? config.observedImpactTicks : config.unobservedImpactTicks),
+      impactTick: tick + artilleryImpactTicks(config, distance),
       radius: config.blastRadius1024,
       unitDamage: config.unitDamage,
       structureDamage: config.structureDamage,

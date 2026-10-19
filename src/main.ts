@@ -11,6 +11,8 @@ import { createHud, setHudPanel, updateHud } from './ui/hud';
 import { createMasterEditor } from './ui/master-editor';
 import { resolveMarchTarget } from './ui/march-target';
 import { estimateCombat } from './simulation/combat-estimate';
+import { artilleryAimPreview } from './ui/artillery-aim';
+import type { Cell } from './simulation/types';
 import './ui/styles.css';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -37,6 +39,7 @@ let activeDragUnitIds: string[] | null = null;
 let dragCancelled = false;
 let pendingAbilityTarget: 'artillery' | 'smoke' | 'survey' | null = null;
 let pendingPointFireUnitId: string | null = null;
+let pointFireAim: Cell | null = null;
 let flightRouteUnitId: string | null = null;
 let flightWaypoints: { x: number; y: number }[] = [];
 const alertedAirDefenseIds = new Set<string>();
@@ -127,6 +130,7 @@ runtime = new MatchRuntime(
             );
           }
       refreshActiveMovePreview();
+      refreshPointFireAim();
     },
     onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
   },
@@ -290,8 +294,45 @@ function renderCombatEstimate(
     [...estimate.assumptions, ...estimate.memoryNotes].join(' ');
 }
 
+/** Cancels manual artillery aiming and removes its board overlay. */
+function cancelPointFire(): void {
+  pendingPointFireUnitId = null;
+  pointFireAim = null;
+  board.setAimPreview(null);
+  hud.root
+    .querySelector('[data-action="point-fire"]')
+    ?.setAttribute('aria-pressed', 'false');
+}
+
+/** Redraws the aim overlay; exits aiming once the gun is gone or deselected. */
+function refreshPointFireAim(): void {
+  const unitId = pendingPointFireUnitId;
+  if (unitId === null) return;
+  const snapshot = runtime.playerSnapshot();
+  const preview =
+    snapshot.view.phase === 'running' &&
+    snapshot.selectedUnitIds.length === 1 &&
+    snapshot.selectedUnitIds[0] === unitId
+      ? artilleryAimPreview(snapshot.view, unitId, pointFireAim)
+      : null;
+  if (preview === null) {
+    cancelPointFire();
+    clearMoveFeedback();
+    return;
+  }
+  board.setAimPreview(preview);
+  const hint = hud.root.querySelector<HTMLElement>('.board-hint')!;
+  hint.textContent = preview.hint;
+  hint.dataset.aiming = preview.status;
+}
+
 function clearMoveFeedback(): void {
   board.clearMovePreview();
+  if (pendingPointFireUnitId !== null) {
+    refreshPointFireAim();
+    return;
+  }
+  delete hud.root.querySelector<HTMLElement>('.board-hint')!.dataset.aiming;
   hud.root.querySelector<HTMLElement>('.board-hint')!.textContent =
     pendingAbilityTarget === null
       ? '敵へドロップで追跡 · 拠点へドロップで進軍 · 地面ドラッグでカメラ'
@@ -392,10 +433,26 @@ input = new CanvasInput(
       const cell = board.pickGround(x, y);
       if (pendingPointFireUnitId !== null) {
         const unitId = pendingPointFireUnitId;
-        pendingPointFireUnitId = null;
+        if (cell === null) return;
+        const aimed =
+          pointFireAim !== null &&
+          pointFireAim.x === cell.x &&
+          pointFireAim.y === cell.y;
+        pointFireAim = cell;
+        const preview = artilleryAimPreview(
+          runtime.playerSnapshot().view,
+          unitId,
+          cell,
+        );
+        // Mouse hover already placed the reticle, so one click fires; touch
+        // needs a second tap on the same cell.
+        if (!aimed || preview === null || preview.status === 'invalid') {
+          refreshPointFireAim();
+          return;
+        }
+        cancelPointFire();
         clearMoveFeedback();
-        if (cell !== null)
-          runtime.dispatch({ type: 'point-fire', unitId, cell });
+        runtime.dispatch({ type: 'point-fire', unitId, cell });
         updateHud(hud, runtime.playerSnapshot());
         return;
       }
@@ -506,7 +563,21 @@ input = new CanvasInput(
       clearMoveFeedback();
       holdCombatEstimate();
     },
+    onHover: ({ x, y }) => {
+      if (pendingPointFireUnitId === null) return;
+      const cell = board.pickGround(x, y);
+      if (
+        cell === null ||
+        (pointFireAim !== null &&
+          pointFireAim.x === cell.x &&
+          pointFireAim.y === cell.y)
+      )
+        return;
+      pointFireAim = cell;
+      refreshPointFireAim();
+    },
     onEscape: () => {
+      cancelPointFire();
       pendingAbilityTarget = null;
       setHudPanel(hud, null);
       keepEstimateForCancellation = true;
@@ -633,13 +704,23 @@ const handleClick = (event: MouseEvent): void => {
       .view.ownUnits.find(
         (candidate) => selected.length === 1 && candidate.id === selected[0],
       );
-    if (unit?.kind === 'artillery') {
+    if (pendingPointFireUnitId !== null) {
+      cancelPointFire();
+      clearMoveFeedback();
+      runtime.notify('手動砲撃を取り消しました');
+    } else if (unit?.kind === 'artillery') {
+      pendingAbilityTarget = null;
       pendingPointFireUnitId = unit.id;
+      pointFireAim = null;
+      clickedButton.setAttribute('aria-pressed', 'true');
       input.cancelGesture();
       setHudPanel(hud, null);
       clearMoveFeedback();
-      runtime.notify('地点砲撃 · 射程内の地面をタップしてください');
+      runtime.notify(
+        '手動砲撃 · 射程内の地面をタップで照準、同じ地点で発射（PCはクリック）',
+      );
     }
+    updateHud(hud, runtime.playerSnapshot());
     return;
   }
   const abilityId = clickedButton?.dataset.ability;
@@ -649,6 +730,7 @@ const handleClick = (event: MouseEvent): void => {
       abilityId === 'smoke' ||
       abilityId === 'survey'
     ) {
+      cancelPointFire();
       pendingAbilityTarget = abilityId;
       input.cancelGesture();
       setHudPanel(hud, null);

@@ -1192,11 +1192,12 @@ function artilleryBombardCommand(
     unit.kind !== 'artillery' ||
     unit.bombardOrder ||
     unit.path.length > 0 ||
-    unit.garrisonedAtBaseId ||
-    !view.ownFaction.completedResearchIds.includes('specialization-power')
+    unit.garrisonedAtBaseId
   )
     return undefined;
   const range = view.rules.artilleryBombardment.range;
+  // Manual fire only reaches past the regular gun; closer targets stay automatic.
+  const autoRange = view.rules.units[unit.kind].range;
   const targets = [
     ...view.visibleEnemies
       .filter(
@@ -1228,7 +1229,10 @@ function artilleryBombardCommand(
     .filter(
       (cell) =>
         view.visible[cell.y * view.map.width + cell.x] === true &&
-        (cell.x - unit.cell.x) ** 2 + (cell.y - unit.cell.y) ** 2 <= range ** 2,
+        (cell.x - unit.cell.x) ** 2 + (cell.y - unit.cell.y) ** 2 <=
+          range ** 2 &&
+        (cell.x - unit.cell.x) ** 2 + (cell.y - unit.cell.y) ** 2 >
+          autoRange ** 2,
     )
     .sort(
       (a, b) =>

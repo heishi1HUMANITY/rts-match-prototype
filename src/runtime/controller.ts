@@ -727,6 +727,8 @@ export function rejectMessage(
     ABILITY_NOT_READY: 'この作戦指令は再使用まで待機中です',
     ABILITY_TARGET_INVALID: '作戦指令の対象を指定できません',
     ABILITY_TARGET_NOT_VISIBLE: '視界内の地点を指定してください',
+    FIRE_WHILE_MOVING: '移動中・駐留中は手動砲撃できません',
+    FIRE_OUT_OF_RANGE: '手動砲撃の射程外です',
   };
   return messages[reason];
 }

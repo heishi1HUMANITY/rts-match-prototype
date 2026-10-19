@@ -762,7 +762,9 @@ export type RejectCode =
   | 'HQ_PROTECTED'
   | 'ABILITY_NOT_READY'
   | 'ABILITY_TARGET_INVALID'
-  | 'ABILITY_TARGET_NOT_VISIBLE';
+  | 'ABILITY_TARGET_NOT_VISIBLE'
+  | 'FIRE_WHILE_MOVING'
+  | 'FIRE_OUT_OF_RANGE';
 
 export type CommandResult =
   | { readonly ok: true; readonly state: MatchState }
