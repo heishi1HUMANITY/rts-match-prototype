@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マップビューア</title>
+<link rel="stylesheet" href="../../ui/shared.css">
+<style>
+  html, body { overflow: hidden; }
+  body { background: #e9edf1; }
+  #view { position: fixed; inset: 0; }
+  .ui { position: fixed; z-index: 2; }
+  .side { left: 14px; top: 14px; width: 268px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 28px); overflow: auto; }
+  .side h1 { font-family: var(--f-display); font-size: 22px; letter-spacing: -0.02em; line-height: 1.05; }
+  .grp .eyebrow { display: block; margin-bottom: 4px; }
+  .row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .row button { height: 24px; padding: 0 8px; font-size: 10px; font-weight: 700; background: var(--surface-solid); border: 1px solid var(--line-2); }
+  .row button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .pts button { display: flex; align-items: center; gap: 5px; }
+  .pts i { width: 9px; height: 9px; display: block; background: #8f98a3; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 10.5px; }
+  .chk input { accent-color: #0e161e; }
+  .stats { right: 14px; top: 14px; padding: 8px 12px; display: grid; grid-template-columns: repeat(4, auto); gap: 2px 14px; }
+  .stats .v { font-family: var(--f-display); font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .route { right: 14px; top: 78px; width: 300px; padding: 8px 12px; font-size: 10px; line-height: 1.5; }
+  .route b { font-family: var(--f-mono); }
+  .help { right: 14px; bottom: 12px; font-size: 9.5px; color: var(--dim); text-align: right; }
+  .lbl { position: fixed; z-index: 1; transform: translate(-50%, -100%); font-size: 10px; font-weight: 700; padding: 1px 6px; background: rgba(255,255,255,.92); border-left: 3px solid var(--ink); white-space: nowrap; pointer-events: none; }
+  .lbl.large { font-size: 11.5px; }
+  .lbl.geo { background: none; border: none; color: #4d6a85; font-weight: 500; font-style: italic; transform: translate(-50%, -50%); }
+  .lbl.hq { color: #fff; }
+  @media (max-height: 480px) { .side { width: 220px; padding: 8px 10px; gap: 6px; } .help { display: none; } .lbl { font-size: 8.5px; } }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<aside class="ui panel marks side">
+  <div><div class="eyebrow">MAP · 100 × 100</div><h1 id="title"></h1><div class="small dim" style="margin-top:3px">中央の中州は大運河・新運河・湖に囲まれ、橋かトンネルでしか入れない。中央の手前にも制限: 西(A)は用水路(橋 4)、東(B・C)は崖の尾根(峠 4)。B と C は東の分水路で分かれる。地名は架空(首都は仮)</div></div>
+  <div class="grp"><span class="eyebrow">CAMERA</span>
+    <div class="row" id="cam"><button data-v="map" class="on">全体</button><button data-v="game">ゲーム視点(1/9)</button><button data-v="top">真上</button></div>
+  </div>
+  <div class="grp"><span class="eyebrow">POINTS · 攻略拠点(クリックで寄る / 所有を切替)</span><div class="row pts" id="pts"></div></div>
+  <div class="grp" id="state-grp" style="display:none"><span class="eyebrow" id="state-title">STATE</span><div class="row" id="state"></div><div class="small dim" id="stage" style="margin-top:3px"></div></div>
+  <div class="grp"><span class="eyebrow">OWNER · 所有の例</span>
+    <div class="row" id="preset"><button data-p="start">開始(全て中立)</button><button data-p="mid">中盤の例</button></div>
+  </div>
+  <div class="grp"><span class="eyebrow">DISPLAY</span>
+    <label class="chk"><input type="checkbox" id="labels" checked>名前</label>
+    <label class="chk"><input type="checkbox" id="zones" checked>制圧圏と旗</label>
+    <label class="chk"><input type="checkbox" id="grid">通れないセル(水 = 青、崖 = 茶、橋・トンネル = 黄)</label>
+    <label class="chk"><input type="checkbox" id="edges" checked>輪郭線</label>
+    <label class="chk"><input type="checkbox" id="scale" checked>部隊(試作の 3D モデル、表示 2.0)</label>
+    <label class="chk"><input type="checkbox" id="shadows">太陽の影(確認用。重い)</label>
+    <label class="chk"><input type="checkbox" id="bake" checked>部品の焼き込み</label>
+  </div>
+</aside>
+<div class="ui panel stats">
+  <span class="eyebrow">TRIS</span><span class="eyebrow">DRAW</span><span class="eyebrow">MESH</span><span class="eyebrow">MAT</span>
+  <span class="v" id="s-tris">0</span><span class="v" id="s-draw">0</span><span class="v" id="s-mesh">0</span><span class="v" id="s-mat">0</span>
+</div>
+<div class="ui panel route" id="route"></div>
+<div class="ui help">ドラッグ: 回転 / 右ドラッグ: 移動 / ホイール: 拡大縮小<br>1 セル = 80 単位、地図 8000 × 8000</div>
+
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+<script src="../common.js"></script>
+<script src="../facilities/kit.js"></script>
+<script src="suez.js"></script>
+<script src="../chassis.js"></script>
+<script src="../tank.js"></script>
+<script src="../spg.js"></script>
+<script src="../aa.js"></script>
+<script src="../scout.js"></script>
+<script src="../heli.js"></script>
+<script type="module">
+// マップの試作を見るビューア。?map=suez(今はスエズだけ)。拠点の建造物は <map>_<id>.js を読み、置いたものから出る
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const MAP = DreamAssets.maps.suez;
+const load = (src) => new Promise((done) => { const el = document.createElement("script"); el.src = src; el.onload = el.onerror = done; document.head.appendChild(el); });
+const decoSel = new URLSearchParams(location.search).get("decos");   // ?decos=zone,canal で装飾の層を絞る(撮影を軽くする)。none で装飾なし
+const DECO_IDS = decoSel === null ? MAP.DECOS : decoSel === "none" ? [] : decoSel.split(",");
+await Promise.all([...MAP.POINTS.map((p) => load(`suez_${p.id}.js`)), ...DECO_IDS.map((id) => load(`suez_deco_${id}.js`))]);
+
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9edf1);
+const camera = new THREE.PerspectiveCamera(50, 1, 10, 40000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 60; controls.maxDistance = 20000;
+const hemi = new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(-3000, 6000, 2000); scene.add(sun); scene.add(sun.target);
+// 太陽の影(DISPLAY の切替。既定は切。?shadows=1 で入り)。影の範囲は注視点のまわり ±SH に絞って解像度を保つ
+const SH = 1900, SUN_DIR = new THREE.Vector3(-3000, 6000, 2000).normalize();
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 2.5;
+Object.assign(sun.shadow.camera, { left: -SH, right: SH, top: SH, bottom: -SH, near: 10, far: 16000 }); sun.shadow.camera.updateProjectionMatrix();
+function followSun() { const t = controls.target; sun.target.position.copy(t); sun.position.copy(t).addScaledVector(SUN_DIR, 7000); }
+function applyShadows() {
+  const on = $("shadows").checked;
+  renderer.shadowMap.enabled = on; sun.castShadow = on;
+  hemi.intensity = on ? 1.25 : 1.6; sun.intensity = on ? 2.0 : 1.5;   // 影があるときは太陽を強めて影を読ませる(全体の明るさはほぼ同じ)
+  const set = (o) => { if (!o.isMesh) return; const m = Array.isArray(o.material) ? o.material[0] : o.material; const opaque = m && !m.transparent && !m.isMeshBasicMaterial; o.castShadow = on && opaque; o.receiveShadow = on && !(m && m.isMeshBasicMaterial); };
+  map?.group.traverse(set); units.traverse(set);
+  scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });   // 影の有無でシェーダーを作り直す
+}
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf2f4f6 })); floor.position.y = -31; scene.add(floor);
+
+// 比較用: 部隊の 3D モデル(../tank.js など、部隊ビューアと同じ表示倍率 2.0)を小隊で置く。地形の高さに合わせる
+const units = new THREE.Group(); scene.add(units);
+const SQUADS = [
+  { f: "A", c: 0xff6a1a, list: [["tank", -470, 260, 0.9], ["tank", -560, 380, 0.9], ["scout", -380, 110, 1.2], ["spg", -700, 330, 0.7]] },
+  { f: "C", c: 0xf0b323, list: [["tank", 900, -2660, 2.4], ["aa", 1060, -2580, 2.2], ["heli", 960, -2800, 2.6]] },
+  { f: "B", c: 0x10bfe8, list: [["tank", 920, 1290, -0.6], ["scout", 1040, 1160, -0.4], ["aa", 820, 1150, -0.8]] },
+];
+const unitObjs = [];
+function placeUnits() {
+  for (const u of unitObjs) units.remove(u.group);
+  unitObjs.length = 0;
+  for (const sq of SQUADS) for (const [kind, x, z, ry] of sq.list) {
+    const u = DreamAssets[kind]?.(THREE); if (!u) continue;
+    u.group.scale.setScalar(2.0); u.group.position.set(x, map.landH(x, z), z); u.group.rotation.y = ry; u.setTeam?.(sq.c);
+    units.add(u.group); unitObjs.push(u);
+  }
+}
+
+let map = null;
+function build() {
+  if (map) scene.remove(map.group);
+  stSite = null; if ($("state-grp")) $("state-grp").style.display = "none";
+  map = MAP.build(THREE); scene.add(map.group);
+  placeUnits(); applyPreset(currentPreset); applyToggles(); applyShadows(); drawLabels(); drawRoute();
+}
+const $ = (id) => document.getElementById(id);
+$("title").textContent = MAP.title;
+$("pts").innerHTML = MAP.POINTS.map((p) => `<button data-id="${p.id}" title="${p.name}"><i></i>${p.no} ${p.name}</button>`).join("");
+
+// 所有の例
+const PRESETS = {
+  start: {},
+  mid: { airbase: "A", ismailia: "A", peace: "C", qantara: "C", barlev: "C", memorial: "B", tunnel: "B", salam: "B", ferdan: "A", ballah: null },
+};
+let currentPreset = "start";
+function applyPreset(name) {
+  currentPreset = name;
+  for (const p of MAP.POINTS) map.setOwner(p.id, PRESETS[name][p.id] ?? null);
+  for (const b of $("preset").children) b.classList.toggle("on", b.dataset.p === name);
+  syncPts();
+}
+function syncPts() {
+  for (const b of $("pts").children) { const s = map.sites.find((x) => x.id === b.dataset.id); b.querySelector("i").style.background = s.owner ? "#" + map.TEAM[s.owner].toString(16).padStart(6, "0") : "#8f98a3"; }
+}
+$("preset").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) applyPreset(b.dataset.p); });
+let lastPick = null;
+$("pts").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const s = map.sites.find((x) => x.id === b.dataset.id);
+  if (lastPick === s.id) { const order = [null, "A", "B", "C"]; map.setOwner(s.id, order[(order.indexOf(s.owner) + 1) % 4]); syncPts(); return; }   // 2 回目のクリックで所有を切替
+  lastPick = s.id; focus(s); showStates(s);
+});
+// 寄った拠点の状態のボタン(拠点が setState を持つとき)
+let stSite = null;
+function showStates(s) {
+  stSite = s.states.length && s.site?.setState ? s : null;
+  $("state-grp").style.display = stSite ? "" : "none";
+  if (!stSite) return;
+  $("state-title").textContent = `STATE · ${s.no} ${s.name}`;
+  $("state").innerHTML = s.states.map(([l, v]) => `<button data-v="${v}">${l}</button>`).join("");
+}
+$("state").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b && stSite) stSite.site.setState(b.dataset.v); });
+
+// カメラ: 全体、ゲーム視点(仰角 55°・方位 0.32、全体の約 1/9 = 約 33 セル四方が入る距離)、真上
+const EL = 55 * Math.PI / 180, AZ = 0.32;
+const VIEWS = {
+  map: () => { camera.position.set(2600, 7600, 8200); controls.target.set(0, 0, 200); },
+  game: (c = { x: 200, z: 300 }) => { const d = 3100; camera.position.set(c.x + Math.sin(AZ) * Math.cos(EL) * d, Math.sin(EL) * d, c.z + Math.cos(AZ) * Math.cos(EL) * d); controls.target.set(c.x, 0, c.z); },
+  top: () => { camera.position.set(0, 11000, 1); controls.target.set(0, 0, 0); },
+};
+function focus(s) { const d = s.r * 3.2; camera.position.set(s.x + Math.sin(AZ) * Math.cos(0.7) * d, Math.sin(0.7) * d, s.z + Math.cos(AZ) * Math.cos(0.7) * d); controls.target.set(s.x, 20, s.z); for (const b of $("cam").children) b.classList.remove("on"); }
+$("cam").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; VIEWS[b.dataset.v](); for (const x of $("cam").children) x.classList.toggle("on", x === b); lastPick = null; });
+
+// 名前のラベル(HTML)
+let labelEls = [];
+function drawLabels() {
+  for (const el of labelEls) el.remove();
+  labelEls = map.labels.map((l) => {
+    const el = document.createElement("div"); el.className = "lbl " + (l.cls || ""); el.textContent = l.text; el.__l = l;
+    if (l.f) el.style.background = "#" + map.TEAM[l.f].toString(16).padStart(6, "0");
+    document.body.appendChild(el); return el;
+  });
+}
+const v = new THREE.Vector3();
+function placeLabels() {
+  const on = $("labels").checked;
+  for (const el of labelEls) {
+    const l = el.__l; v.set(l.x, l.y, l.z).project(camera);
+    const vis = on && v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
+    el.style.display = vis ? "" : "none";
+    if (vis) { el.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; el.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px"; }
+  }
+}
+function applyToggles() {
+  map.group.traverse((o) => { if ((o.isLineSegments && o.parent?.isMesh) || o.userData.edges) o.visible = $("edges").checked; });
+  for (const s of map.sites) { s.zone.ring.visible = s.zone.disc.visible = s.flag.visible = $("zones").checked; }
+  units.visible = $("scale").checked;
+  map.gridOverlay.visible = $("grid").checked;
+}
+// 首都から中央の中州への経路(通行のセルの幅優先探索)
+function drawRoute() {
+  const r = map.analyze();
+  $("route").innerHTML = `<span class="eyebrow">ROUTE · 首都 → 中央の中州</span>` + r.hq.map((h) =>
+    `<div><b>${h.f}</b> ${h.reach ? `${h.cells} セル` : "到達できない"}・渡河: ${h.crossings.join("、") || "なし"}${h.passes.length ? "・" + h.passes.join("、") : ""}${h.withoutCrossing ? "(渡河なしでも行ける)" : ""}${h.outerBypass ? "・外側の障壁を迂回できる" : ""}</div>`).join("") +
+    `<div class="dim">通れないセル ${r.blockedCells} / 10000、渡河 ${r.crossings.length} か所</div>`;
+}
+for (const id of ["edges", "zones", "scale", "grid"]) $(id).addEventListener("change", applyToggles);
+$("bake").addEventListener("change", () => { DreamAssets.util.noBake = !$("bake").checked; build(); });
+$("shadows").checked = new URLSearchParams(location.search).get("shadows") === "1";
+$("shadows").addEventListener("change", applyShadows);
+
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+build(); VIEWS.map();
+const q = new URLSearchParams(location.search).get("point");
+if (q) { const s = map.sites.find((x) => x.id === q); if (s) { focus(s); showStates(s); } }
+
+const clock = new THREE.Clock();
+let statT = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  map.update(dt); for (const u of unitObjs) u.update?.(dt); controls.update(); followSun(); renderer.render(scene, camera); placeLabels();
+  if (stSite) { for (const b of $("state").children) b.classList.toggle("on", stSite.site.state === b.dataset.v); $("stage").textContent = stSite.site.stage ?? ""; }
+  if ((statT -= dt) <= 0) { statT = 0.5; const st = map.stats(); $("s-tris").textContent = st.tris.toLocaleString(); $("s-draw").textContent = st.draws; $("s-mesh").textContent = st.meshes; $("s-mat").textContent = st.materials; }
+  requestAnimationFrame(frame);
+}
+frame();
+window.__renderer = renderer; window.__scene = scene; window.__followSun = followSun;   // 負荷の測定・撮影用(手で描くときは __followSun() を先に)
+window.__map = () => map; window.__views = VIEWS; window.__focus = (id) => focus(map.sites.find((x) => x.id === id)); window.__camera = camera; window.__controls = controls; window.__rebuild = build;
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>戦略施設ビューア</title>
+<link rel="stylesheet" href="../../ui/shared.css">
+<style>
+  html, body { overflow: hidden; }
+  body { background: #e9edf1; }
+  #view { position: fixed; inset: 0; }
+  .ui { position: fixed; z-index: 2; }
+  .side { left: 14px; top: 14px; width: 268px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 28px); overflow: auto; }
+  .side h1 { font-family: var(--f-display); font-size: 22px; letter-spacing: -0.02em; line-height: 1.05; }
+  .kv { display: grid; grid-template-columns: 74px 1fr; gap: 3px 8px; font-size: 10px; }
+  .kv dt { color: var(--dim); } .kv dd { font-family: var(--f-mono); font-size: 10px; overflow-wrap: anywhere; min-width: 0; }
+  .grp .eyebrow { display: block; margin-bottom: 4px; }
+  .row { display: flex; gap: 4px; flex-wrap: wrap; }
+  #todo button { height: 22px; padding: 0 7px; font-size: 9.5px; }
+  details summary { cursor: pointer; }
+  .row button { height: 26px; padding: 0 10px; font-size: 10px; font-weight: 700; background: var(--surface-solid); border: 1px solid var(--line-2); }
+  .row button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .row button:disabled { color: var(--faint); border-style: dashed; background: transparent; cursor: default; }
+  .cat { font-size: 9px; color: var(--dim); width: 100%; margin-top: 2px; }
+  .team { width: 26px; padding: 0 !important; display: grid; place-items: center; }
+  .team i { width: 11px; height: 11px; display: block; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 10.5px; }
+  .chk input { accent-color: #0e161e; }
+  .bar { height: 4px; } .bar > i { background: var(--warn); transition: width .1s; }
+  .stats { right: 14px; top: 14px; padding: 8px 12px; display: grid; grid-template-columns: repeat(4, auto); gap: 2px 14px; }
+  .stats .v { font-family: var(--f-display); font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .help { right: 14px; bottom: 12px; font-size: 9.5px; color: var(--dim); text-align: right; }
+  .cap { left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 14px; background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 700; clip-path: var(--cut-sm); opacity: 0; transition: opacity .2s; white-space: nowrap; }
+  .cap.on { opacity: 1; }
+  .label3d { position: fixed; z-index: 1; transform: translate(-50%, 0); font-size: 9px; font-weight: 700; padding: 1px 6px; background: rgba(255,255,255,.92); border-left: 2px solid var(--ink); white-space: nowrap; pointer-events: none; }
+  @media (max-width: 960px), (max-height: 480px) {
+    .side { width: 230px; padding: 8px 10px; gap: 7px; }
+    .side h1 { font-size: 17px; }
+    .stats { padding: 5px 8px; } .stats .v { font-size: 13px; }
+    .help { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<aside class="ui panel marks side">
+  <details class="grp" id="list-wrap" open><summary class="eyebrow">FACILITY · 戦略施設(<span id="count"></span>)</summary><div class="row" id="todo" style="margin-top:4px"></div></details>
+  <div><div class="eyebrow" id="a-kind"></div><h1 id="a-title"></h1><div class="small dim" style="margin-top:3px" id="a-desc"></div></div>
+  <dl class="kv" id="a-info"></dl>
+  <div class="grp"><span class="eyebrow" id="a-act-label">STATE · 状態</span>
+    <div class="row" id="actions"></div>
+    <div class="bar" style="margin-top:6px" id="prog-wrap"><i id="prog" style="width:0%"></i></div>
+  </div>
+  <div class="grp"><span class="eyebrow">OWNER · 所有</span>
+    <div class="row" id="team">
+      <button class="team" data-c="" title="中立"><i style="background:#8f98a3"></i></button>
+      <button class="team on" data-c="#ff6a1a" title="TEAM A"><i style="background:#ff6a1a;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)"></i></button>
+      <button class="team" data-c="#10bfe8" title="TEAM B"><i style="background:#10bfe8;transform:scale(.85)"></i></button>
+      <button class="team" data-c="#f0b323" title="TEAM C"><i style="background:#f0b323;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)"></i></button>
+    </div>
+  </div>
+  <div class="grp"><span class="eyebrow">CAMERA</span>
+    <div class="row" id="cam"><button data-v="game" class="on">ゲーム視点</button><button data-v="quarter">斜め前</button><button data-v="side">側面</button><button data-v="top">真上</button></div>
+    <div class="row" id="shots" style="margin-top:4px"></div>
+  </div>
+  <div class="grp"><span class="eyebrow">DISPLAY</span>
+    <label class="chk"><input type="checkbox" id="edges" checked>輪郭線(図面の線)</label>
+    <label class="chk"><input type="checkbox" id="ring" checked>制圧圏</label>
+    <label class="chk"><input type="checkbox" id="scale" checked>大きさの比較(現行の部隊トークン)</label>
+    <label class="chk"><input type="checkbox" id="wire">ワイヤーフレーム</label>
+    <label class="chk"><input type="checkbox" id="bake" checked>部品の焼き込み(外すと元の部品のまま)</label>
+    <label class="chk"><input type="checkbox" id="spin">自動回転</label>
+  </div>
+</aside>
+
+<div class="ui panel stats">
+  <span class="eyebrow">TRIS</span><span class="eyebrow">DRAW</span><span class="eyebrow">MESH</span><span class="eyebrow">MAT</span>
+  <span class="v" id="s-tris">0</span><span class="v" id="s-draw">0</span><span class="v" id="s-mesh">0</span><span class="v" id="s-mat">0</span>
+</div>
+<div class="ui help">ドラッグ: 回転 / 右ドラッグ: 移動 / ホイール: 拡大縮小<br>DRAW は描画呼び出しの概数(モデル単体、床と比較用トークンを除く)</div>
+<div class="ui cap" id="cap"></div>
+
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+<script src="../common.js"></script>
+<script src="kit.js"></script>
+<script type="module">
+// 戦略施設トークン(リポジトリ直下の strategic_facility_tokens.md の施設)だけを見るビューア。部隊・拠点の試作は ../viewer.html
+// 施設リストの key ごとに <key>.js を読み、DreamAssets.fac.register で登録されたものだけを選べる(新しい施設はファイルを置くだけで出る)
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe9edf1);
+const camera = new THREE.PerspectiveCamera(50, 1, 2, 6000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 20; controls.maxDistance = 3000;
+
+// 既存のビューアと同じ照明: 半球光 + 斜めの平行光(影は落とさない)、製図の床と格子
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(-300, 600, 200); scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf2f4f6 }));
+floor.position.y = -0.2; scene.add(floor);
+const g1 = new THREE.GridHelper(3000, 125, 0xd6dce2, 0xe0e5ea); g1.position.y = -0.1; scene.add(g1);
+
+// 比較用: 現行の部隊トークン(装甲強襲。../viewer.html と同じもの)
+const token = new THREE.Group();
+const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
+const tplate = new THREE.Mesh(new THREE.RingGeometry(32, 38, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: .9, side: THREE.DoubleSide }));
+tplate.position.y = 0.5; token.add(tplate);
+const tbody = new THREE.Mesh(new THREE.BoxGeometry(60, 24, 48), lam(0xff6a1a)); tbody.position.y = 20; token.add(tbody);
+for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(8, 16, 6), lam(0x3b4752)); leg.position.set(sx * 34, 8, sz * 16); leg.rotation.z = sx * 0.4; token.add(leg); }
+const turretT = new THREE.Mesh(new THREE.BoxGeometry(24, 10, 20), lam(0x3b4752)); turretT.position.y = 37; token.add(turretT);
+token.rotation.y = -0.6; scene.add(token);
+const label = document.createElement("div"); label.className = "label3d"; label.textContent = "現行の部隊トークン(装甲強襲)"; document.body.appendChild(label);
+
+// 施設リスト(strategic_facility_tokens.md の節と施設名、ファイルの key)。9 節はレビューで足した追加候補(リストの md には無い)
+const LIST = [
+  ["1 交通・兵站", [["ホストメリ空港", "hostomel"], ["セヴァストポリ", "sevastopol"], ["クリミア橋", "crimea_bridge"], ["アントニウカ橋", "antonivka"], ["ポクロウシク", "pokrovsk"]]],
+  ["2 水門・閘門・防潮堤", [["パナマ運河", "panama"], ["キール運河", "kiel"], ["マエスラントケーリング", "maeslant"], ["テムズ・バリア", "thames"], ["MOSE", "mose"], ["三峡ダム", "three_gorges"], ["サンクトペテルブルク防潮堤", "spb_dam"], ["カホフカ・ダム", "kakhovka"]]],
+  ["3 海峡・島", [["アブー・ムーサー島", "abu_musa"], ["ボスポラス海峡", "bosphorus"], ["グレートベルト・リンク", "great_belt"], ["ファイアリー・クロス礁", "fiery_cross"]]],
+  ["4 エネルギー", [["ザポリージャ原発", "zaporizhzhia"], ["チェルノブイリNSC", "chernobyl_nsc"], ["ヴィルヘルムスハーフェンLNG", "lng_whv"], ["製油所群", "refinery"], ["ホーンシー洋上風力", "hornsea"], ["要塞化変電所", "substation"]]],
+  ["5 水・食料", [["海水淡水化プラント", "desal"], ["オデーサ港", "odesa_port"]]],
+  ["6 情報・通信・産業", [["ヴィリニュス・テレビ塔", "vilnius_tower"], ["海底ケーブル陸揚げ局", "cable_station"], ["AIデータセンター", "ai_dc"], ["TSMC南部科学園区", "tsmc"], ["バヤン・オボ鉱山", "bayan_obo"], ["SvalSat", "svalsat"]]],
+  ["7 高地", [["ヘルモン山", "hermon"]]],
+  ["8 歴史的施設", [["ルーデンドルフ鉄橋", "remagen"], ["アルンヘム橋", "arnhem"], ["ヘンダーソン飛行場", "henderson"], ["バストーニュ", "bastogne"], ["二〇三高地", "hill203"], ["モンテ・カッシーノ", "cassino"]]],
+  ["9 象徴的な建造物(追加候補)", [["スエズ運河", "suez"], ["ジブラルタル", "gibraltar"], ["バイコヌール宇宙基地", "baikonur"], ["スターベース", "starbase"], ["ピトゥフィク宇宙基地", "pituffik"], ["シャイアン・マウンテン", "cheyenne"], ["大エチオピア・ルネサンスダム", "gerd"], ["フーバーダム", "hoover"], ["洋山深水港", "yangshan"], ["アブカイク", "abqaiq"]]],
+];
+const KEYS = LIST.flatMap(([, items]) => items.map(([, k]) => k));
+await Promise.all(KEYS.map((k) => new Promise((done) => { const el = document.createElement("script"); el.src = k + ".js"; el.onload = el.onerror = done; document.head.appendChild(el); })));
+const FACILITIES = DreamAssets.fac.defs;
+for (const d of Object.values(FACILITIES)) {   // 状態を持たない施設などの既定値
+  d.actions ??= () => []; d.caption ??= () => ""; d.actLabel ??= "STATE · 状態"; d.info ??= [];
+  d.ringParts ??= (a) => [a.parts?.ring, a.parts?.disc].filter(Boolean);
+}
+
+const S = 3.0;   // 施設の表示倍率(../viewer.html の拠点と同じ)
+let cur = null, curKey = null, teamColor = "#ff6a1a";
+const $ = (id) => document.getElementById(id);
+if (innerHeight < 480) $("list-wrap").open = false;   // 横持ちでは一覧を畳んで施設の情報を先に見せる
+$("count").textContent = `${KEYS.filter((k) => FACILITIES[k]).length} / ${KEYS.length}`;
+$("todo").innerHTML = LIST.map(([cat, items]) => `<span class="cat">${cat}</span>` + items.map(([name, k]) => FACILITIES[k] ? `<button data-a="${k}">${name}</button>` : `<button disabled>${name}</button>`).join("")).join("");
+function load(key) {
+  if (cur) scene.remove(cur.group);
+  const A = FACILITIES[key]; curKey = key;
+  cur = A.make(THREE); cur.group.scale.setScalar(S); scene.add(cur.group);
+  cur.setTeam(teamColor);
+  token.position.set(...A.tokenAt);
+  $("a-kind").textContent = A.kind; $("a-title").textContent = A.title; $("a-desc").textContent = A.desc;
+  $("a-info").innerHTML = A.info.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("a-act-label").textContent = A.actLabel; $("prog-wrap").style.display = A.progress ? "" : "none";
+  for (const b of $("todo").querySelectorAll("button[data-a]")) b.classList.toggle("on", b.dataset.a === key);
+  $("shots").innerHTML = Object.entries(cur.shots ?? {}).map(([k, s]) => `<button data-s="${k}">${s.label}</button>`).join("");
+  drawActions(); applyToggles(); VIEWS[currentView]();
+  history.replaceState(null, "", "?facility=" + key);
+}
+function drawActions() { $("actions").innerHTML = FACILITIES[curKey].actions(cur).map(([l], i) => `<button data-i="${i}">${l}</button>`).join(""); }
+$("actions").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; FACILITIES[curKey].actions(cur)[b.dataset.i][1](); drawActions(); applyToggles(); });
+$("todo").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) load(b.dataset.a); });
+
+// カメラ: ゲーム視点は camera3d.ts と同じ仰角 55°・方位 0.32。寄りの視点は施設ごとに m の座標で持つ(shots)
+let currentView = "game";
+const VIEWS = {
+  game: () => { const A = FACILITIES[curKey], d = A.dist, el = 55 * Math.PI / 180, az = 0.32; camera.position.set(Math.sin(az) * Math.cos(el) * d, Math.sin(el) * d, Math.cos(az) * Math.cos(el) * d); controls.target.set(0, A.target * 0.4, 0); },
+  quarter: () => { const A = FACILITIES[curKey]; camera.position.set(A.dist * 0.45, A.dist * 0.2, A.dist * 0.45); controls.target.set(0, A.target, 0); },
+  side: () => { const A = FACILITIES[curKey]; camera.position.set(A.dist * 0.8, A.target * 1.6, A.dist * 0.08); controls.target.set(0, A.target, 0); },
+  top: () => { const A = FACILITIES[curKey]; camera.position.set(0, A.dist * 1.1, 0.01); controls.target.set(0, 0, 0); },
+};
+function shot(k) {
+  const s = cur.shots[k], p = cur.at(...s.pos).multiplyScalar(S), t = cur.at(...s.target).multiplyScalar(S);
+  camera.position.copy(p); controls.target.copy(t); controls.update();
+}
+const pick = (rowId, btn) => { for (const b of $(rowId).children) b.classList.toggle("on", b === btn); };
+$("team").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; teamColor = b.dataset.c || null; cur.setTeam(teamColor); pick("team", b); });
+$("cam").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; currentView = b.dataset.v; VIEWS[currentView](); pick("cam", b); pick("shots", null); });
+$("shots").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; shot(b.dataset.s); pick("shots", b); pick("cam", null); });
+function applyToggles() {
+  cur.group.traverse((o) => { if ((o.isLineSegments && o.parent?.isMesh) || o.userData.edges) o.visible = $("edges").checked; if (o.isMesh && o.material && "wireframe" in o.material) o.material.wireframe = $("wire").checked; });
+  for (const p of FACILITIES[curKey].ringParts(cur)) p.visible = $("ring").checked;
+  token.visible = $("scale").checked; controls.autoRotate = $("spin").checked;
+}
+for (const id of ["edges", "ring", "scale", "wire", "spin"]) $(id).addEventListener("change", applyToggles);
+$("bake").addEventListener("change", () => { DreamAssets.util.noBake = !$("bake").checked; load(curKey); });
+
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+const q = new URLSearchParams(location.search).get("facility");
+load(q in FACILITIES ? q : KEYS.find((k) => FACILITIES[k]));
+
+const clock = new THREE.Clock(), v = new THREE.Vector3();
+let statT = 0, uiT = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  cur.update(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  if ((uiT -= dt) <= 0) {
+    uiT = 0.1;
+    const acts = FACILITIES[curKey].actions(cur);
+    [...$("actions").children].forEach((b, i) => b.classList.toggle("on", !!acts[i]?.[2]()));
+    if (cur.progress !== undefined) $("prog").style.width = cur.progress * 100 + "%";
+    const cap = FACILITIES[curKey].caption(cur); $("cap").textContent = cap; $("cap").classList.toggle("on", !!cap);
+  }
+  v.set(token.position.x, 62, token.position.z).project(camera);
+  label.style.display = token.visible && v.z < 1 ? "" : "none";
+  label.style.left = (v.x * 0.5 + 0.5) * innerWidth + "px"; label.style.top = (-v.y * 0.5 + 0.5) * innerHeight + "px";
+  if ((statT -= dt) <= 0) {
+    statT = 0.5;
+    const st = cur.stats();
+    $("s-tris").textContent = st.tris.toLocaleString(); $("s-draw").textContent = st.draws; $("s-mesh").textContent = st.meshes; $("s-mat").textContent = st.materials;
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+// 撮影・確認用
+window.__asset = () => cur; window.__load = load; window.__views = VIEWS; window.__shot = shot; window.__camera = camera; window.__controls = controls;
+</script>
+</body>
+</html>
