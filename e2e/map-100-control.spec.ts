@@ -7,6 +7,19 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
   test.setTimeout(120_000);
   await page.goto('./');
   const board = page.locator('.board-host canvas');
+  // Keep every real bridge command while bounding this long-running map UI test.
+  await page.getByRole('button', { name: 'マスタ', exact: true }).click();
+  const buildTicks = page.locator(
+    '[data-master-path="crossings.bridge-1.buildTicks"]',
+  );
+  const dismantleTicks = page.locator(
+    '[data-master-path="crossings.bridge-1.dismantleTicks"]',
+  );
+  await expect(buildTicks).toHaveValue('180');
+  await expect(dismantleTicks).toHaveValue('40');
+  await buildTicks.fill('10');
+  await dismantleTicks.fill('10');
+  await page.locator('[data-master-start]').click();
   await expect(board).toBeVisible();
   await page.getByRole('button', { name: '開始', exact: true }).click();
   let rect = await board.boundingBox();
@@ -100,6 +113,10 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
       (crossing: { siteId: string }) => crossing.siteId === 'CROSS-RING-SW',
     ),
   ).toMatchObject({ owner: 'A', job: null });
+  expect(diagnostic.state.rules.crossings['bridge-1']).toMatchObject({
+    buildTicks: 10,
+    dismantleTicks: 10,
+  });
   const marches = diagnostic.history.filter(
     (entry: { command?: { type?: string }; ok: boolean }) =>
       entry.command?.type === 'march' && entry.ok,
