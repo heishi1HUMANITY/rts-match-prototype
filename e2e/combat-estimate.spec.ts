@@ -1,15 +1,17 @@
 import { readFile } from 'node:fs/promises';
-import { expect, saveDiagnostic, test } from './fixtures';
+import { expect, saveDiagnostic, test, openMenu } from './fixtures';
 
 test('F88: drag preview shows bounded visible-force estimate and cancel adds no command', async ({
   page,
 }, info) => {
   test.setTimeout(60_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   const horizon = page.locator('[data-master-path="combatEstimate.maxTicks"]');
   await expect(horizon).toHaveValue('1200');
   await page.locator('[data-master-close]').click();
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })

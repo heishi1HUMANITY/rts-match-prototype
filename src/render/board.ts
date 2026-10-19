@@ -8,9 +8,26 @@ import {
   placeUnitLabel,
   type GroupMovePreview,
 } from './view-model';
-import { isCellBlocked } from '../simulation/map';
-import { terrainAt } from '../simulation/map';
-import { FOG_SURFACE_Y } from './fog-surface';
+import {
+  cameraDistanceBounds,
+  CAMERA_FOV_DEGREES,
+  cameraPosition,
+  groundFootprint,
+  type GroundPoint,
+} from './camera-rig';
+import { createHazePass } from './haze';
+import { createTerrain, WATER_Y, type TerrainView } from './terrain';
+import {
+  createBossModel,
+  createCrossingModel,
+  createGuardModel,
+  createRaiderModel,
+  createStructureModel,
+  createUnitModel,
+  STRUCTURE_RADIUS,
+  structureVariant,
+  type AssetModel,
+} from './models';
 import type {
   Cell,
   CombatantId,
@@ -52,6 +69,10 @@ export interface BoardView {
   ): void;
   zoomBy(factor: number): void;
   resetCamera(): void;
+  /** Client coordinates of a cell centre, or null when it is off screen. */
+  projectCell(cell: Cell): { x: number; y: number } | null;
+  /** Ground quadrilateral currently in view (for the minimap). */
+  viewFootprint(): readonly GroundPoint[] | null;
   resize(): void;
   dispose(): void;
 }
@@ -64,19 +85,41 @@ export interface BoardViewOptions {
 }
 
 const FACTIONS = {
-  A: { color: 0xe47a2f, symbol: '◆', marker: 'diamond' },
-  B: { color: 0x2d9fc5, symbol: '■', marker: 'square' },
-  C: { color: 0xd8ad24, symbol: '⬡', marker: 'hexagon' },
-  local: { color: 0x66747c, symbol: '●', marker: 'circle' },
+  A: { color: 0xff6a1a, symbol: '◆', marker: 'diamond' },
+  B: { color: 0x10bfe8, symbol: '■', marker: 'square' },
+  C: { color: 0xf0b323, symbol: '⬡', marker: 'hexagon' },
+  local: { color: 0x6b7a5e, symbol: '●', marker: 'circle' },
 } as const;
-const CAMERA_OFFSET = new THREE.Vector3(0, 32, 28);
 const BOARD_SIZE = 100;
-const MIN_ZOOM = 0.7;
-const MAX_ZOOM = 2.5;
 const MAX_ROUTE_CELLS = BOARD_SIZE * BOARD_SIZE;
+/** Structure footprint radius in cells (the capture zone is the 3x3 around it). */
+const STRUCTURE_FOOTPRINT: Readonly<Record<string, number>> = {
+  hq: 2.0,
+  large: 2.4,
+  medium: 1.8,
+  outpost: 1.55,
+};
+const UNIT_LIFT = 0.02;
+/** Extra lift for helicopters on top of the asset's own 20-unit hover. */
+const HELI_ALTITUDE = 0.8;
+const UNIT_GLYPHS = {
+  assault: '強',
+  scout: '偵',
+  artillery: '砲',
+  antiAir: '空',
+  helicopter: 'ヘ',
+  patrolBoat: '艇',
+} as const;
 
 interface UnitObjects {
+  /** Invisible pick proxy; the visible body is `model.group`. */
   readonly marker: THREE.Mesh;
+  model: AssetModel;
+  modelKey: string;
+  heading: number;
+  lastX: number;
+  lastZ: number;
+  lastFiredTick: number | undefined;
   readonly route: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   readonly destination: THREE.Mesh;
   readonly selection: THREE.Mesh;
@@ -84,35 +127,28 @@ interface UnitObjects {
   readonly glyph: HTMLSpanElement;
 }
 
-function createShape(
-  kind: 'diamond' | 'square' | 'hexagon' | 'circle',
-): THREE.BufferGeometry {
-  const shape = new THREE.Shape();
-  if (kind === 'circle') {
-    shape.absarc(0, 0, 0.38, 0, Math.PI * 2, false);
-  } else if (kind === 'diamond') {
-    shape.moveTo(0, 0.48);
-    shape.lineTo(0.36, 0);
-    shape.lineTo(0, -0.48);
-    shape.lineTo(-0.36, 0);
-  } else if (kind === 'square') {
-    shape.moveTo(-0.34, -0.34);
-    shape.lineTo(0.34, -0.34);
-    shape.lineTo(0.34, 0.34);
-    shape.lineTo(-0.34, 0.34);
-  } else {
-    for (let i = 0; i < 6; i += 1) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6;
-      const x = Math.cos(angle) * 0.38;
-      const y = Math.sin(angle) * 0.38;
-      if (i === 0) shape.moveTo(x, y);
-      else shape.lineTo(x, y);
-    }
-  }
-  shape.closePath();
-  const geometry = new THREE.ShapeGeometry(shape);
-  geometry.rotateX(-Math.PI / 2);
-  return geometry;
+type AnyUnitView = OwnUnitView | VisibleEnemyUnitView;
+const unitModelKey = (unit: AnyUnitView): string =>
+  unit.factionId === 'local' ? 'raider' : unit.kind;
+function createUnitAsset(unit: AnyUnitView): AssetModel {
+  const model =
+    unit.factionId === 'local'
+      ? createRaiderModel(1)
+      : createUnitModel(unit.kind);
+  model.setTeam(FACTIONS[unit.factionId].color);
+  return model;
+}
+function disposeObject(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as
+      | THREE.Material
+      | THREE.Material[]
+      | undefined;
+    if (Array.isArray(material)) for (const entry of material) entry.dispose();
+    else material?.dispose();
+  });
 }
 
 function cellPosition(cell: Cell, y = 0): THREE.Vector3 {
@@ -210,6 +246,8 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       pan: () => undefined,
       zoomBy: () => undefined,
       resetCamera: () => undefined,
+      projectCell: () => null,
+      viewFootprint: () => null,
       resize: () => undefined,
       dispose: () => {
         if (disposed) return;
@@ -232,11 +270,26 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   container.append(canvas);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf1f3f4);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x77766e, 2.0));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
-  keyLight.position.set(18, 38, 14);
+  scene.background = new THREE.Color(0xe6eaee);
+  // Lighting from the 3D asset viewer: white hemisphere + one sun, no shadows.
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xb8c2cc, 1.6));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  keyLight.position.set(-30, 60, 20);
   scene.add(keyLight);
+  // Software WebGL (CI, no GPU) gets a cheaper haze and a capped frame rate so
+  // input and DOM updates are not starved by rendering.
+  const debugInfo = renderer
+    .getContext()
+    .getExtension('WEBGL_debug_renderer_info');
+  const softwareRenderer =
+    debugInfo !== null &&
+    /swiftshader|llvmpipe|software|basic render/i.test(
+      String(
+        renderer.getContext().getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
+      ),
+    );
+  const haze = createHazePass(softwareRenderer ? 'low' : 'high');
+  const minFrameMs = softwareRenderer ? 120 : 0;
 
   const resources = {
     geometries: new Set<THREE.BufferGeometry>(),
@@ -251,64 +304,34 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     return material;
   };
 
-  const groundGeometry = ownGeometry(
-    new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
-  );
-  const groundMaterial = ownMaterial(
-    new THREE.MeshStandardMaterial({ color: 0xdfe5dc, roughness: 1 }),
-  );
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(BOARD_SIZE / 2, 0, BOARD_SIZE / 2);
-  ground.name = 'ground-pick-surface';
-  scene.add(ground);
-
-  const gridPositions: number[] = [];
-  for (let i = 0; i <= BOARD_SIZE; i += 1) {
-    gridPositions.push(i, 0.012, 0, i, 0.012, BOARD_SIZE);
-  }
-  for (let i = 0; i <= BOARD_SIZE; i += 1) {
-    gridPositions.push(0, 0.012, i, BOARD_SIZE, 0.012, i);
-  }
-  const gridGeometry = ownGeometry(new THREE.BufferGeometry());
-  gridGeometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(gridPositions, 3),
-  );
-  const grid = new THREE.LineSegments(
-    gridGeometry,
-    ownMaterial(
-      new THREE.LineBasicMaterial({
-        color: 0x738078,
-        transparent: true,
-        opacity: 0.34,
-        depthWrite: false,
-      }),
-    ),
-  );
-  grid.name = 'cell-grid';
-  scene.add(grid);
-
   let boardWidth = BOARD_SIZE;
   let boardHeight = BOARD_SIZE;
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(CAMERA_FOV_DEGREES, 1, 0.5, 400);
   const cameraTarget = new THREE.Vector3(boardWidth / 2, 0, boardHeight / 2);
-  let zoom = 1;
-  const elevation = Math.atan2(CAMERA_OFFSET.y, CAMERA_OFFSET.z);
+  let aspect = 1;
+  let distanceBounds = cameraDistanceBounds(boardWidth, boardHeight, aspect);
+  /** null = use the default distance for the current viewport. */
+  let cameraDistance: number | null = null;
+  const currentDistance = (): number =>
+    THREE.MathUtils.clamp(
+      cameraDistance ?? distanceBounds.initial,
+      distanceBounds.min,
+      distanceBounds.max,
+    );
   const resizeCamera = (width: number, height: number): void => {
-    const aspect = width / height;
-    const projectedBoardDepth = boardHeight * Math.sin(elevation);
-    const visibleHeight =
-      Math.max(projectedBoardDepth, boardWidth / aspect) * 1.25;
-    const frustumHeight = visibleHeight / zoom;
-    const frustumWidth = frustumHeight * aspect;
-    camera.left = -frustumWidth / 2;
-    camera.right = frustumWidth / 2;
-    camera.top = frustumHeight / 2;
-    camera.bottom = -frustumHeight / 2;
-    camera.position.copy(cameraTarget).add(CAMERA_OFFSET);
+    aspect = width / height;
+    distanceBounds = cameraDistanceBounds(boardWidth, boardHeight, aspect);
+    cameraTarget.x = THREE.MathUtils.clamp(cameraTarget.x, 0, boardWidth);
+    cameraTarget.z = THREE.MathUtils.clamp(cameraTarget.z, 0, boardHeight);
+    const position = cameraPosition(
+      { x: cameraTarget.x, z: cameraTarget.z },
+      currentDistance(),
+    );
+    camera.aspect = aspect;
+    camera.position.set(position.x, position.y, position.z);
     camera.lookAt(cameraTarget);
     camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
   };
 
   const labelLayer = document.createElement('div');
@@ -337,25 +360,17 @@ export function createBoardView(options: BoardViewOptions): BoardView {
   });
   labelLayer.append(combatSvg);
 
-  const markerGeometry = new Map<CombatantId, THREE.BufferGeometry>();
-  const markerMaterial = new Map<CombatantId, THREE.MeshStandardMaterial>();
+  // Pick proxies stay invisible: hits come from a simple cylinder per unit
+  // rather than the detailed asset meshes.
+  const proxyGeometry = ownGeometry(
+    new THREE.CylinderGeometry(0.62, 0.62, 1.2, 10),
+  );
+  proxyGeometry.translate(0, 0.6, 0);
+  const proxyMaterial = ownMaterial(
+    new THREE.MeshBasicMaterial({ visible: false }),
+  );
   const routeMaterial = new Map<CombatantId, THREE.LineBasicMaterial>();
   for (const faction of Object.keys(FACTIONS) as CombatantId[]) {
-    markerGeometry.set(
-      faction,
-      ownGeometry(createShape(FACTIONS[faction].marker)),
-    );
-    markerMaterial.set(
-      faction,
-      ownMaterial(
-        new THREE.MeshStandardMaterial({
-          color: FACTIONS[faction].color,
-          roughness: 0.65,
-          transparent: true,
-          side: THREE.DoubleSide,
-        }),
-      ),
-    );
     routeMaterial.set(
       faction,
       ownMaterial(
@@ -369,7 +384,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     );
   }
 
-  const ringGeometry = ownGeometry(new THREE.TorusGeometry(0.43, 0.035, 8, 40));
+  const ringGeometry = ownGeometry(new THREE.TorusGeometry(0.72, 0.045, 8, 48));
   const selectionMaterial = ownMaterial(
     new THREE.MeshBasicMaterial({
       color: 0x181c20,
@@ -443,15 +458,14 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     unit: OwnUnitView | VisibleEnemyUnitView,
   ): UnitObjects => {
     const faction = unit.factionId;
-    const marker = new THREE.Mesh(
-      markerGeometry.get(faction)!,
-      markerMaterial.get(faction)!,
-    );
-    marker.position.y = 0.17;
+    const marker = new THREE.Mesh(proxyGeometry, proxyMaterial);
     marker.name = unit.id;
     marker.userData.unitId = unit.id;
     scene.add(marker);
     unitRaycastTargets.push(marker);
+    const modelKey = unitModelKey(unit);
+    const model = createUnitAsset(unit);
+    scene.add(model.group);
 
     const routeGeometry = ownGeometry(new THREE.BufferGeometry());
     const routePositions = new Float32Array((MAX_ROUTE_CELLS + 1) * 3);
@@ -485,45 +499,52 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     const label = document.createElement('div');
     label.className = `rts-unit-label rts-unit-label-${faction.toLowerCase()}`;
     label.dataset.unitId = unit.id;
+    const teamHex = `#${FACTIONS[faction].color.toString(16).padStart(6, '0')}`;
     Object.assign(label.style, {
       position: 'absolute',
-      width: '44px',
-      height: '44px',
+      minWidth: '30px',
+      height: '18px',
       display: 'grid',
       placeItems: 'center',
       boxSizing: 'border-box',
-      border: `1px solid #${FACTIONS[faction].color.toString(16).padStart(6, '0')}`,
-      borderRadius: '50%',
-      color: '#20252b',
-      background: 'rgba(255,255,255,0.96)',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
-      font: '700 11px/1 system-ui, sans-serif',
+      padding: '0 4px',
+      borderLeft: `3px solid ${teamHex}`,
+      color: '#0e161e',
+      background: 'rgba(255,255,255,0.92)',
+      boxShadow: '0 4px 10px -6px rgba(14,22,30,0.6)',
+      font: '700 9px/1 system-ui, sans-serif',
       transform: 'translate(-50%, -50%)',
       pointerEvents: 'none',
+      whiteSpace: 'nowrap',
     });
     const glyph = document.createElement('span');
     glyph.textContent = FACTIONS[faction].symbol;
-    glyph.style.whiteSpace = 'pre-line';
-    glyph.style.textAlign = 'center';
-    glyph.style.font = '700 10px/1.3 system-ui,sans-serif';
+    glyph.style.whiteSpace = 'nowrap';
+    glyph.style.font = '700 9px/1 system-ui,sans-serif';
     glyph.setAttribute('aria-hidden', 'true');
     label.append(glyph);
     labelLayer.append(label);
     const objects: UnitObjects = {
       marker,
+      model,
+      modelKey,
+      heading: Math.PI,
+      lastX: Number.NaN,
+      lastZ: Number.NaN,
+      lastFiredTick: undefined,
       route,
       destination,
       selection,
       label,
       glyph,
     };
-    for (const object of [marker, route, selection, destination])
+    for (const object of [route, selection, destination])
       object.renderOrder = 3;
     unitObjects.set(unit.id, objects);
     return objects;
   };
 
-  let mapMesh: THREE.InstancedMesh | null = null;
+  let terrain: TerrainView | null = null;
   let mapSiteLabels: {
     readonly cell: Cell;
     readonly label: HTMLDivElement;
@@ -547,30 +568,13 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       return;
     boardWidth = map.width;
     boardHeight = map.height;
-    ground.scale.set(boardWidth / BOARD_SIZE, 1, boardHeight / BOARD_SIZE);
-    grid.scale.set(boardWidth / BOARD_SIZE, 1, boardHeight / BOARD_SIZE);
-    ground.position.set(boardWidth / 2, 0, boardHeight / 2);
-    cameraTarget.set(boardWidth / 2, 0, boardHeight / 2);
     canvas.setAttribute('aria-label', `${boardWidth}×${boardHeight}の盤面`);
-    if (mapMesh !== null) {
-      scene.remove(mapMesh);
-      mapMesh.geometry.dispose();
-      if (Array.isArray(mapMesh.material)) {
-        mapMesh.material.forEach((material) => material.dispose());
-      } else {
-        mapMesh.material.dispose();
-      }
-      resources.geometries.delete(mapMesh.geometry);
-      mapMesh.dispose();
-      if (Array.isArray(mapMesh.material)) {
-        mapMesh.material.forEach((material) =>
-          resources.materials.delete(material),
-        );
-      } else {
-        resources.materials.delete(mapMesh.material);
-      }
+    if (terrain !== null) {
+      scene.remove(terrain.group);
+      terrain.dispose();
     }
-    mapMesh = null;
+    terrain = createTerrain(map);
+    scene.add(terrain.group);
     for (const entry of mapSiteLabels) entry.label.remove();
     mapSiteLabels = [];
     for (const port of map.ports ?? []) {
@@ -604,45 +608,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       }
     }
     renderedMap = map;
-    let count = 0;
-    for (const blocked of map.blocked) if (blocked) count += 1;
-    if (count === 0) return;
-    const geometry = ownGeometry(new THREE.BoxGeometry(0.84, 0.42, 0.84));
-    const material = ownMaterial(
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
-    );
-    mapMesh = new THREE.InstancedMesh(geometry, material, count);
-    mapMesh.name = 'obstacles';
-    const matrix = new THREE.Matrix4();
-    let instance = 0;
-    for (let y = 0; y < map.height; y += 1) {
-      for (let x = 0; x < map.width; x += 1) {
-        if (!isCellBlocked(map, { x, y })) continue;
-        const kind = terrainAt(map, { x, y });
-        const height =
-          kind === 'mountain' ? 0.9 : kind === 'river' ? 0.1 : 0.42;
-        const color =
-          kind === 'river'
-            ? 0x3f9bb4
-            : kind === 'riverbank'
-              ? 0xb49c69
-              : kind === 'mountain'
-                ? 0x69756c
-                : 0x59615f;
-        matrix.compose(
-          new THREE.Vector3(x + 0.5, height / 2, y + 0.5),
-          new THREE.Quaternion(),
-          new THREE.Vector3(0.84, height, 0.84),
-        );
-        mapMesh.setMatrixAt(instance++, matrix);
-        mapMesh.setColorAt(instance - 1, new THREE.Color(color));
-      }
-    }
-    mapMesh.instanceMatrix.needsUpdate = true;
-    if (mapMesh.instanceColor !== null)
-      mapMesh.instanceColor.needsUpdate = true;
-    mapMesh.computeBoundingSphere();
-    scene.add(mapMesh);
+    resize();
   };
 
   let selectedUnitIds: readonly string[] = [];
@@ -783,15 +749,35 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     }
   };
 
+  let lastFrameTime = performance.now();
+  const renderFrame = (force = true): void => {
+    if (contextLost || disposed) return;
+    const now = performance.now();
+    if (!force && now - lastFrameTime < minFrameMs) return;
+    const dt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
+    lastFrameTime = now;
+    terrain?.update(dt);
+    for (const objects of unitObjects.values()) objects.model.update(dt);
+    for (const objects of baseObjects.values()) {
+      objects.model.update(dt);
+      objects.guard?.model.update(dt);
+    }
+    for (const objects of crossingObjects.values()) objects.model.update(dt);
+    haze.render(renderer, scene, camera, dt);
+  };
   const resize = (): void => {
     if (disposed) return;
     const rect = container.getBoundingClientRect();
     const width = Math.max(1, Math.floor(rect.width));
     const height = Math.max(1, Math.floor(rect.height));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const pixelRatio = softwareRenderer
+      ? 1
+      : Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height, false);
+    haze.setSize(width, height, pixelRatio);
     resizeCamera(width, height);
-    if (!contextLost) renderer.render(scene, camera);
+    renderFrame();
   };
 
   const updateLabelPosition = (
@@ -1141,30 +1127,101 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     {
       marker: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
       label: HTMLDivElement;
+      model: AssetModel;
+      guard: { model: AssetModel; key: string } | null;
+      state: string;
     }
   >();
-  const baseGeometry = ownGeometry(
-    new THREE.CylinderGeometry(0.7, 0.7, 0.25, 6),
-  );
+  const baseGeometry = ownGeometry(new THREE.CylinderGeometry(1, 1, 1.4, 12));
+  baseGeometry.translate(0, 0.7, 0);
+  const nearWater = (map: GridMap, cell: Cell): boolean => {
+    for (let dy = -3; dy <= 3; dy += 1)
+      for (let dx = -3; dx <= 3; dx += 1) {
+        const x = cell.x + dx;
+        const y = cell.y + dy;
+        if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
+        if (map.terrain?.[y * map.width + x] === 'river') return true;
+      }
+    return false;
+  };
+  /** Neutral defenders: guard emplacements (S/M) or the large base's boss. */
+  const syncGuard = (
+    objects: {
+      guard: { model: AssetModel; key: string } | null;
+    },
+    base: FactionView['bases'][number],
+  ): void => {
+    const seen =
+      base.visibility === 'visible' || base.visibility === 'remembered';
+    const alive =
+      seen &&
+      base.owner === null &&
+      base.kind !== 'hq' &&
+      (base.defenderMaxHp ?? 0) > 0 &&
+      (base.defenderHp ?? 0) > 0;
+    const key =
+      base.kind === 'large' ? 'boss' : base.kind === 'medium' ? 'M' : 'S';
+    if (!alive || objects.guard?.key !== key) {
+      if (objects.guard) {
+        scene.remove(objects.guard.model.group);
+        disposeObject(objects.guard.model.group);
+        objects.guard = null;
+      }
+      if (!alive) return;
+      const model =
+        key === 'boss'
+          ? createBossModel()
+          : createGuardModel(key === 'M' ? 'M' : 'S');
+      const offset = (STRUCTURE_FOOTPRINT[base.kind] ?? 1.6) + 0.7;
+      model.group.position
+        .copy(cellPosition(base.cell, 0))
+        .add(new THREE.Vector3(offset * 0.7, 0, offset * 0.7));
+      model.group.rotation.y = Math.PI * 0.75;
+      scene.add(model.group);
+      objects.guard = { model, key };
+    }
+    const engaged =
+      base.visibility === 'visible' &&
+      (base.defenderCombat?.phase === 'windup' ||
+        base.defenderCombat?.phase === 'cooldown');
+    objects.guard.model.setState?.(
+      engaged
+        ? 'engaged'
+        : key === 'boss' &&
+            (base.defenderHp ?? 0) < (base.defenderMaxHp ?? 0) * 0.5
+          ? 'damaged'
+          : 'idle',
+    );
+  };
   const syncBases = (view: FactionView): void => {
     const ids = new Set(view.bases.map((base) => base.id));
     for (const [id, objects] of baseObjects) {
       if (ids.has(id)) continue;
-      scene.remove(objects.marker);
-      objects.marker.material.dispose();
-      resources.materials.delete(objects.marker.material);
+      scene.remove(objects.marker, objects.model.group);
+      disposeObject(objects.model.group);
+      if (objects.guard) {
+        scene.remove(objects.guard.model.group);
+        disposeObject(objects.guard.model.group);
+      }
       objects.label.remove();
       baseObjects.delete(id);
     }
-    for (const base of view.bases) {
+    for (const [index, base] of view.bases.entries()) {
       let objects = baseObjects.get(base.id);
       if (objects === undefined) {
-        const material = ownMaterial(
-          new THREE.MeshBasicMaterial({ color: 0x8c9296 }),
-        );
-        const marker = new THREE.Mesh(baseGeometry, material);
+        const marker = new THREE.Mesh(baseGeometry, proxyMaterial);
         marker.userData.baseId = base.id;
-        marker.renderOrder = 2;
+        const variant = structureVariant(
+          base.kind,
+          index,
+          base.kind === 'outpost' && nearWater(view.map, base.cell),
+        );
+        const model = createStructureModel(variant);
+        const footprint = STRUCTURE_FOOTPRINT[base.kind] ?? 1.6;
+        model.group.scale.setScalar(footprint / STRUCTURE_RADIUS[variant]);
+        model.group.position.copy(cellPosition(base.cell, 0));
+        marker.scale.set(footprint * 0.8, 1, footprint * 0.8);
+        scene.add(model.group);
         const label = document.createElement('div');
         label.className = 'rts-base-label';
         Object.assign(label.style, {
@@ -1181,29 +1238,29 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         });
         labelLayer.append(label);
         scene.add(marker);
-        objects = { marker, label };
+        objects = { marker, label, model, guard: null, state: '' };
         baseObjects.set(base.id, objects);
       }
       const owner = base.visibility === 'unknown' ? null : base.owner;
       const ownerColor = owner === null ? 0x8c9296 : FACTIONS[owner].color;
-      objects.marker.material.color.setHex(ownerColor);
-      objects.marker.material.transparent = true;
-      objects.marker.material.opacity =
-        base.visibility === 'remembered'
-          ? 0.5
-          : base.visibility === 'unknown'
-            ? 0.3
-            : 1;
-      objects.marker.position.copy(cellPosition(base.cell, 0.15));
-      objects.marker.scale.setScalar(
-        base.kind === 'hq'
-          ? 1.5
-          : base.kind === 'large'
-            ? 1.3
-            : base.kind === 'medium'
-              ? 1.1
-              : 0.9,
-      );
+      objects.model.setTeam(owner === null ? null : ownerColor);
+      const active =
+        (base.visibility === 'visible' || base.visibility === 'owned') &&
+        base.hp > 0;
+      const state =
+        base.kind === 'large'
+          ? active && owner !== null
+            ? 'opening'
+            : 'closing'
+          : active
+            ? 'run'
+            : 'stop';
+      if (state !== objects.state) {
+        objects.model.setState?.(state);
+        objects.state = state;
+      }
+      objects.marker.position.copy(cellPosition(base.cell, 0));
+      syncGuard(objects, base);
       objects.label.textContent = baseLabel(
         base,
         view.rules.capture.requiredTicks,
@@ -1246,100 +1303,172 @@ export function createBoardView(options: BoardViewOptions): BoardView {
         'aria-label',
         `${baseLabel(base, view.rules.capture.requiredTicks)}（拠点の種類と位置は公開）`,
       );
-      updateLabelPosition(objects.label, cellPosition(base.cell, 0.3), -18);
+      updateLabelPosition(
+        objects.label,
+        cellPosition(base.cell, 1.4),
+        -(STRUCTURE_FOOTPRINT[base.kind] ?? 1.6) * 6,
+      );
     }
   };
-  const fogCanvas = document.createElement('canvas');
-  // WebGL allocates immutable texture storage on the first render. A canvas
-  // defaults to 300x150; resizing it later does not resize that GPU allocation.
-  fogCanvas.width = BOARD_SIZE;
-  fogCanvas.height = BOARD_SIZE;
-  const fogContext = fogCanvas.getContext('2d', { willReadFrequently: true });
-  if (!fogContext)
-    throw new Error('2D canvas is unavailable for visibility overlay');
-  const createFogTexture = (): THREE.CanvasTexture => {
-    const texture = new THREE.CanvasTexture(fogCanvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter;
-    texture.generateMipmaps = false;
-    return texture;
-  };
-  let fogTexture = createFogTexture();
-  const fogGeometry = ownGeometry(
-    new THREE.PlaneGeometry(BOARD_SIZE, BOARD_SIZE),
-  );
-  fogGeometry.rotateX(-Math.PI / 2);
-  const fogMaterial = ownMaterial(
-    new THREE.MeshBasicMaterial({
-      map: fogTexture,
-      transparent: true,
-      opacity: 1,
-      depthTest: false,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }),
-  );
-  const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
-  fogMesh.name = 'visibility-fog';
-  fogMesh.renderOrder = 1;
-  fogMesh.frustumCulled = false;
-  scene.add(fogMesh);
-  let fogSignature = '';
-  let fogView: FactionView | null = null;
-  const syncFog = (view: FactionView): void => {
-    if (view === fogView) return;
-    fogView = view;
-    const signature =
-      `${view.map.width}x${view.map.height}:` +
-      view.visible
-        .map((visible, index) =>
-          visible ? '2' : view.explored[index] ? '1' : '0',
-        )
-        .join('');
-    if (signature === fogSignature) return;
-    fogSignature = signature;
-    if (
-      fogCanvas.width !== view.map.width ||
-      fogCanvas.height !== view.map.height
-    ) {
-      fogTexture.dispose();
-      fogCanvas.width = view.map.width;
-      fogCanvas.height = view.map.height;
-      fogTexture = createFogTexture();
-      fogMaterial.map = fogTexture;
-    }
-    const image = fogContext.createImageData(view.map.width, view.map.height);
-    for (let index = 0; index < view.visible.length; index += 1) {
-      const pixel = index * 4;
-      if (view.visible[index]) {
-        image.data[pixel + 3] = 0;
-      } else if (view.explored[index]) {
-        image.data[pixel] = 140;
-        image.data[pixel + 1] = 153;
-        image.data[pixel + 2] = 162;
-        image.data[pixel + 3] = 62;
-      } else {
-        image.data[pixel] = 23;
-        image.data[pixel + 1] = 35;
-        image.data[pixel + 2] = 45;
-        image.data[pixel + 3] = 166;
+  const crossingObjects = new Map<
+    string,
+    { model: AssetModel; key: string; state: string }
+  >();
+  /** Bridges and ropeways the viewer knows about (built, being built or remembered). */
+  const syncCrossings = (view: FactionView): void => {
+    const present = new Set<string>();
+    for (const crossing of view.crossings) {
+      if (crossing.visibility === 'unknown') continue;
+      const building = crossing.job?.kind === 'build';
+      if (crossing.owner === null && !building) continue;
+      const { site } = crossing;
+      present.add(site.id);
+      const ax = site.bankA.x + 0.5;
+      const az = site.bankA.y + 0.5;
+      const bx = site.bankB.x + 0.5;
+      const bz = site.bankB.y + 0.5;
+      const length = Math.hypot(bx - ax, bz - az) + 1;
+      const key = `${site.tier}:${length.toFixed(2)}`;
+      let objects = crossingObjects.get(site.id);
+      if (!objects || objects.key !== key) {
+        if (objects) {
+          scene.remove(objects.model.group);
+          disposeObject(objects.model.group);
+        }
+        const bridge = site.tier.startsWith('bridge');
+        const scale = bridge ? 1 / 80 : length / 560;
+        const model = createCrossingModel(
+          site.tier,
+          bridge ? length / scale : 520,
+        );
+        model.group.scale.setScalar(scale);
+        model.group.position.set(
+          (ax + bx) / 2,
+          bridge ? -0.3 : 0,
+          (az + bz) / 2,
+        );
+        model.group.rotation.y = -Math.atan2(bz - az, bx - ax);
+        scene.add(model.group);
+        objects = { model, key, state: '' };
+        crossingObjects.set(site.id, objects);
+      }
+      objects.model.setTeam(
+        crossing.owner === null ? null : FACTIONS[crossing.owner].color,
+      );
+      const state =
+        crossing.owner === null
+          ? 'building'
+          : crossing.hp <= 0
+            ? 'destroyed'
+            : 'built';
+      if (state !== objects.state) {
+        objects.model.setState?.(state);
+        objects.state = state;
       }
     }
-    fogContext.putImageData(image, 0, 0);
-    fogTexture.needsUpdate = true;
-    fogMesh.scale.set(
-      view.map.width / BOARD_SIZE,
-      1,
-      view.map.height / BOARD_SIZE,
-    );
-    fogMesh.position.set(
-      view.map.width / 2,
-      FOG_SURFACE_Y,
-      view.map.height / 2,
-    );
+    for (const [id, objects] of crossingObjects) {
+      if (present.has(id)) continue;
+      scene.remove(objects.model.group);
+      disposeObject(objects.model.group);
+      crossingObjects.delete(id);
+    }
   };
 
+  const entityPosition = (
+    view: FactionView,
+    id: string,
+  ): { x: number; z: number } | null => {
+    const own = view.ownUnits.find((unit) => unit.id === id);
+    if (own) return { x: own.cell.x + 0.5, z: own.cell.y + 0.5 };
+    const enemy = view.visibleEnemies.find((unit) => unit.id === id);
+    if (enemy)
+      return { x: enemy.positionX1024 / 1024, z: enemy.positionY1024 / 1024 };
+    const cell =
+      view.bases.find((base) => base.id === id)?.cell ??
+      view.facilities.find((facility) => facility.id === id)?.cell;
+    return cell ? { x: cell.x + 0.5, z: cell.y + 0.5 } : null;
+  };
+  const wrapAngle = (angle: number): number =>
+    Math.atan2(Math.sin(angle), Math.cos(angle));
+  const syncUnitModel = (
+    objects: UnitObjects,
+    unit: AnyUnitView,
+    x: number,
+    z: number,
+    view: FactionView,
+  ): void => {
+    const key = unitModelKey(unit);
+    if (objects.modelKey !== key) {
+      scene.remove(objects.model.group);
+      disposeObject(objects.model.group);
+      objects.model = createUnitAsset(unit);
+      objects.modelKey = key;
+      scene.add(objects.model.group);
+    }
+    const model = objects.model;
+    const dx = x - objects.lastX;
+    const dz = z - objects.lastZ;
+    const moved = Number.isFinite(dx) && Math.hypot(dx, dz) > 1e-4;
+    objects.lastX = x;
+    objects.lastZ = z;
+    const combat = unit.control === 'own' ? unit.attack : unit.combat;
+    const engaged = combat?.phase === 'windup' || combat?.phase === 'cooldown';
+    let desired = objects.heading;
+    if (moved) desired = Math.atan2(dx, dz);
+    else if (engaged && combat?.targetId) {
+      const target = entityPosition(view, combat.targetId);
+      if (target) desired = Math.atan2(target.x - x, target.z - z);
+    }
+    objects.heading = wrapAngle(
+      objects.heading + wrapAngle(desired - objects.heading) * 0.22,
+    );
+    const y =
+      unit.kind === 'patrolBoat'
+        ? WATER_Y
+        : unit.kind === 'helicopter'
+          ? HELI_ALTITUDE
+          : (terrain?.heightAt(x, z) ?? 0) + UNIT_LIFT;
+    model.group.position.set(x, y, z);
+    model.group.rotation.y = objects.heading;
+    model.group.visible = !(unit.control === 'own' && unit.garrisonedAtBaseId);
+    const moving = moved && view.phase === 'running';
+    model.setMoving?.(moving);
+    model.setForward?.(moving);
+    model.setDeployed?.(!moving);
+    model.setMast?.(!moving && unit.kind === 'scout');
+    if (unit.factionId === 'local')
+      model.setState?.(engaged ? 'engaged' : moving ? 'move' : 'idle');
+    const firedTick = combat?.lastFiredTick;
+    if (
+      firedTick !== undefined &&
+      objects.lastFiredTick !== undefined &&
+      firedTick !== objects.lastFiredTick
+    ) {
+      if (model.fireGun) model.fireGun();
+      else model.fire?.();
+    }
+    objects.lastFiredTick = firedTick;
+  };
+  /** Home view: centre of the own units, else the own capital, else the map. */
+  const focusHome = (): void => {
+    const view = lastCurrent;
+    const units =
+      view?.ownUnits.filter((unit) => !unit.garrisonedAtBaseId) ?? [];
+    const capital = view?.bases.find(
+      (base) => base.id === `HQ-${view.viewerFactionId}`,
+    );
+    if (units.length > 0) {
+      cameraTarget.set(
+        units.reduce((sum, unit) => sum + unit.cell.x + 0.5, 0) / units.length,
+        0,
+        units.reduce((sum, unit) => sum + unit.cell.y + 0.5, 0) / units.length,
+      );
+    } else if (capital) {
+      cameraTarget.set(capital.cell.x + 0.5, 0, capital.cell.y + 0.5);
+    } else cameraTarget.set(boardWidth / 2, 0, boardHeight / 2);
+  };
+  let needsHomeFocus = true;
+  let lastRenderedTick = -1;
   const sync = (
     previous: FactionView,
     current: FactionView,
@@ -1357,8 +1486,16 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       selectedUnitIds = [];
       movePreviewRequest = null;
       clearPreviewObjects();
+      needsHomeFocus = true;
     }
     lastCurrent = current;
+    if (needsHomeFocus) {
+      needsHomeFocus = false;
+      installMap(current.map);
+      cameraDistance = null;
+      focusHome();
+      resize();
+    }
     if (current.phase !== 'running') movePreviewRequest = null;
     selectedUnitIds = ownUnitIds(current, selectedUnitIds);
     lastAlpha = Math.max(0, Math.min(1, alpha));
@@ -1424,10 +1561,12 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       if (present.has(id)) continue;
       scene.remove(
         objects.marker,
+        objects.model.group,
         objects.route,
         objects.selection,
         objects.destination,
       );
+      disposeObject(objects.model.group);
       objects.route.geometry.dispose();
       resources.geometries.delete(objects.route.geometry);
       objects.label.remove();
@@ -1439,6 +1578,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     for (const { unit, x, z } of frames) {
       const objects = unitObjects.get(unit.id) ?? createUnitObjects(unit);
       const currentPosition = new THREE.Vector3(x, 0.17, z);
+      syncUnitModel(objects, unit, x, z, current);
       const path = unit.control === 'own' ? unit.path : [];
       const march = unit.control === 'own' ? unit.marchOrder : null;
       const localUnit = unit.factionId === 'local';
@@ -1473,24 +1613,15 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           : combat?.phase === 'cooldown'
             ? '⚔'
             : '';
-      const glyph = (
-        {
-          assault: '強',
-          scout: '偵',
-          artillery: '砲',
-          antiAir: '空',
-          helicopter: 'ヘ',
-          patrolBoat: '艇',
-        } as const
-      )[unit.kind];
-      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${combatMark}${bombardMark}${underFire ? '✦' : ''}${march ? '→' : ''}${jammed ? '⚠妨' : ''}\n${unit.hp}/${unit.maxHp}`;
+      const glyph = UNIT_GLYPHS[unit.kind];
+      objects.glyph.textContent = `${FACTIONS[unit.factionId].symbol}${localUnit ? '現' : ''}${glyph}${combatMark}${bombardMark}${underFire ? '✦' : ''}${march ? '→' : ''}${jammed ? '⚠妨' : ''} ${unit.hp}`;
       objects.label.dataset.combat = combatMark ? String(combat?.phase) : '';
       objects.label.dataset.underFire = String(underFire);
       objects.label.title = `${localUnit ? '現地勢力 ' : ''}${unit.id} ${unit.kind} HP ${unit.hp}/${unit.maxHp}${combatMark ? ` · ${combat?.phase === 'windup' ? '攻撃準備' : '攻撃後の周期待ち'}${visibleTargetId ? ` → ${visibleTargetId}` : ''}` : ''}${unit.control === 'own' && unit.bombardOrder ? ` · 地点砲撃準備 ${unit.bombardOrder.cell.x},${unit.bombardOrder.cell.y}` : pointFireFlight ? ` · 地点砲撃飛翔 ${pointFireFlight.cell.x},${pointFireFlight.cell.y}` : ''}${underFire ? ' · 被弾' : ''}${march ? ` → ${march.target.id}` : ''}`;
-      objects.marker.position.copy(currentPosition);
+      objects.marker.position.set(currentPosition.x, 0, currentPosition.z);
       objects.selection.position.set(
         currentPosition.x,
-        0.045,
+        unit.kind === 'patrolBoat' ? WATER_Y + 0.05 : 0.045,
         currentPosition.z,
       );
       objects.selection.visible =
@@ -1530,7 +1661,14 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           destinationCell.y + 0.5,
         );
       }
-      updateLabelPosition(objects.label, currentPosition);
+      updateLabelPosition(
+        objects.label,
+        new THREE.Vector3(
+          currentPosition.x,
+          unit.kind === 'helicopter' ? HELI_ALTITUDE + 1.4 : 1.05,
+          currentPosition.z,
+        ),
+      );
       const bounds = canvas.getBoundingClientRect();
       const anchorX = parseFloat(objects.label.style.left);
       const anchorY = parseFloat(objects.label.style.top);
@@ -1633,6 +1771,18 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       }
       updateLabelPosition(entry.label, cellPosition(entry.cell, 0.05), -3);
       const bounds = canvas.getBoundingClientRect();
+      const anchorX = parseFloat(entry.label.style.left);
+      const anchorY = parseFloat(entry.label.style.top);
+      if (
+        entry.label.style.display === 'none' ||
+        anchorX < 0 ||
+        anchorY < 0 ||
+        anchorX > bounds.width ||
+        anchorY > bounds.height
+      ) {
+        entry.label.style.display = 'none';
+        continue;
+      }
       const labelPosition = placeMapSiteLabel(
         {
           x: parseFloat(entry.label.style.left),
@@ -1647,9 +1797,11 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       entry.label.style.top = `${labelPosition.y}px`;
       occupiedMapSiteLabels.push(labelPosition);
     }
-    syncFog(current);
+    syncCrossings(current);
+    haze.setVisibility(current);
     refreshMovePreview();
-    if (!contextLost) renderer.render(scene, camera);
+    renderFrame(current.tick !== lastRenderedTick);
+    lastRenderedTick = current.tick;
   };
 
   const rayFromClient = (clientX: number, clientY: number): boolean => {
@@ -1715,7 +1867,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.label.classList.toggle('selected', active);
       objects.label.dataset.selected = String(active);
     }
-    if (!contextLost) renderer.render(scene, camera);
+    renderFrame();
   };
   const setGroupMovePreview = (
     previews: readonly GroupMovePreview[],
@@ -1730,12 +1882,12 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       target: { ...target },
     };
     refreshMovePreview();
-    if (!contextLost) renderer.render(scene, camera);
+    renderFrame();
   };
   const clearMovePreview = (): void => {
     movePreviewRequest = null;
     clearPreviewObjects();
-    if (!contextLost && !disposed) renderer.render(scene, camera);
+    renderFrame();
   };
 
   return {
@@ -1800,10 +1952,13 @@ export function createBoardView(options: BoardViewOptions): BoardView {
           kind: 'base',
           baseId: baseHit.object.userData.baseId as string,
         };
-      const groundHit = raycaster.intersectObject(ground, false)[0];
-      if (groundHit === undefined) return null;
-      const x = Math.floor(groundHit.point.x);
-      const y = Math.floor(groundHit.point.z);
+      const groundHit = raycaster.ray.intersectPlane(
+        groundPlane,
+        scratchVector,
+      );
+      if (groundHit === null) return null;
+      const x = Math.floor(groundHit.x);
+      const y = Math.floor(groundHit.z);
       if (x < 0 || y < 0 || x >= boardWidth || y >= boardHeight) return null;
       return { kind: 'ground', cell: { x, y } };
     },
@@ -1847,14 +2002,46 @@ export function createBoardView(options: BoardViewOptions): BoardView {
     },
     zoomBy(factor) {
       if (!Number.isFinite(factor) || factor <= 0) return;
-      zoom = THREE.MathUtils.clamp(zoom * factor, MIN_ZOOM, MAX_ZOOM);
+      cameraDistance = THREE.MathUtils.clamp(
+        currentDistance() / factor,
+        distanceBounds.min,
+        distanceBounds.max,
+      );
       resize();
     },
     resetCamera() {
       clearMovePreview();
-      cameraTarget.set(boardWidth / 2, 0, boardHeight / 2);
-      zoom = 1;
+      cameraDistance = null;
+      focusHome();
       resize();
+    },
+    projectCell(cell) {
+      if (disposed) return null;
+      scratchVector
+        .set(
+          cell.x + 0.5,
+          terrain?.heightAt(cell.x + 0.5, cell.y + 0.5) ?? 0,
+          cell.y + 0.5,
+        )
+        .project(camera);
+      if (
+        scratchVector.z > 1 ||
+        Math.abs(scratchVector.x) > 1 ||
+        Math.abs(scratchVector.y) > 1
+      )
+        return null;
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: rect.left + ((scratchVector.x + 1) / 2) * rect.width,
+        y: rect.top + ((1 - scratchVector.y) / 2) * rect.height,
+      };
+    },
+    viewFootprint() {
+      return groundFootprint(
+        { x: cameraTarget.x, z: cameraTarget.z },
+        currentDistance(),
+        aspect,
+      );
     },
     resize,
     dispose() {
@@ -1869,11 +2056,16 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       renderer.dispose();
       renderer.domElement.remove();
       labelLayer.remove();
-      if (mapMesh !== null) {
-        scene.remove(mapMesh);
-        mapMesh.dispose();
+      terrain?.dispose();
+      haze.dispose();
+      for (const objects of unitObjects.values())
+        disposeObject(objects.model.group);
+      for (const objects of baseObjects.values()) {
+        disposeObject(objects.model.group);
+        if (objects.guard) disposeObject(objects.guard.model.group);
       }
-      fogTexture.dispose();
+      for (const objects of crossingObjects.values())
+        disposeObject(objects.model.group);
       for (const geometry of resources.geometries) geometry.dispose();
       for (const material of resources.materials) material.dispose();
       scene.clear();

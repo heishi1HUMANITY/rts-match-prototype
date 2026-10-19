@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
-import { expect, saveDiagnostic, test } from './fixtures';
+import { expect, saveDiagnostic, test, openMenu } from './fixtures';
 
 test('F18-01: garrison a selected unit from the base panel and verify arrival state', async ({
   page,
 }, info) => {
   test.setTimeout(90_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
@@ -17,11 +18,9 @@ test('F18-01: garrison a selected unit from the base panel and verify arrival st
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.locator('[data-unit="A-01"]').click();
   await page.getByRole('button', { name: '拠点', exact: true }).click();
+  await page.getByRole('button', { name: '拠点情報', exact: true }).click();
   const garrison = page.locator('[data-action="garrison"]');
   await expect(garrison).toBeEnabled();
-  await page
-    .locator('.strategy-panel')
-    .evaluate((panel) => (panel.scrollTop = panel.scrollHeight));
   await expect(garrison).toBeInViewport();
   await garrison.click();
   await expect(page.locator('.tick-readout')).toHaveText(

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, saveDiagnostic } from './fixtures';
+import { test, expect, saveDiagnostic, openMenu } from './fixtures';
 
 // IDs map to docs/project/inspection/G1_SCENARIOS.md.
 // This foundation covers the stated subsets, not every historical scenario.
@@ -50,6 +50,7 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
   });
   await page.getByRole('button', { name: '再開', exact: true }).click();
   await expect(tick).toContainText('RUNNING');
+  await openMenu(page);
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   await expect(tick).toHaveText('TICK 0 · READY');
   await page.screenshot({ path: testInfo.outputPath('ready.png') });
@@ -58,6 +59,7 @@ test('G1-07 / G1-09 / G1-12 / G1-13: start, pause, reset and diagnostic smoke', 
 
 test('G1-10 / G1-11: seed changes only after valid apply', async ({ page }) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   const seed = page.getByRole('spinbutton', {
     name: '試合seed',

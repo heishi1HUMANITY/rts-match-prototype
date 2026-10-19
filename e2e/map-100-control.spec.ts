@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, saveDiagnostic, test } from './fixtures';
+import { cellPoint, expect, focusCell, saveDiagnostic, test } from './fixtures';
 
 test('100-cell map supports two objective fronts after a legal bridge build', async ({
   page,
@@ -9,26 +9,9 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
   const board = page.locator('.board-host canvas');
   await expect(board).toBeVisible();
   await page.getByRole('button', { name: '開始', exact: true }).click();
-  let rect = await board.boundingBox();
-  expect(rect).not.toBeNull();
-  const elevationSin = 32 / Math.hypot(32, 28);
-  const aspect = rect!.width / rect!.height;
-  const visibleHeight = Math.max(100 * elevationSin, 100 / aspect) * 1.25;
-  const targetPoint = (x: number, y: number) => ({
-    x:
-      rect!.x +
-      rect!.width / 2 +
-      ((x + 0.5 - 50) / (visibleHeight * aspect)) * rect!.width,
-    y:
-      rect!.y +
-      rect!.height / 2 +
-      ((elevationSin * (y + 0.5 - 50)) / visibleHeight) * rect!.height,
-  });
+  await page.getByRole('button', { name: '拠点', exact: true }).click();
   await page.locator('[data-action="crossings"]').click();
   await page.locator('[data-unit="A-01"]').click();
-  await page.mouse.move(rect!.x + rect!.width / 2, rect!.y + rect!.height / 2);
-  await page.mouse.wheel(0, -240);
-  rect = await board.boundingBox();
   const unseenEndpoint = page.locator(
     '[data-map-crossing-endpoint="CROSS-RING-N:A"]',
   );
@@ -59,21 +42,24 @@ test('100-cell map supports two objective fronts after a legal bridge build', as
     page.locator('[data-crossing="CROSS-RING-SW"] .crossing-status'),
   ).toContainText('A所有', { timeout: 60_000 });
   await page.locator('[data-action="camera"]').click();
-  rect = await board.boundingBox();
-  await page.locator('[data-action="crossings"]').click();
-  const dragTo = async (
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-  ) => {
-    const source = targetPoint(from.x, from.y);
-    const target = targetPoint(to.x, to.y);
-    await page.mouse.move(source.x, source.y);
-    await page.mouse.down();
-    await page.mouse.move(target.x, target.y, { steps: 10 });
-    await page.mouse.up();
+  await page
+    .locator('.base-sheet')
+    .getByRole('button', { name: 'パネルを閉じる' })
+    .click();
+  // The camera shows at most 1/9 of the map, so far objectives are ordered from
+  // the base pop's "ここへ移動" after centring the view on the base.
+  const marchTo = async (unitId: string, base: { x: number; y: number }) => {
+    await page.locator(`[data-unit="${unitId}"]`).click();
+    await focusCell(page, base.x, base.y);
+    const point = await cellPoint(page, base.x, base.y);
+    expect(point).not.toBeNull();
+    await page.mouse.click(point!.x, point!.y);
+    const march = page.getByRole('button', { name: 'ここへ移動', exact: true });
+    await expect(march).toBeEnabled();
+    await march.click();
   };
-  await dragTo({ x: 35, y: 50 }, { x: 47, y: 40 }); // A-01 → OUT-01
-  await dragTo({ x: 15, y: 53 }, { x: 30, y: 73 }); // A-02 → MID-02
+  await marchTo('A-01', { x: 47, y: 40 }); // A-01 → OUT-01
+  await marchTo('A-02', { x: 30, y: 73 }); // A-02 → MID-02
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
   const path = info.outputPath('two-objective-fronts.json');
   await saveDiagnostic(page, path);

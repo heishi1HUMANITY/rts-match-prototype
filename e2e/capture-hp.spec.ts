@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, saveDiagnostic } from './fixtures';
+import { test, expect, saveDiagnostic, openMenu } from './fixtures';
 
 // Two real diagnostic downloads plus a page reload exercise storage/replay.
 // Software WebGL on CI can take longer than the default 30-second test budget.
@@ -10,6 +10,7 @@ for (const percent of [30, 50]) {
     page,
   }, testInfo) => {
     await page.goto('./');
+    await openMenu(page);
     await page.getByText('検査設定', { exact: true }).click();
     await page
       .getByRole('combobox', { name: '検査シナリオ' })
@@ -17,6 +18,7 @@ for (const percent of [30, 50]) {
     await page
       .getByRole('button', { name: '適用してリセット', exact: true })
       .click();
+    await openMenu(page);
     await page.getByRole('button', { name: 'マスタ', exact: true }).click();
     const ratio = page.locator(
       '[data-master-path="capture.restoredHpPercent"]',
@@ -30,6 +32,7 @@ for (const percent of [30, 50]) {
     await page.getByRole('button', { name: '保存する', exact: true }).click();
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
     await page.reload();
+    await openMenu(page);
     await page.getByText('検査設定', { exact: true }).click();
     await page
       .getByRole('combobox', { name: '検査シナリオ' })
@@ -66,6 +69,7 @@ for (const percent of [30, 50]) {
       );
     }
     // Saving another draft must not rewrite the paused active snapshot.
+    await openMenu(page);
     await page.getByRole('button', { name: 'マスタ', exact: true }).click();
     await ratio.fill('75');
     await page.getByRole('button', { name: '保存する', exact: true }).click();
@@ -86,6 +90,7 @@ test('F19-03: invalid save/import keeps stored master and active snapshot', asyn
   await page.goto('./');
   const stored = () =>
     page.evaluate(() => localStorage.getItem('rts-match-prototype.master.v1'));
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '保存する', exact: true }).click();
   const original = await stored();

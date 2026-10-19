@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, saveDiagnostic } from './fixtures';
+import { test, expect, saveDiagnostic, openMenu } from './fixtures';
 
 test('NPC-R01-06: public-response master values are visible at both editor sections', async ({
   page,
 }, testInfo) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '標準値へ戻す', exact: true }).click();
   await expect(
@@ -50,6 +51,7 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   page,
 }, testInfo) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '標準値へ戻す', exact: true }).click();
   await expect(
@@ -111,6 +113,7 @@ test('NPC-R01-01 / 03 / 04: standard pacing, live orders, diagnostic and reset',
   await page.screenshot({ path: testInfo.outputPath('npc-pacing-paused.png') });
   await page.getByRole('button', { name: '再開', exact: true }).click();
   await expect(page.locator('.tick-readout')).toContainText('RUNNING');
+  await openMenu(page);
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   await expect(page.locator('.tick-readout')).toHaveText('TICK 0 · READY');
 });

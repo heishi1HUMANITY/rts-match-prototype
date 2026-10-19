@@ -1,9 +1,10 @@
-import { test, expect } from './fixtures';
+import { test, expect, openMenu } from './fixtures';
 
 test('F15: all shared tactical abilities are visible and can be activated', async ({
   page,
 }) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })

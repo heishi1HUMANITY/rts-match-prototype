@@ -128,6 +128,7 @@ function createMockHudElements(): { elements: HudElements; root: FakeElement } {
     panel: null,
     selectedBaseId: '',
     multiSelect: false,
+    researchDomain: 'power',
   };
 
   return { elements, root };

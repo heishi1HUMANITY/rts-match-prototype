@@ -97,8 +97,7 @@ function ensureTicketElements(root: HTMLElement): {
     protection.setAttribute('data-testid', 'hq-protection-banner');
     protection.className = 'hq-protection-banner';
     protection.hidden = true;
-    const target =
-      root.querySelector('.ticket-strip, .faction-legend, .topbar') ?? root;
+    const target = root.querySelector('.hud-banners, .ticket-strip') ?? root;
     target.appendChild(protection);
   }
 
@@ -110,8 +109,7 @@ function ensureTicketElements(root: HTMLElement): {
     hqWarning.setAttribute('data-testid', 'hq-warning-banner');
     hqWarning.className = 'hq-warning-banner';
     hqWarning.hidden = true;
-    const target =
-      root.querySelector('.ticket-strip, .faction-legend, .topbar') ?? root;
+    const target = root.querySelector('.hud-banners, .ticket-strip') ?? root;
     target.appendChild(hqWarning);
   }
 
@@ -127,7 +125,8 @@ function ensureFactionSpans(
   drop: HTMLElement;
   estimate: HTMLElement | null;
 } {
-  const legend = root.querySelector<HTMLElement>(`.legend-${id.toLowerCase()}`);
+  const card = root.querySelector<HTMLElement>(`.legend-${id.toLowerCase()}`);
+  const legend = card?.querySelector<HTMLElement>('.ticket-meta') ?? card;
   if (!legend) {
     return {
       leader: document.createElement('span'),
@@ -143,7 +142,7 @@ function ensureFactionSpans(
   if (!leader) {
     leader = document.createElement('span');
     leader.setAttribute('data-testid', `ticket-leader-${id}`);
-    leader.style.cssText = 'color: #f59e0b; margin-left: 2px; font-size: 10px;';
+    leader.className = 'ticket-leader';
     legend.appendChild(leader);
   }
 
@@ -153,7 +152,7 @@ function ensureFactionSpans(
   if (!rate) {
     rate = document.createElement('span');
     rate.setAttribute('data-testid', `ticket-rate-${id}`);
-    rate.style.cssText = 'color: #71717a; margin-left: 3px; font-size: 9px;';
+    rate.className = 'ticket-rate';
     legend.appendChild(rate);
   }
 
@@ -163,8 +162,7 @@ function ensureFactionSpans(
   if (!drop) {
     drop = document.createElement('span');
     drop.setAttribute('data-testid', `ticket-drop-${id}`);
-    drop.style.cssText =
-      'color: #ef4444; font-weight: bold; margin-left: 3px; font-size: 10px;';
+    drop.className = 'ticket-drop';
     drop.hidden = true;
     legend.appendChild(drop);
   }
@@ -177,8 +175,7 @@ function ensureFactionSpans(
     if (!estimate) {
       estimate = document.createElement('span');
       estimate.setAttribute('data-testid', 'ticket-estimate-A');
-      estimate.style.cssText =
-        'color: #0284c7; margin-left: 4px; font-size: 9px;';
+      estimate.className = 'ticket-estimate';
       estimate.hidden = true;
       legend.appendChild(estimate);
     }
@@ -244,7 +241,7 @@ export function updateTicketsHud(
 
   if (view.phase === 'running' && isAttacked) {
     hqWarning.hidden = false;
-    hqWarning.textContent = '⚠️ 首都が攻撃を受けています！';
+    hqWarning.textContent = '⚠ 首都が攻撃を受けています';
   } else {
     hqWarning.hidden = true;
   }

@@ -12,6 +12,7 @@ import { createMasterEditor } from './ui/master-editor';
 import { resolveMarchTarget } from './ui/march-target';
 import { estimateCombat } from './simulation/combat-estimate';
 import './ui/styles.css';
+import './ui/master.css';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing application root');
@@ -128,7 +129,10 @@ runtime = new MatchRuntime(
           }
       refreshActiveMovePreview();
     },
-    onFrame: (previous, current, alpha) => board.sync(previous, current, alpha),
+    onFrame: (previous, current, alpha) => {
+      board.sync(previous, current, alpha);
+      drawMiniMapView(current.map.width, current.map.height);
+    },
   },
   42,
   'standard',
@@ -153,6 +157,45 @@ if (
   }
 }
 if (!board.available) hud.start.disabled = true;
+
+const miniMapView =
+  hud.root.querySelector<HTMLCanvasElement>('.mini-map-view')!;
+let miniMapViewKey = '';
+/** Camera footprint on the minimap (the ground the board currently shows). */
+function drawMiniMapView(mapWidth: number, mapHeight: number): void {
+  const footprint = board.viewFootprint();
+  const key = footprint
+    ? footprint.map(({ x, z }) => `${x.toFixed(1)},${z.toFixed(1)}`).join('|')
+    : '';
+  if (key === miniMapViewKey) return;
+  miniMapViewKey = key;
+  const context = miniMapView.getContext('2d');
+  if (!context) return;
+  context.clearRect(0, 0, miniMapView.width, miniMapView.height);
+  if (!footprint) return;
+  const sx = miniMapView.width / mapWidth;
+  const sy = miniMapView.height / mapHeight;
+  context.beginPath();
+  for (const [index, { x, z }] of footprint.entries()) {
+    if (index === 0) context.moveTo(x * sx, z * sy);
+    else context.lineTo(x * sx, z * sy);
+  }
+  context.closePath();
+  context.fillStyle = 'rgba(255,255,255,0.18)';
+  context.fill();
+  context.lineWidth = 2;
+  context.strokeStyle = '#0e161e';
+  context.stroke();
+}
+miniMapView.addEventListener('pointerdown', (event) => {
+  const rect = miniMapView.getBoundingClientRect();
+  const view = runtime.playerSnapshot().view;
+  board.focusCell({
+    x: Math.floor(((event.clientX - rect.left) / rect.width) * view.map.width),
+    y: Math.floor(((event.clientY - rect.top) / rect.height) * view.map.height),
+  });
+  miniMapViewKey = '';
+});
 
 function isBoardPoint(point: Point): boolean {
   const rect = board.canvas.getBoundingClientRect();
@@ -763,6 +806,17 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'cancel-production', jobId: cancelJob });
     return;
   }
+  const researchDomain = clickedButton?.dataset.researchDomain;
+  if (
+    researchDomain === 'power' ||
+    researchDomain === 'logistics' ||
+    researchDomain === 'information' ||
+    researchDomain === 'engineering'
+  ) {
+    hud.researchDomain = researchDomain;
+    updateHud(hud, runtime.playerSnapshot());
+    return;
+  }
   const unitButton = target.closest<HTMLElement>('[data-unit]');
   if (unitButton?.dataset.unit) {
     if (hud.multiSelect || event.shiftKey)
@@ -772,6 +826,10 @@ const handleClick = (event: MouseEvent): void => {
   }
   const action =
     target.closest<HTMLButtonElement>('[data-action]')?.dataset.action;
+  if (action === 'reset' || action === 'master' || action === 'download') {
+    hud.root.querySelector<HTMLDetailsElement>('.hud-menu')!.open = false;
+    hud.root.querySelector<HTMLDetailsElement>('.test-settings')!.open = false;
+  }
   if (action === 'flight-route') {
     const snapshot = runtime.playerSnapshot();
     const selected = snapshot.view.ownUnits.filter((unit) =>
@@ -822,6 +880,14 @@ const handleClick = (event: MouseEvent): void => {
     runtime.dispatch({ type: 'upgrade-base', baseId: hud.selectedBaseId });
     return;
   }
+  if (action === 'march-base') {
+    const result = runtime.groupMarch({ kind: 'base', id: hud.selectedBaseId });
+    if (result.rejected.length > 0)
+      runtime.notify(
+        `${hud.selectedBaseId}へ進軍できない部隊があります (${result.rejected[0]!.reason})`,
+      );
+    return;
+  }
   if (action === 'garrison') {
     runtime.groupGarrison(hud.selectedBaseId);
     return;
@@ -866,6 +932,7 @@ const handleClick = (event: MouseEvent): void => {
     const scenario = hud.scenario.value;
     if (!SCENARIO_IDS.includes(scenario as ScenarioId)) return;
     hud.root.querySelector<HTMLDetailsElement>('.test-settings')!.open = false;
+    hud.root.querySelector<HTMLDetailsElement>('.hud-menu')!.open = false;
     setHudPanel(hud, null);
     runtime.reset(
       seed,
@@ -888,7 +955,20 @@ const handleClick = (event: MouseEvent): void => {
   else if (action === 'bank-research')
     runtime.dispatch({ type: 'start-research', researchId: null });
   else if (action === 'close-panel') setHudPanel(hud, null);
-  else if (
+  else if (action === 'base-sheet') {
+    input.cancelGesture();
+    setHudPanel(
+      hud,
+      hud.panel === 'production' ||
+        hud.panel === 'facilities' ||
+        hud.panel === 'crossings'
+        ? null
+        : 'production',
+    );
+    updateHud(hud, runtime.playerSnapshot());
+  } else if (action === 'abilities' && hud.panel === 'abilities') {
+    setHudPanel(hud, null);
+  } else if (
     action === 'production' ||
     action === 'research' ||
     action === 'bases' ||
@@ -950,6 +1030,12 @@ const handlePageHide = (event: PageTransitionEvent): void => {
   window.removeEventListener('pagehide', handlePageHide);
   input.dispose();
   board.dispose();
+};
+// Debug hook for browser tests: the oblique camera makes cell positions
+// depend on the current view, so tests ask the board instead of re-deriving it.
+(window as unknown as { __rtsBoard?: unknown }).__rtsBoard = {
+  projectCell: (x: number, y: number) => board.projectCell({ x, y }),
+  focusCell: (x: number, y: number) => board.focusCell({ x, y }),
 };
 window.addEventListener('pageshow', handlePageShow);
 window.addEventListener('pagehide', handlePageHide);

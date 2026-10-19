@@ -1,9 +1,10 @@
-import { test, expect } from './fixtures';
+import { test, expect, openMenu } from './fixtures';
 
 test('CP12: flat economy master exposes fixed rates and hides territory income controls', async ({
   page,
 }, info) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
 
   const research = page.locator(

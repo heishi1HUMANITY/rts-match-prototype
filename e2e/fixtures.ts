@@ -15,6 +15,50 @@ export async function saveDiagnostic(page: Page, path: string): Promise<void> {
   await download.saveAs(path);
 }
 
+/** Opens the match menu (reset, master editor, test settings) if it is closed. */
+export async function openMenu(page: Page): Promise<void> {
+  const menu = page.locator('.hud-menu');
+  if ((await menu.getAttribute('open')) === null)
+    await menu.locator('summary').first().click();
+  await expect(menu).toHaveAttribute('open', '');
+}
+
+/** Viewport position of a cell centre, or null when it is outside the view. */
+export async function cellPoint(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<{ x: number; y: number } | null> {
+  return page.evaluate(
+    ([cx, cy]) =>
+      (
+        window as unknown as {
+          __rtsBoard: {
+            projectCell(x: number, y: number): { x: number; y: number } | null;
+          };
+        }
+      ).__rtsBoard.projectCell(cx!, cy!),
+    [x, y],
+  );
+}
+
+/** Centres the board camera on a cell. */
+export async function focusCell(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<void> {
+  await page.evaluate(
+    ([cx, cy]) =>
+      (
+        window as unknown as {
+          __rtsBoard: { focusCell(x: number, y: number): void };
+        }
+      ).__rtsBoard.focusCell(cx!, cy!),
+    [x, y],
+  );
+}
+
 export const test = base.extend<{ failureDiagnostics: void }>({
   failureDiagnostics: [
     async ({ page }, use, testInfo) => {

@@ -1,42 +1,48 @@
-import { expect, saveDiagnostic, test } from './fixtures';
+import { readFile } from 'node:fs/promises';
+import { cellPoint, expect, saveDiagnostic, test, openMenu } from './fixtures';
 
-test('fog covers all map corners and reveals the own-unit cells', async ({
+test('haze hides unexplored ground and leaves the own units visible', async ({
   page,
 }, info) => {
   await page.goto('./');
   const canvas = page.locator('.board-host canvas');
   await expect(canvas).toBeVisible();
-  const rect = (await canvas.boundingBox())!;
-  const elevationSin = 32 / Math.hypot(32, 28);
-  const aspect = rect.width / rect.height;
-  const visibleHeight = Math.max(100 * elevationSin, 100 / aspect) * 1.25;
-  const points = (
-    [
-      [7, 5],
-      [93, 5],
-      [93, 92],
-      [7, 92],
-      [15, 44],
-    ] as const
-  ).map(([x, y]) => ({
-    x: Math.round(
-      rect.x +
-        rect.width / 2 +
-        ((x + 0.5 - 50) / (visibleHeight * aspect)) * rect.width,
-    ),
-    y: Math.round(
-      rect.y +
-        rect.height / 2 +
-        ((elevationSin * (y + 0.5 - 50)) / visibleHeight) * rect.height,
-    ),
-  }));
+  await expect(page.locator('.tick-readout')).toHaveText('TICK 0 · READY');
+  const diagnosticPath = info.outputPath('haze-ready.json');
+  await saveDiagnostic(page, diagnosticPath);
+  const diagnostic = JSON.parse(await readFile(diagnosticPath, 'utf8'));
+  const width = diagnostic.state.map.width as number;
+  const explored = diagnostic.state.knowledge.find(
+    (entry: { factionId: string }) => entry.factionId === 'A',
+  ).explored as boolean[];
+  const unit = diagnostic.state.units.find(
+    (entry: { id: string }) => entry.id === 'A-01',
+  ) as { cell: { x: number; y: number } };
+  // Unexplored cells on screen: scan around the unit for cells the camera shows.
+  const hidden: { x: number; y: number }[] = [];
+  for (let dy = -12; dy <= 12 && hidden.length < 4; dy += 3)
+    for (let dx = -20; dx <= 20 && hidden.length < 4; dx += 4) {
+      const x = unit.cell.x + dx;
+      const y = unit.cell.y + dy;
+      if (x < 0 || y < 0 || x >= width || y >= width) continue;
+      let clear = true;
+      for (let ny = -2; ny <= 2; ny += 1)
+        for (let nx = -2; nx <= 2; nx += 1)
+          if (explored[(y + ny) * width + x + nx]) clear = false;
+      if (!clear) continue;
+      const point = await cellPoint(page, x, y);
+      if (point) hidden.push(point);
+    }
+  expect(hidden.length).toBeGreaterThan(0);
+  const own = await cellPoint(page, unit.cell.x, unit.cell.y);
+  expect(own).not.toBeNull();
   const screenshot = await page.screenshot({
-    path: info.outputPath('fog-coverage.png'),
+    path: info.outputPath('haze-coverage.png'),
   });
-  // Check the actual rendered pixels: DOM visibility and camera projection alone
-  // do not catch a GPU texture that is still allocated at the canvas's 300x150 default.
-  const luminances = await page.evaluate(
-    async ({ png, samples }) => {
+  // Check rendered pixels: the haze pass must cover unexplored ground with the
+  // pale mist colour while the own unit's model stays visible (dark hull).
+  const samples = await page.evaluate(
+    async ({ png, points }) => {
       const image = new Image();
       image.src = `data:image/png;base64,${png}`;
       await image.decode();
@@ -45,22 +51,38 @@ test('fog covers all map corners and reveals the own-unit cells', async ({
       pixels.height = image.height;
       const context = pixels.getContext('2d')!;
       context.drawImage(image, 0, 0);
-      return samples.map(({ x, y }) => {
-        const rgba = context.getImageData(x - 1, y - 1, 3, 3).data;
-        let sum = 0;
+      return points.map(({ x, y }) => {
+        const rgba = context.getImageData(
+          Math.round(x) - 1,
+          Math.round(y) - 1,
+          3,
+          3,
+        ).data;
+        let r = 0;
+        let g = 0;
+        let b = 0;
         for (let p = 0; p < rgba.length; p += 4) {
-          sum +=
-            rgba[p]! * 0.2126 + rgba[p + 1]! * 0.7152 + rgba[p + 2]! * 0.0722;
+          r += rgba[p]!;
+          g += rgba[p + 1]!;
+          b += rgba[p + 2]!;
         }
-        return sum / 9;
+        return { r: r / 9, g: g / 9, b: b / 9 };
       });
     },
-    { png: screenshot.toString('base64'), samples: points },
+    { png: screenshot.toString('base64'), points: [own!, ...hidden] },
   );
-  for (const luminance of luminances.slice(0, 4))
-    expect(luminance).toBeLessThan(175);
-  expect(luminances[4]).toBeGreaterThan(
-    Math.max(...luminances.slice(0, 4)) + 30,
+  const luminance = ({ r, g, b }: { r: number; g: number; b: number }) =>
+    r * 0.2126 + g * 0.7152 + b * 0.0722;
+  for (const sample of samples.slice(1)) {
+    // Haze colour #e6eaee, with a little drift noise.
+    expect(luminance(sample)).toBeGreaterThan(205);
+    expect(
+      Math.max(sample.r, sample.g, sample.b) -
+        Math.min(sample.r, sample.g, sample.b),
+    ).toBeLessThan(24);
+  }
+  expect(luminance(samples[0]!)).toBeLessThan(
+    Math.min(...samples.slice(1).map(luminance)) - 40,
   );
 });
 
@@ -95,6 +117,7 @@ test('fog remains on the board through camera changes, resize and restart', asyn
     path: info.outputPath('fog-landscape-after-camera.png'),
   });
   await page.getByRole('button', { name: 'カメラ', exact: true }).click();
+  await openMenu(page);
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   await expect(page.getByText(/開始待ち/)).toBeVisible();
   await expect(canvas).toBeVisible();

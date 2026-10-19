@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, saveDiagnostic } from './fixtures';
+import { test, expect, saveDiagnostic, openMenu } from './fixtures';
 
 test('F11-01: standard match explains research and phase restrictions', async ({
   page,
 }, info) => {
   await page.goto('./');
-  await page.getByRole('button', { name: '施設', exact: true }).click();
+  await page.getByRole('button', { name: '拠点', exact: true }).click();
+  await page.getByRole('button', { name: '防御施設', exact: true }).click();
   await expect(page.locator('[data-facility-build="turret"]')).toBeDisabled();
   await expect(page.locator('[data-facility-reason="turret"]')).toContainText(
     '開始',
@@ -27,6 +28,7 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
 }, info) => {
   test.setTimeout(120_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
@@ -36,7 +38,8 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
     .click();
   await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await page.getByRole('button', { name: '開始', exact: true }).click();
-  await page.getByRole('button', { name: '施設', exact: true }).click();
+  await page.getByRole('button', { name: '拠点', exact: true }).click();
+  await page.getByRole('button', { name: '防御施設', exact: true }).click();
   await page.locator('[data-facility-anchor]').selectOption('base:HQ-A');
   for (const kind of ['turret', 'antiAir', 'mine', 'watchtower', 'jammer']) {
     await page
@@ -82,6 +85,7 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
   expect(builds).toHaveLength(5);
   expect(builds.every((entry: any) => entry.ok)).toBe(true);
   await page.screenshot({ path: info.outputPath('facilities-complete.png') });
+  await openMenu(page);
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   await expect(page.locator('[data-facility-status]')).toContainText(
     '施設がありません',

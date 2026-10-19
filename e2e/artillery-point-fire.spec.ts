@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, openMenu } from './fixtures';
 
 test('F86-01: selected specialized artillery exposes the point-fire command', async ({
   page,
@@ -6,6 +6,7 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
@@ -15,6 +16,7 @@ test('F86-01: selected specialized artillery exposes the point-fire command', as
     .evaluate((button) => (button as HTMLButtonElement).click());
   await expect(page.locator('.test-settings')).not.toHaveAttribute('open');
   await expect(page.locator('.scenario-badge')).toContainText('地点砲撃');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page
     .locator('[data-master-path="artilleryBombardment.observedImpactTicks"]')

@@ -1,10 +1,11 @@
-import { expect, test } from './fixtures';
+import { expect, test, openMenu } from './fixtures';
 
 test('visible combat status and opponent link remain readable without selection', async ({
   page,
 }, info) => {
   test.setTimeout(60_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
@@ -37,6 +38,7 @@ test('visible combat status and opponent link remain readable without selection'
     timeout: 15_000,
   });
   await page.getByRole('button', { name: '一時停止', exact: true }).click();
+  await openMenu(page);
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   await expect(page.locator('.rts-combat-shot')).toHaveCount(0);
 });

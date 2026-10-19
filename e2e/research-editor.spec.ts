@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, saveDiagnostic } from './fixtures';
+import { test, expect, saveDiagnostic, openMenu } from './fixtures';
 
 test('F21-01 / F21-04: arbitrary research survives reload, completes and keeps the active snapshot', async ({
   page,
 }, info) => {
   test.setTimeout(120_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.locator('[data-research-new-id]').fill('constructor');
   await page.locator('[data-research-add]').click();
@@ -46,6 +47,7 @@ test('F21-01 / F21-04: arbitrary research survives reload, completes and keeps t
     costCenti: 100,
     effects: [{ id: 'damage-bonus', value: 7 }],
   });
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   const reopened = page.locator('[data-research-node="constructor"]');
   if ((await reopened.getAttribute('open')) === null)
@@ -69,6 +71,7 @@ test('F21-02: invalid graph, effects and duplicate JSON keys preserve saved mast
 }) => {
   test.setTimeout(120_000);
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '保存する', exact: true }).click();
   const stored = () =>
@@ -121,6 +124,7 @@ test('F21-03: deleting a referenced node shows its ID and preserves storage', as
   page,
 }, info) => {
   await page.goto('./');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await page.getByRole('button', { name: '保存する', exact: true }).click();
   const stored = () =>

@@ -1,6 +1,6 @@
 # Playwright シナリオ検証
 
-視界マスクは `fog-visibility.spec.ts` で画面の隅の暗さと自部隊付近の明るさを実描画ピクセルから確認する。寸法の違うGPU領域への部分更新を、DOMの表示確認だけで合格にしない。`strategy-dock.spec.ts` は操作タブの常設・切替・再選択・閉じた後の入口・盤面との非重複をPC/900×420で確認する。
+視界は `fog-visibility.spec.ts` で、画面内の未探索セルが靄の色で覆われ、自部隊のモデルが見えることを実描画ピクセルから確認する。カメラは表示範囲が変わるため、セル座標は `window.__rtsBoard.projectCell` で画面座標へ変換する。`strategy-dock.spec.ts` はHUDブロックのviewport内・非重複と、BASEシート・拠点ポップ・研究・作戦の開閉をPC/900×420で確認する。
 
 Node.js 24.x / npm 11〜12で実行します。
 

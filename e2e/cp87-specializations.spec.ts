@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, openMenu } from './fixtures';
 
 test('CP87-01: specialization masters and frontline production share the match rules', async ({
   page,
@@ -6,6 +6,7 @@ test('CP87-01: specialization masters and frontline production share the match r
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
   await page.goto('./');
+  await openMenu(page);
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
@@ -14,6 +15,7 @@ test('CP87-01: specialization masters and frontline production share the match r
     .getByRole('button', { name: '適用してリセット', exact: true })
     .evaluate((button) => (button as HTMLButtonElement).click());
   await expect(page.locator('.scenario-badge')).toContainText('CP13専攻');
+  await openMenu(page);
   await page.getByRole('button', { name: 'マスタ', exact: true }).click();
   await expect(
     page.locator('[data-master-path="cp87.mineSlowPercent"]'),
@@ -24,14 +26,18 @@ test('CP87-01: specialization masters and frontline production share the match r
   await page.locator('[data-master-close]').click();
   await page.getByRole('button', { name: '開始', exact: true }).click();
   await page.getByRole('button', { name: '研究', exact: true }).click();
-  for (const id of [
-    'specialization-wartime-economy',
-    'specialization-logistics',
-    'specialization-information',
-    'specialization-engineering',
-    'specialization-information-warfare',
-  ])
+  for (const [domain, id] of [
+    ['logistics', 'specialization-wartime-economy'],
+    ['logistics', 'specialization-logistics'],
+    ['information', 'specialization-information'],
+    ['engineering', 'specialization-engineering'],
+    ['information', 'specialization-information-warfare'],
+  ] as const) {
+    await page.locator(`[data-research-domain="${domain}"]`).click();
     await expect(page.locator(`[data-research="${id}"]`)).toBeVisible();
+  }
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
+  await page.getByRole('button', { name: '拠点', exact: true }).click();
   await page.getByRole('button', { name: '生産', exact: true }).click();
   const site = page.getByRole('combobox', { name: '部隊の生産場所' });
   await expect(site.locator('option')).toContainText(['前線 OUT-03']);

@@ -11,3 +11,6 @@ docs/project/reference-manifest.json
 playwright-report/
 test-results/
 .codex-remote-attachments/
+
+# 3D assets copied verbatim from the 3dtmp branch (mockups/3d)
+src/render/models/*.js
