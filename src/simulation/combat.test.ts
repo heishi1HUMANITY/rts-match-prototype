@@ -229,7 +229,12 @@ describe('simultaneous combat target selection', () => {
     state = {
       ...state,
       phase: 'running',
-      bases: state.bases.map((base) => ({ ...base, defender: null })),
+      // Neutral bases sit out of the way so only unit combat is measured.
+      bases: state.bases.map((base) =>
+        base.kind === 'hq'
+          ? base
+          : { ...base, defender: null, cell: { x: 0, y: 39 } },
+      ),
     };
     const a: UnitState = {
       ...state.units.find(({ id }) => id === 'A-01')!,
