@@ -1,4 +1,4 @@
-import type { FactionId, MatchState } from './types';
+import type { FactionId, MatchState, TicketLossBreakdown } from './types';
 import type { RulesMaster } from './rules';
 
 export function calculateBaseDecayPerTick(
@@ -109,12 +109,31 @@ export function applyTicketTick(state: MatchState): MatchState {
     ...state,
     factions: state.factions.map((faction) => {
       if (faction.eliminatedAtTick !== null) return faction;
-      const { totalLoss } = calculateIntervalTicketLossCenti(state, faction.id);
+      const { penalty, decayCenti, totalLoss } =
+        calculateIntervalTicketLossCenti(state, faction.id);
       if (totalLoss === 0) return faction;
+      // Record what was actually taken: territory first, then time decay.
+      const territory = Math.min(faction.ticketsCenti, penalty);
+      const time = Math.min(faction.ticketsCenti - territory, decayCenti);
       return {
         ...faction,
         ticketsCenti: Math.max(0, faction.ticketsCenti - totalLoss),
+        ticketLossCenti: addTicketLoss(faction.ticketLossCenti, {
+          territory,
+          time,
+        }),
       };
     }),
+  };
+}
+
+export function addTicketLoss(
+  current: TicketLossBreakdown | undefined,
+  add: Partial<TicketLossBreakdown>,
+): TicketLossBreakdown {
+  return {
+    units: (current?.units ?? 0) + (add.units ?? 0),
+    territory: (current?.territory ?? 0) + (add.territory ?? 0),
+    time: (current?.time ?? 0) + (add.time ?? 0),
   };
 }

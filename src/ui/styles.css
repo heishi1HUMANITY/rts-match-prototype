@@ -1631,3 +1631,6 @@ select:focus-visible {
 [data-loss-notice]:empty {
   display: none;
 }
+[data-ticket-loss]:empty {
+  display: none;
+}

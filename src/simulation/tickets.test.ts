@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyTicketTick } from './tickets';
-import { createMatch } from './match';
+import { applyCommand, createMatch } from './match';
+import { advanceMatch } from '../runtime/advance';
+import type { MatchState } from './types';
 import { DEFAULT_RULES } from './rules';
 
 // These cases pin the decay mechanism on the original 300-ticket, 3000-6000 tick curve.
@@ -155,4 +157,41 @@ describe('periodic ticket pressure', () => {
       expect(a).toBeGreaterThan(0);
     });
   });
+
+  it('records ticket losses by source so they add up to the actual loss', () => {
+    let state = advanceToTick(
+      applyCommand(
+        createMatch(5, { controllers: { A: 'bot', B: 'bot', C: 'bot' } }),
+        'A',
+        { type: 'start' },
+      ).state,
+      3_600,
+    );
+    let checked = 0;
+    for (const faction of state.factions) {
+      if (faction.eliminatedAtTick !== null) continue;
+      const loss = faction.ticketLossCenti ?? {
+        units: 0,
+        territory: 0,
+        time: 0,
+      };
+      expect(loss.units + loss.territory + loss.time).toBe(
+        state.rules.match.initialTicketsCenti - faction.ticketsCenti,
+      );
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(0);
+    expect(
+      state.factions.some(
+        (faction) => (faction.ticketLossCenti?.units ?? 0) > 0,
+      ),
+    ).toBe(true);
+  });
 });
+
+function advanceToTick(start: MatchState, ticks: number): MatchState {
+  let state = start;
+  while (state.phase === 'running' && state.elapsedTicks < ticks)
+    state = advanceMatch(state);
+  return state;
+}

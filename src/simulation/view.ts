@@ -476,6 +476,9 @@ export function getFactionView(
         ? { researchRequiredCenti: { ...faction.researchRequiredCenti } }
         : {}),
       ticketsCenti: faction.ticketsCenti,
+      ...(faction.ticketLossCenti
+        ? { ticketLossCenti: { ...faction.ticketLossCenti } }
+        : {}),
       eliminatedAtTick: faction.eliminatedAtTick,
       eliminationReason: faction.eliminationReason,
       productionJobs: faction.productionJobs.map((job) => ({ ...job })),

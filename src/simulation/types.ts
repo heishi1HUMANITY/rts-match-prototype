@@ -263,6 +263,14 @@ export interface FactionState extends EliminationStatus {
   readonly jammedUntilTick: number;
   /** Public-information policy memory; contains no hidden opponent state. */
   readonly npcPolicyMemory?: NpcPolicyMemory;
+  /** Tickets actually lost so far, by source. */
+  readonly ticketLossCenti?: TicketLossBreakdown;
+}
+
+export interface TicketLossBreakdown {
+  readonly units: number;
+  readonly territory: number;
+  readonly time: number;
 }
 
 export interface NpcPolicyMemory {
@@ -560,6 +568,7 @@ export type BaseView =
 
 export interface OwnFactionView extends EliminationStatus {
   readonly id: FactionId;
+  readonly ticketLossCenti?: TicketLossBreakdown;
   readonly controller: 'human' | 'bot';
   readonly supplyCenti: number;
   readonly researchCenti: number;

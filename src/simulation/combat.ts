@@ -28,6 +28,7 @@ import { unitCapabilities } from './unit-capabilities';
 import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
 import { incomingDamage } from './tactical-abilities';
 import { ammoDamagePercent, spendShot } from './sustainment';
+import { addTicketLoss } from './tickets';
 import { airDefenseDamagePercent, airDefenseRange } from './air-defense';
 
 export interface Target {
@@ -1705,6 +1706,13 @@ export function resolveCombat(state: MatchState): MatchState {
                 ? snapshot.rules.localFaction.strongholdRewardResearchCenti
                 : 0),
             ticketsCenti: Math.max(0, faction.ticketsCenti - losses),
+            ...(losses > 0
+              ? {
+                  ticketLossCenti: addTicketLoss(faction.ticketLossCenti, {
+                    units: Math.min(faction.ticketsCenti, losses),
+                  }),
+                }
+              : {}),
           };
     }),
   };

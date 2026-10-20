@@ -1,5 +1,6 @@
 import { advanceMatch } from './advance';
 import { lossCauseLabel } from './loss-cause';
+import { researchEffectLabel, researchUnlocks } from '../ui/research-text';
 import type { CommandEntry } from './controller';
 import { rulesContentId, type ReplayInput } from './diagnostics';
 import { SCHEMA_VERSION } from '../simulation/config';
@@ -360,12 +361,9 @@ export function summarizeAgentView(view: FactionView): object {
           (own.researchProgressCenti[id] ?? 0)) /
         100,
       effects: definition.effects.map((effect) =>
-        'unitKind' in effect && effect.unitKind
-          ? `${effect.id}:${effect.unitKind}`
-          : 'facilityKind' in effect && effect.facilityKind
-            ? `${effect.id}:${effect.facilityKind}`
-            : `${effect.id}:${effect.value}`,
+        researchEffectLabel(effect, view.rules),
       ),
+      unlocks: researchUnlocks(view.rules, id),
     }));
   const ownedBases = view.bases.filter((base) => base.visibility === 'owned');
   const unitLimit = Math.min(
@@ -411,7 +409,31 @@ export function summarizeAgentView(view: FactionView): object {
     researchBank: Math.floor(own.researchCenti / 100),
     activeResearch: own.activeResearch?.researchId ?? null,
     completedResearch: own.completedResearchIds,
+    researchCostGrowthPercentPerCompletion:
+      view.rules.research.completionCostIncreaseBpsPerCompleted / 100,
     availableResearch,
+    // Nodes not yet selectable and what opens them (any one prerequisite).
+    lockedResearch: Object.entries(definitions)
+      .filter(
+        ([id, definition]) =>
+          !own.completedResearchIds.includes(id) &&
+          !availableResearch.some((entry) => entry.id === id) &&
+          !definition.exclusiveWith.some((peer) =>
+            own.completedResearchIds.includes(peer),
+          ),
+      )
+      .map(([id, definition]) => ({
+        id,
+        stage: definition.stage,
+        needsAnyOf: definition.prerequisites,
+      })),
+    ticketLoss: own.ticketLossCenti
+      ? {
+          units: Math.floor(own.ticketLossCenti.units / 100),
+          territory: Math.floor(own.ticketLossCenti.territory / 100),
+          time: Math.floor(own.ticketLossCenti.time / 100),
+        }
+      : { units: 0, territory: 0, time: 0 },
     production: {
       units: view.ownUnits.length,
       queued: own.productionJobs.length,

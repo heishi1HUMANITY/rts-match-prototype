@@ -1,9 +1,11 @@
-import { FACILITY_NAMES, updateFacilitiesPanel } from './facilities';
+import { updateFacilitiesPanel } from './facilities';
 import { updateTicketsHud } from './tickets';
 import type { PlayerSnapshot } from '../runtime/controller';
 import { lossCauseLabel } from '../runtime/loss-cause';
+import { researchEffectLabel, researchUnlocks } from './research-text';
 import { marchOrderLabel } from './march-target';
 import type {
+  BaseKind,
   BaseOwnerId,
   FactionView,
   ResearchId,
@@ -119,47 +121,27 @@ const researchName = (id: ResearchId, view?: FactionView): string =>
   (view?.rules.research.definitions[id]
     ? `${({ power: '戦力', logistics: '兵站', information: '情報', engineering: '工兵' } as const)[view.rules.research.definitions[id].domain]} ${view.rules.research.definitions[id].stage}`
     : id);
-const effectLabel = (effect: {
-  id: string;
-  value: number;
-  crossingTier?: string;
-  unitKind?: string;
-  facilityKind?: string;
-}): string => {
-  switch (effect.id) {
-    case 'damage-bonus':
-      return `攻撃 +${effect.value}`;
-    case 'vision-bonus':
-      return `視界 +${effect.value}`;
-    case 'supply-income-bonus':
-      return `定額補給収入 +${effect.value} centi/tick`;
-    case 'supply-income-percent':
-      return `基礎定額補給収入 +${effect.value}%`;
-    case 'upkeep-reduction':
-      return `維持費 -${effect.value} centi/tick/部隊`;
-    case 'crossing-unlock':
-      return `${effect.crossingTier ? crossingName(effect.crossingTier) : '渡河'}を解放`;
-    case 'unit-unlock':
-      return `${effect.unitKind ? kindName(effect.unitKind as UnitKind) : '兵種'}を解放`;
-    case 'facility-unlock':
-      return `${FACILITY_NAMES[effect.facilityKind as keyof typeof FACILITY_NAMES] ?? '施設'}を解放`;
-    case 'facility-build-speed-percent':
-      return `施設の建築速度 +${effect.value}%`;
-    case 'production-time-percent':
-      return `生産時間 -${effect.value}%`;
-    case 'frontline-deployment':
-      return '前線拠点から生産・回復';
-    case 'global-observation':
-      return '周期的な全域観測';
-    case 'blockade':
-      return '地雷の発見抑制・減速';
-    case 'information-kill-bonus':
-      return `攻撃寄与に応じて敵の損失ticket +${effect.value}%`;
-    case 'base-upgrade-max':
-      return `拠点をLv${effect.value}まで強化`;
-    default:
-      return '未対応の効果';
+/** Weapon of a base at a level: the level-1 anti-air battery or the upgraded turret. */
+const baseWeaponText = (
+  kind: BaseKind,
+  level: number,
+  rules: FactionView['rules'],
+): string => {
+  if (level <= 1) {
+    const battery = rules.bases[kind];
+    return battery.airDefenseDamage > 0
+      ? `▲対空 ${battery.airDefenseDamage}/発 · 射程${battery.airDefenseRange}`
+      : '武装なし';
   }
+  const tier = baseUpgradeTier(kind, level as 2 | 3, rules);
+  return `▲砲座 陸${tier.turretDamage}/空${tier.turretDamageVsAir} · 射程${tier.turretRange}`;
+};
+const defenderText = (
+  kind: Exclude<BaseKind, 'hq'>,
+  rules: FactionView['rules'],
+): string => {
+  const defender = rules.defenses[kind];
+  return `HP${defender.maxHp} · ${defender.baseDamage}/発 · 射程${defender.range}${rules.defenses.respawnEnabled ? '' : ' · 復活なし'}`;
 };
 const crossingName = (tier: string): string =>
   tier.startsWith('bridge') ? `橋 ${tier.slice(-1)}` : `索道 ${tier.slice(-1)}`;
@@ -217,7 +199,7 @@ export function createHud(app: HTMLElement): HudElements {
         </div>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-loss-notice role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button type="button" data-action="auto-resupply" aria-pressed="true" title="選択部隊の自動補給帰還（残弾が少なくなったら最寄りの所有拠点へ戻る）">↩補給帰還ON</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-ticket-loss title="これまでに失ったチケットの内訳（部隊の撃破・拠点数の差・時間経過）"></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-loss-notice role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button type="button" data-action="auto-resupply" aria-pressed="true" title="選択部隊の自動補給帰還（残弾が少なくなったら最寄りの所有拠点へ戻る）">↩補給帰還ON</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
         <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" hidden>地点砲撃</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
@@ -511,9 +493,13 @@ export function updateHud(
     const exclusions = def.exclusiveWith.length
       ? ` · 排他 ${def.exclusiveWith.map((id) => researchName(id, view)).join('・')}`
       : '';
+    const unlocks = researchUnlocks(view.rules, id);
+    const next = unlocks.length
+      ? ` · 次に開く ${unlocks.map((entry) => researchName(entry, view)).join('・')}`
+      : '';
     text(
       `[data-research-details="${id}"]`,
-      `${domainName} ${def.stage} · 次の充填時に必要${amount(researchCostForFaction(view.rules, own, id))}ポイント · ${def.effects.map(effectLabel).join('、')}${prerequisite}${exclusions}`,
+      `${domainName} ${def.stage} · 次の充填時に必要${amount(researchCostForFaction(view.rules, own, id))}ポイント（完了1件ごとに+${(view.rules.research.completionCostIncreaseBpsPerCompleted / 100).toFixed(1)}%） · ${def.effects.map((effect) => researchEffectLabel(effect, view.rules)).join('、')}${prerequisite}${exclusions}${next}`,
     );
   }
   text(
@@ -543,6 +529,13 @@ export function updateHud(
     own.eliminatedAtTick !== null || view.phase === 'finished'
       ? '収入停止'
       : `補給収支 ${(((income - upkeep) * ticksPerSecond()) / 100).toFixed(2)}/秒 · 研究 +${((rp * ticksPerSecond()) / 100).toFixed(1)}/秒`,
+  );
+  const ticketLoss = own.ticketLossCenti;
+  text(
+    '[data-ticket-loss]',
+    ticketLoss
+      ? `チケット減 部隊${amount(ticketLoss.units)}・領土${amount(ticketLoss.territory)}・時間${amount(ticketLoss.time)}`
+      : '',
   );
   text(
     '[data-research-status]',
@@ -841,7 +834,7 @@ export function updateHud(
       own.eliminatedAtTick !== null
         ? '脱落 · 研究停止'
         : done
-          ? `完了 · ${def.effects.map(effectLabel).join('、')}`
+          ? `完了 · ${def.effects.map((effect) => researchEffectLabel(effect, view.rules)).join('、')}`
           : view.phase !== 'running'
             ? '開始・再開後に選択できます'
             : def.prerequisites.length > 0 &&
@@ -1183,13 +1176,28 @@ export function updateHud(
       : '選択部隊を駐留';
   if (base) {
     const location = `${base.id} (${base.cell.x},${base.cell.y})`;
+    const standardDefender =
+      base.kind === 'hq'
+        ? ''
+        : `\n中立時の標準守備：${defenderText(base.kind, view.rules)}`;
     if (base.visibility === 'unknown')
-      detail = `${location}\n未観測：所有・HPは不明`;
+      detail = `${location}\n未観測：所有・HPは不明${standardDefender}`;
     else if (base.visibility === 'remembered')
-      detail = `${location}\n最終観測 TICK ${base.seenTick}：${baseOwnerName(base.owner)} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}`;
+      detail = `${location}\n最終観測 TICK ${base.seenTick}：${baseOwnerName(base.owner)} / HP${base.hp}${base.defenderMaxHp > 0 ? ` / 守備${base.defenderHp}/${base.defenderMaxHp}` : ''}\n${base.selfReportedLost ? '自軍の所有喪失を確認。現在の所有者は不明。' : '現在の状態は不明です。'}${base.owner === null ? standardDefender : ''}`;
     else {
       const level = base.level;
       detail = `${location}\n所有：${baseOwnerName(base.owner)} · Lv${level} · HP${base.hp}/${base.maxHp}${base.defenderMaxHp === null ? '' : `\n中立守備：${base.defenderHp === 0 ? '撃破済み' : `${base.defenderHp}/${base.defenderMaxHp}`}`}\n${base.captureCandidate ? `${base.captureCandidate} 制圧 ${Math.floor((base.captureProgressCentiTicks / (view.rules.capture.requiredTicks * 100)) * 100)}%` : base.defenderHp !== null && base.defenderHp > 0 ? '守備を撃破してください' : base.owner === null && base.hp > 0 ? '守備撃破済み · 拠点HPを0にしてください' : base.hp > 0 ? '稼働中' : base.kind === 'hq' ? '破壊済み・再建なし' : '中立・制圧可能'}`;
+      if (base.owner !== null)
+        detail += `\n${baseWeaponText(base.kind, level, view.rules)}`;
+      else detail += standardDefender;
+      if (base.visibility === 'owned' && level < 3) {
+        const tier = baseUpgradeTier(
+          base.kind,
+          (level + 1) as 2 | 3,
+          view.rules,
+        );
+        detail += `\nLv${level + 1}で：最大HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · ${baseWeaponText(base.kind, level + 1, view.rules)}`;
+      }
       if (base.visibility === 'owned') {
         if (base.upgradeJob) {
           upgradeReason = `Lv${base.upgradeJob.targetLevel}へ強化中 · 残り${seconds(base.upgradeJob.remainingTicks)}`;
@@ -1234,9 +1242,6 @@ export function updateHud(
     const garrison = view.ownUnits.filter(
       (unit) => unit.garrisonedAtBaseId === base.id,
     );
-    const battery = view.rules.bases[base.kind];
-    if (base.level === 1 && battery.airDefenseDamage > 0)
-      detail += `\n▲対空 ${battery.airDefenseDamage} damage / 射程${battery.airDefenseRange}`;
     detail += `\n駐留 ${garrison.length}/${view.rules.bases[base.kind].garrisonCapacity}`;
     if (garrison.length > 0)
       detail += ` · ${garrison
