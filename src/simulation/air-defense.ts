@@ -121,14 +121,15 @@ export function airDefenseRecognitionRadius(
     helicopter.moveTicksPerCell ?? rules.units.helicopter.moveTicksPerCell;
   const antiAirMoveTicks =
     antiAir.moveTicksPerCell ?? rules.units.antiAir.moveTicksPerCell;
+  // Cells per tick the two close in; the grace distance is ticks x rate.
   const closingRate =
     1 / helicopterMoveTicks +
     (antiAir.path.length > 0 ? 1 / antiAirMoveTicks : 0);
   const minimumRadius =
-    airDefenseRange(state, antiAir) + (jammedTicks / closingRate) * Math.SQRT2;
+    airDefenseRange(state, antiAir) + jammedTicks * closingRate * Math.SQRT2;
   const normalRadius =
     airDefenseRange(state, antiAir) +
-    (normalTicks / closingRate) * Math.SQRT2 +
+    normalTicks * closingRate * Math.SQRT2 +
     visionBonus;
   return Math.max(
     normalRadius * sensorMultiplier(state, helicopter),
