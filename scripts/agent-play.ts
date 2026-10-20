@@ -7,6 +7,7 @@ import {
   issueAgentCommand,
   renderAgentMap,
   stepAgentSession,
+  summarizeAgentRules,
   summarizeAgentView,
   type AgentSession,
 } from '../src/runtime/agent-session';
@@ -20,6 +21,7 @@ const USAGE = `Agent play driver: play faction A one explicit step at a time.
   npm run agent -- new [--seed=42] [--map=100|40] [--budget=30:3]
   npm run agent -- view
   npm run agent -- map [--scale=2]
+  npm run agent -- rules
   npm run agent -- cmd '<command JSON or JSON array>'
   npm run agent -- step <ticks | 30s>
   npm run agent -- replay [--out=path]
@@ -86,7 +88,8 @@ function budgetText(session: AgentSession): string | null {
   if (!budget) return null;
   const seconds =
     (budget.windowTicks * session.state.rules.match.tickDurationMs) / 1000;
-  return `${commandsInWindow(session)}/${budget.maxCommands} orders in the last ${seconds}s`;
+  const used = commandsInWindow(session);
+  return `${Math.max(0, budget.maxCommands - used)} of ${budget.maxCommands} orders left (${used} used in the last ${seconds}s)`;
 }
 
 const [action, ...rest] = positional;
@@ -123,6 +126,8 @@ if (!action || action === 'help') {
     budget: budgetText(session),
     view: summarizeAgentView(getFactionView(session.state, 'A')),
   });
+} else if (action === 'rules') {
+  print({ rules: summarizeAgentRules(load().state.rules) });
 } else if (action === 'map') {
   const session = load();
   process.stdout.write(

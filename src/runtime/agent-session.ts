@@ -160,7 +160,9 @@ export function describeChanges(
   const at = `[${minutes(before, before.tick)}→${minutes(after, after.tick)}]`;
   for (const unit of before.ownUnits)
     if (!after.ownUnits.some(({ id }) => id === unit.id))
-      events.push(`${at} 自軍 ${unit.id} ${unit.kind} を失った`);
+      events.push(
+        `${at} 自軍 ${unit.id} ${unit.kind} を失った（最後の位置 ${unit.cell.x},${unit.cell.y}${unit.lastDamagedTick !== undefined ? '・被弾あり' : ''}）`,
+      );
   for (const unit of after.ownUnits)
     if (!before.ownUnits.some(({ id }) => id === unit.id))
       events.push(`${at} 自軍 ${unit.id} ${unit.kind} が配備された`);
@@ -207,6 +209,39 @@ export function describeChanges(
   if (before.phase === 'running' && after.phase === 'finished')
     events.push(`${at} 試合終了: ${after.result?.reason ?? ''}`);
   return events;
+}
+
+function ownedBaseDetail(
+  view: FactionView,
+  base: Extract<FactionView['bases'][number], { visibility: 'owned' }>,
+): object {
+  const battery = view.rules.bases[base.kind];
+  const next = base.level === 1 ? 'level2' : base.level === 2 ? 'level3' : null;
+  const tier = next ? view.rules.baseUpgrades.kinds[base.kind][next] : null;
+  const research =
+    next === 'level2'
+      ? view.rules.baseUpgrades.level2ResearchId
+      : view.rules.baseUpgrades.level3ResearchId;
+  return {
+    antiAir:
+      base.level === 1
+        ? `${battery.airDefenseDamage}/shot range ${battery.airDefenseRange}`
+        : null,
+    ...(base.upgradeJob
+      ? { upgrading: base.upgradeJob }
+      : tier
+        ? {
+            nextLevel: {
+              supply: tier.costCenti / 100,
+              seconds:
+                (tier.buildTicks * view.rules.match.tickDurationMs) / 1000,
+              research,
+              researched:
+                view.ownFaction.completedResearchIds.includes(research),
+            },
+          }
+        : {}),
+  };
 }
 
 /** A compact, JSON-friendly digest of A's view for an agent to read. */
@@ -271,7 +306,10 @@ export function summarizeAgentView(view: FactionView): object {
         {
           tickets: Math.floor(value / 100),
           lossPerSecond:
-            Math.round(view.ticketRatesCentiPerSec[id as FactionId] ?? 0) / 100,
+            view.publicEliminations[id as FactionId]?.eliminatedAtTick !== null
+              ? 0
+              : Math.round(view.ticketRatesCentiPerSec[id as FactionId] ?? 0) /
+                100,
           eliminated:
             view.publicEliminations[id as FactionId]?.eliminatedAtTick !== null,
         },
@@ -312,7 +350,15 @@ export function summarizeAgentView(view: FactionView): object {
             : unit.path.length > 0
               ? `moving to ${JSON.stringify(unit.moveTarget ?? unit.path.at(-1))}`
               : 'idle',
-      attacking: unit.attack?.lastFiredTargetId ?? null,
+      // Only a recent shot counts, so a long-dead target is not reported.
+      firing:
+        unit.attack?.phase === 'windup'
+          ? `winding up on ${unit.attack.targetId}`
+          : unit.attack?.lastFiredTargetId &&
+              view.tick - (unit.attack.lastFiredTick ?? -Infinity) <=
+                2 * view.rules.units[unit.kind].intervalTicks
+            ? `fired at ${unit.attack.lastFiredTargetId}`
+            : null,
     })),
     bases: view.bases.map((base) =>
       base.visibility === 'unknown'
@@ -334,6 +380,9 @@ export function summarizeAgentView(view: FactionView): object {
               owner: base.owner,
               hp: `${base.hp}/${base.maxHp}`,
               level: base.level,
+              ...(base.visibility === 'owned'
+                ? ownedBaseDetail(view, base)
+                : {}),
               ...(base.defenderHp !== null
                 ? { defender: `${base.defenderHp}/${base.defenderMaxHp}` }
                 : {}),
@@ -354,7 +403,18 @@ export function summarizeAgentView(view: FactionView): object {
     rememberedAirDefense: view.airDefenseMemory.map((memory) => ({
       ...memory,
     })),
-    crossings: view.crossings.map((crossing) => ({ ...crossing })),
+    crossings: view.crossings.map((crossing) => ({
+      id: crossing.site.id,
+      tier: crossing.site.tier,
+      banks: [crossing.site.bankA, crossing.site.bankB],
+      seen: crossing.visibility,
+      built: crossing.owner !== null,
+      owner: crossing.owner,
+      ...(crossing.hp !== null
+        ? { hp: `${crossing.hp}/${crossing.maxHp}` }
+        : {}),
+      ...(crossing.job ? { job: crossing.job } : {}),
+    })),
     facilities: view.facilities
       .filter((facility) => facility.visibility !== 'remembered')
       .map((facility) => ({ ...facility })),
@@ -426,8 +486,9 @@ export function renderAgentMap(view: FactionView, scale = 1): string {
     if (row && row[x] !== undefined && rank(glyph) >= rank(row[x]!))
       row[x] = glyph;
   };
-  for (const site of map.crossingSites ?? [])
-    for (const cell of site.cells) put(cell, '=');
+  for (const crossing of view.crossings)
+    for (const cell of crossing.site.cells)
+      put(cell, crossing.owner === null ? '=' : '#');
   for (const base of view.bases)
     put(
       base.cell,
@@ -452,8 +513,44 @@ export function renderAgentMap(view: FactionView, scale = 1): string {
     (x * scale) % 10 === 0 ? String(((x * scale) / 10) % 10) : ' ',
   ).join('');
   return [
-    `scale ${scale} · . land , bank ~ river ^ mountain = crossing site · base owner A/B/C, N neutral, ? unseen · * own unit ! enemy`,
+    `scale ${scale} · . land , bank ~ river ^ mountain = crossing site # built crossing · base owner A/B/C, N neutral, ? unseen · * own unit ! enemy`,
     `     ${ruler}`,
     ...grid.map((row, y) => `${String(y * scale).padStart(4)} ${row.join('')}`),
   ].join('\n');
+}
+
+/** Unit and economy numbers an agent needs before committing supply. */
+export function summarizeAgentRules(rules: RulesMaster): object {
+  const seconds = (ticks: number): number =>
+    (ticks * rules.match.tickDurationMs) / 1000;
+  const perSecond = (centiPerTick: number): number =>
+    Math.round(centiPerTick / seconds(1)) / 100;
+  return {
+    tickSeconds: rules.match.tickDurationMs / 1000,
+    supplyPerSecond: perSecond(rules.economy.flatSupplyIncomeCentiPerTick),
+    researchPerSecond: perSecond(rules.research.baseIncomeCentiPerTick),
+    captureSeconds: seconds(rules.capture.requiredTicks),
+    unitLimit: `${rules.limits.baseUnits} + ${rules.limits.unitsPerOwnedBase} per owned non-HQ base, max ${rules.limits.maxUnits}`,
+    resupply: `within ${rules.sustainment.resupplyRadius} cells of an owned base, 1 shot per ${seconds(rules.sustainment.resupplyIntervalTicks)}s; empty units deal ${rules.sustainment.depletedDamagePercent}%`,
+    units: Object.fromEntries(
+      Object.entries(rules.units).map(([kind, unit]) => [
+        kind,
+        {
+          supply: unit.costCenti / 100,
+          buildSeconds: seconds(unit.buildTicks),
+          upkeepPerSecond: perSecond(unit.upkeepCentiPerTick),
+          hp: unit.maxHp,
+          range: unit.range,
+          vision: unit.vision,
+          secondsPerCell: seconds(unit.moveTicksPerCell),
+          damage: `land ${unit.damageVsLand} / air ${unit.damageVsAir} / water ${unit.damageVsWater} / structure ${unit.damageVsStructure} every ${seconds(unit.intervalTicks)}s`,
+          ammo: unit.ammo || 'unlimited',
+          domain: unit.movementDomain,
+          canCapture: unit.canCaptureBase,
+          lossTickets: unit.lossTicketsCenti / 100,
+          unlock: unit.unlockResearchId,
+        },
+      ]),
+    ),
+  };
 }

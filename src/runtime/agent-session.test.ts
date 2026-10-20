@@ -5,6 +5,7 @@ import {
   issueAgentCommand,
   renderAgentMap,
   stepAgentSession,
+  summarizeAgentRules,
   summarizeAgentView,
 } from './agent-session';
 import { replay } from './diagnostics';
@@ -105,5 +106,41 @@ describe('agent play session', () => {
     const grid = map.slice(2).join('\n');
     expect(grid).toContain('*');
     expect(grid).not.toContain('!');
+  });
+
+  it('reports no loss rate for eliminated factions and drops stale shots', () => {
+    const session = createAgentSession({ seed: 7 });
+    const view = getFactionView(session.state, 'A');
+    const unit = view.ownUnits[0]!;
+    const summary = summarizeAgentView({
+      ...view,
+      tick: 500,
+      publicEliminations: {
+        ...view.publicEliminations,
+        C: { ...view.publicEliminations.C, eliminatedAtTick: 400 },
+      },
+      ticketRatesCentiPerSec: { ...view.ticketRatesCentiPerSec, C: 90 },
+      ownUnits: [
+        {
+          ...unit,
+          attack: {
+            targetId: null,
+            phase: 'idle',
+            phaseEndsTick: 0,
+            lastFiredTargetId: 'B-09',
+            lastFiredTick: 100,
+          },
+        },
+      ],
+    }) as {
+      tickets: Record<string, { lossPerSecond: number }>;
+      units: { firing: string | null }[];
+    };
+    expect(summary.tickets.C!.lossPerSecond).toBe(0);
+    expect(summary.units[0]!.firing).toBeNull();
+    expect(summarizeAgentRules(view.rules)).toMatchObject({
+      researchPerSecond: 1.2,
+      supplyPerSecond: 6,
+    });
   });
 });

@@ -44,6 +44,7 @@ GitHub CI は Windows / Linux の両方で `npm run check` を実行し、commit
 npm run agent -- new --seed=42 --budget=30:3   # 30秒あたり最大3命令に制限（任意）
 npm run agent -- view                           # 陣営Aから見た状況(JSON)
 npm run agent -- map                            # 公開地形と既知の拠点・部隊
+npm run agent -- rules                          # 兵種の費用・性能・弾数と経済の数値
 npm run agent -- cmd '{"type":"start-research","researchId":"air-defense-1"}'
 npm run agent -- step 30s                       # 30秒(または tick数)進め、気づいた出来事を返す
 npm run agent -- replay --out=.agent-play/replay.json
