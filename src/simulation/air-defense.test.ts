@@ -27,7 +27,7 @@ function controlledState(): MatchState {
     id: 'aa-B',
     factionId: 'B' as const,
     kind: 'antiAir' as const,
-    cell: { x: 35, y: 10 },
+    cell: { x: 30, y: 10 },
     path: [],
     edgeProgress: 0,
     moveTicksPerCell: match.rules.units.antiAir.moveTicksPerCell,
@@ -37,7 +37,7 @@ function controlledState(): MatchState {
     id: 'scout-B',
     factionId: 'B' as const,
     kind: 'scout' as const,
-    cell: { x: 35, y: 10 },
+    cell: { x: 30, y: 10 },
     path: [],
     edgeProgress: 0,
   };
@@ -64,6 +64,27 @@ describe('air defense recognition and deployment', () => {
     };
     expect(airDefenseRange(state, antiAir)).toBe(4);
     expect(airDefenseDamagePercent(state, antiAir)).toBe(100);
+  });
+
+  it('sizes the AA radius so a straight approach takes the grace ticks to reach range', () => {
+    const state = controlledState();
+    const helicopter = state.units.find((unit) => unit.kind === 'helicopter')!;
+    const antiAir = {
+      ...state.units.find((unit) => unit.kind === 'antiAir')!,
+      path: [],
+    };
+    const cellsPerTick =
+      1 /
+      (helicopter.moveTicksPerCell ??
+        state.rules.units.helicopter.moveTicksPerCell);
+    const radius = airDefenseRecognitionRadius(state, antiAir, helicopter);
+    const range = airDefenseRange(state, antiAir);
+    // Diagonal steps move sqrt(2) cells per edge, the fastest approach.
+    expect((radius - range) / (cellsPerTick * Math.SQRT2)).toBeCloseTo(
+      state.rules.airDefense.recognitionGraceTicks,
+      6,
+    );
+    expect(radius).toBeLessThan(state.map.width / 2);
   });
 
   it('detects only AA at an AA-specific radius and retains a last-seen memory', () => {
