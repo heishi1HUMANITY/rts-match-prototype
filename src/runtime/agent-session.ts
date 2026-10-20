@@ -157,7 +157,7 @@ export function describeChanges(
   after: FactionView,
 ): string[] {
   const events: string[] = [];
-  const at = `[${minutes(after, after.tick)}]`;
+  const at = `[${minutes(before, before.tick)}→${minutes(after, after.tick)}]`;
   for (const unit of before.ownUnits)
     if (!after.ownUnits.some(({ id }) => id === unit.id))
       events.push(`${at} 自軍 ${unit.id} ${unit.kind} を失った`);
