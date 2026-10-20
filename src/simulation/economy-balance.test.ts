@@ -652,7 +652,7 @@ describe('CP12 territory and HQ defense model', () => {
     );
     expect(lossPerInterval).toBe(360);
     expect(CAPTURE_TICKS_REQUIRED).toBe(200);
-    expect(ticketLifeTicks).toBe(833);
+    expect(ticketLifeTicks).toBe(1_111);
     expect(ticketLifeTicks).toBeGreaterThan(CAPTURE_TICKS_REQUIRED * 4);
   });
 
@@ -731,7 +731,7 @@ describe('CP12 territory and HQ defense model', () => {
       noRecapture = stepMatch(noRecapture);
     const ticketDeadlineTicks =
       noRecapture.elapsedTicks - noRecaptureStart.elapsedTicks;
-    expect(ticketDeadlineTicks).toBe(1_620);
+    expect(ticketDeadlineTicks).toBe(2_740);
     expect(
       noRecapture.factions.find(({ id }) => id === 'A')!.eliminatedAtTick,
     ).not.toBeNull();

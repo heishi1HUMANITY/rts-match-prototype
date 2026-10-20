@@ -452,6 +452,17 @@ summary:focus-visible {
   font-size: 8px;
   font-weight: 400;
 }
+.unit-card .unit-ammo:empty {
+  display: none;
+}
+.unit-card .unit-ammo[data-ammo='low'] {
+  color: #9a6400;
+  font-weight: 600;
+}
+.unit-card .unit-ammo[data-ammo='empty'] {
+  color: #c0392b;
+  font-weight: 700;
+}
 .bottom-actions {
   display: flex;
   align-items: center;

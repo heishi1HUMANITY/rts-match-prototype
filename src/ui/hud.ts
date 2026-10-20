@@ -165,6 +165,23 @@ const crossingName = (tier: string): string =>
 const amount = (n: number): string =>
   Math.floor(n / 100).toLocaleString('ja-JP');
 const seconds = formatTickSeconds;
+/** Ammo label with a symbol so the state reads without color. */
+const ammoLabel = (
+  unit: FactionView['ownUnits'][number],
+  rules: FactionView['rules'],
+): { readonly text: string; readonly level: 'ok' | 'low' | 'empty' | null } => {
+  const capacity = rules.units[unit.kind].ammo;
+  if (capacity === 0) return { text: '', level: null };
+  const ammo = unit.ammo ?? capacity;
+  const low = Math.ceil(
+    (capacity * rules.sustainment.autoReturnThresholdPercent) / 100,
+  );
+  const returning = unit.resupplyReturn ? ' ↩補給' : '';
+  if (ammo === 0) return { text: `✕弾切れ${returning}`, level: 'empty' };
+  return ammo <= low
+    ? { text: `△弾${ammo}/${capacity}${returning}`, level: 'low' }
+    : { text: `●弾${ammo}/${capacity}${returning}`, level: 'ok' };
+};
 
 export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
@@ -200,7 +217,7 @@ export function createHud(app: HTMLElement): HudElements {
       </aside>
     </main>
     <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
-        <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" hidden>地点砲撃</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
+        <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" hidden>地点砲撃</button><button type="button" data-action="auto-resupply" aria-pressed="true" title="残弾が少なくなったら最寄りの所有拠点へ戻ります">↩自動補給帰還 ON</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
     <dialog class="master-outdated-dialog" aria-labelledby="outdated-title"><h2 id="outdated-title">マスタ標準値の更新</h2><p>標準値が更新されています。標準値へ戻しますか？</p><div class="outdated-actions"><button type="button" data-action="outdated-reset" class="primary">戻す</button><button type="button" data-action="outdated-dismiss">このまま</button></div></dialog>`;
@@ -376,6 +393,16 @@ export function updateHud(
   elements.stop.textContent =
     selectedUnits.length > 1 ? `${selectedUnits.length}部隊を停止` : '部隊停止';
   elements.clear.disabled = !canSelect || selectedUnits.length === 0;
+  const autoResupply = elements.root.querySelector<HTMLButtonElement>(
+    '[data-action="auto-resupply"]',
+  )!;
+  const autoOn =
+    selectedUnits.length === 0 ||
+    selectedUnits.some((unit) => unit.autoResupply !== false);
+  autoResupply.disabled =
+    !canSelect || view.phase !== 'running' || selectedUnits.length === 0;
+  autoResupply.setAttribute('aria-pressed', String(autoOn));
+  autoResupply.textContent = autoOn ? '↩自動補給帰還 ON' : '⊘自動補給帰還 OFF';
   elements.status.textContent = snapshot.message;
   updateTicketsHud(elements, snapshot);
   text('.tick-readout', `TICK ${view.tick} · ${view.phase.toUpperCase()}`);
@@ -537,7 +564,7 @@ export function updateHud(
     selectedUnits.length > 1
       ? `◆ ${selectedUnits.length}部隊を選択`
       : selected
-        ? `◆ ${selected.id} ${kindName(selected.kind)} HP${selected.hp}/${selected.maxHp}`
+        ? `◆ ${selected.id} ${kindName(selected.kind)} HP${selected.hp}/${selected.maxHp}${ammoLabel(selected, view.rules).text ? ` · ${ammoLabel(selected, view.rules).text}` : ''}`
         : '部隊未選択',
   );
   const visibleTarget = (
@@ -647,7 +674,12 @@ export function updateHud(
         const title = document.createElement('strong');
         title.textContent = `◆ ${unit.id}`;
         const label = document.createElement('small');
-        node.append(title, label);
+        const ammo = document.createElement('small');
+        ammo.className = 'unit-ammo';
+        const meta = document.createElement('span');
+        meta.className = 'unit-meta';
+        meta.append(label, ammo);
+        node.append(title, meta);
         return node;
       }),
     );
@@ -661,6 +693,11 @@ export function updateHud(
     node.setAttribute('aria-pressed', String(selected));
     node.querySelector('small')!.textContent =
       `${kindName(unit.kind)} ${unit.hp}/${unit.maxHp}${unit.garrisonedAtBaseId ? ` · 駐留 ${unit.garrisonedAtBaseId}` : unit.marchOrder ? ' →' : ''}`;
+    const ammo = ammoLabel(unit, view.rules);
+    const ammoNode = node.querySelector<HTMLElement>('.unit-ammo')!;
+    ammoNode.textContent = `${ammo.text}${unit.autoResupply === false ? ' ⊘自動帰還OFF' : ''}`;
+    if (ammo.level) ammoNode.dataset.ammo = ammo.level;
+    else delete ammoNode.dataset.ammo;
     const orderLabel = marchOrderLabel(unit);
     node.title = orderLabel;
     node.setAttribute(

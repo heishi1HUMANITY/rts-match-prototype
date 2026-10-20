@@ -97,10 +97,10 @@ describe('G2 fixed-tick integration', () => {
       false,
     );
     expect(state.factions.find(({ id }) => id === 'A')?.ticketsCenti).toBe(
-      29_200,
+      39_200,
     );
     expect(state.factions.find(({ id }) => id === 'B')?.ticketsCenti).toBe(
-      29_200,
+      39_200,
     );
   });
 
@@ -298,11 +298,11 @@ describe('G2 fixed-tick integration', () => {
     state = setFaction(state, 'B', { ticketsCenti: 5 });
     state = applyTicketTick(state);
     expect(state.factions.find(({ id }) => id === 'A')?.ticketsCenti).toBe(
-      30_000,
+      40_000,
     );
     expect(state.factions.find(({ id }) => id === 'B')?.ticketsCenti).toBe(0);
     expect(state.factions.find(({ id }) => id === 'C')?.ticketsCenti).toBe(
-      29_990,
+      39_990,
     );
   });
 

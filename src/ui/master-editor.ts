@@ -38,6 +38,31 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  ammo: {
+    label: '弾数',
+    unit: '発',
+    help: '満載時の射撃回数です。尽きると火力が下がります。0で無制限です。',
+  },
+  resupplyRadius: {
+    label: '補給半径',
+    unit: 'セル',
+    help: '所有中の拠点からこの距離（縦横の合計）以内で弾を補給します。',
+  },
+  resupplyIntervalTicks: {
+    label: '補給間隔',
+    unit: 'tick',
+    help: '補給半径内でこの間隔ごとに1発回復します。',
+  },
+  depletedDamagePercent: {
+    label: '弾切れ時の火力',
+    unit: '%',
+    help: '弾が尽きた部隊の攻撃力の割合です。',
+  },
+  autoReturnThresholdPercent: {
+    label: '自動帰還の残弾',
+    unit: '%',
+    help: '残弾が満載のこの割合以下になると、自動帰還ONの部隊が最寄りの所有拠点へ戻ります。',
+  },
   tickDurationMs: {
     label: '1tickの実時間',
     unit: 'ミリ秒',
@@ -655,6 +680,7 @@ function fieldsFor(rules: RulesMaster): {
     cp87: 'CP13 非火力専攻',
     artilleryBombardment: '地点砲撃',
     airDefense: '航空・対空',
+    sustainment: '継戦・補給',
     economy: '経済',
     facilities: '防御施設',
     baseUpgrades: '拠点強化',

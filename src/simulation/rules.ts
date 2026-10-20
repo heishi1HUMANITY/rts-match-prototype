@@ -763,10 +763,11 @@ export const DEFAULT_RULES: RulesMaster = {
     updateIntervalTicks: 10,
     penaltyPerWeightCenti: 10,
     maximumPenaltyWeight: 6,
+    // 15 to 25 minutes at the default 200ms tick.
     decay: {
-      startTick: 3000,
+      startTick: 4500,
       startCentiPerTick: 3,
-      endTick: 6000,
+      endTick: 7500,
       endCentiPerTick: 15,
       territoryPercentPerWeight: 25,
       territoryMinPercent: 50,

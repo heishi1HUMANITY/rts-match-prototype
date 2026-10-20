@@ -27,6 +27,7 @@
     "selfplay": "node scripts/run-selfplay.mjs",
     "audit:map-fairness": "tsx scripts/audit-map-fairness.ts",
     "audit:map-fairness:final": "tsx scripts/audit-map-fairness.ts --final",
+    "audit:match-length": "tsx scripts/audit-match-length.ts",
     "references:check": "node scripts/check-references.mjs"
   },
   "devDependencies": {

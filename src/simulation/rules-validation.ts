@@ -1712,6 +1712,33 @@ function supplementSchema31(
   };
   if (!isRecord(next.sustainment))
     next = { ...next, sustainment: DEFAULT_RULES.sustainment };
+  const oldMatch = isRecord(next.match) ? next.match : {};
+  if (oldMatch.initialTicketsCenti === 30_000)
+    next = {
+      ...next,
+      match: {
+        ...oldMatch,
+        initialTicketsCenti: DEFAULT_RULES.match.initialTicketsCenti,
+      },
+    };
+  const tickets = isRecord(next.tickets) ? next.tickets : null;
+  if (
+    tickets &&
+    isRecord(tickets.decay) &&
+    tickets.decay.startTick === 3_000 &&
+    tickets.decay.endTick === 6_000
+  )
+    next = {
+      ...next,
+      tickets: {
+        ...tickets,
+        decay: {
+          ...tickets.decay,
+          startTick: DEFAULT_RULES.tickets.decay.startTick,
+          endTick: DEFAULT_RULES.tickets.decay.endTick,
+        },
+      },
+    };
   if (isRecord(next.bases)) {
     const oldBases = next.bases;
     next = {

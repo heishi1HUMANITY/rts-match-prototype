@@ -239,7 +239,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
     expect(
       runtime.playerSnapshot().view.ownUnits.some((unit) => unit.id === 'A-01'),
     ).toBe(false);
-    expect(runtime.playerSnapshot().view.ticketsCenti.A).toBe(29200);
+    expect(runtime.playerSnapshot().view.ticketsCenti.A).toBe(39_200);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });

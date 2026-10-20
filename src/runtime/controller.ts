@@ -183,6 +183,19 @@ function safeCommand(value: unknown): {
       summary: `stop ${item.unitId.slice(0, 64)}`,
     };
   if (
+    item.type === 'set-auto-resupply' &&
+    typeof item.unitId === 'string' &&
+    typeof item.enabled === 'boolean'
+  )
+    return {
+      command: {
+        type: 'set-auto-resupply',
+        unitId: item.unitId.slice(0, 64),
+        enabled: item.enabled,
+      },
+      summary: `自動補給帰還 ${item.unitId.slice(0, 64)} ${item.enabled ? 'ON' : 'OFF'}`,
+    };
+  if (
     item.type === 'garrison' &&
     typeof item.unitId === 'string' &&
     typeof item.baseId === 'string'
@@ -420,6 +433,13 @@ export class MatchRuntime {
     return this.dispatchBatch('stop', unitIds);
   }
 
+  groupAutoResupply(
+    enabled: boolean,
+    unitIds: readonly string[] = this.selectedUnitIds,
+  ): BatchCommandResult {
+    return this.dispatchBatch('set-auto-resupply', unitIds, enabled);
+  }
+
   startLoop(): void {
     if (this.started) return;
     this.started = true;
@@ -569,9 +589,9 @@ export class MatchRuntime {
   }
 
   private dispatchBatch(
-    type: 'move' | 'stop' | 'march' | 'garrison',
+    type: 'move' | 'stop' | 'march' | 'garrison' | 'set-auto-resupply',
     unitIds: readonly string[],
-    target?: Cell | MarchTarget | string,
+    target?: Cell | MarchTarget | string | boolean,
   ): BatchCommandResult {
     const ids = uniqueSortedIds(unitIds);
     if (ids.length === 0) {
@@ -591,7 +611,9 @@ export class MatchRuntime {
             ? { type, unitId, target: target as MarchTarget }
             : type === 'garrison'
               ? { type, unitId, baseId: target as string }
-              : { type, unitId };
+              : type === 'set-auto-resupply'
+                ? { type, unitId, enabled: target as boolean }
+                : { type, unitId };
       const result = this.dispatchCommand(input);
       if (result.ok) accepted.push(unitId);
       else rejected.push({ unitId, reason: result.reason });
@@ -737,7 +759,7 @@ function uniqueSortedIds(unitIds: readonly string[]): string[] {
 }
 
 function batchMessage(
-  type: 'move' | 'stop' | 'march' | 'garrison',
+  type: 'move' | 'stop' | 'march' | 'garrison' | 'set-auto-resupply',
   accepted: readonly string[],
   rejected: readonly { readonly unitId: string; readonly reason: RejectCode }[],
   state?: MatchState,
@@ -750,7 +772,9 @@ function batchMessage(
         ? '追跡/進軍指示'
         : type === 'garrison'
           ? '駐留指示'
-          : '停止指示';
+          : type === 'set-auto-resupply'
+            ? '自動補給帰還の切替'
+            : '停止指示';
   const prefix = `${accepted.length}部隊に${acceptedLabel}`;
   if (rejected.length === 0) return prefix;
   const details = rejected

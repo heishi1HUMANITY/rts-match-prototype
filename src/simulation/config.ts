@@ -22,7 +22,7 @@ export const TICK_DURATION_MS = 200;
 
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;
-export const INITIAL_TICKETS_CENTI = 30_000;
+export const INITIAL_TICKETS_CENTI = 40_000;
 /** 1.2 research points per real second at the default 200ms tick. */
 export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 24;
 export const BASE_UNITS = 5;

@@ -53,7 +53,7 @@ describe('initial match contract', () => {
     expect(match.factions[0]).toMatchObject({
       supplyCenti: 20_000,
       researchCenti: 0,
-      ticketsCenti: 30_000,
+      ticketsCenti: 40_000,
     });
   });
 

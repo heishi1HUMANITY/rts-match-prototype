@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { applyTicketTick } from './tickets';
 import { createMatch } from './match';
+import { DEFAULT_RULES } from './rules';
+
+// These cases pin the decay mechanism on the original 300-ticket, 3000-6000 tick curve.
+const CURVE_RULES = {
+  ...DEFAULT_RULES,
+  match: { ...DEFAULT_RULES.match, initialTicketsCenti: 30_000 },
+  tickets: {
+    ...DEFAULT_RULES.tickets,
+    decay: { ...DEFAULT_RULES.tickets.decay, startTick: 3000, endTick: 6000 },
+  },
+};
 
 describe('periodic ticket pressure', () => {
   it('charges factions by the other two factions weighted outpost count', () => {
-    const state = createMatch(42);
+    const state = createMatch(42, { rules: CURVE_RULES });
     const ownership = { 'OUT-03': 'A' as const };
     const running = {
       ...state,
@@ -30,7 +41,7 @@ describe('periodic ticket pressure', () => {
   });
 
   it('does not reduce tickets for equal holdings or off-boundary ticks', () => {
-    let state = createMatch(42);
+    let state = createMatch(42, { rules: CURVE_RULES });
     state = { ...state, elapsedTicks: 9 };
     expect(applyTicketTick(state)).toBe(state);
     state = { ...state, elapsedTicks: 10 };
@@ -48,7 +59,7 @@ describe('periodic ticket pressure', () => {
   });
 
   it('clamps tickets at zero without a victory or phase transition', () => {
-    let state = createMatch(42);
+    let state = createMatch(42, { rules: CURVE_RULES });
     state = { ...state, elapsedTicks: 10, phase: 'running' };
     state = {
       ...state,
@@ -66,7 +77,7 @@ describe('periodic ticket pressure', () => {
 
   describe('F16 decay curve and territory multiplier', () => {
     it('applies zero base decay before 5 minutes (3000 ticks)', () => {
-      let state = createMatch(42);
+      let state = createMatch(42, { rules: CURVE_RULES });
       state = { ...state, elapsedTicks: 2990, phase: 'running' };
       const next = applyTicketTick(state);
       expect(next.factions.map(({ ticketsCenti }) => ticketsCenti)).toEqual([
@@ -75,7 +86,7 @@ describe('periodic ticket pressure', () => {
     });
 
     it('applies intermediate decay at 7.5 minutes (4500 ticks)', () => {
-      let state = createMatch(42);
+      let state = createMatch(42, { rules: CURVE_RULES });
       state = { ...state, elapsedTicks: 4500, phase: 'running' };
       // at 4500 ticks: base decay is 3 + (15 - 3) * (4500 - 3000) / 3000 = 9 centi/tick
       // for 10 ticks: 9 * 10 = 90 centi
@@ -86,7 +97,7 @@ describe('periodic ticket pressure', () => {
     });
 
     it('caps decay at 15 centi/tick at and after 10 minutes (6000 ticks)', () => {
-      let state = createMatch(42);
+      let state = createMatch(42, { rules: CURVE_RULES });
       state = { ...state, elapsedTicks: 6000, phase: 'running' };
       // at 6000 ticks: base decay is 15 centi/tick -> 15 * 10 = 150 centi
       const next = applyTicketTick(state);
@@ -103,7 +114,7 @@ describe('periodic ticket pressure', () => {
     });
 
     it('clamps territory multiplier between 50% and 200%', () => {
-      let state = createMatch(42);
+      let state = createMatch(42, { rules: CURVE_RULES });
       state = {
         ...state,
         elapsedTicks: 6000,
@@ -125,7 +136,7 @@ describe('periodic ticket pressure', () => {
     });
 
     it('ensures all factions decay towards zero even in full equilibrium', () => {
-      let state = createMatch(42);
+      let state = createMatch(42, { rules: CURVE_RULES });
       state = {
         ...state,
         elapsedTicks: 3000,

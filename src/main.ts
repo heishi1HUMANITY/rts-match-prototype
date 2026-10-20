@@ -876,6 +876,14 @@ const handleClick = (event: MouseEvent): void => {
     board.resetCamera();
   } else if (action === 'stop' || action === 'group-stop') {
     runtime.groupStop();
+  } else if (action === 'auto-resupply') {
+    const ids = new Set(runtime.playerSnapshot().selectedUnitIds);
+    const anyOn = runtime
+      .playerSnapshot()
+      .view.ownUnits.some(
+        (unit) => ids.has(unit.id) && unit.autoResupply !== false,
+      );
+    runtime.groupAutoResupply(!anyOn);
   } else if (action === 'clear') runtime.select(null);
   else if (action === 'multi-select') {
     input.cancelGesture();
