@@ -335,12 +335,14 @@ function findTargetForUnit(
     ) &&
     state.rules.units[attacker.kind].damageVsStructure > 0
   ) {
+    // Same rule as selection: enemy bases, or neutral bases whose defender is down.
     const base = state.bases.find(
       (b) =>
         b.id === targetId &&
         b.hp > 0 &&
-        b.owner !== null &&
-        b.owner !== attacker.factionId &&
+        !isHqProtected(state, b) &&
+        ((b.owner !== null && b.owner !== attacker.factionId) ||
+          (b.owner === null && b.defender?.hp === 0)) &&
         baseIsVisible(state, b, attacker.factionId),
     );
     if (base) {

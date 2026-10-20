@@ -344,3 +344,44 @@ describe('simultaneous combat target selection', () => {
     expect(updatedHq.hp).toBe(1180); // deals 20 structure damage
   });
 });
+
+describe('wind-up attacks on a defeated neutral base', () => {
+  it('lets artillery finish its wind-up and damage a neutral base whose defender is down', () => {
+    const start = createMatch(42);
+    const base = start.bases.find(({ id }) => id === 'OUT-02')!;
+    const artillery: UnitState = {
+      ...start.units.find(({ id }) => id === 'A-01')!,
+      kind: 'artillery',
+      maxHp: start.rules.units.artillery.maxHp,
+      hp: start.rules.units.artillery.maxHp,
+      cell: { ...base.cell },
+      path: [],
+      edgeProgress: 0,
+    };
+    let state: MatchState = {
+      ...start,
+      phase: 'running',
+      units: [artillery],
+      bases: start.bases.map((entry) =>
+        entry.id === base.id
+          ? {
+              ...entry,
+              owner: null,
+              hp: 185,
+              defender: entry.defender ? { ...entry.defender, hp: 0 } : null,
+            }
+          : // Other neutral defenders in range would be chosen first.
+            { ...entry, defender: null },
+      ),
+    };
+    const windup = start.rules.units.artillery.windupTicks;
+    expect(windup).toBeGreaterThan(0);
+    for (let tick = 0; tick <= windup; tick += 1) {
+      state = resolveCombat(state);
+      state = { ...state, elapsedTicks: state.elapsedTicks + 1 };
+    }
+    expect(state.bases.find(({ id }) => id === base.id)!.hp).toBe(
+      185 - start.rules.units.artillery.damageVsStructure,
+    );
+  });
+});
