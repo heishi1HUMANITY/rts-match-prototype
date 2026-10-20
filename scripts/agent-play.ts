@@ -48,6 +48,8 @@ Command JSON (same validation as the browser; actor is always A):
   {"type":"build-facility","kind":"antiAir","anchor":{"kind":"base","id":"HQ-A"}}
   {"type":"activate-ability","abilityId":"surge"}
 Unit kinds: assault scout artillery antiAir helicopter patrolBoat.
+A unit marching on a target keeps firing at that target even when other enemies
+shoot it; change its target or stop it to make it answer them.
 `;
 
 const args = process.argv.slice(2);
