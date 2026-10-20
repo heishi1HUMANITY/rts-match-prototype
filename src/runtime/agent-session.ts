@@ -529,7 +529,7 @@ export function renderAgentMap(view: FactionView, scale = 1): string {
         ? 4
         : /[A-Z?]/.test(glyph)
           ? 3
-          : glyph === '='
+          : glyph === '=' || glyph === '#'
             ? 2
             : glyph === '~'
               ? 1

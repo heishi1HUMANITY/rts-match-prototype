@@ -53,6 +53,11 @@ Command JSON (same validation as the browser; actor is always A):
   {"type":"build-facility","kind":"antiAir","anchor":{"kind":"base","id":"HQ-A"}}
   {"type":"activate-ability","abilityId":"surge"}
 Unit kinds: assault scout artillery antiAir helicopter patrolBoat.
+Tickets also fall when you hold fewer weighted bases than the others' average
+(territory pressure) and, from 15 minutes on, by time decay. Units heal only
+near their own HQ (and near forward bases with the logistics specialization).
+Neutral bases have a defender until destroyed; capture needs base HP 0 and a
+capture-capable land unit alone within radius 1. Enemy bridges cannot be crossed.
 A unit marching on a target keeps firing at that target even when other enemies
 shoot it; change its target or stop it to make it answer them.
 `;
@@ -171,7 +176,18 @@ if (!action || action === 'help') {
     });
   }
   save(session);
-  print({ results, budget: budgetText(session) });
+  const skipped = results.filter(
+    (result) => !result.ok && result.reason === 'COMMAND_BUDGET',
+  ).length;
+  print({
+    results,
+    ...(skipped > 0
+      ? {
+          warning: `${skipped} order(s) were NOT issued: action budget used up`,
+        }
+      : {}),
+    budget: budgetText(session),
+  });
 } else if (action === 'step') {
   const session = load();
   const amount = rest[0] ?? '1';
