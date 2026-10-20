@@ -1,0 +1,117 @@
+{
+  "tickets": {
+    "decay": {
+      "territoryMaxPercent": 150
+    }
+  },
+  "defenses": {
+    "respawnEnabled": false,
+    "medium": {
+      "maxHp": 150
+    },
+    "large": {
+      "maxHp": 240
+    }
+  },
+  "limits": {
+    "baseUnits": 6,
+    "maxUnits": 11
+  },
+  "sustainment": {
+    "resupplyRadius": 5,
+    "baseRepairPercent": 2,
+    "autoReturnThresholdPercent": 15
+  },
+  "cp87": {
+    "frontlineRadius": 5
+  },
+  "bases": {
+    "hq": {
+      "maxHp": 4000
+    }
+  },
+  "research": {
+    "definitions": {
+      "specialization-logistics": {
+        "costCenti": 38000
+      },
+      "specialization-wartime-economy": {
+        "costCenti": 38000
+      },
+      "supply-lines-1": {
+        "effects": [
+          {
+            "id": "supply-income-bonus",
+            "value": 12
+          }
+        ]
+      },
+      "maintenance-1": {
+        "effects": [
+          {
+            "id": "upkeep-reduction",
+            "value": 3
+          }
+        ]
+      },
+      "firepower-1": {
+        "effects": [
+          {
+            "id": "damage-bonus",
+            "value": 3
+          }
+        ]
+      },
+      "firepower-2": {
+        "effects": [
+          {
+            "id": "damage-bonus",
+            "value": 3
+          }
+        ]
+      },
+      "firepower-3": {
+        "effects": [
+          {
+            "id": "damage-bonus",
+            "value": 3
+          }
+        ]
+      },
+      "specialization-power": {
+        "effects": [
+          {
+            "id": "damage-bonus",
+            "value": 3
+          }
+        ]
+      }
+    }
+  },
+  "units": {
+    "assault": {
+      "ammo": 32,
+      "buildTicks": 160
+    },
+    "scout": {
+      "buildTicks": 80
+    },
+    "artillery": {
+      "damageVsLand": 95,
+      "buildTicks": 144,
+      "damageVsStructure": 110
+    },
+    "antiAir": {
+      "buildTicks": 128
+    },
+    "helicopter": {
+      "buildTicks": 176
+    },
+    "patrolBoat": {
+      "buildTicks": 160
+    }
+  },
+  "match": {
+    "initialTicketsCenti": 45000
+  }
+}
