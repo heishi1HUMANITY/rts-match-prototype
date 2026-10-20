@@ -351,9 +351,14 @@ export function summarizeAgentView(view: FactionView): object {
       ownedBases.filter((base) => base.kind !== 'hq' && base.hp > 0).length *
         view.rules.limits.unitsPerOwnedBase,
   );
+  const ownHq = view.bases.find(
+    (base) => base.visibility === 'owned' && base.kind === 'hq',
+  );
   return {
     time: minutes(view, view.tick),
     tick: view.tick,
+    // Base IDs name map seats, so A's HQ may be HQ-B.
+    ownHq: ownHq?.id ?? null,
     phase: view.phase,
     result: view.result
       ? {
