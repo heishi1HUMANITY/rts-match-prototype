@@ -150,6 +150,35 @@ describe('F05 neutral garrisons and capture', () => {
     expect(state.bases.find(({ id }) => id === 'OUT-03')!.owner).toBe('A');
   });
 
+  it('lets units destroy and capture a neutralized base left without a garrison', () => {
+    let state = createMatch(42, { scenarioId: 'f05-neutral-defense' });
+    const outpost = state.bases.find(({ id }) => id === 'OUT-03')!;
+    const attacker = {
+      ...state.units.find(({ id }) => id === 'A-01')!,
+      cell: { ...outpost.cell },
+      path: [],
+      edgeProgress: 0,
+    };
+    state = {
+      ...state,
+      rules: {
+        ...state.rules,
+        defenses: { ...state.rules.defenses, respawnEnabled: false },
+      },
+      units: [attacker],
+      bases: state.bases.map((base) =>
+        base.id === 'OUT-03'
+          ? { ...base, owner: null, hp: base.maxHp, defender: null }
+          : base,
+      ),
+    };
+    for (let tick = 0; tick < 1_000; tick += 1) {
+      state = stepMatch(running(state));
+      if (state.bases.find(({ id }) => id === 'OUT-03')!.owner === 'A') break;
+    }
+    expect(state.bases.find(({ id }) => id === 'OUT-03')!.owner).toBe('A');
+  });
+
   it('rebuilds a full neutral garrison when an owned outpost is destroyed', () => {
     let state = createMatch(42);
     const attacker = {

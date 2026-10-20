@@ -345,7 +345,7 @@ function findTargetForUnit(
         b.hp > 0 &&
         !isHqProtected(state, b) &&
         ((b.owner !== null && b.owner !== attacker.factionId) ||
-          (b.owner === null && b.defender?.hp === 0)) &&
+          (b.owner === null && neutralBaseOpen(b))) &&
         baseIsVisible(state, b, attacker.factionId),
     );
     if (base) {
@@ -504,6 +504,14 @@ function findTargetForDefender(
     return { kind: 'unit', id: unit.id, distanceSquared: dist };
   }
   return null;
+}
+
+/**
+ * A neutral base can be attacked once its defender is down, or when it has no
+ * defender at all (a neutralized base while defender respawn is off).
+ */
+function neutralBaseOpen(base: BaseState): boolean {
+  return base.defender ? base.defender.hp === 0 : base.kind !== 'hq';
 }
 
 function findTargetForTurret(
@@ -751,7 +759,7 @@ function selectTarget(state: MatchState, attacker: UnitState): Target | null {
       (base) =>
         !isHqProtected(state, base) &&
         ((base.owner !== null && base.owner !== attacker.factionId) ||
-          (base.owner === null && base.defender?.hp === 0)) &&
+          (base.owner === null && neutralBaseOpen(base))) &&
         base.hp > 0,
     )
     .filter(() => state.rules.units[attacker.kind].damageVsStructure > 0)
