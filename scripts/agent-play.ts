@@ -54,8 +54,10 @@ Command JSON (same validation as the browser; actor is always A):
   {"type":"activate-ability","abilityId":"surge"}
 Unit kinds: assault scout artillery antiAir helicopter patrolBoat.
 Tickets also fall when you hold fewer weighted bases than the others' average
-(territory pressure) and, from 15 minutes on, by time decay. Units heal only
-near their own HQ (and near forward bases with the logistics specialization).
+(territory pressure) and, from 15 minutes on, by time decay. Losing your HQ
+eliminates you at once. Where units heal is listed under "rules" (repair).
+A destroyed enemy base turns neutral and its HP is restored, so it must be
+brought to 0 again before capture.
 Neutral bases have a defender until destroyed; capture needs base HP 0 and a
 capture-capable land unit alone within radius 1. Enemy bridges cannot be crossed.
 A unit marching on a target keeps firing at that target even when other enemies

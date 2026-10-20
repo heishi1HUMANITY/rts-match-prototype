@@ -254,6 +254,15 @@ export function describeChanges(
         `${at} 拠点 ${base.id} の所有者: ${owner(previous) ?? '不明'} → ${owner(base) ?? '中立'}`,
       );
   }
+  for (const kill of after.ownKills ?? [])
+    if (
+      !(before.ownKills ?? []).some(
+        (entry) => entry.unitId === kill.unitId && entry.tick === kill.tick,
+      )
+    )
+      events.push(
+        `${at} 敵 ${kill.unitId} ${kill.kind} を撃破（${kill.cell.x},${kill.cell.y}）`,
+      );
   for (const id of after.ownFaction.completedResearchIds)
     if (!before.ownFaction.completedResearchIds.includes(id))
       events.push(`${at} 研究完了 ${id}`);
@@ -617,6 +626,14 @@ export function summarizeAgentRules(rules: RulesMaster): object {
     captureSeconds: seconds(rules.capture.requiredTicks),
     unitLimit: `${rules.limits.baseUnits} + ${rules.limits.unitsPerOwnedBase} per owned non-HQ base, max ${rules.limits.maxUnits}`,
     resupply: `within ${rules.sustainment.resupplyRadius} cells of an owned base, 1 shot per ${seconds(rules.sustainment.resupplyIntervalTicks)}s; empty units deal ${rules.sustainment.depletedDamagePercent}%`,
+    repair: `idle units heal ${rules.sustainment.hqRepairPercent}% max HP every ${seconds(rules.sustainment.repairIntervalTicks)}s within ${rules.sustainment.hqRepairRadius} cells of their HQ${rules.sustainment.baseRepairPercent > 0 ? `, and ${rules.sustainment.baseRepairPercent}% within ${rules.sustainment.resupplyRadius} cells of other owned bases` : ''}`,
+    hqHp: rules.bases.hq.maxHp,
+    neutralDefenders: Object.fromEntries(
+      (['outpost', 'medium', 'large'] as const).map((kind) => [
+        kind,
+        `HP ${rules.defenses[kind].maxHp}, ${rules.defenses[kind].baseDamage} damage every ${seconds(rules.defenses[kind].intervalTicks)}s, range ${rules.defenses[kind].range}${rules.defenses.respawnEnabled ? '' : ', no respawn'}`,
+      ]),
+    ),
     units: Object.fromEntries(
       Object.entries(rules.units).map(([kind, unit]) => [
         kind,
