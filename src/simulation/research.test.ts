@@ -167,7 +167,7 @@ describe('stage-based research economy', () => {
     ).toBe(10_464);
   });
 
-  it('reaches the declared 20-minute completion band on current standard starting income', () => {
+  it('reaches the declared 20-minute real-time completion band on current standard starting income', () => {
     const rules = cloneRules(DEFAULT_RULES);
     let state: MatchState = { ...createMatch(47, { rules }), phase: 'running' };
     const complete = (researchId: string): void => {
@@ -198,19 +198,22 @@ describe('stage-based research economy', () => {
     for (const researchId of [
       'artillery-1',
       'air-defense-1',
-      'aircraft-1',
+      'survey-1',
       'naval-1',
       'supply-lines-1',
       'maintenance-1',
     ])
       complete(researchId);
 
-    expect(specializationTick).toBe(6_731);
-    expect(specializationTick / 120).toBeCloseTo(56.09, 1);
-    expect(state.elapsedTicks).toBe(11_384);
-    expect(state.elapsedTicks).toBeLessThanOrEqual(rules.match.timeLimitTicks);
+    // The design target is a 20-minute real-time match at the master tick length.
+    const twentyMinuteTicks = (20 * 60 * 1000) / rules.match.tickDurationMs;
+    expect(twentyMinuteTicks).toBe(6_000);
+    expect(specializationTick).toBe(3_366);
+    expect((specializationTick / twentyMinuteTicks) * 100).toBeCloseTo(56.1, 1);
+    expect(state.elapsedTicks).toBe(5_692);
+    expect(state.elapsedTicks).toBeLessThanOrEqual(twentyMinuteTicks);
     expect(state.researchAnnouncements).toEqual([
-      { factionId: 'A', researchId: 'specialization-power', tick: 6_731 },
+      { factionId: 'A', researchId: 'specialization-power', tick: 3_366 },
     ]);
     const stage4Options = Object.values(rules.research.definitions).filter(
       ({ stage }) => stage === 4,

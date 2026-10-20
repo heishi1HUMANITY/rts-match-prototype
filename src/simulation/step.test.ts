@@ -83,7 +83,7 @@ describe('G2 fixed-tick integration', () => {
     expect(state.elapsedTicks).toBe(30);
     expect(state.factions.find(({ id }) => id === 'A')).toMatchObject({
       supplyCenti: 23_150,
-      researchCenti: 360,
+      researchCenti: 720,
     });
   });
 

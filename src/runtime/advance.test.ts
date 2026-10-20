@@ -37,7 +37,7 @@ describe('advanceMatch NPC orchestration', () => {
         remainingTicks: 199,
       });
       expect(faction.activeResearch).toEqual({ researchId: 'bridge-2' });
-      expect(faction.researchProgressCenti['bridge-2']).toBe(12);
+      expect(faction.researchProgressCenti['bridge-2']).toBe(24);
       expect(faction.supplyCenti).toBe(8_105);
     }
   });

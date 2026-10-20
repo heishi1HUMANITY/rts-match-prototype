@@ -466,7 +466,7 @@ describe('CP12 territory and HQ defense model', () => {
     },
   );
 
-  it('reaches the 5/9 mixed roster, eight shared-techs and HQ-Lv3 after securing four outposts within 20 minutes', () => {
+  it('reaches the 5/9 mixed roster, nine shared-techs and HQ-Lv3 after securing four outposts within the time limit', () => {
     const initial = createMatch(42, {
       mapId: 'legacy-40',
       controllers: { A: 'human', B: 'human', C: 'human' },
@@ -489,6 +489,7 @@ describe('CP12 territory and HQ defense model', () => {
       'base-development-1',
       'artillery-1',
       'air-defense-1',
+      'survey-1',
       'aircraft-1',
       'base-development-2',
       'firepower-1',
@@ -607,7 +608,8 @@ describe('CP12 territory and HQ defense model', () => {
     expect(state.elapsedTicks).toBeLessThanOrEqual(12_000);
     expect(requestedResearch).toBe(researchPlan.length);
     expect(requestedProduction).toBe(productionPlan.length);
-    expect(state.elapsedTicks).toBe(9_094);
+    // Supply per tick is unchanged by the 200ms tick, so the full roster is a late-match goal.
+    expect(state.elapsedTicks).toBe(7_647);
     expect(
       state.factions.find(({ id }) => id === 'A')!.completedResearchIds,
     ).toEqual(researchPlan);

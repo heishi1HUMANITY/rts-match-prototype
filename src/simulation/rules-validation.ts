@@ -1655,16 +1655,59 @@ export function validateEnvelope(
     : result;
 }
 
-/** Schema 31 adds the real-time tick length; older masters keep their other values. */
+/**
+ * Schema 31 adds the real-time tick length. Values still at their schema 30
+ * defaults move to the new defaults; edited values are preserved.
+ */
 function supplementSchema31(
   rules: Record<string, unknown>,
 ): Record<string, unknown> {
   const match = isRecord(rules.match) ? rules.match : {};
-  return {
+  let next: Record<string, unknown> = {
     ...rules,
     match: {
       ...match,
       tickDurationMs: DEFAULT_RULES.match.tickDurationMs,
     },
   };
+  const research = isRecord(next.research) ? next.research : null;
+  if (!research) return next;
+  const definitions = isRecord(research.definitions)
+    ? { ...research.definitions }
+    : null;
+  const sameList = (value: unknown, expected: readonly string[]): boolean =>
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((entry, index) => entry === expected[index]);
+  if (definitions) {
+    const aircraft = definitions['aircraft-1'];
+    if (
+      isRecord(aircraft) &&
+      aircraft.stage === 1 &&
+      aircraft.costCenti === 7_200 &&
+      sameList(aircraft.prerequisites, [])
+    )
+      definitions['aircraft-1'] =
+        DEFAULT_RULES.research.definitions['aircraft-1'];
+    const survey = definitions['survey-2'];
+    if (
+      isRecord(survey) &&
+      sameList(survey.prerequisites, ['survey-1', 'aircraft-1'])
+    )
+      definitions['survey-2'] = { ...survey, prerequisites: ['survey-1'] };
+  }
+  next = {
+    ...next,
+    research: {
+      ...research,
+      ...(research.baseIncomeCentiPerTick === 12
+        ? {
+            baseIncomeCentiPerTick:
+              DEFAULT_RULES.research.baseIncomeCentiPerTick,
+          }
+        : {}),
+      ...(definitions ? { definitions } : {}),
+    },
+  };
+  return next;
 }

@@ -48,7 +48,7 @@ describe('G2 integer economy', () => {
     let state = runningMatch();
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
     expect(faction(state).supplyCenti).toBe(21_050);
-    expect(faction(state).researchCenti).toBe(120);
+    expect(faction(state).researchCenti).toBe(240);
 
     const outpost = state.bases.find(({ id }) => id === 'OUT-03');
     if (outpost === undefined) throw new Error('missing outpost');
@@ -60,7 +60,7 @@ describe('G2 integer economy', () => {
     };
     const next = applyEconomyTick(owned);
     expect(faction(next).supplyCenti).toBe(21_155);
-    expect(faction(next).researchCenti).toBe(132);
+    expect(faction(next).researchCenti).toBe(264);
     expect(faction(owned).supplyCenti).toBe(21_050);
   });
 
@@ -602,20 +602,20 @@ describe('G2 research', () => {
     });
     state = accepted(state, { type: 'start-research', researchId: null });
     state = applyEconomyTick(state);
-    expect(faction(state).researchCenti).toBe(12);
+    expect(faction(state).researchCenti).toBe(24);
     state = accepted(state, {
       type: 'start-research',
       researchId: 'firepower-2',
     });
     expect(faction(state)).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 9_600, 'firepower-2': 2_512 },
+      researchProgressCenti: { 'firepower-1': 9_600, 'firepower-2': 2_524 },
       researchRequiredCenti: { 'firepower-2': 16_302 },
       activeResearch: { researchId: 'firepower-2' },
     });
     state = accepted(state, { type: 'start-research', researchId: null });
     expect(faction(state)).toMatchObject({
-      researchProgressCenti: { 'firepower-1': 9_600, 'firepower-2': 2_512 },
+      researchProgressCenti: { 'firepower-1': 9_600, 'firepower-2': 2_524 },
       researchRequiredCenti: { 'firepower-2': 16_302 },
       activeResearch: null,
     });
@@ -633,7 +633,7 @@ describe('G2 research', () => {
       ),
     };
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
-    expect(faction(state).researchCenti).toBe(120);
+    expect(faction(state).researchCenti).toBe(240);
     expect(faction(state).researchProgressCenti).toMatchObject({
       'firepower-1': 0,
       'firepower-2': 0,
@@ -648,7 +648,7 @@ describe('G2 research', () => {
     });
     for (const id of ['A', 'B', 'C'] as const) {
       const current = state.factions.find((entry) => entry.id === id)!;
-      expect(current.researchCenti).toBe(120);
+      expect(current.researchCenti).toBe(240);
     }
   });
 
@@ -701,7 +701,7 @@ describe('G2 research', () => {
     for (let tick = 0; tick < 10; tick += 1) state = applyEconomyTick(state);
     state = advanceResearch(state);
     expect(faction(state)).toMatchObject({
-      researchCenti: 118,
+      researchCenti: 238,
       researchProgressCenti: { 'firepower-1': 1_600 },
       activeResearch: null,
       completedResearchIds: ['firepower-1'],

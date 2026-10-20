@@ -23,7 +23,8 @@ export const TICK_DURATION_MS = 200;
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;
 export const INITIAL_TICKETS_CENTI = 30_000;
-export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 12;
+/** 1.2 research points per real second at the default 200ms tick. */
+export const BASE_RESEARCH_INCOME_CENTI_PER_TICK = 24;
 export const BASE_UNITS = 5;
 export const UNITS_PER_OWNED_BASE = 1;
 export const MAX_UNITS = 9;
@@ -339,7 +340,7 @@ export const RESEARCH_DEFINITIONS: Readonly<
     domain: 'information',
     stage: 2,
     costCenti: 15_600,
-    prerequisites: ['survey-1', 'aircraft-1'],
+    prerequisites: ['survey-1'],
     exclusiveWith: [],
     effects: [{ id: 'vision-bonus', value: 1 }],
   },
@@ -359,11 +360,12 @@ export const RESEARCH_DEFINITIONS: Readonly<
     exclusiveWith: [],
     effects: [{ id: 'unit-unlock', value: 0, unitKind: 'antiAir' }],
   },
+  // Attack helicopters arrive one stage after every stage-1 anti-air option.
   'aircraft-1': {
     domain: 'information',
-    stage: 1,
-    costCenti: 7_200,
-    prerequisites: [],
+    stage: 2,
+    costCenti: 15_600,
+    prerequisites: ['survey-1'],
     exclusiveWith: [],
     effects: [{ id: 'unit-unlock', value: 0, unitKind: 'helicopter' }],
   },

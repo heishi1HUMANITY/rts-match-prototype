@@ -722,7 +722,7 @@ describe('F11 and F21 combined migration contract', () => {
         masterSchemaVersion: MASTER_SCHEMA_VERSION,
         rules: {
           economy: { flatSupplyIncomeCentiPerTick: 120 },
-          research: { baseIncomeCentiPerTick: 12 },
+          research: { baseIncomeCentiPerTick: 24 },
           limits: { baseUnits: 5, maxUnits: 9 },
         },
       },
@@ -1019,5 +1019,68 @@ describe('F11 and F21 combined migration contract', () => {
     const fractionalInterval = structuredClone(base);
     fractionalInterval.units.assault.intervalTicks = 1.5;
     expect(validateRules(fractionalInterval).ok).toBe(false);
+  });
+});
+
+describe('schema 31 time-scale migration', () => {
+  it('moves schema 30 defaults to the 200ms tick while keeping edited values', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.match.tickDurationMs;
+    legacy.research.baseIncomeCentiPerTick = 12;
+    legacy.research.definitions['aircraft-1'] = {
+      ...legacy.research.definitions['aircraft-1'],
+      stage: 1,
+      costCenti: 7_200,
+      prerequisites: [],
+    };
+    legacy.research.definitions['survey-2'].prerequisites = [
+      'survey-1',
+      'aircraft-1',
+    ];
+    const migrated = validateEnvelope({
+      masterSchemaVersion: 30,
+      revision: 3,
+      rules: legacy,
+    });
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) return;
+    expect(migrated.envelope.rules.match.tickDurationMs).toBe(200);
+    expect(migrated.envelope.rules.research.baseIncomeCentiPerTick).toBe(24);
+    expect(migrated.envelope.rules.research.definitions['aircraft-1']).toEqual(
+      DEFAULT_RULES.research.definitions['aircraft-1'],
+    );
+    expect(
+      migrated.envelope.rules.research.definitions['survey-2']!.prerequisites,
+    ).toEqual(['survey-1']);
+
+    legacy.research.baseIncomeCentiPerTick = 30;
+    legacy.research.definitions['aircraft-1'].costCenti = 5_000;
+    const edited = validateEnvelope({
+      masterSchemaVersion: 30,
+      revision: 4,
+      rules: legacy,
+    });
+    expect(edited.ok).toBe(true);
+    if (!edited.ok) return;
+    expect(edited.envelope.rules.research.baseIncomeCentiPerTick).toBe(30);
+    expect(
+      edited.envelope.rules.research.definitions['aircraft-1'],
+    ).toMatchObject({ stage: 1, costCenti: 5_000 });
+  });
+
+  it('rejects a tick length outside 1..2000ms', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    rules.match.tickDurationMs = 0;
+    expect(validateRules(rules).ok).toBe(false);
+    rules.match.tickDurationMs = 2_001;
+    expect(validateRules(rules).ok).toBe(false);
+    rules.match.tickDurationMs = 100;
+    expect(validateRules(rules).ok).toBe(true);
   });
 });

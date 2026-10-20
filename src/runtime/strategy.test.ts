@@ -360,21 +360,21 @@ describe('G2 presentation and diagnostic boundaries', () => {
     advance(50);
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 600 },
+      researchProgressCenti: { 'firepower-1': 1_200 },
       activeResearch: { researchId: 'firepower-1' },
     });
     runtime.dispatch({ type: 'start-research', researchId: null });
     advance(50);
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
-      researchCenti: 600,
-      researchProgressCenti: { 'firepower-1': 600 },
+      researchCenti: 1_200,
+      researchProgressCenti: { 'firepower-1': 1_200 },
       activeResearch: null,
     });
     runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
     runtime.dispatch({ type: 'start-research', researchId: 'firepower-1' });
     expect(runtime.playerSnapshot().view.ownFaction).toMatchObject({
       researchCenti: 0,
-      researchProgressCenti: { 'firepower-1': 1_200 },
+      researchProgressCenti: { 'firepower-1': 2_400 },
     });
     runtime.dispatch({ type: 'pause' });
     advance(10);
@@ -382,7 +382,7 @@ describe('G2 presentation and diagnostic boundaries', () => {
       runtime.playerSnapshot().view.ownFaction.researchProgressCenti[
         'firepower-1'
       ],
-    ).toBe(1_200);
+    ).toBe(2_400);
     expect(() => assertReplayMatches(runtime.snapshot())).not.toThrow();
     runtime.stopLoop();
   });
