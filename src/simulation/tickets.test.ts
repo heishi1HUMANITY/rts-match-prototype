@@ -155,4 +155,29 @@ describe('periodic ticket pressure', () => {
       expect(a).toBeGreaterThan(0);
     });
   });
+
+  it('waits for the territory grace period before charging territory pressure', () => {
+    const graced = (elapsedTicks: number) => {
+      const state = createMatch(42, {
+        rules: {
+          ...CURVE_RULES,
+          tickets: { ...CURVE_RULES.tickets, territoryGraceTicks: 600 },
+        },
+      });
+      const running = {
+        ...state,
+        elapsedTicks,
+        bases: state.bases.map((base) =>
+          base.id === 'OUT-03'
+            ? { ...base, owner: 'A' as const, hp: 100 }
+            : base,
+        ),
+      };
+      return applyTicketTick(running).factions.map(
+        ({ ticketsCenti }) => ticketsCenti,
+      );
+    };
+    expect(graced(590)).toEqual([30_000, 30_000, 30_000]);
+    expect(graced(600)).toEqual([30_000, 29_990, 29_990]);
+  });
 });

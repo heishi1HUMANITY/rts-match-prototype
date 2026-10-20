@@ -27,7 +27,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 31 as const;
+export const MASTER_SCHEMA_VERSION = 32 as const;
 export const RULES_VERSION = 'cp14-time-airdefense-sustain-v1' as const;
 
 export interface NpcDifficultyProfile {
@@ -279,6 +279,8 @@ export interface RulesMaster {
   };
   readonly tickets: {
     readonly updateIntervalTicks: number;
+    /** No territory penalty before this tick; 0 applies it from the start. */
+    readonly territoryGraceTicks: number;
     readonly penaltyPerWeightCenti: number;
     readonly maximumPenaltyWeight: number;
     readonly decay: {
@@ -771,6 +773,7 @@ export const DEFAULT_RULES: RulesMaster = {
   },
   tickets: {
     updateIntervalTicks: 10,
+    territoryGraceTicks: 0,
     penaltyPerWeightCenti: 10,
     maximumPenaltyWeight: 6,
     // 15 to 25 minutes at the default 200ms tick.

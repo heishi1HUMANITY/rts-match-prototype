@@ -59,14 +59,17 @@ export function calculateIntervalTicketLossCenti(
     0,
   );
 
+  // Territory pressure waits until the first neutral bases can be reached.
   const penalty =
-    Math.max(
-      0,
-      Math.min(
-        state.rules.tickets.maximumPenaltyWeight,
-        otherWeightTotal - (alive.length - 1) * weights[factionId],
-      ),
-    ) * state.rules.tickets.penaltyPerWeightCenti;
+    state.elapsedTicks < state.rules.tickets.territoryGraceTicks
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            state.rules.tickets.maximumPenaltyWeight,
+            otherWeightTotal - (alive.length - 1) * weights[factionId],
+          ),
+        ) * state.rules.tickets.penaltyPerWeightCenti;
 
   const baseDecayPerTick = calculateBaseDecayPerTick(
     state.elapsedTicks,

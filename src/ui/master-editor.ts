@@ -38,6 +38,11 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  territoryGraceTicks: {
+    label: '領土圧の猶予',
+    unit: 'tick',
+    help: '試合開始からこのtickまでは拠点差によるチケット減少を課しません。0で開始直後から課します。',
+  },
   repairIntervalTicks: {
     label: '修理間隔',
     unit: 'tick',

@@ -458,6 +458,7 @@ export function validateRules(input: unknown): ValidationResult {
               !fieldPath.endsWith('penaltyPerWeightCenti') &&
               !fieldPath.endsWith('ticketWeight') &&
               !fieldPath.endsWith('hqProtectionTicks') &&
+              !fieldPath.endsWith('territoryGraceTicks') &&
               !fieldPath.endsWith('startTick') &&
               !fieldPath.endsWith('startCentiPerTick') &&
               !fieldPath.endsWith('unitsPerOwnedBase') &&
@@ -499,7 +500,8 @@ export function validateRules(input: unknown): ValidationResult {
                                   ) ||
                                   fieldPath.endsWith('captureEfficiencyPercent')
                                 ? 1_000
-                                : fieldPath.endsWith('timeLimitTicks') ||
+                                : fieldPath.endsWith('territoryGraceTicks') ||
+                                    fieldPath.endsWith('timeLimitTicks') ||
                                     fieldPath.endsWith('hqProtectionTicks') ||
                                     fieldPath.endsWith('startTick') ||
                                     fieldPath.endsWith('endTick')
@@ -870,7 +872,8 @@ export function validateEnvelope(
       input.masterSchemaVersion !== 27 &&
       input.masterSchemaVersion !== 28 &&
       input.masterSchemaVersion !== 29 &&
-      input.masterSchemaVersion !== 30)
+      input.masterSchemaVersion !== 30 &&
+      input.masterSchemaVersion !== 31)
   )
     return {
       ok: false,
@@ -1689,6 +1692,12 @@ export function validateEnvelope(
     input.masterSchemaVersion <= 30
   )
     candidateRules = supplementSchema31(candidateRules);
+  if (
+    isRecord(candidateRules) &&
+    typeof input.masterSchemaVersion === 'number' &&
+    input.masterSchemaVersion <= 31
+  )
+    candidateRules = supplementSchema32(candidateRules);
   const result = validateRules(candidateRules);
   return result.ok
     ? {
@@ -1837,4 +1846,20 @@ function supplementSchema31(
     },
   };
   return next;
+}
+
+/** Schema 32 adds the territory grace period and fills repair defaults. */
+function supplementSchema32(
+  rules: Record<string, unknown>,
+): Record<string, unknown> {
+  const tickets = isRecord(rules.tickets) ? rules.tickets : {};
+  const sustainment = isRecord(rules.sustainment) ? rules.sustainment : {};
+  return {
+    ...rules,
+    tickets: {
+      territoryGraceTicks: DEFAULT_RULES.tickets.territoryGraceTicks,
+      ...tickets,
+    },
+    sustainment: { ...DEFAULT_RULES.sustainment, ...sustainment },
+  };
 }

@@ -1136,3 +1136,27 @@ describe('schema 31 time-scale migration', () => {
     expect(validateRules(rules).ok).toBe(true);
   });
 });
+
+describe('schema 32 territory grace migration', () => {
+  it('adds a zero grace period and repair defaults to schema 31 masters', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.tickets.territoryGraceTicks;
+    delete legacy.sustainment.baseRepairPercent;
+    legacy.tickets.penaltyPerWeightCenti = 7;
+    const migrated = validateEnvelope({
+      masterSchemaVersion: 31,
+      revision: 1,
+      rules: legacy,
+    });
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) return;
+    expect(migrated.envelope.rules.tickets).toMatchObject({
+      territoryGraceTicks: 0,
+      penaltyPerWeightCenti: 7,
+    });
+    expect(migrated.envelope.rules.sustainment.baseRepairPercent).toBe(0);
+  });
+});
