@@ -161,7 +161,7 @@ export function describeChanges(
   for (const unit of before.ownUnits)
     if (!after.ownUnits.some(({ id }) => id === unit.id))
       events.push(
-        `${at} 自軍 ${unit.id} ${unit.kind} を失った（最後の位置 ${unit.cell.x},${unit.cell.y}${unit.lastDamagedTick !== undefined ? '・被弾あり' : ''}）`,
+        `${at} 自軍 ${unit.id} ${unit.kind} を失った（前回確認時の位置 ${unit.cell.x},${unit.cell.y}${unit.lastDamagedTick !== undefined ? '・被弾あり' : ''}）`,
       );
   for (const unit of after.ownUnits)
     if (!before.ownUnits.some(({ id }) => id === unit.id))
@@ -344,7 +344,9 @@ export function summarizeAgentView(view: FactionView): object {
       status: unit.garrisonedAtBaseId
         ? `garrison ${unit.garrisonedAtBaseId}`
         : unit.resupplyReturn
-          ? 'returning to resupply'
+          ? unit.path.length > 0
+            ? 'returning to resupply'
+            : 'resupplying until full'
           : unit.marchOrder
             ? `march ${unit.marchOrder.target.kind}:${unit.marchOrder.target.id} (${unit.marchOrder.status})`
             : unit.path.length > 0
