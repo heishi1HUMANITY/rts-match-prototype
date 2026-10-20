@@ -38,6 +38,11 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  tickDurationMs: {
+    label: '1tickの実時間',
+    unit: 'ミリ秒',
+    help: '移動・射撃・生産・研究・チケットなどtick単位の時間をまとめて伸縮します。200で旧100の2倍の試合時間です。',
+  },
   frontlineRadius: {
     label: '前線拠点の回復半径',
     unit: 'セル',
@@ -45,7 +50,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   frontlineRecoveryDelayTicks: {
     label: '前線回復までの静穏時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '攻撃・被弾の両方からこの時間が経過してから回復します。',
   },
   frontlineRecoveryPercent: {
@@ -55,12 +60,12 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   globalObservationPeriodTicks: {
     label: '全域観測周期',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '情報専攻が全域を観測する周期です。',
   },
   globalObservationDurationTicks: {
     label: '全域観測時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '敵部隊・拠点・通常施設を一時的に観測する時間です。',
   },
   mineDetectionRadius: {
@@ -90,7 +95,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   mineSlowDurationTicks: {
     label: '地雷減速時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '地雷起爆後の減速時間です。',
   },
   informationKillBonusPercent: {
@@ -100,22 +105,22 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   preparationTicks: {
     label: '砲撃準備時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '地点を指定してから砲弾を発射するまでの時間です。',
   },
   intervalTicks: {
     label: '共通攻撃間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '通常攻撃と地点砲撃で共有する再攻撃までの時間です。',
   },
   observedImpactTicks: {
     label: '観測中の着弾時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '発射時に指定地点を観測している場合の飛翔時間です。',
   },
   unobservedImpactTicks: {
     label: '未観測時の着弾時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '発射時に指定地点を観測していない場合の飛翔時間です。',
   },
   observedScatterRadius1024: {
@@ -135,17 +140,17 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   deployTicks: {
     label: '対空展開時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: 'このtick数だけ停止すると通常の対空射程・火力になります。',
   },
   recognitionGraceTicks: {
     label: '対空初発見猶予',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '対空だけを識別する距離の通常猶予です。',
   },
   jammedRecognitionGraceTicks: {
     label: '妨害下の対空初発見猶予',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '視界妨害中も保証する対空識別の最低猶予です。',
   },
   movingRangePercent: {
@@ -160,12 +165,12 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   cooldownTicks: {
     label: '再使用待ち',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '発動後に再使用できるまでの時間です。',
   },
   durationTicks: {
     label: '効果・着弾時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '持続効果の時間、または砲撃の着弾待ち時間です。',
   },
   unitDamage: {
@@ -210,7 +215,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   attackIntervalTicks: {
     label: '施設射撃間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '完成施設の射撃間隔です。地雷は一度だけ起爆します。',
   },
   jamRange: {
@@ -235,7 +240,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   appearanceTick: {
     label: '出現時刻',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '通常試合の開始から現地勢力が出現するまでの時間です。',
   },
   initialUnits: {
@@ -245,7 +250,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   spawnIntervalTicks: {
     label: '増援間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '現地勢力が部隊を追加する間隔です。',
   },
   maxUnits: {
@@ -347,7 +352,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   buildTicks: {
     label: '生産時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '完了後に部隊を配置します。',
   },
   upkeepCentiPerTick: {
@@ -397,7 +402,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   dismantleTicks: {
     label: '解体時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '所有設備の解体に必要な時間です。',
   },
   regenerationPerTick: {
@@ -412,7 +417,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   recoveryDelayTicks: {
     label: '被弾後の回復停止',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '最後の被弾から回復を再開するまでの時間です。',
   },
   maxHpPercent: {
@@ -442,7 +447,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   turretIntervalTicks: {
     label: '砲座射撃間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '同じ部隊を連続して撃つ間隔です。',
   },
   prerequisite: {
@@ -452,7 +457,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   timeLimitTicks: {
     label: '試合時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '通常設定の制限時間です。',
   },
   initialSupplyCenti: {
@@ -492,7 +497,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   requiredTicks: {
     label: '制圧時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '単独の陣営だけが範囲にいる必要時間です。',
   },
   radius: {
@@ -502,12 +507,12 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   respawnTicks: {
     label: '守備復活時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '制圧可能な部隊が範囲にいない間、守備撃破後に復活するまでの時間です。',
   },
   updateIntervalTicks: {
     label: '更新間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '拠点重みのチケット圧力を更新する間隔です。',
   },
   penaltyPerWeightCenti: {
@@ -522,7 +527,7 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   decisionIntervalTicks: {
     label: '判断間隔',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '対戦NPC B/Cが判断して命令を作る間隔です。現地勢力は対象外です。',
   },
   defenseAttentionRadius: {
@@ -547,17 +552,17 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   },
   targetSwitchGraceTicks: {
     label: '標的切替猶予',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '別の戦略拠点へ命令を切り替える前に維持する猶予です。',
   },
   targetMemoryTtlTicks: {
     label: '観測記憶の有効時間',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: '最後に観測した拠点情報を標的候補として使える時間です。強難度ほど長く保持します。',
   },
   forecastHorizonTicks: {
     label: '戦闘予測の上限',
-    unit: 'tick (0.1秒)',
+    unit: 'tick',
     help: 'NPCが一回の判断で行うFactionView限定戦闘予測の上限です。既存のプレイヤー予測上限は変えません。',
   },
   scoutUsePercent: {

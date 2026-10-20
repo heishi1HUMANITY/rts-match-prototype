@@ -1,3 +1,4 @@
+import { TICK_DURATION_MS } from '../simulation/config';
 import { describe, expect, it } from 'vitest';
 import { MatchRuntime } from './controller';
 import { assertReplayMatches } from './diagnostics';
@@ -272,7 +273,7 @@ describe('runtime group selection and orders', () => {
       callback?.(timestamp);
     };
     frame(0);
-    for (let ms = 100; ms <= 1200; ms += 100) frame(ms);
+    for (let step = 1; step <= 12; step += 1) frame(step * TICK_DURATION_MS);
     combat.stopLoop();
     expect(combat.snapshot().state.units.some(({ id }) => id === 'A-01')).toBe(
       false,

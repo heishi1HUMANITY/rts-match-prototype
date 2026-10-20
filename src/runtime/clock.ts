@@ -22,7 +22,12 @@ export class FixedStepClock {
     return this.dropped;
   }
 
-  advance(timestamp: number, running: boolean, tick: () => void): ClockAdvance {
+  advance(
+    timestamp: number,
+    running: boolean,
+    tick: () => void,
+    tickDurationMs: number = TICK_DURATION_MS,
+  ): ClockAdvance {
     if (!running || !Number.isFinite(timestamp)) {
       this.reset(false);
       return { ticks: 0, alpha: 0, droppedMs: 0 };
@@ -31,7 +36,7 @@ export class FixedStepClock {
       this.lastTimestamp = timestamp;
       return {
         ticks: 0,
-        alpha: this.accumulator / TICK_DURATION_MS,
+        alpha: this.accumulator / tickDurationMs,
         droppedMs: 0,
       };
     }
@@ -41,20 +46,20 @@ export class FixedStepClock {
     let droppedMs = rawDelta - boundedDelta;
     this.accumulator += boundedDelta;
     let ticks = 0;
-    while (this.accumulator >= TICK_DURATION_MS && ticks < 5) {
-      this.accumulator -= TICK_DURATION_MS;
+    while (this.accumulator >= tickDurationMs && ticks < 5) {
+      this.accumulator -= tickDurationMs;
       tick();
       ticks += 1;
     }
-    if (this.accumulator >= TICK_DURATION_MS) {
-      const discard = this.accumulator - (this.accumulator % TICK_DURATION_MS);
+    if (this.accumulator >= tickDurationMs) {
+      const discard = this.accumulator - (this.accumulator % tickDurationMs);
       droppedMs += discard;
       this.accumulator -= discard;
     }
     this.dropped += droppedMs;
     return {
       ticks,
-      alpha: this.accumulator / TICK_DURATION_MS,
+      alpha: this.accumulator / tickDurationMs,
       droppedMs,
     };
   }

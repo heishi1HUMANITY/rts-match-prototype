@@ -17,7 +17,8 @@ export const MAP_WIDTH = LEGACY_MAP_SIZE;
 export const MAP_HEIGHT = LEGACY_MAP_SIZE;
 export const BLOCKED_CELL_PERCENT = 10;
 export const MOVE_TICKS_PER_CELL = 2;
-export const TICK_DURATION_MS = 100;
+/** Default real-time length of one tick; matches use rules.match.tickDurationMs. */
+export const TICK_DURATION_MS = 200;
 
 export const INITIAL_SUPPLY_CENTI = 20_000;
 export const INITIAL_RESEARCH_CENTI = 0;

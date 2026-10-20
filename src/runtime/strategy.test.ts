@@ -1,3 +1,4 @@
+import { TICK_DURATION_MS } from '../simulation/config';
 import { describe, expect, it } from 'vitest';
 import { MatchRuntime } from './controller';
 import {
@@ -39,7 +40,7 @@ function running(scenario: ScenarioId) {
   run(0);
   const advance = (ticks: number): void => {
     for (let i = 0; i < ticks; i++) {
-      timestamp += 100;
+      timestamp += TICK_DURATION_MS;
       run(timestamp);
     }
   };

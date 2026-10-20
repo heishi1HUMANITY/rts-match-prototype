@@ -1,5 +1,5 @@
 import { applyCommand } from '../simulation/commands';
-import { SCHEMA_VERSION, TICK_DURATION_MS } from '../simulation/config';
+import { SCHEMA_VERSION } from '../simulation/config';
 import { createMatch } from '../simulation/match';
 import { cloneRules } from '../simulation/rules';
 import { validateRules } from '../simulation/rules-validation';
@@ -152,7 +152,7 @@ export function createDiagnostic(
       schemaVersion: SCHEMA_VERSION,
       width: snapshot.state.map.width,
       height: snapshot.state.map.height,
-      tickDurationMs: TICK_DURATION_MS,
+      tickDurationMs: snapshot.state.rules.match.tickDurationMs,
       rulesContentId: rulesContentId(snapshot.state.rules),
       masterSchemaVersion: MASTER_SCHEMA_VERSION,
       rules: cloneRules(snapshot.state.rules),

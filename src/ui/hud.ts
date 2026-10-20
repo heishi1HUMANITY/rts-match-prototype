@@ -18,6 +18,12 @@ import {
 import { baseUpgradeTier, maximumBaseLevel } from '../simulation/base-upgrades';
 import { TACTICAL_ABILITY_LABELS } from '../simulation/tactical-abilities';
 import { TACTICAL_ABILITY_IDS } from '../simulation/types';
+import {
+  formatTickSeconds,
+  setDisplayTickDuration,
+  ticksPerSecond,
+  ticksToSeconds,
+} from './time';
 
 export type HudPanel =
   | 'production'
@@ -158,7 +164,7 @@ const crossingName = (tier: string): string =>
   tier.startsWith('bridge') ? `橋 ${tier.slice(-1)}` : `索道 ${tier.slice(-1)}`;
 const amount = (n: number): string =>
   Math.floor(n / 100).toLocaleString('ja-JP');
-const seconds = (ticks: number): string => `${(ticks / 10).toFixed(1)}秒`;
+const seconds = formatTickSeconds;
 
 export function createHud(app: HTMLElement): HudElements {
   app.className = 'game-shell g2-shell';
@@ -330,6 +336,7 @@ export function updateHud(
 ): void {
   const view = snapshot.view,
     own = view.ownFaction;
+  setDisplayTickDuration(view.rules.match.tickDurationMs);
   const text = (selector: string, value: string): void => {
     elements.root.querySelector<HTMLElement>(selector)!.textContent = value;
   };
@@ -426,7 +433,7 @@ export function updateHud(
       : `検査：${scenarioLabel[view.scenarioId] ?? view.scenarioId}${npcStopped ? ' · NPC停止' : ''}`;
   text(
     '.scenario-badge',
-    `${scenarioName} · 残り ${Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 600)}:${String(Math.floor(Math.max(0, view.timeLimitTicks - view.tick) / 10) % 60).padStart(2, '0')}`,
+    `${scenarioName} · 残り ${Math.floor(ticksToSeconds(Math.max(0, view.timeLimitTicks - view.tick)) / 60)}:${String(Math.floor(ticksToSeconds(Math.max(0, view.timeLimitTicks - view.tick))) % 60).padStart(2, '0')}`,
   );
   for (const kind of UNIT_KINDS) {
     const stats = view.rules.units[kind];
@@ -507,7 +514,7 @@ export function updateHud(
     '[data-income]',
     own.eliminatedAtTick !== null || view.phase === 'finished'
       ? '収入停止'
-      : `補給収支 ${((income - upkeep) / 10).toFixed(2)}/秒 · 研究 +${(rp / 10).toFixed(1)}/秒`,
+      : `補給収支 ${(((income - upkeep) * ticksPerSecond()) / 100).toFixed(2)}/秒 · 研究 +${((rp * ticksPerSecond()) / 100).toFixed(1)}/秒`,
   );
   text(
     '[data-research-status]',
@@ -663,7 +670,7 @@ export function updateHud(
   }
   text(
     '.panel-live',
-    `${view.phase === 'running' ? '● 進行中' : '■ 停止中'} · ${(view.tick / 10).toFixed(1)}秒 · 補給${amount(own.supplyCenti)} / 研究${amount(own.researchCenti)}`,
+    `${view.phase === 'running' ? '● 進行中' : '■ 停止中'} · ${ticksToSeconds(view.tick).toFixed(1)}秒 · 補給${amount(own.supplyCenti)} / 研究${amount(own.researchCenti)}`,
   );
   const ownedBases = view.bases.filter(
     (base) => base.visibility === 'owned' && base.kind !== 'hq' && base.hp > 0,
@@ -1212,7 +1219,7 @@ export function updateHud(
     );
     text(
       '[data-result-reason]',
-      `${result.reason === 'time-limit' ? '制限時間に到達' : result.reason === 'mutual-elimination' ? '全陣営が脱落 · 引き分け' : '最後の1陣営が生存'} · ${(result.endedAtTick / 10).toFixed(1)}秒`,
+      `${result.reason === 'time-limit' ? '制限時間に到達' : result.reason === 'mutual-elimination' ? '全陣営が脱落 · 引き分け' : '最後の1陣営が生存'} · ${ticksToSeconds(result.endedAtTick).toFixed(1)}秒`,
     );
     const key = JSON.stringify(result);
     const list =
@@ -1232,7 +1239,7 @@ export function updateHud(
                 ? '■'
                 : '⬡';
           row.className = `legend-${standing.factionId.toLowerCase()}`;
-          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${(standing.eliminatedAtTick / 10).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都陥落'}）`}`;
+          row.textContent = `${tied ? '同率' : ''}${standing.rank}位 · ${symbol} ${standing.factionId}${standing.factionId === 'A' ? '（あなた）' : '（NPC）'} · チケット ${amount(standing.ticketsCenti)} · ${standing.eliminatedAtTick === null ? '生存' : `${ticksToSeconds(standing.eliminatedAtTick).toFixed(1)}秒に脱落（${standing.eliminationReason === 'tickets' ? 'チケット0' : '首都陥落'}）`}`;
           return row;
         }),
       );

@@ -1,3 +1,5 @@
+import { TICK_DURATION_MS } from '../simulation/config';
+import { ticksToSeconds } from './time';
 import type { PlayerSnapshot } from '../runtime/controller';
 import type { FactionId, OwnedBaseView } from '../simulation/types';
 import type { HudElements } from './hud';
@@ -46,6 +48,7 @@ export function detectSuddenLossTickets(
   currentTick: number,
   rateCentiPerSec: number,
   updateIntervalTicks: number = 10,
+  tickDurationMs: number = TICK_DURATION_MS,
 ): number | null {
   if (currentTick <= prevTick) return null;
   const dropAmount = previousTicketsCenti - currentTicketsCenti;
@@ -57,7 +60,8 @@ export function detectSuddenLossTickets(
     Math.floor(prevTick / updateIntervalTicks);
   const expectedPeriodicLoss = Math.max(
     0,
-    (periodicCount * rateCentiPerSec * updateIntervalTicks) / 10,
+    (periodicCount * rateCentiPerSec * updateIntervalTicks * tickDurationMs) /
+      1000,
   );
   const suddenDropAmount = dropAmount - expectedPeriodicLoss;
 
@@ -215,7 +219,7 @@ export function updateTicketsHud(
   const protectionTicks = view.rules.match.hqProtectionTicks ?? 1200;
   const remainingTicks = protectionTicks - view.tick;
   if (view.phase === 'running' && remainingTicks > 0) {
-    const remainingSeconds = Math.ceil(remainingTicks / 10);
+    const remainingSeconds = Math.ceil(ticksToSeconds(remainingTicks));
     protection.hidden = false;
     protection.textContent = `首都保護: 残り${remainingSeconds}秒`;
   } else {
@@ -303,6 +307,7 @@ export function updateTicketsHud(
         view.tick,
         rateCenti,
         intervalTicks,
+        view.rules.match.tickDurationMs,
       );
       if (suddenTickets !== null) {
         suddenLossInfo[id] = {

@@ -1,3 +1,4 @@
+import { TICK_DURATION_MS } from '../simulation/config';
 import { describe, expect, it } from 'vitest';
 import { MatchRuntime } from './controller';
 import { assertReplayMatches, createDiagnostic } from './diagnostics';
@@ -22,7 +23,7 @@ describe('MatchRuntime diagnostic history', () => {
     runtime.dispatch({ type: 'start' });
     runtime.startLoop();
     frame!(0);
-    frame!(100);
+    frame!(TICK_DURATION_MS);
     const snapshot = runtime.snapshot();
     expect(snapshot.tickProcessing.tickCount).toBe(1);
     expect(snapshot.tickProcessing.totalMs).toBeGreaterThanOrEqual(0);
@@ -136,11 +137,11 @@ describe('MatchRuntime diagnostic history', () => {
     };
     runtime.dispatch({ type: 'start' });
     runFrame(0);
-    runFrame(100);
+    runFrame(TICK_DURATION_MS);
     expect(runtime.snapshot().state.elapsedTicks).toBe(1);
-    runFrame(200);
+    runFrame(2 * TICK_DURATION_MS);
     expect(runtime.snapshot().state.elapsedTicks).toBe(2);
-    runFrame(250);
+    runFrame(2.5 * TICK_DURATION_MS);
     expect(frames).toHaveLength(4);
     expect(frames[3]).toEqual({ previous: 1, current: 2, alpha: 0.5 });
     runtime.onHidden();

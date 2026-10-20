@@ -447,6 +447,7 @@ export class MatchRuntime {
           )
             this.firstContactTick = this.state.elapsedTicks;
         },
+        this.state.rules.match.tickDurationMs,
       );
       this.previousTickState = previousTick;
       this.options.onFrame?.(

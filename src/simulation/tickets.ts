@@ -86,14 +86,14 @@ export function calculateIntervalTicketLossCenti(
   return { penalty, decayCenti, totalLoss: penalty + decayCenti };
 }
 
-/** Returns the estimated loss rate in centi per second (10 ticks). */
+/** Returns the estimated loss rate in centi per real-time second. */
 export function getFactionTicketLossRateCentiPerSec(
   state: MatchState,
   factionId: FactionId,
 ): number {
   const { totalLoss } = calculateIntervalTicketLossCenti(state, factionId);
   const interval = state.rules.tickets.updateIntervalTicks;
-  return totalLoss * (10 / interval);
+  return (totalLoss * 1000) / (interval * state.rules.match.tickDurationMs);
 }
 
 /** Applies periodic outpost-weight ticket pressure and base decay. */

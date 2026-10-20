@@ -151,6 +151,7 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
             6000,
             150,
             intervalTicks,
+            100,
           ),
         ).toBeNull();
         expect(
@@ -161,6 +162,7 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
             6000,
             150,
             intervalTicks,
+            100,
           ),
         ).toBe(8);
       },
@@ -176,6 +178,7 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
         600, // currentTick (crosses 1 interval: 60 - 59 = 1)
         150, // rateCentiPerSec
         10, // updateIntervalTicks
+        100, // tickDurationMs
       );
       expect(sudden).toBeNull();
     });
@@ -188,6 +191,7 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
         605, // currentTick (no periodic interval: 60 - 60 = 0)
         150, // rateCentiPerSec
         10,
+        100,
       );
       expect(sudden).toBe(2);
     });
@@ -201,6 +205,7 @@ describe('tickets HUD sudden loss and periodic decay exclusion', () => {
         600, // currentTick (1 interval: expected periodic = 150)
         150, // rateCentiPerSec
         10,
+        100,
       );
       // Sudden part is 350 - 150 = 200 centi -> 2 tickets
       expect(sudden).toBe(2);

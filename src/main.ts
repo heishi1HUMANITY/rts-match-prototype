@@ -12,6 +12,7 @@ import { createMasterEditor } from './ui/master-editor';
 import { resolveMarchTarget } from './ui/march-target';
 import { estimateCombat } from './simulation/combat-estimate';
 import './ui/styles.css';
+import { ticksToSeconds } from './ui/time';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing application root');
@@ -283,7 +284,7 @@ function renderCombatEstimate(
   panel.querySelector<HTMLElement>('[data-estimate-result]')!.textContent =
     estimate.status === 'unavailable'
       ? `予測不可 · ${estimate.reason}`
-      : `${estimate.status === 'favorable' ? '有利' : estimate.status === 'unfavorable' ? '不利' : estimate.status === 'contested' ? '拮抗' : '未決着'} · ${estimate.ticks === null ? `${estimate.reason}` : `交戦 ${((estimate.ticks * 100) / 1000).toFixed(1)}秒`}`;
+      : `${estimate.status === 'favorable' ? '有利' : estimate.status === 'unfavorable' ? '不利' : estimate.status === 'contested' ? '拮抗' : '未決着'} · ${estimate.ticks === null ? `${estimate.reason}` : `交戦 ${ticksToSeconds(estimate.ticks).toFixed(1)}秒`}`;
   panel.querySelector<HTMLElement>('[data-estimate-losses]')!.textContent =
     `自軍残存 ${estimate.ownRemaining} · 損耗HP ${estimate.ownLost} · 局所脅威残存 ${estimate.threatsRemaining}/${estimate.threatsIncluded}`;
   panel.querySelector<HTMLElement>('[data-estimate-assumptions]')!.textContent =

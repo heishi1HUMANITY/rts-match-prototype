@@ -1,3 +1,4 @@
+import { formatTickSeconds } from './time';
 import type {
   FacilityAnchor,
   FacilityKind,
@@ -209,7 +210,7 @@ export function updateFacilitiesPanel(
     root.querySelector<HTMLElement>(
       `[data-facility-detail="${kind}"]`,
     )!.textContent =
-      `補給 ${stats.costCenti / 100} · ${(Math.max(1, Math.ceil((stats.buildTicks * 100) / (100 + speed))) / 10).toFixed(1)}秒 · HP${stats.maxHp} · ${kind === 'watchtower' ? `視界${stats.vision}` : kind === 'jammer' ? `妨害半径${stats.jamRange}` : `射程${stats.range} · 陸${stats.damageVsLand}/空${stats.damageVsAir}/水${stats.damageVsWater}${kind === 'mine' ? '（一撃・一回）' : `/射撃・${((stats.intervalTicks ?? stats.attackIntervalTicks ?? 10) / 10).toFixed(1)}秒間隔`}`}`;
+      `補給 ${stats.costCenti / 100} · ${formatTickSeconds(Math.max(1, Math.ceil((stats.buildTicks * 100) / (100 + speed))))} · HP${stats.maxHp} · ${kind === 'watchtower' ? `視界${stats.vision}` : kind === 'jammer' ? `妨害半径${stats.jamRange}` : `射程${stats.range} · 陸${stats.damageVsLand}/空${stats.damageVsAir}/水${stats.damageVsWater}${kind === 'mine' ? '（一撃・一回）' : `/射撃・${formatTickSeconds(stats.intervalTicks ?? stats.attackIntervalTicks ?? 10)}間隔`}`}`;
     root.querySelector<HTMLElement>(
       `[data-facility-reason="${kind}"]`,
     )!.textContent = reason ?? '建築できます（位置は自動）';
@@ -219,7 +220,7 @@ export function updateFacilitiesPanel(
     attached
       .map(
         (facility) =>
-          `${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} HP${facility.hp}/${facility.maxHp} · ${facility.remainingBuildTicks > 0 ? `建築中 ${(facility.remainingBuildTicks / 10).toFixed(1)}秒` : '完成'}`,
+          `${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} HP${facility.hp}/${facility.maxHp} · ${facility.remainingBuildTicks > 0 ? `建築中 ${formatTickSeconds(facility.remainingBuildTicks)}` : '完成'}`,
       )
       .join('\n') || 'この設置先には施設がありません';
 }

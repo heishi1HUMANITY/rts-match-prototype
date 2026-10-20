@@ -1,3 +1,4 @@
+import { formatTickSeconds } from '../ui/time';
 import { FACILITY_NAMES, FACILITY_GLYPHS } from '../ui/facilities';
 import * as THREE from 'three';
 import {
@@ -946,7 +947,7 @@ export function createBoardView(options: BoardViewOptions): BoardView {
       objects.ring.visible = !remembered && !building && radius > 0;
       objects.ring.position.copy(cellPosition(facility.cell, 0.08));
       objects.ring.scale.setScalar(radius);
-      objects.label.textContent = `${FACTIONS[facility.owner].symbol}${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} ${facility.hp}/${facility.maxHp}${remembered ? ` 最終T${facility.seenTick}` : building ? ` 建築${(facility.remainingBuildTicks / 10).toFixed(1)}秒` : ''}`;
+      objects.label.textContent = `${FACTIONS[facility.owner].symbol}${FACILITY_GLYPHS[facility.kind]} ${FACILITY_NAMES[facility.kind]} ${facility.hp}/${facility.maxHp}${remembered ? ` 最終T${facility.seenTick}` : building ? ` 建築${formatTickSeconds(facility.remainingBuildTicks)}` : ''}`;
       if (!remembered) {
         const combatMark =
           facility.attack?.phase === 'windup'

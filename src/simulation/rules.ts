@@ -8,6 +8,7 @@ import {
   INITIAL_TICKETS_CENTI,
   PRODUCTION_QUEUE_LIMIT,
   STANDARD_TIME_LIMIT_TICKS,
+  TICK_DURATION_MS,
   BASE_UNITS,
   UNITS_PER_OWNED_BASE,
   MAX_UNITS,
@@ -26,7 +27,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const MASTER_SCHEMA_VERSION = 30 as const;
+export const MASTER_SCHEMA_VERSION = 31 as const;
 export const RULES_VERSION = 'cp13-combat-observation-v1' as const;
 
 export interface NpcDifficultyProfile {
@@ -231,6 +232,8 @@ export interface RulesMaster {
     >
   >;
   readonly match: {
+    /** Real-time milliseconds per simulation tick; scales every tick-based duration together. */
+    readonly tickDurationMs: number;
     readonly timeLimitTicks: number;
     readonly initialSupplyCenti: number;
     readonly initialResearchCenti: number;
@@ -675,6 +678,7 @@ export const DEFAULT_RULES: RulesMaster = {
     },
   },
   match: {
+    tickDurationMs: TICK_DURATION_MS,
     timeLimitTicks: STANDARD_TIME_LIMIT_TICKS,
     initialSupplyCenti: INITIAL_SUPPLY_CENTI,
     initialResearchCenti: INITIAL_RESEARCH_CENTI,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { TICK_DURATION_MS } from './simulation/config';
 import { createMatch } from './simulation/match';
 import { applyCommand } from './simulation/commands';
 import { advanceMatch } from './runtime/advance';
@@ -20,7 +21,7 @@ interface SingleMatchReport {
 }
 
 function formatTicks(ticks: number): string {
-  const totalSeconds = Math.floor(ticks / 10);
+  const totalSeconds = Math.floor((ticks * TICK_DURATION_MS) / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s (${ticks}t)`;
