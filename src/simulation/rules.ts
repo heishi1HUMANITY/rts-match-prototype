@@ -148,6 +148,12 @@ export interface RulesMaster {
     readonly depletedDamagePercent: number;
     /** Automatic return starts at or below this percent of a full load. */
     readonly autoReturnThresholdPercent: number;
+    /** Idle undamaged-this-tick units heal every interval near friendly bases. */
+    readonly repairIntervalTicks: number;
+    readonly hqRepairRadius: number;
+    readonly hqRepairPercent: number;
+    /** Repair within resupplyRadius of an owned non-HQ base; 0 keeps HQ-only repair. */
+    readonly baseRepairPercent: number;
   };
   readonly facilities: {
     readonly slotsPerAnchor: number;
@@ -376,6 +382,10 @@ export const DEFAULT_RULES: RulesMaster = {
     resupplyIntervalTicks: 5,
     depletedDamagePercent: 25,
     autoReturnThresholdPercent: 25,
+    repairIntervalTicks: 10,
+    hqRepairRadius: 3,
+    hqRepairPercent: 4,
+    baseRepairPercent: 0,
   },
   baseUpgrades: {
     recoveryPerTick: 1,

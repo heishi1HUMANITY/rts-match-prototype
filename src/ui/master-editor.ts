@@ -38,6 +38,26 @@ interface FieldMeta {
   readonly help: string;
 }
 const FIELD_META: Readonly<Record<string, FieldMeta>> = {
+  repairIntervalTicks: {
+    label: '修理間隔',
+    unit: 'tick',
+    help: 'この間隔ごとに、停止中で今tick被弾していない部隊を回復します。',
+  },
+  hqRepairRadius: {
+    label: '首都での修理半径',
+    unit: 'セル',
+    help: '自軍首都からこの距離（縦横の合計）以内で修理します。',
+  },
+  hqRepairPercent: {
+    label: '首都での修理量',
+    unit: '%/回',
+    help: '首都近くで1回に回復する最大HPの割合です。',
+  },
+  baseRepairPercent: {
+    label: '拠点での修理量',
+    unit: '%/回',
+    help: '首都以外の所有拠点の補給半径内で1回に回復する割合です。0で首都だけになります。',
+  },
   ammo: {
     label: '弾数',
     unit: '発',

@@ -90,17 +90,21 @@ export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
   };
 }
 
+/** Heals idle units near their HQ, and near other owned bases when enabled. */
 function recoverNearHeadquarters(
   state: MatchState,
   beforeCombat: MatchState,
 ): MatchState {
-  if (state.elapsedTicks % 10 !== 0) return state;
+  const repair = state.rules.sustainment;
+  if (state.elapsedTicks % repair.repairIntervalTicks !== 0) return state;
   const damagedThisTick = new Set(
     beforeCombat.units.flatMap((unit) => {
       const after = state.units.find(({ id }) => id === unit.id);
       return after && after.hp < unit.hp ? [unit.id] : [];
     }),
   );
+  const near = (unit: UnitState, cell: Cell, radius: number): boolean =>
+    Math.abs(unit.cell.x - cell.x) + Math.abs(unit.cell.y - cell.y) <= radius;
   let changed = false;
   const units = state.units.map((unit) => {
     if (
@@ -109,20 +113,31 @@ function recoverNearHeadquarters(
       unit.path.length > 0
     )
       return unit;
-    const hq = state.bases.find(
+    const atHq = state.bases.some(
       (base) =>
         base.kind === 'hq' &&
         base.homeFactionId === unit.factionId &&
-        base.hp > 0,
+        base.hp > 0 &&
+        near(unit, base.cell, repair.hqRepairRadius),
     );
-    if (
-      !hq ||
-      Math.abs(unit.cell.x - hq.cell.x) + Math.abs(unit.cell.y - hq.cell.y) > 3
-    )
-      return unit;
+    const atBase =
+      repair.baseRepairPercent > 0 &&
+      state.bases.some(
+        (base) =>
+          base.kind !== 'hq' &&
+          base.owner === unit.factionId &&
+          base.hp > 0 &&
+          near(unit, base.cell, repair.resupplyRadius),
+      );
+    const percent = atHq
+      ? repair.hqRepairPercent
+      : atBase
+        ? repair.baseRepairPercent
+        : 0;
+    if (percent === 0) return unit;
     const hp = Math.min(
       unit.maxHp,
-      unit.hp + Math.max(1, Math.ceil((unit.maxHp * 4) / 100)),
+      unit.hp + Math.max(1, Math.ceil((unit.maxHp * percent) / 100)),
     );
     if (hp === unit.hp) return unit;
     changed = true;
