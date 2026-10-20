@@ -87,21 +87,11 @@ export function advanceCapture(state: MatchState): MatchState {
     }
     let eligibleBase = base;
     if (base.defender && base.defender.hp === 0) {
-      if (!state.rules.defenses.respawnEnabled) {
-        if (
-          base.defender.disabledTicks === 0 &&
-          base.captureCandidate === null &&
-          base.captureProgressCentiTicks === 0
-        )
-          return base;
-        return {
-          ...base,
-          captureCandidate: null,
-          captureProgressCentiTicks: 0,
-          defender: { ...base.defender, disabledTicks: 0 },
-        };
-      }
-      if (captureEfficiencyByFaction.size === 0) {
+      // Without respawn no timer runs, but the defeated base stays capturable.
+      if (
+        state.rules.defenses.respawnEnabled &&
+        captureEfficiencyByFaction.size === 0
+      ) {
         const disabledTicks = base.defender.disabledTicks + 1;
         if (disabledTicks >= state.rules.defenses[base.kind].respawnTicks) {
           const maxHp = state.rules.defenses[base.kind].maxHp;
