@@ -12,7 +12,7 @@ test('CP12: flat economy master exposes fixed rates and hides territory income c
   const supply = page.locator(
     '[data-master-path="economy.flatSupplyIncomeCentiPerTick"]',
   );
-  await expect(research).toHaveValue('12');
+  await expect(research).toHaveValue('24');
   await expect(supply).toHaveValue('120');
   await expect(
     page.locator('[data-master-path="bases.hq.supplyIncomeCentiPerTick"]'),

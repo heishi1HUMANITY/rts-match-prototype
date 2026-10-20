@@ -27,6 +27,12 @@ test('F11-01 / F11-02 / F11-03: build all five facilities, observe completion an
 }, info) => {
   test.setTimeout(120_000);
   await page.goto('./');
+  // Keep the real build ticks while bounding wall time at the legacy 100ms tick.
+  await page.getByRole('button', { name: 'マスタ', exact: true }).click();
+  const tickLength = page.locator('[data-master-path="match.tickDurationMs"]');
+  await expect(tickLength).toHaveValue('200');
+  await tickLength.fill('100');
+  await page.locator('[data-master-start]').click();
   await page.getByText('検査設定', { exact: true }).click();
   await page
     .getByRole('combobox', { name: '検査シナリオ' })
