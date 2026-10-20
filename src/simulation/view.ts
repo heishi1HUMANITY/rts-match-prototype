@@ -449,6 +449,9 @@ export function getFactionView(
     ticketsCenti: Object.fromEntries(
       state.factions.map((entry) => [entry.id, entry.ticketsCenti]),
     ) as Record<FactionId, number>,
+    ownLosses: (state.unitLossLog ?? [])
+      .filter((loss) => loss.factionId === factionId)
+      .map((loss) => ({ ...loss, cell: { ...loss.cell } })),
     ticketRatesCentiPerSec: Object.fromEntries(
       state.factions.map((entry) => [
         entry.id,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyCommand } from './commands';
 import { createMatch } from './match';
 import { resolveCombat } from './combat';
+import { getFactionView } from './view';
 import type { MatchState, UnitState } from './types';
 
 const removeAllBut = (state: MatchState, units: UnitState[]): MatchState => ({
@@ -388,5 +389,43 @@ describe('wind-up attacks on a defeated neutral base', () => {
     expect(state.bases.find(({ id }) => id === base.id)!.hp).toBe(
       185 - start.rules.units.artillery.damageVsStructure,
     );
+  });
+});
+
+describe('unit loss causes', () => {
+  it('records the source of a lethal hit and shows it only to the loser', () => {
+    const start = createMatch(42);
+    const a = {
+      ...start.units.find(({ id }) => id === 'A-01')!,
+      cell: { x: 20, y: 20 },
+      hp: 1,
+    };
+    const b = {
+      ...start.units.find(({ id }) => id === 'B-01')!,
+      cell: { x: 21, y: 20 },
+    };
+    const state: MatchState = {
+      ...start,
+      phase: 'running',
+      units: [a, b],
+      bases: start.bases.map((base) =>
+        base.kind === 'hq'
+          ? base
+          : { ...base, defender: null, cell: { x: 0, y: 39 } },
+      ),
+    };
+    const next = resolveCombat(state);
+    expect(next.unitLossLog).toEqual([
+      {
+        tick: 0,
+        unitId: 'A-01',
+        factionId: 'A',
+        kind: 'assault',
+        cell: { x: 20, y: 20 },
+        cause: 'unit:assault',
+      },
+    ]);
+    expect(getFactionView(next, 'A').ownLosses).toHaveLength(1);
+    expect(getFactionView(next, 'B').ownLosses).toEqual([]);
   });
 });

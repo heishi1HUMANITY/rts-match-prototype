@@ -337,6 +337,17 @@ export interface UnitState {
   readonly resupplyReturn?: boolean;
 }
 
+/** One destroyed unit and the source of its largest lethal hit. */
+export interface UnitLossRecord {
+  readonly tick: number;
+  readonly unitId: string;
+  readonly factionId: CombatantId;
+  readonly kind: UnitKind;
+  readonly cell: Cell;
+  /** e.g. `unit:artillery`, `artillery-strike`, `facility:mine`, `neutral-defender`. */
+  readonly cause: string;
+}
+
 export interface ArtilleryBombardOrder {
   readonly cell: Cell;
   readonly fireAtTick: number;
@@ -419,6 +430,8 @@ export interface AirDefenseMemory {
 
 export interface MatchState {
   readonly schemaVersion: 29;
+  /** Recent destroyed units with their cause; views expose only the viewer's own. */
+  readonly unitLossLog?: readonly UnitLossRecord[];
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -584,6 +597,8 @@ export interface FactionView {
   readonly ownFaction: OwnFactionView;
   readonly ownUnits: readonly OwnUnitView[];
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
+  /** The viewer's own recent losses with the kind of source that destroyed them. */
+  readonly ownLosses?: readonly UnitLossRecord[];
   readonly airDefenseMemory: readonly AirDefenseMemory[];
   readonly bases: readonly BaseView[];
   readonly localFaction: LocalFactionView;

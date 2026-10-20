@@ -1,6 +1,7 @@
 import { FACILITY_NAMES, updateFacilitiesPanel } from './facilities';
 import { updateTicketsHud } from './tickets';
 import type { PlayerSnapshot } from '../runtime/controller';
+import { lossCauseLabel } from '../runtime/loss-cause';
 import { marchOrderLabel } from './march-target';
 import type {
   BaseOwnerId,
@@ -216,7 +217,7 @@ export function createHud(app: HTMLElement): HudElements {
         </div>
       </aside>
     </main>
-    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button type="button" data-action="auto-resupply" aria-pressed="true" title="選択部隊の自動補給帰還（残弾が少なくなったら最寄りの所有拠点へ戻る）">↩補給帰還ON</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
+    <footer class="bottom-bar"><div class="resource-strip"><strong data-resources></strong><span data-income></span><span data-research-status></span><span data-research-announcement role="status" aria-live="polite"></span><span data-loss-notice role="status" aria-live="polite"></span><span data-facility-jam role="status"></span><div class="bottom-actions"><button data-action="flight-route" aria-pressed="false">航空経路</button><button data-action="stop">部隊停止</button><button type="button" data-action="auto-resupply" aria-pressed="true" title="選択部隊の自動補給帰還（残弾が少なくなったら最寄りの所有拠点へ戻る）">↩補給帰還ON</button><button data-action="clear">選択解除</button><button data-action="camera">カメラ</button></div></div>
         <div class="unit-strip"><div class="selection-summary"><strong class="selection-name"></strong><span class="selection-combat" data-selection-combat></span><span class="selection-instruction"></span></div><div class="selection-controls" aria-label="部隊選択"><button type="button" data-action="multi-select" aria-pressed="false">複数選択</button><button type="button" data-action="select-all">すべて選択</button><button type="button" data-action="point-fire" hidden>地点砲撃</button></div><div class="unit-list" aria-label="自軍部隊"></div><div class="status-stack"><span class="status" role="status" aria-live="polite"></span><span class="tick-readout"></span></div></div>
     </footer>
     <dialog class="result-dialog" aria-labelledby="result-title"><h1 id="result-title">試合結果</h1><p data-result-reason></p><p data-result-rule>生存陣営をチケット順、脱落陣営を脱落が遅い順に順位付け。同点・同時脱落は同順位です。</p><ol class="result-standings" aria-label="最終順位"></ol><div class="result-actions"><button data-action="replay" class="primary">同じ設定でもう一戦</button><button data-action="reset">設定に戻る</button><button data-action="download">診断JSONを保存</button></div></dialog>
@@ -556,6 +557,14 @@ export function updateHud(
     '[data-research-announcement]',
     latestResearchNotice
       ? `専攻完成 · ${latestResearchNotice.factionId} ${researchName(latestResearchNotice.researchId, view)}`
+      : '',
+  );
+  // The latest own loss stays for ten seconds with what destroyed it.
+  const latestLoss = view.ownLosses?.at(-1);
+  text(
+    '[data-loss-notice]',
+    latestLoss && ticksToSeconds(view.tick - latestLoss.tick) <= 10
+      ? `✕損失 ${latestLoss.unitId} ${kindName(latestLoss.kind)} · ${lossCauseLabel(latestLoss.cause)}`
       : '',
   );
   const selected = selectedUnits[0];

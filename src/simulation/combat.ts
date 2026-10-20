@@ -21,6 +21,7 @@ import type {
   MatchState,
   ScheduledStrike,
   UnitState,
+  UnitLossRecord,
 } from './types';
 import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
@@ -51,6 +52,8 @@ export interface HitReservation {
   readonly damage: number;
   readonly attackerFactionId: CombatantId;
   readonly facilityId?: string;
+  /** What fired, e.g. `unit:artillery` or `facility:mine`, kept for loss reports. */
+  readonly source?: string;
 }
 
 function stableHash(value: string): number {
@@ -919,6 +922,7 @@ export function resolveCombat(state: MatchState): MatchState {
       target: { kind: 'target', target },
       damage,
       attackerFactionId: strike.factionId,
+      source: strike.sourceUnitId ? 'artillery-strike' : 'artillery-ability',
     });
     for (const unit of snapshot.units) {
       if (
@@ -1062,6 +1066,7 @@ export function resolveCombat(state: MatchState): MatchState {
         target: { kind: 'target', target: hit.target },
         damage: hit.damage,
         attackerFactionId: attacker.factionId,
+        source: `unit:${attacker.kind}`,
       });
     }
   }
@@ -1163,6 +1168,7 @@ export function resolveCombat(state: MatchState): MatchState {
         damage: hit.damage,
         attackerFactionId: f.owner,
         facilityId: f.id,
+        source: `facility:${f.kind}`,
       });
     }
   }
@@ -1255,6 +1261,7 @@ export function resolveCombat(state: MatchState): MatchState {
           target: { kind: 'target', target: hit.target },
           damage: hit.damage,
           attackerFactionId: 'local',
+          source: 'neutral-defender',
         });
       }
     }
@@ -1328,6 +1335,7 @@ export function resolveCombat(state: MatchState): MatchState {
             target: { kind: 'target', target: hit.target },
             damage: hit.damage,
             attackerFactionId: base.owner,
+            source: base.level === 1 ? 'base-anti-air' : 'base-turret',
           });
         }
       }
@@ -1412,6 +1420,7 @@ export function resolveCombat(state: MatchState): MatchState {
   }
 
   let unitLosses = new Map<FactionId, number>();
+  const lossRecords: UnitLossRecord[] = [];
   let units = updatedUnits
     .map((unit) => {
       const damage = unitDamage.get(unit.id) ?? 0;
@@ -1452,6 +1461,15 @@ export function resolveCombat(state: MatchState): MatchState {
           unit.factionId,
           (unitLosses.get(unit.factionId) ?? 0) + baseLoss + bonusLoss,
         );
+        const lethal = [...lethalHits].sort((a, b) => b.damage - a.damage)[0];
+        lossRecords.push({
+          tick,
+          unitId: unit.id,
+          factionId: unit.factionId,
+          kind: unit.kind,
+          cell: { ...unit.cell },
+          cause: lethal?.source ?? 'unknown',
+        });
       }
       return {
         ...unit,
@@ -1661,6 +1679,13 @@ export function resolveCombat(state: MatchState): MatchState {
     bases,
     crossings,
     localFaction,
+    ...(lossRecords.length > 0
+      ? {
+          unitLossLog: [...(snapshot.unitLossLog ?? []), ...lossRecords].slice(
+            -64,
+          ),
+        }
+      : {}),
     factions: snapshot.factions.map((faction) => {
       const killReward = faction.id === strongholdWinner;
       const losses = unitLosses.get(faction.id) ?? 0;

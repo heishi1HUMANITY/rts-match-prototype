@@ -157,6 +157,10 @@ export function validateRules(input: unknown): ValidationResult {
       'resupplyIntervalTicks',
       'depletedDamagePercent',
       'autoReturnThresholdPercent',
+      'repairIntervalTicks',
+      'hqRepairRadius',
+      'hqRepairPercent',
+      'baseRepairPercent',
     ] as const;
     exactKeys(input.sustainment, sustainmentKeys, 'rules.sustainment', issues);
     const ranges: Readonly<
@@ -166,6 +170,10 @@ export function validateRules(input: unknown): ValidationResult {
       resupplyIntervalTicks: [1, 10_000],
       depletedDamagePercent: [0, 100],
       autoReturnThresholdPercent: [0, 100],
+      repairIntervalTicks: [1, 10_000],
+      hqRepairRadius: [0, 20],
+      hqRepairPercent: [0, 100],
+      baseRepairPercent: [0, 100],
     };
     for (const key of sustainmentKeys) {
       const [min, max] = ranges[key];
@@ -439,6 +447,8 @@ export function validateRules(input: unknown): ValidationResult {
               !fieldPath.endsWith('.ammo') &&
               !fieldPath.endsWith('depletedDamagePercent') &&
               !fieldPath.endsWith('autoReturnThresholdPercent') &&
+              !fieldPath.endsWith('RepairPercent') &&
+              !fieldPath.endsWith('hqRepairRadius') &&
               !fieldPath.endsWith('airDefenseDamage') &&
               !fieldPath.endsWith('windupTicks') &&
               !fieldPath.endsWith('supplyIncomeCentiPerTick') &&

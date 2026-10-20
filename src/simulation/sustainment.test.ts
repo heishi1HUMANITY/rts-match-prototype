@@ -257,4 +257,31 @@ describe('unit sustainment', () => {
     expect(returned).toBe(true);
     expect(unit(state, 'A-01').ammo).toBe(DEFAULT_RULES.units.assault.ammo);
   });
+
+  it('repairs idle units near an owned outpost only when base repair is enabled', () => {
+    const heal = (baseRepairPercent: number): number => {
+      const state = running();
+      const home = state.bases.find(({ id }) => id === 'HOME-A')!;
+      const unit = {
+        ...state.units.find(({ id }) => id === 'A-01')!,
+        cell: { x: home.cell.x + 1, y: home.cell.y },
+        path: [],
+        hp: 100,
+      };
+      const next = stepMatch({
+        ...state,
+        elapsedTicks: DEFAULT_RULES.sustainment.repairIntervalTicks - 1,
+        units: [unit],
+        rules: {
+          ...state.rules,
+          sustainment: { ...state.rules.sustainment, baseRepairPercent },
+        },
+      });
+      return next.units[0]!.hp;
+    };
+    expect(heal(0)).toBe(100);
+    expect(heal(3)).toBe(
+      100 + Math.ceil((DEFAULT_RULES.units.assault.maxHp * 3) / 100),
+    );
+  });
 });
