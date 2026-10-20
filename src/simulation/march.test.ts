@@ -408,6 +408,11 @@ describe('deterministic march updates', () => {
       rules: {
         ...state.rules,
         capture: { ...state.rules.capture, requiredTicks: 30 },
+        // This march contract is measured without the ammunition limit.
+        units: {
+          ...state.rules.units,
+          assault: { ...state.rules.units.assault, ammo: 0 },
+        },
       },
     };
     state = onlyUnits(state, ['A-01']);

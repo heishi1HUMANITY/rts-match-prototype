@@ -1071,6 +1071,58 @@ describe('schema 31 time-scale migration', () => {
     ).toMatchObject({ stage: 1, costCenti: 5_000 });
   });
 
+  it('supplies schema 31 anti-air, ammunition and resupply defaults to older masters', () => {
+    const legacy = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    delete legacy.sustainment;
+    for (const kind of Object.keys(legacy.units))
+      delete legacy.units[kind].ammo;
+    for (const kind of Object.keys(legacy.bases)) {
+      delete legacy.bases[kind].airDefenseDamage;
+      delete legacy.bases[kind].airDefenseRange;
+      delete legacy.bases[kind].airDefenseIntervalTicks;
+      delete legacy.baseUpgrades.kinds[kind].level2.turretDamageVsAir;
+      delete legacy.baseUpgrades.kinds[kind].level3.turretDamageVsAir;
+    }
+    legacy.bases.outpost.garrisonCapacity = 2;
+    const migrated = validateEnvelope({
+      masterSchemaVersion: 30,
+      revision: 5,
+      rules: legacy,
+    });
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) return;
+    const rules = migrated.envelope.rules;
+    expect(rules.sustainment).toEqual(DEFAULT_RULES.sustainment);
+    expect(rules.units.helicopter.ammo).toBe(
+      DEFAULT_RULES.units.helicopter.ammo,
+    );
+    expect(rules.bases.outpost).toMatchObject({
+      garrisonCapacity: 2,
+      airDefenseDamage: DEFAULT_RULES.bases.outpost.airDefenseDamage,
+    });
+    expect(rules.baseUpgrades.kinds.hq.level3.turretDamageVsAir).toBe(
+      DEFAULT_RULES.baseUpgrades.kinds.hq.level3.turretDamageVsAir,
+    );
+  });
+
+  it('accepts unlimited ammunition and rejects out-of-range resupply values', () => {
+    const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
+      string,
+      any
+    >;
+    rules.units.assault.ammo = 0;
+    rules.sustainment.depletedDamagePercent = 0;
+    expect(validateRules(rules).ok).toBe(true);
+    rules.sustainment.resupplyRadius = 0;
+    expect(validateRules(rules).ok).toBe(false);
+    rules.sustainment.resupplyRadius = 3;
+    rules.sustainment.autoReturnThresholdPercent = 101;
+    expect(validateRules(rules).ok).toBe(false);
+  });
+
   it('rejects a tick length outside 1..2000ms', () => {
     const rules = structuredClone(DEFAULT_RULES) as unknown as Record<
       string,

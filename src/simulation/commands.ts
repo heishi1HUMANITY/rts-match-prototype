@@ -143,6 +143,19 @@ function parseCommand(input: unknown): ParsedCommand | null {
       : null;
   }
   if (
+    input.type === 'set-auto-resupply' &&
+    hasExactKeys(input, ['type', 'unitId', 'enabled'])
+  ) {
+    return typeof input.unitId === 'string' &&
+      typeof input.enabled === 'boolean'
+      ? {
+          type: 'set-auto-resupply',
+          unitId: input.unitId,
+          enabled: input.enabled,
+        }
+      : null;
+  }
+  if (
     input.type === 'point-fire' &&
     hasExactKeys(input, ['type', 'unitId', 'cell']) &&
     typeof input.unitId === 'string' &&
@@ -336,7 +349,38 @@ function garrisonReject(
   return null;
 }
 
+const MANUAL_UNIT_ORDERS: ReadonlySet<string> = new Set([
+  'move',
+  'march',
+  'stop',
+  'garrison',
+  'point-fire',
+]);
+
 export function applyCommand(
+  state: MatchState,
+  actor: FactionId,
+  input: unknown,
+): CommandResult {
+  const result = applyParsedCommand(state, actor, input);
+  const command = result.ok ? parseCommand(input) : null;
+  if (
+    !result.ok ||
+    command === null ||
+    !MANUAL_UNIT_ORDERS.has(command.type) ||
+    !('unitId' in command)
+  )
+    return result;
+  // A manual order takes priority over an automatic resupply return.
+  const unit = result.state.units.find(({ id }) => id === command.unitId);
+  return unit?.resupplyReturn
+    ? succeed(
+        copyWithUnit(result.state, unit, { ...unit, resupplyReturn: false }),
+      )
+    : result;
+}
+
+function applyParsedCommand(
   state: MatchState,
   actor: FactionId,
   input: unknown,
@@ -422,6 +466,17 @@ export function applyCommand(
       isUnitVisibleToFaction(state, unit, actor)
         ? 'NOT_OWNER'
         : 'UNIT_NOT_FOUND',
+    );
+  }
+
+  if (command.type === 'set-auto-resupply') {
+    if ((unit.autoResupply ?? true) === command.enabled) return succeed(state);
+    return succeed(
+      copyWithUnit(state, unit, {
+        ...unit,
+        autoResupply: command.enabled,
+        ...(command.enabled ? {} : { resupplyReturn: false }),
+      }),
     );
   }
 

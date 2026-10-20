@@ -19,6 +19,7 @@ import { unitCapabilities } from './unit-capabilities';
 import { advanceLocalFaction } from './local-faction';
 import { advanceBaseUpgrades } from './base-upgrades';
 import { advanceTacticalEffects } from './tactical-abilities';
+import { advanceResupply, triggerResupplyReturns } from './sustainment';
 import type { Cell, MatchState, UnitState } from './types';
 
 export function stepUnit(unit: UnitState, state?: MatchState): UnitState {
@@ -316,9 +317,11 @@ export function stepMatch(state: MatchState): MatchState {
   next = garrisonArrivals(beforeMovement, next);
   const beforeCombat = next;
   next = clearObservedDeadMarchTargets(beforeCombat, resolveCombat(next));
+  next = triggerResupplyReturns(beforeCombat, next);
   next = advanceTacticalEffects(next);
   next = recoverNearHeadquarters(next, beforeCombat);
   next = recoverNearFrontlineBases(next);
+  next = advanceResupply(next);
   const beforeCapture = next;
   next = releaseInvalidGarrisons(beforeCapture, advanceCapture(next));
   next = advanceBaseUpgrades(next);

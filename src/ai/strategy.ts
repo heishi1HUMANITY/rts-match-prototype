@@ -1340,12 +1340,15 @@ export function planBotDecision(
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(
         (unit) => () =>
-          artilleryBombardCommand(view, unit) ??
-          unitMoveCommand(
-            view,
-            unit,
-            memory.targetFaction === 'local' ? null : memory.targetFaction,
-          ),
+          // Units heading home to resupply keep that order until reloaded.
+          unit.resupplyReturn
+            ? undefined
+            : (artilleryBombardCommand(view, unit) ??
+              unitMoveCommand(
+                view,
+                unit,
+                memory.targetFaction === 'local' ? null : memory.targetFaction,
+              )),
       ),
   ];
   const decision = Math.floor(

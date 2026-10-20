@@ -329,6 +329,12 @@ export interface UnitState {
   readonly attack?: AttackState;
   /** A ground-cell bombardment order. Only the artillery owner may see it. */
   readonly bombardOrder?: ArtilleryBombardOrder | null;
+  /** Remaining shots; absent means a full load for the unit kind. */
+  readonly ammo?: number;
+  /** Per-unit switch for returning to resupply when ammo runs low; absent means on. */
+  readonly autoResupply?: boolean;
+  /** True from an automatic resupply return until the load is full or a manual order. */
+  readonly resupplyReturn?: boolean;
 }
 
 export interface ArtilleryBombardOrder {
@@ -412,7 +418,7 @@ export interface AirDefenseMemory {
 }
 
 export interface MatchState {
-  readonly schemaVersion: 28;
+  readonly schemaVersion: 29;
   readonly rules: RulesMaster;
   readonly seed: number;
   readonly scenarioId: ScenarioId;
@@ -685,6 +691,11 @@ export type Command =
       readonly target: MarchTarget;
     }
   | { readonly type: 'stop'; readonly unitId: string }
+  | {
+      readonly type: 'set-auto-resupply';
+      readonly unitId: string;
+      readonly enabled: boolean;
+    }
   | {
       readonly type: 'point-fire';
       readonly unitId: string;

@@ -295,7 +295,7 @@ describe('CP12 territory and HQ defense model', () => {
       if (composition === 'air') {
         expect(result).toMatchObject({
           defenderSurvivors: 0,
-          hqHp: 1_530,
+          hqHp: 1_620,
           ticks: 140,
           endReason: 'attackers-eliminated',
         });

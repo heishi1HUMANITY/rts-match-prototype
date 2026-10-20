@@ -8,7 +8,7 @@ import type {
   UnitKind,
 } from './types';
 
-export const SCHEMA_VERSION = 28 as const;
+export const SCHEMA_VERSION = 29 as const;
 export const STANDARD_TIME_LIMIT_TICKS = 12_000;
 export const SHORT_TIME_LIMIT_TICKS = 200;
 /** Current trial map; the original 40-cell layout remains available as LEGACY_MAP_SIZE. */
@@ -58,6 +58,8 @@ export const UNIT_STATS: Readonly<
       readonly windupTicks: number;
       readonly intervalTicks: number;
       readonly canAttackWhileMoving: boolean;
+      /** Shots per full load; 0 means unlimited. */
+      readonly ammo: number;
     }
   >
 > = {
@@ -81,6 +83,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 0,
     intervalTicks: 10,
     canAttackWhileMoving: true,
+    ammo: 24,
   },
   scout: {
     costCenti: 6_000,
@@ -102,6 +105,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 0,
     intervalTicks: 5,
     canAttackWhileMoving: true,
+    ammo: 30,
   },
   artillery: {
     costCenti: 10_000,
@@ -123,6 +127,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 10,
     intervalTicks: 30,
     canAttackWhileMoving: false,
+    ammo: 8,
   },
   antiAir: {
     costCenti: 9_000,
@@ -144,6 +149,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 0,
     intervalTicks: 10,
     canAttackWhileMoving: true,
+    ammo: 20,
   },
   helicopter: {
     costCenti: 14_000,
@@ -165,6 +171,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 0,
     intervalTicks: 10,
     canAttackWhileMoving: true,
+    ammo: 10,
   },
   patrolBoat: {
     costCenti: 12_000,
@@ -186,6 +193,7 @@ export const UNIT_STATS: Readonly<
     windupTicks: 0,
     intervalTicks: 10,
     canAttackWhileMoving: true,
+    ammo: 20,
   },
 };
 

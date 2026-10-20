@@ -56,6 +56,7 @@ describe('default balance invariants', () => {
   function helicopterRaid(count: number): {
     readonly owner: string | null;
     readonly survivors: number;
+    readonly remainingShots: number;
   } {
     const start = createMatch(42, {
       rules: {
@@ -105,11 +106,18 @@ describe('default balance invariants', () => {
       owner: state.bases.find(({ id }) => id === target.id)!.owner,
       survivors: state.units.filter(({ factionId }) => factionId === 'B')
         .length,
+      remainingShots: state.units
+        .filter(({ factionId }) => factionId === 'B')
+        .reduce(
+          (sum, unit) =>
+            sum + (unit.ammo ?? DEFAULT_RULES.units.helicopter.ammo),
+          0,
+        ),
     };
   }
 
   it('lets two helicopters fail against a level-1 outpost', () => {
-    expect(helicopterRaid(2)).toEqual({ owner: 'A', survivors: 0 });
+    expect(helicopterRaid(2).owner).toBe('A');
   });
 
   it('makes five helicopters lose at least one aircraft to neutralize a level-1 outpost', () => {
@@ -117,5 +125,13 @@ describe('default balance invariants', () => {
     expect(raid.owner).toBeNull();
     expect(raid.survivors).toBeLessThan(5);
     expect(raid.survivors).toBeGreaterThan(0);
+  });
+
+  it('leaves a five-helicopter sortie without the shots for a second outpost', () => {
+    const raid = helicopterRaid(5);
+    expect(raid.owner).toBeNull();
+    expect(
+      raid.remainingShots * DEFAULT_RULES.units.helicopter.damageVsStructure,
+    ).toBeLessThan(DEFAULT_RULES.bases.outpost.maxHp);
   });
 });

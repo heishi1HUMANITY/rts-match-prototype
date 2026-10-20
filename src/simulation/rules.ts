@@ -28,7 +28,7 @@ import type {
 } from './types';
 
 export const MASTER_SCHEMA_VERSION = 31 as const;
-export const RULES_VERSION = 'cp13-combat-observation-v1' as const;
+export const RULES_VERSION = 'cp14-time-airdefense-sustain-v1' as const;
 
 export interface NpcDifficultyProfile {
   readonly decisionIntervalTicks: number;
@@ -138,6 +138,17 @@ export interface RulesMaster {
   readonly economy: {
     readonly flatSupplyIncomeCentiPerTick: number;
   };
+  /** Ammunition and resupply at owned bases. */
+  readonly sustainment: {
+    /** Cells (Manhattan) from an owned, intact base where units resupply. */
+    readonly resupplyRadius: number;
+    /** One shot is restored every interval while in resupply range. */
+    readonly resupplyIntervalTicks: number;
+    /** Damage percent of a unit with no shots left. */
+    readonly depletedDamagePercent: number;
+    /** Automatic return starts at or below this percent of a full load. */
+    readonly autoReturnThresholdPercent: number;
+  };
   readonly facilities: {
     readonly slotsPerAnchor: number;
     readonly maxPerFaction: number;
@@ -169,6 +180,8 @@ export interface RulesMaster {
         readonly windupTicks: number;
         readonly intervalTicks: number;
         readonly canAttackWhileMoving: boolean;
+        /** Shots per full load; 0 means unlimited. */
+        readonly ammo: number;
       }
     >
   >;
@@ -358,6 +371,12 @@ export const DEFAULT_RULES: RulesMaster = {
     movingDamagePercent: 25,
   },
   economy: { flatSupplyIncomeCentiPerTick: 120 },
+  sustainment: {
+    resupplyRadius: 3,
+    resupplyIntervalTicks: 5,
+    depletedDamagePercent: 25,
+    autoReturnThresholdPercent: 25,
+  },
   baseUpgrades: {
     recoveryPerTick: 1,
     recoveryDelayTicks: 10,
@@ -513,6 +532,7 @@ export const DEFAULT_RULES: RulesMaster = {
           damageVsStructure: stats.damageVsStructure,
           lossTicketsCenti: stats.lossTicketsCenti,
           unlockResearchId: stats.unlockResearchId,
+          ammo: stats.ammo,
           windupTicks: stats.windupTicks,
           intervalTicks: stats.intervalTicks,
           canAttackWhileMoving: stats.canAttackWhileMoving,

@@ -1,3 +1,4 @@
+import { currentAmmo } from './sustainment';
 import { getFactionTicketLossRateCentiPerSec } from './tickets';
 import {
   getUnitPositionX1024,
@@ -311,6 +312,9 @@ export function getFactionView(
       moveTarget: unit.moveTarget ? { ...unit.moveTarget } : null,
       waypoints: (unit.waypoints ?? []).map((cell) => ({ ...cell })),
       garrisonedAtBaseId: unit.garrisonedAtBaseId ?? null,
+      ammo: currentAmmo(state.rules, unit),
+      autoResupply: unit.autoResupply ?? true,
+      resupplyReturn: unit.resupplyReturn ?? false,
       ...(unit.attack ? { attack: { ...unit.attack } } : {}),
       ...(unit.bombardOrder
         ? {

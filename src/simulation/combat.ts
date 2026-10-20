@@ -26,6 +26,7 @@ import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
 import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
 import { incomingDamage } from './tactical-abilities';
+import { ammoDamagePercent, spendShot } from './sustainment';
 import { airDefenseDamagePercent, airDefenseRange } from './air-defense';
 
 export interface Target {
@@ -875,8 +876,13 @@ export function resolveCombat(state: MatchState): MatchState {
         tick +
         (observed ? config.observedImpactTicks : config.unobservedImpactTicks),
       radius: config.blastRadius1024,
-      unitDamage: config.unitDamage,
-      structureDamage: config.structureDamage,
+      unitDamage: Math.floor(
+        (config.unitDamage * ammoDamagePercent(snapshot.rules, unit)) / 100,
+      ),
+      structureDamage: Math.floor(
+        (config.structureDamage * ammoDamagePercent(snapshot.rules, unit)) /
+          100,
+      ),
       sourceUnitId: unit.id,
     });
     artilleryAttackByUnit.set(unit.id, {
@@ -986,7 +992,7 @@ export function resolveCombat(state: MatchState): MatchState {
     if (attacker.bombardOrder) {
       const firedAttack = artilleryAttackByUnit.get(attacker.id);
       updatedUnits.push({
-        ...attacker,
+        ...(firedAttack ? spendShot(snapshot.rules, attacker) : attacker),
         ...(firedAttack
           ? { attack: firedAttack, bombardOrder: null, lastAttackTick: tick }
           : {}),
@@ -1019,7 +1025,10 @@ export function resolveCombat(state: MatchState): MatchState {
           const rawDamage =
             damageAgainst(snapshot, attacker, target) +
             (faction ? firepowerBonus(faction, snapshot.rules) : 0);
-          const modifier = attackerStateModifierPercent(snapshot, attacker);
+          const modifier =
+            (attackerStateModifierPercent(snapshot, attacker) *
+              ammoDamagePercent(snapshot.rules, attacker)) /
+            100;
           return Math.max(
             1,
             Math.floor(
@@ -1033,7 +1042,7 @@ export function resolveCombat(state: MatchState): MatchState {
     );
 
     updatedUnits.push({
-      ...attacker,
+      ...(hit ? spendShot(snapshot.rules, attacker) : attacker),
       attack: retainAttackObservation(nextAttack, attack, hit, tick),
       ...(hit ? { lastAttackTick: tick } : {}),
     });

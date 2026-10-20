@@ -872,3 +872,24 @@ it('chooses arbitrary IDs using registered effects and shared prerequisites', ()
     ),
   ).toContainEqual({ type: 'start-research', researchId: 'renamed-survey' });
 });
+
+describe('NPC resupply', () => {
+  it('leaves a unit returning to resupply without new orders', () => {
+    const state = running(createMatch(42));
+    const view = getFactionView(state, 'B');
+    const idle = planBotDecision(view).commands.filter(
+      (command) => 'unitId' in command && command.unitId === 'B-01',
+    );
+    const returning: FactionView = {
+      ...view,
+      ownUnits: view.ownUnits.map((unit) =>
+        unit.id === 'B-01' ? { ...unit, resupplyReturn: true } : unit,
+      ),
+    };
+    const withheld = planBotDecision(returning).commands.filter(
+      (command) => 'unitId' in command && command.unitId === 'B-01',
+    );
+    expect(idle.length).toBeGreaterThan(0);
+    expect(withheld).toEqual([]);
+  });
+});
