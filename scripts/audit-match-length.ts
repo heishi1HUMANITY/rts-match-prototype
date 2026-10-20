@@ -3,11 +3,12 @@ import { applyCommand } from '../src/simulation/commands';
 import { createMatch } from '../src/simulation/match';
 import { calculateIntervalTicketLossCenti } from '../src/simulation/tickets';
 import type { FactionId } from '../src/simulation/types';
+import { rulesFromArgs } from './rules-override';
 
 /**
  * Real-time length of all-NPC standard matches on the 100-cell map, with the
  * ticket loss split into combat, time decay and territory pressure.
- * Usage: npx tsx scripts/audit-match-length.ts [--seeds=0,1,2]
+ * Usage: npx tsx scripts/audit-match-length.ts [--seeds=0,1,2] [--rules=patch.json]
  */
 const seedsArgument = process.argv.find((argument) =>
   argument.startsWith('--seeds='),
@@ -16,12 +17,14 @@ const SEEDS = seedsArgument
   ? seedsArgument.slice('--seeds='.length).split(',').map(Number)
   : Array.from({ length: 12 }, (_, index) => index);
 const TICK_LIMIT = 30_000;
+const RULES = rulesFromArgs(process.argv);
 
 const minutes: number[] = [];
 for (const seed of SEEDS) {
   let state = createMatch(seed, {
     mapId: 'ring-three-fronts-100',
     controllers: { A: 'bot', B: 'bot', C: 'bot' },
+    ...(RULES ? { rules: RULES } : {}),
   });
   state = applyCommand(state, 'A', { type: 'start' }).state;
   const loss = Object.fromEntries(

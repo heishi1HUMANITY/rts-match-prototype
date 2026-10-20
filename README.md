@@ -51,6 +51,8 @@ npm run agent -- replay --out=.agent-play/replay.json
 npm run agent -- help                           # 命令JSONの一覧
 ```
 
+数値を試すときは変更した項目だけのJSONを `--rules=patch.json` で渡します（`new`、`npm run audit:match-length`、`npm run probe` で共通）。`npm run probe -- --strategy=heli-raid` は陣営Aを決まった戦法で遊ばせ、通常NPCの `--strategy=npc` と勝率を比べます。試遊エージェントへの指示書は [scripts/agent-playtest.md](scripts/agent-playtest.md) です。
+
 ブラウザでは `?agent=1` を付けると実時間で進まず、`window.__rts.step(n)` / `dispatch(command)` / `view()` / `map()` で進行と操作ができます。時間に追われる体感そのものは測れないため、抜け道や破綻の事前確認に使い、面白さの判断はCPのプレイ検査で行います。
 
 ## G1の操作

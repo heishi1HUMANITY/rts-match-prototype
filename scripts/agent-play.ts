@@ -14,11 +14,12 @@ import {
 import { rejectMessage } from '../src/runtime/controller';
 import { replay } from '../src/runtime/diagnostics';
 import { getFactionView } from '../src/simulation/view';
+import { rulesFromArgs } from './rules-override';
 import type { Command } from '../src/simulation/types';
 
 const USAGE = `Agent play driver: play faction A one explicit step at a time.
 
-  npm run agent -- new [--seed=42] [--map=100|40] [--budget=30:3]
+  npm run agent -- new [--seed=42] [--map=100|40] [--budget=30:3] [--rules=patch.json]
   npm run agent -- view
   npm run agent -- map [--scale=2]
   npm run agent -- rules
@@ -29,6 +30,7 @@ const USAGE = `Agent play driver: play faction A one explicit step at a time.
 
 Every call reads and writes --session=path (default .agent-play/session.json).
 --budget=S:N rejects more than N accepted orders per S game seconds.
+--rules=patch.json applies a partial master (only changed fields) to the new match.
 Output is JSON. Observations are A's own view only.
 
 Command JSON (same validation as the browser; actor is always A):
@@ -99,9 +101,11 @@ if (!action || action === 'help') {
   process.stdout.write(USAGE);
 } else if (action === 'new') {
   const budget = option('budget');
+  const rules = rulesFromArgs(args);
   let session = createAgentSession({
     seed: Number(option('seed') ?? 42),
     mapId: option('map') === '40' ? 'legacy-40' : 'ring-three-fronts-100',
+    ...(rules ? { rules } : {}),
   });
   if (budget) {
     const [seconds, max] = budget.split(':').map(Number);
