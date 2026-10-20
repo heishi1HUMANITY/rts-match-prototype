@@ -36,6 +36,22 @@ GitHub CI は Windows / Linux の両方で `npm run check` を実行し、commit
 
 ゲーム画面: [GitHub Pages](https://heishi1humanity.github.io/rts-match-prototype/)。[CP0検査票](docs/project/inspection/CP0.md) は通常設定で1試合と確認3点だけです。詳細シナリオのe2e対応状況は [e2e/README.md](e2e/README.md) を参照してください。
 
+## エージェントによる試遊
+
+プレイ感の事前検証用に、陣営Aを1tickずつ明示的に進めて操作できます。観測は陣営Aの視界内だけで、命令はブラウザと同じ検証を通ります。
+
+```sh
+npm run agent -- new --seed=42 --budget=30:3   # 30秒あたり最大3命令に制限（任意）
+npm run agent -- view                           # 陣営Aから見た状況(JSON)
+npm run agent -- map                            # 公開地形と既知の拠点・部隊
+npm run agent -- cmd '{"type":"start-research","researchId":"air-defense-1"}'
+npm run agent -- step 30s                       # 30秒(または tick数)進め、気づいた出来事を返す
+npm run agent -- replay --out=.agent-play/replay.json
+npm run agent -- help                           # 命令JSONの一覧
+```
+
+ブラウザでは `?agent=1` を付けると実時間で進まず、`window.__rts.step(n)` / `dispatch(command)` / `view()` / `map()` で進行と操作ができます。時間に追われる体感そのものは測れないため、抜け道や破綻の事前確認に使い、面白さの判断はCPのプレイ検査で行います。
+
 ## G1の操作
 
 F01では「複数選択」ONで部隊をタップして追加・解除できます。「すべて選択」も使えます。選択済みの部隊をドラッグすると全部隊へ一括移動、「部隊停止」で一括停止します。[F01の画面確認手順](docs/project/inspection/F01_SCENARIOS.md)を参照してください。

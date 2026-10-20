@@ -269,6 +269,7 @@ export class MatchRuntime {
   private readonly clock = new FixedStepClock();
   private frame: number | null = null;
   private started = false;
+  private manualStepping = false;
   private contextLost = false;
   private tickProcessingTotalMs = 0;
   private tickProcessingMaxMs = 0;
@@ -440,6 +441,50 @@ export class MatchRuntime {
     return this.dispatchBatch('set-auto-resupply', unitIds, enabled);
   }
 
+  /** With manual stepping, real time no longer advances the match; only stepTicks does. */
+  setManualStepping(enabled: boolean): void {
+    this.manualStepping = enabled;
+    this.clock.reset(false);
+  }
+
+  get isManualStepping(): boolean {
+    return this.manualStepping;
+  }
+
+  /** Advances up to `ticks` ticks immediately, as an agent or test would. */
+  stepTicks(ticks: number): number {
+    const before = this.state;
+    let advanced = 0;
+    while (
+      advanced < ticks &&
+      this.state.phase === 'running' &&
+      !this.contextLost
+    ) {
+      this.advanceOneTick();
+      advanced += 1;
+    }
+    this.previousTickState = this.state;
+    this.options.onFrame?.(
+      this.viewFor(this.state),
+      this.viewFor(this.state),
+      0,
+    );
+    if (advanced > 0) this.emit(before);
+    return advanced;
+  }
+
+  private advanceOneTick(): void {
+    const before = this.state;
+    const startedAt = performance.now();
+    this.state = advanceMatch(this.state);
+    const duration = performance.now() - startedAt;
+    this.measuredTickCount += 1;
+    this.tickProcessingTotalMs += duration;
+    this.tickProcessingMaxMs = Math.max(this.tickProcessingMaxMs, duration);
+    if (this.firstContactTick === null && hasCombatDamage(before, this.state))
+      this.firstContactTick = this.state.elapsedTicks;
+  }
+
   startLoop(): void {
     if (this.started) return;
     this.started = true;
@@ -448,24 +493,12 @@ export class MatchRuntime {
       let previousTick = this.previousTickState;
       const result = this.clock.advance(
         timestamp,
-        this.state.phase === 'running' && !this.contextLost,
+        this.state.phase === 'running' &&
+          !this.contextLost &&
+          !this.manualStepping,
         () => {
           previousTick = this.state;
-          const before = this.state;
-          const startedAt = performance.now();
-          this.state = advanceMatch(this.state);
-          const duration = performance.now() - startedAt;
-          this.measuredTickCount += 1;
-          this.tickProcessingTotalMs += duration;
-          this.tickProcessingMaxMs = Math.max(
-            this.tickProcessingMaxMs,
-            duration,
-          );
-          if (
-            this.firstContactTick === null &&
-            hasCombatDamage(before, this.state)
-          )
-            this.firstContactTick = this.state.elapsedTicks;
+          this.advanceOneTick();
         },
         this.state.rules.match.tickDurationMs,
       );

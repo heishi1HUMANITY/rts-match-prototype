@@ -15,3 +15,5 @@ Thumbs.db
 /docs/video/
 .codex-remote-attachments/
 selfplay-report.md
+# Local agent play sessions.
+/.agent-play/

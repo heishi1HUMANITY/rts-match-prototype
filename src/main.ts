@@ -13,6 +13,12 @@ import { resolveMarchTarget } from './ui/march-target';
 import { estimateCombat } from './simulation/combat-estimate';
 import './ui/styles.css';
 import { ticksToSeconds } from './ui/time';
+import {
+  describeChanges,
+  renderAgentMap,
+  summarizeAgentView,
+} from './runtime/agent-session';
+import type { Command } from './simulation/types';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing application root');
@@ -941,6 +947,31 @@ const handleVisibility = (): void => {
   }
 };
 document.addEventListener('visibilitychange', handleVisibility);
+
+// `?agent=1` hands time to a driver: the match advances only through __rts.step.
+if (new URLSearchParams(location.search).has('agent')) {
+  runtime.setManualStepping(true);
+  const playerView = () => runtime.playerSnapshot().view;
+  Object.assign(window, {
+    __rts: {
+      step(ticks = 1): { advanced: number; events: string[] } {
+        const before = playerView();
+        const advanced = runtime.stepTicks(ticks);
+        return { advanced, events: describeChanges(before, playerView()) };
+      },
+      dispatch: (command: Command) => {
+        const ok = runtime.dispatch(command).ok;
+        return { ok, message: runtime.playerSnapshot().message };
+      },
+      view: () => summarizeAgentView(playerView()),
+      map: (scale = 2) => renderAgentMap(playerView(), scale),
+      select: (unitIds: readonly string[]) => {
+        runtime.select(unitIds[0] ?? null);
+        for (const id of unitIds.slice(1)) runtime.toggleSelection(id);
+      },
+    },
+  });
+}
 
 runtime.startLoop();
 const handlePageShow = (event: PageTransitionEvent): void => {
