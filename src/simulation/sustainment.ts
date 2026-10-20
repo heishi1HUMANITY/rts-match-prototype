@@ -4,6 +4,7 @@ import { findPath } from './pathfinding';
 import type { RulesMaster } from './rules';
 import type { BaseState, Cell, MatchState, UnitState } from './types';
 import { unitCapabilities } from './unit-capabilities';
+import { getUnitPositionX1024, getUnitPositionY1024 } from './visibility';
 
 /** Shots per full load; 0 means the unit kind never runs out. */
 export function ammoCapacity(rules: RulesMaster, unit: UnitState): number {
@@ -106,9 +107,28 @@ function routeToResupply(
   return null;
 }
 
+/** A capture needs no ammunition, so a unit holding one stays on the base. */
+function holdsCapture(state: MatchState, unit: UnitState): boolean {
+  if (!unitCapabilities(unit.kind, state.rules).canCaptureBase) return false;
+  const x = getUnitPositionX1024(unit);
+  const y = getUnitPositionY1024(unit);
+  const radius = 1024 * state.rules.capture.radius;
+  return state.bases.some(
+    (base) =>
+      base.kind !== 'hq' &&
+      base.owner === null &&
+      base.hp === 0 &&
+      (base.defender === null || base.defender.hp === 0) &&
+      (x - (1024 * base.cell.x + 512)) ** 2 +
+        (y - (1024 * base.cell.y + 512)) ** 2 <=
+        radius ** 2,
+  );
+}
+
 /**
  * Sends units home when a shot this tick took them to the return threshold or
- * to zero. Manual orders between those two moments are not overridden.
+ * to zero. Manual orders between those two moments are not overridden, and a
+ * unit holding a capture keeps it.
  */
 export function triggerResupplyReturns(
   before: MatchState,
@@ -125,7 +145,7 @@ export function triggerResupplyReturns(
     const threshold = autoReturnAmmo(after.rules, unit);
     if (!(was > threshold && now <= threshold) && !(was > 0 && now === 0))
       return unit;
-    if (inResupplyRange(after, unit)) return unit;
+    if (inResupplyRange(after, unit) || holdsCapture(after, unit)) return unit;
     const route = routeToResupply(after, unit);
     if (!route) return unit;
     changed = true;

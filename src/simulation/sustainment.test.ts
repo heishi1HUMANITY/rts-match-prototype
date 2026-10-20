@@ -103,6 +103,33 @@ describe('unit sustainment', () => {
     expect(stayed.path).toEqual([]);
   });
 
+  it('keeps a unit holding a capture on the base instead of returning', () => {
+    const threshold = Math.ceil(
+      (DEFAULT_RULES.units.assault.ammo *
+        DEFAULT_RULES.sustainment.autoReturnThresholdPercent) /
+        100,
+    );
+    const duelState = duel(threshold + 1);
+    const before: MatchState = {
+      ...duelState,
+      bases: duelState.bases.map((base) =>
+        base.id === 'OUT-02'
+          ? {
+              ...base,
+              cell: { x: 10, y: 14 },
+              owner: null,
+              hp: 0,
+              defender: base.defender ? { ...base.defender, hp: 0 } : null,
+            }
+          : base,
+      ),
+    };
+    const after = triggerResupplyReturns(before, resolveCombat(before));
+    expect(unit(after, 'A-01').ammo).toBe(threshold);
+    expect(unit(after, 'A-01').resupplyReturn).toBeUndefined();
+    expect(unit(after, 'A-01').path).toEqual([]);
+  });
+
   it('lets a manual order win over the return until the load runs out', () => {
     const threshold = Math.ceil(
       (DEFAULT_RULES.units.assault.ammo *
