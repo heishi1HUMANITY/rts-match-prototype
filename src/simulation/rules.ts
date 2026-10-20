@@ -74,6 +74,8 @@ export interface BaseUpgradeTier {
   readonly researchIncomePercent: number;
   /** Damage dealt by one shot every intervalTicks. */
   readonly turretDamage: number;
+  /** Per-shot damage against aircraft, replacing the former fixed half damage. */
+  readonly turretDamageVsAir: number;
   readonly turretRange: number;
   readonly turretIntervalTicks?: number;
   readonly windupTicks: number;
@@ -180,6 +182,10 @@ export interface RulesMaster {
         readonly researchIncomeCentiPerTick: number;
         readonly ticketWeight: number;
         readonly garrisonCapacity: number;
+        /** Level-1 anti-air battery of an owned base; 0 disables it. */
+        readonly airDefenseDamage: number;
+        readonly airDefenseRange: number;
+        readonly airDefenseIntervalTicks: number;
       }
     >
   >;
@@ -366,6 +372,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 125,
           researchIncomePercent: 125,
           turretDamage: 25,
+          turretDamageVsAir: 60,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -379,6 +386,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 150,
           researchIncomePercent: 150,
           turretDamage: 120,
+          turretDamageVsAir: 70,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -394,6 +402,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 130,
           researchIncomePercent: 130,
           turretDamage: 12,
+          turretDamageVsAir: 50,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -407,6 +416,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 160,
           researchIncomePercent: 160,
           turretDamage: 25,
+          turretDamageVsAir: 60,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -422,6 +432,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 130,
           researchIncomePercent: 130,
           turretDamage: 20,
+          turretDamageVsAir: 50,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -435,6 +446,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 160,
           researchIncomePercent: 160,
           turretDamage: 40,
+          turretDamageVsAir: 60,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -450,6 +462,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 130,
           researchIncomePercent: 130,
           turretDamage: 30,
+          turretDamageVsAir: 50,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -463,6 +476,7 @@ export const DEFAULT_RULES: RulesMaster = {
           supplyIncomePercent: 160,
           researchIncomePercent: 160,
           turretDamage: 60,
+          turretDamageVsAir: 60,
           turretRange: 6,
           turretIntervalTicks: 10,
           windupTicks: 0,
@@ -507,10 +521,38 @@ export const DEFAULT_RULES: RulesMaster = {
     }),
   ) as unknown as RulesMaster['units'],
   bases: {
-    hq: { ...BASE_STATS.hq, ticketWeight: 0, garrisonCapacity: 5 },
-    outpost: { ...BASE_STATS.outpost, ticketWeight: 1, garrisonCapacity: 1 },
-    medium: { ...BASE_STATS.medium, ticketWeight: 2, garrisonCapacity: 2 },
-    large: { ...BASE_STATS.large, ticketWeight: 3, garrisonCapacity: 3 },
+    hq: {
+      ...BASE_STATS.hq,
+      ticketWeight: 0,
+      garrisonCapacity: 5,
+      airDefenseDamage: 50,
+      airDefenseRange: 4,
+      airDefenseIntervalTicks: 10,
+    },
+    outpost: {
+      ...BASE_STATS.outpost,
+      ticketWeight: 1,
+      garrisonCapacity: 1,
+      airDefenseDamage: 40,
+      airDefenseRange: 4,
+      airDefenseIntervalTicks: 10,
+    },
+    medium: {
+      ...BASE_STATS.medium,
+      ticketWeight: 2,
+      garrisonCapacity: 2,
+      airDefenseDamage: 40,
+      airDefenseRange: 4,
+      airDefenseIntervalTicks: 10,
+    },
+    large: {
+      ...BASE_STATS.large,
+      ticketWeight: 3,
+      garrisonCapacity: 3,
+      airDefenseDamage: 40,
+      airDefenseRange: 4,
+      airDefenseIntervalTicks: 10,
+    },
   },
   defenses: {
     respawnEnabled: true,

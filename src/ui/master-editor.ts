@@ -438,7 +438,27 @@ const FIELD_META: Readonly<Record<string, FieldMeta>> = {
   turretDamage: {
     label: '砲座damage',
     unit: 'HP/射撃',
-    help: '射撃間隔ごとに最も近い敵部隊へ与えるdamageです。航空部隊には半分になります。',
+    help: '射撃間隔ごとに最も近い敵の陸上・水上部隊へ与えるdamageです。',
+  },
+  turretDamageVsAir: {
+    label: '砲座の対空火力',
+    unit: 'HP/射撃',
+    help: '強化後の砲座が航空部隊へ与えるdamageです。対空車両より低く保ちます。',
+  },
+  airDefenseDamage: {
+    label: 'Lv1拠点の対空火力',
+    unit: 'HP/射撃',
+    help: '所有中のLv1拠点が射程内の航空部隊へ与えるdamageです。0で無効です。',
+  },
+  airDefenseRange: {
+    label: 'Lv1拠点の対空射程',
+    unit: 'セル',
+    help: 'ヘリの射程以上、視界未満に保つと、ヘリが先に発見しつつ射程外からは削れません。',
+  },
+  airDefenseIntervalTicks: {
+    label: 'Lv1拠点の対空射撃間隔',
+    unit: 'tick',
+    help: '拠点対空が次に撃つまでの間隔です。',
   },
   turretRange: {
     label: '砲座射程',

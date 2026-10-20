@@ -230,7 +230,7 @@ describe('CP12 territory and HQ defense model', () => {
           attackerSurvivors: 0,
           defenderSurvivors: 1,
           hqHp: 1_920,
-          ticks: 140,
+          ticks: 110,
           endReason: 'attackers-eliminated',
           hqRange: 6,
           artilleryRange: 5,
@@ -238,9 +238,9 @@ describe('CP12 territory and HQ defense model', () => {
       } else {
         expect(result).toMatchObject({
           attackerSurvivors: 0,
-          defenderSurvivors: 0,
-          hqHp: 1_907,
-          ticks: 120,
+          defenderSurvivors: 1,
+          hqHp: 1_920,
+          ticks: 90,
           endReason: 'attackers-eliminated',
           hqRange: 6,
           artilleryRange: 5,
@@ -252,20 +252,20 @@ describe('CP12 territory and HQ defense model', () => {
   it('allows a max-cap attack to destroy an undefended, unupgraded HQ', () => {
     const result = hqSiege(5, 9, 1);
     expect(result).toMatchObject({
-      attackerSurvivors: 6,
+      attackerSurvivors: 5,
       defenderSurvivors: 0,
       hqHp: 0,
       endReason: 'hq-destroyed',
       hqRange: 6,
       artilleryRange: 5,
-      ticks: 180,
+      ticks: 190,
     });
   });
 
   it.each([
-    [120, 1_907, 0],
-    [140, 1_920, 1],
-    [160, 1_920, 1],
+    [120, 1_920, 1],
+    [140, 1_920, 2],
+    [160, 1_920, 2],
   ])(
     'measures the HQ turret threshold for the 4/7 option at damage %i',
     (turretDamage, expectedHqHp, expectedDefendersRemaining) => {
@@ -295,8 +295,8 @@ describe('CP12 territory and HQ defense model', () => {
       if (composition === 'air') {
         expect(result).toMatchObject({
           defenderSurvivors: 0,
-          hqHp: 1_101,
-          ticks: 220,
+          hqHp: 1_530,
+          ticks: 140,
           endReason: 'attackers-eliminated',
         });
       } else if (composition === 'artillery') {

@@ -178,19 +178,40 @@ export function resetBaseToLevelOne(
   };
 }
 
+/**
+ * The weapon of an owned base: a level-1 anti-air battery, or the upgraded
+ * turret that fires at every domain from level 2.
+ */
 export function baseTurretDamage(
   base: BaseState,
   rules: RulesMaster,
 ): {
   readonly damage: number;
+  readonly airDamage: number;
   readonly range: number;
   readonly interval: number;
+  readonly windupTicks: number;
+  readonly canAttackWhileMoving: boolean;
 } | null {
-  if (base.level < 2) return null;
+  if (base.level < 2) {
+    const battery = rules.bases[base.kind];
+    if (battery.airDefenseDamage <= 0) return null;
+    return {
+      damage: 0,
+      airDamage: battery.airDefenseDamage,
+      range: battery.airDefenseRange,
+      interval: battery.airDefenseIntervalTicks,
+      windupTicks: 0,
+      canAttackWhileMoving: true,
+    };
+  }
   const tier = baseUpgradeTier(base.kind, base.level as 2 | 3, rules);
   return {
     damage: tier.turretDamage,
+    airDamage: tier.turretDamageVsAir,
     range: tier.turretRange,
     interval: tier.intervalTicks ?? tier.turretIntervalTicks ?? 10,
+    windupTicks: tier.windupTicks ?? 0,
+    canAttackWhileMoving: tier.canAttackWhileMoving ?? true,
   };
 }

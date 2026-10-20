@@ -24,11 +24,7 @@ import type {
 } from './types';
 import { LOCAL_STRONGHOLD_ID } from './local-faction';
 import { unitCapabilities } from './unit-capabilities';
-import {
-  baseTurretDamage,
-  baseUpgradeTier,
-  resetBaseToLevelOne,
-} from './base-upgrades';
+import { baseTurretDamage, resetBaseToLevelOne } from './base-upgrades';
 import { incomingDamage } from './tactical-abilities';
 import { airDefenseDamagePercent, airDefenseRange } from './air-defense';
 
@@ -504,6 +500,16 @@ function findTargetForDefender(
   return null;
 }
 
+function turretDamageAgainst(
+  state: MatchState,
+  turret: { readonly damage: number; readonly airDamage: number },
+  unit: UnitState,
+): number {
+  return state.rules.units[unit.kind]?.movementDomain === 'air'
+    ? turret.airDamage
+    : turret.damage;
+}
+
 function findTargetForTurret(
   state: MatchState,
   base: BaseState,
@@ -514,7 +520,7 @@ function findTargetForTurret(
   const unit = state.units.find(
     (u) => u.id === targetId && u.hp > 0 && u.factionId !== base.owner,
   );
-  if (!unit) return null;
+  if (!unit || turretDamageAgainst(state, turret, unit) <= 0) return null;
   const dist = distanceSquared(
     1024 * base.cell.x + 512,
     1024 * base.cell.y + 512,
@@ -1238,15 +1244,10 @@ export function resolveCombat(state: MatchState): MatchState {
     if (base.owner !== null && base.hp > 0) {
       const turret = baseTurretDamage(base, snapshot.rules);
       if (turret) {
-        const tier = baseUpgradeTier(
-          base.kind,
-          base.level as 2 | 3,
-          snapshot.rules,
-        );
         const profile: AttackProfile = {
-          windupTicks: tier.windupTicks ?? 0,
-          intervalTicks: tier.intervalTicks ?? tier.turretIntervalTicks ?? 10,
-          canAttackWhileMoving: tier.canAttackWhileMoving ?? true,
+          windupTicks: turret.windupTicks,
+          intervalTicks: turret.interval,
+          canAttackWhileMoving: turret.canAttackWhileMoving,
         };
 
         const { nextAttack, hit } = stepAttackActor(
@@ -1257,7 +1258,12 @@ export function resolveCombat(state: MatchState): MatchState {
             findTargetById: (id) => findTargetForTurret(snapshot, base, id),
             selectTarget: () => {
               const targets = snapshot.units
-                .filter((u) => u.hp > 0 && u.factionId !== base.owner)
+                .filter(
+                  (u) =>
+                    u.hp > 0 &&
+                    u.factionId !== base.owner &&
+                    turretDamageAgainst(snapshot, turret, u) > 0,
+                )
                 .map((u) => ({
                   u,
                   distanceSquared: distanceSquared(
@@ -1286,12 +1292,9 @@ export function resolveCombat(state: MatchState): MatchState {
             },
             calculateDamage: (target) => {
               const targetUnit = snapshot.units.find((u) => u.id === target.id);
-              const air =
-                targetUnit &&
-                snapshot.rules.units[targetUnit.kind]?.movementDomain === 'air';
-              const rawDamage = air
-                ? Math.ceil(turret.damage / 2)
-                : turret.damage;
+              const rawDamage = targetUnit
+                ? turretDamageAgainst(snapshot, turret, targetUnit)
+                : 0;
               const modifier = attackerStateModifierPercent(snapshot, base);
               return Math.max(1, Math.floor((rawDamage * modifier) / 100));
             },

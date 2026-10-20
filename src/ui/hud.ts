@@ -1175,7 +1175,7 @@ export function updateHud(
           } else if (own.supplyCenti < tier.costCenti) {
             upgradeReason = `補給不足 · 必要 ${amount(tier.costCenti)}`;
           } else {
-            upgradeReason = `完了後: 最大HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · 砲座 ${tier.turretDamage} damage / 射程${tier.turretRange}`;
+            upgradeReason = `完了後: 最大HP ${Math.ceil((view.rules.bases[base.kind].maxHp * tier.maxHpPercent) / 100)} · 砲座 陸${tier.turretDamage}/空${tier.turretDamageVsAir} damage / 射程${tier.turretRange}`;
             upgradeButton.disabled =
               snapshot.contextLost || own.eliminatedAtTick !== null;
             upgradeButton.textContent = `Lv${targetLevel}へ強化 · 補給${amount(tier.costCenti)} · ${seconds(tier.buildTicks)}`;
@@ -1188,6 +1188,9 @@ export function updateHud(
     const garrison = view.ownUnits.filter(
       (unit) => unit.garrisonedAtBaseId === base.id,
     );
+    const battery = view.rules.bases[base.kind];
+    if (base.level === 1 && battery.airDefenseDamage > 0)
+      detail += `\n▲対空 ${battery.airDefenseDamage} damage / 射程${battery.airDefenseRange}`;
     detail += `\n駐留 ${garrison.length}/${view.rules.bases[base.kind].garrisonCapacity}`;
     if (garrison.length > 0)
       detail += ` · ${garrison

@@ -6,6 +6,7 @@ import { advanceBaseUpgrades, maximumBaseLevel } from './base-upgrades';
 import { createMatch } from './match';
 import { advanceCapture } from './capture';
 import type { MatchState } from './types';
+import { DEFAULT_RULES } from './rules';
 
 function running(scenarioId: 'standard' | 'f10-base-upgrades' = 'standard') {
   const ready = createMatch(42, { scenarioId });
@@ -141,7 +142,7 @@ describe('F10 base upgrades', () => {
     expect(recovering.hp).toBe(51);
   });
 
-  it('fires level 2 turrets on interval boundaries and damages air at half rate', () => {
+  it('fires level 2 turrets on interval boundaries with the tier air damage', () => {
     const state = running('f10-base-upgrades');
     const battle = {
       ...state,
@@ -156,11 +157,22 @@ describe('F10 base upgrades', () => {
           maxHp: 90,
         })),
       bases: state.bases.map((base) =>
-        base.id === 'HQ-A' ? { ...base, level: 2 as const } : base,
+        base.id === 'HQ-A'
+          ? { ...base, level: 2 as const }
+          : {
+              ...base,
+              attack: {
+                targetId: null,
+                phase: 'cooldown' as const,
+                phaseEndsTick: 9_999,
+              },
+            },
       ),
     };
     const after = resolveCombat(battle);
-    expect(after.units[0]?.hp).toBe(77);
+    expect(after.units[0]?.hp).toBe(
+      90 - DEFAULT_RULES.baseUpgrades.kinds.hq.level2.turretDamageVsAir,
+    );
   });
 
   it('resets level and cancels unpaid work when control changes', () => {

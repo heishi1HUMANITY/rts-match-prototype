@@ -145,16 +145,22 @@ describe('shared tactical abilities', () => {
               },
             },
       ),
-      bases: base.bases.map((entry) =>
-        entry.id === 'OUT-03'
+      // Base anti-air batteries stay on cooldown so only the strike is measured.
+      bases: base.bases.map((entry) => ({
+        ...entry,
+        attack: {
+          targetId: null,
+          phase: 'cooldown' as const,
+          phaseEndsTick: 9_999,
+        },
+        ...(entry.id === 'OUT-03'
           ? {
-              ...entry,
               owner: 'B' as const,
               hp: 300,
               cell: { x: a.cell.x + 2, y: a.cell.y },
             }
-          : entry,
-      ),
+          : {}),
+      })),
     };
     const activation = applyCommand(state, 'A', {
       type: 'activate-ability',

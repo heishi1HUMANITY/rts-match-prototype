@@ -404,6 +404,8 @@ export function validateRules(input: unknown): ValidationResult {
               !fieldPath.endsWith('initialResearchCenti') &&
               !fieldPath.endsWith('damageBonus') &&
               !fieldPath.includes('damageVs') &&
+              !fieldPath.endsWith('turretDamageVsAir') &&
+              !fieldPath.endsWith('airDefenseDamage') &&
               !fieldPath.endsWith('windupTicks') &&
               !fieldPath.endsWith('supplyIncomeCentiPerTick') &&
               !fieldPath.endsWith('researchIncomeCentiPerTick') &&
@@ -1670,6 +1672,54 @@ function supplementSchema31(
       tickDurationMs: DEFAULT_RULES.match.tickDurationMs,
     },
   };
+  if (isRecord(next.bases)) {
+    const oldBases = next.bases;
+    next = {
+      ...next,
+      bases: Object.fromEntries(
+        Object.entries(DEFAULT_RULES.bases).map(([kind, defaults]) => [
+          kind,
+          isRecord(oldBases[kind])
+            ? {
+                airDefenseDamage: defaults.airDefenseDamage,
+                airDefenseRange: defaults.airDefenseRange,
+                airDefenseIntervalTicks: defaults.airDefenseIntervalTicks,
+                ...oldBases[kind],
+              }
+            : oldBases[kind],
+        ]),
+      ),
+    };
+  }
+  const upgrades = isRecord(next.baseUpgrades) ? next.baseUpgrades : null;
+  if (upgrades && isRecord(upgrades.kinds)) {
+    const oldKinds = upgrades.kinds;
+    next = {
+      ...next,
+      baseUpgrades: {
+        ...upgrades,
+        kinds: Object.fromEntries(
+          Object.entries(DEFAULT_RULES.baseUpgrades.kinds).map(
+            ([kind, defaults]) => {
+              const old = oldKinds[kind];
+              if (!isRecord(old)) return [kind, old];
+              const tier = (level: 'level2' | 'level3') =>
+                isRecord(old[level])
+                  ? {
+                      turretDamageVsAir: defaults[level].turretDamageVsAir,
+                      ...old[level],
+                    }
+                  : old[level];
+              return [
+                kind,
+                { ...old, level2: tier('level2'), level3: tier('level3') },
+              ];
+            },
+          ),
+        ),
+      },
+    };
+  }
   const research = isRecord(next.research) ? next.research : null;
   if (!research) return next;
   const definitions = isRecord(research.definitions)
