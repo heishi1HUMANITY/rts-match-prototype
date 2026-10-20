@@ -1,4 +1,5 @@
 import { advanceMatch } from './advance';
+import { lossCauseLabel } from './loss-cause';
 import type { CommandEntry } from './controller';
 import { rulesContentId, type ReplayInput } from './diagnostics';
 import { SCHEMA_VERSION } from '../simulation/config';
@@ -217,10 +218,14 @@ export function describeChanges(
   const events: string[] = [];
   const at = `[${minutes(before, before.tick)}→${minutes(after, after.tick)}]`;
   for (const unit of before.ownUnits)
-    if (!after.ownUnits.some(({ id }) => id === unit.id))
+    if (!after.ownUnits.some(({ id }) => id === unit.id)) {
+      const loss = after.ownLosses?.find(({ unitId }) => unitId === unit.id);
       events.push(
-        `${at} 自軍 ${unit.id} ${unit.kind} を失った（前回確認時の位置 ${unit.cell.x},${unit.cell.y}${unit.lastDamagedTick !== undefined ? '・被弾あり' : ''}）`,
+        loss
+          ? `${at} 自軍 ${unit.id} ${unit.kind} を失った（${loss.cell.x},${loss.cell.y}・${lossCauseLabel(loss.cause)}）`
+          : `${at} 自軍 ${unit.id} ${unit.kind} を失った（前回確認時の位置 ${unit.cell.x},${unit.cell.y}）`,
       );
+    }
   for (const unit of after.ownUnits)
     if (!before.ownUnits.some(({ id }) => id === unit.id))
       events.push(`${at} 自軍 ${unit.id} ${unit.kind} が配備された`);
