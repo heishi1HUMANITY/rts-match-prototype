@@ -25,8 +25,10 @@ export interface AgentSession {
   readonly mapId: 'legacy-40' | 'ring-three-fronts-100';
   readonly history: readonly CommandEntry[];
   readonly state: MatchState;
-  /** Optional cap on accepted orders per window, to play with a human's pace. */
+  /** Optional cap on accepted actions per window, to play with a human's pace. */
   readonly commandBudget: CommandBudget | null;
+  /** Ticks of accepted actions; a group order to one target is one action. */
+  readonly actionTicks?: readonly number[];
 }
 
 export interface CommandBudget {
@@ -96,15 +98,36 @@ function record(
   };
 }
 
-/** Accepted orders in the current budget window, excluding the match start. */
+/** Accepted actions in the current budget window, excluding the match start. */
 export function commandsInWindow(session: AgentSession): number {
   const budget = session.commandBudget;
   if (!budget) return 0;
   const from = session.state.elapsedTicks - budget.windowTicks;
-  return session.history.filter(
-    (entry) =>
-      entry.ok && entry.command?.type !== 'start' && entry.tickBefore > from,
-  ).length;
+  return (session.actionTicks ?? []).filter((tick) => tick > from).length;
+}
+
+/**
+ * Orders the browser issues in one gesture: the same unit order to the same
+ * target for several selected units. Anything else is its own action.
+ */
+export function groupAgentCommands(commands: readonly Command[]): Command[][] {
+  const groups = new Map<string, Command[]>();
+  commands.forEach((command, index) => {
+    const key =
+      command.type === 'move'
+        ? `move ${JSON.stringify(command.target)} ${JSON.stringify(command.waypoints ?? [])}`
+        : command.type === 'march'
+          ? `march ${JSON.stringify(command.target)}`
+          : command.type === 'garrison'
+            ? `garrison ${command.baseId}`
+            : command.type === 'stop'
+              ? 'stop'
+              : command.type === 'set-auto-resupply'
+                ? `auto ${command.enabled}`
+                : `single ${index}`;
+    groups.set(key, [...(groups.get(key) ?? []), command]);
+  });
+  return [...groups.values()];
 }
 
 export type AgentCommandResult =
@@ -120,13 +143,48 @@ export function issueAgentCommand(
   session: AgentSession,
   command: Command,
 ): AgentCommandResult {
+  const action = issueAgentAction(session, [command]);
+  const result = action.results[0]!;
+  return result.ok
+    ? { ok: true, session: action.session }
+    : { ok: false, session: action.session, reason: result.reason };
+}
+
+/**
+ * Issues one action: a group order counts once against the budget, and an
+ * action with no accepted order costs nothing.
+ */
+export function issueAgentAction(
+  session: AgentSession,
+  commands: readonly Command[],
+): { readonly session: AgentSession; readonly results: AgentCommandResult[] } {
   const budget = session.commandBudget;
   if (budget && commandsInWindow(session) >= budget.maxCommands)
-    return { ok: false, session, reason: 'COMMAND_BUDGET' };
-  const result = record(session, command);
-  return result.ok
-    ? { ok: true, session: result.session }
-    : { ok: false, session: result.session, reason: result.reason! };
+    return {
+      session,
+      results: commands.map(() => ({
+        ok: false,
+        session,
+        reason: 'COMMAND_BUDGET',
+      })),
+    };
+  let current = session;
+  const results: AgentCommandResult[] = [];
+  for (const command of commands) {
+    const result = record(current, command);
+    current = result.session;
+    results.push(
+      result.ok
+        ? { ok: true, session: current }
+        : { ok: false, session: current, reason: result.reason! },
+    );
+  }
+  if (results.some(({ ok }) => ok))
+    current = {
+      ...current,
+      actionTicks: [...(current.actionTicks ?? []), current.state.elapsedTicks],
+    };
+  return { session: current, results };
 }
 
 /** Advances up to `ticks` ticks, stopping early when the match ends. */
@@ -226,7 +284,13 @@ function ownedBaseDetail(
     antiAir:
       base.level === 1
         ? `${battery.airDefenseDamage}/shot range ${battery.airDefenseRange}`
-        : null,
+        : (() => {
+            const turret =
+              view.rules.baseUpgrades.kinds[base.kind][
+                base.level === 2 ? 'level2' : 'level3'
+              ];
+            return `turret land ${turret.turretDamage} / air ${turret.turretDamageVsAir} range ${turret.turretRange}`;
+          })(),
     ...(base.upgradeJob
       ? { upgrading: base.upgradeJob }
       : tier

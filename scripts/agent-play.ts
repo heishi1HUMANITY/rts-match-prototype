@@ -4,7 +4,8 @@ import {
   agentReplayInput,
   commandsInWindow,
   createAgentSession,
-  issueAgentCommand,
+  groupAgentCommands,
+  issueAgentAction,
   renderAgentMap,
   stepAgentSession,
   summarizeAgentRules,
@@ -29,7 +30,9 @@ const USAGE = `Agent play driver: play faction A one explicit step at a time.
   npm run agent -- help
 
 Every call reads and writes --session=path (default .agent-play/session.json).
---budget=S:N rejects more than N accepted orders per S game seconds.
+--budget=S:N allows N accepted actions per S game seconds. The same unit
+order to the same target for several units in one cmd call is one action
+(a group order, like dragging a selection in the browser).
 --rules=patch.json applies a partial master (only changed fields) to the new match.
 Output is JSON. Observations are A's own view only.
 
@@ -93,7 +96,7 @@ function budgetText(session: AgentSession): string | null {
   const seconds =
     (budget.windowTicks * session.state.rules.match.tickDurationMs) / 1000;
   const used = commandsInWindow(session);
-  return `${Math.max(0, budget.maxCommands - used)} of ${budget.maxCommands} orders left (${used} used in the last ${seconds}s)`;
+  return `${Math.max(0, budget.maxCommands - used)} of ${budget.maxCommands} actions left (${used} used in the last ${seconds}s)`;
 }
 
 const [action, ...rest] = positional;
@@ -143,22 +146,29 @@ if (!action || action === 'help') {
   let session = load();
   const parsed = JSON.parse(rest.join(' ')) as Command | Command[];
   const results = [];
-  for (const command of Array.isArray(parsed) ? parsed : [parsed]) {
-    const result = issueAgentCommand(session, command);
-    session = result.session;
-    results.push(
-      result.ok
-        ? { command, ok: true }
-        : {
-            command,
-            ok: false,
-            reason: result.reason,
-            message:
-              result.reason === 'COMMAND_BUDGET'
-                ? '操作上限に達しています。時間を進めてください'
-                : rejectMessage(result.reason, session.state, 'A'),
-          },
-    );
+  // The same order to the same target for several units is one action, as a
+  // group drag in the browser is.
+  for (const group of groupAgentCommands(
+    Array.isArray(parsed) ? parsed : [parsed],
+  )) {
+    const action = issueAgentAction(session, group);
+    session = action.session;
+    group.forEach((command, index) => {
+      const result = action.results[index]!;
+      results.push(
+        result.ok
+          ? { command, ok: true }
+          : {
+              command,
+              ok: false,
+              reason: result.reason,
+              message:
+                result.reason === 'COMMAND_BUDGET'
+                  ? '操作上限に達しています。時間を進めてください'
+                  : rejectMessage(result.reason, session.state, 'A'),
+            },
+      );
+    });
   }
   save(session);
   print({ results, budget: budgetText(session) });

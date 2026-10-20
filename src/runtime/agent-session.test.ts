@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   agentReplayInput,
   createAgentSession,
+  groupAgentCommands,
+  issueAgentAction,
   issueAgentCommand,
   renderAgentMap,
   stepAgentSession,
@@ -141,6 +143,30 @@ describe('agent play session', () => {
     expect(summarizeAgentRules(view.rules)).toMatchObject({
       researchPerSecond: 1.2,
       supplyPerSecond: 6,
+    });
+  });
+
+  it('counts the same order to one target for several units as one action', () => {
+    const session = createAgentSession({
+      seed: 7,
+      commandBudget: { windowTicks: 150, maxCommands: 1 },
+    });
+    const [A1, A2] = session.state.units
+      .filter(({ factionId }) => factionId === 'A')
+      .map(({ id }) => id);
+    const groups = groupAgentCommands([
+      { type: 'stop', unitId: A1! },
+      { type: 'stop', unitId: A2! },
+      { type: 'start-research', researchId: 'air-defense-1' },
+    ]);
+    expect(groups.map((group) => group.length)).toEqual([2, 1]);
+    const group = issueAgentAction(session, groups[0]!);
+    expect(group.results.every(({ ok }) => ok)).toBe(true);
+    expect(group.session.actionTicks).toHaveLength(1);
+    const next = issueAgentAction(group.session, groups[1]!);
+    expect(next.results[0]).toMatchObject({
+      ok: false,
+      reason: 'COMMAND_BUDGET',
     });
   });
 });
