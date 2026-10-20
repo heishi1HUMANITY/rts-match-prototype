@@ -377,9 +377,12 @@ describe('unit loss causes', () => {
         kind: 'assault',
         cell: { x: 20, y: 20 },
         cause: 'unit:assault',
+        killerFactionId: 'B',
       },
     ]);
     expect(getFactionView(next, 'A').ownLosses).toHaveLength(1);
     expect(getFactionView(next, 'B').ownLosses).toEqual([]);
+    expect(getFactionView(next, 'B').ownKills).toHaveLength(1);
+    expect(getFactionView(next, 'C').ownKills).toEqual([]);
   });
 });

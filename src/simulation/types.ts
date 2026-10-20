@@ -346,6 +346,8 @@ export interface UnitLossRecord {
   readonly cell: Cell;
   /** e.g. `unit:artillery`, `artillery-strike`, `facility:mine`, `neutral-defender`. */
   readonly cause: string;
+  /** Faction that dealt the largest lethal hit; 'local' also covers neutral defenders. */
+  readonly killerFactionId?: CombatantId;
 }
 
 export interface ArtilleryBombardOrder {
@@ -599,6 +601,8 @@ export interface FactionView {
   readonly visibleEnemies: readonly VisibleEnemyUnitView[];
   /** The viewer's own recent losses with the kind of source that destroyed them. */
   readonly ownLosses?: readonly UnitLossRecord[];
+  /** Recent enemy units the viewer destroyed; the viewer knows its own kills. */
+  readonly ownKills?: readonly UnitLossRecord[];
   readonly airDefenseMemory: readonly AirDefenseMemory[];
   readonly bases: readonly BaseView[];
   readonly localFaction: LocalFactionView;
