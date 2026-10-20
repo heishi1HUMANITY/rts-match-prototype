@@ -220,10 +220,15 @@ export function describeChanges(
   for (const unit of before.ownUnits)
     if (!after.ownUnits.some(({ id }) => id === unit.id)) {
       const loss = after.ownLosses?.find(({ unitId }) => unitId === unit.id);
+      const removed =
+        after.publicEliminations[after.viewerFactionId]?.eliminatedAtTick !==
+        null;
       events.push(
-        loss
-          ? `${at} 自軍 ${unit.id} ${unit.kind} を失った（${loss.cell.x},${loss.cell.y}・${lossCauseLabel(loss.cause)}）`
-          : `${at} 自軍 ${unit.id} ${unit.kind} を失った（前回確認時の位置 ${unit.cell.x},${unit.cell.y}）`,
+        !loss && removed
+          ? `${at} 自軍 ${unit.id} ${unit.kind} は脱落により除去された`
+          : loss
+            ? `${at} 自軍 ${unit.id} ${unit.kind} を失った（${loss.cell.x},${loss.cell.y}・${lossCauseLabel(loss.cause)}）`
+            : `${at} 自軍 ${unit.id} ${unit.kind} を失った（前回確認時の位置 ${unit.cell.x},${unit.cell.y}）`,
       );
     }
   for (const unit of after.ownUnits)
@@ -238,6 +243,10 @@ export function describeChanges(
   }
   for (const base of after.bases) {
     const previous = before.bases.find(({ id }) => id === base.id);
+    if (previous?.visibility === 'owned' && base.visibility !== 'owned') {
+      events.push(`${at} 自軍拠点 ${base.id} を失った`);
+      continue;
+    }
     const owner = (view: (typeof after.bases)[number] | undefined) =>
       view && 'owner' in view ? view.owner : undefined;
     if (owner(previous) !== owner(base) && owner(base) !== undefined)
