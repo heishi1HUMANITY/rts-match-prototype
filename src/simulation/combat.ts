@@ -1469,6 +1469,7 @@ export function resolveCombat(state: MatchState): MatchState {
           kind: unit.kind,
           cell: { ...unit.cell },
           cause: lethal?.source ?? 'unknown',
+          ...(lethal ? { killerFactionId: lethal.attackerFactionId } : {}),
         });
       }
       return {

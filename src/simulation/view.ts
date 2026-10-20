@@ -452,6 +452,12 @@ export function getFactionView(
     ownLosses: (state.unitLossLog ?? [])
       .filter((loss) => loss.factionId === factionId)
       .map((loss) => ({ ...loss, cell: { ...loss.cell } })),
+    ownKills: (state.unitLossLog ?? [])
+      .filter(
+        (loss) =>
+          loss.killerFactionId === factionId && loss.factionId !== factionId,
+      )
+      .map((loss) => ({ ...loss, cell: { ...loss.cell } })),
     ticketRatesCentiPerSec: Object.fromEntries(
       state.factions.map((entry) => [
         entry.id,
