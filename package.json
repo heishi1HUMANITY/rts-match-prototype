@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "build:standalone": "tsc --noEmit && vite build --config vite.standalone.config.ts --mode game && vite build --config vite.standalone.config.ts --mode watch",
+    "build:standalone": "tsc --noEmit && vite build --config vite.standalone.config.ts",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "test": "vitest run",

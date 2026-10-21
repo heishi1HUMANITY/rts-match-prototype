@@ -148,15 +148,9 @@ export class Hud {
     while (this.toastBox.children.length > 3) this.toastBox.firstElementChild?.remove();
   }
 
-  // ニュースの見え方は操作陣営、観戦なら選んでいる視点に合わせる
-  private viewer(): Side | null {
-    const { human, view } = this.app;
-    return human ?? (view.side === 'spectator' ? null : view.side);
-  }
-
   private refreshTicker() {
     const g = this.app.g;
-    const side = this.viewer();
+    const side = this.app.human;
     const items: string[] = [];
     const evs = g.events.filter((e) => e.vis === 'all' || e.vis === side || side === null).slice(-6);
     for (const e of evs.reverse()) items.push(`<b>${e.text}</b>`);
@@ -198,17 +192,14 @@ export class Hud {
     // 時計（偵察中は営業時間、以降は経過時間）
     const minutes = CONFIG.clock.open + (Math.min(g.time, CONFIG.phase.casingSeconds) / CONFIG.phase.casingSeconds) * (CONFIG.clock.close - CONFIG.clock.open) + Math.max(0, g.time - CONFIG.phase.casingSeconds) / 30;
     this.clock.textContent = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(Math.floor(minutes % 60)).padStart(2, '0')}`;
-    const vs = this.app.view.side;
-    this.role.textContent =
-      human === 'crew' ? '強盗団 CREW' : human === 'bank' ? (g.phase === 'assault' ? '警察 POLICE' : '支店長 MANAGER') : vs === 'crew' ? '強盗視点 CREW VIEW' : vs === 'bank' ? '銀行視点 BANK VIEW' : '観戦 SPECTATOR';
-    this.role.className = `clock-role ${human ?? (vs === 'spectator' ? 'spec' : vs)}`;
+    this.role.textContent = human === 'crew' ? '強盗団 CREW' : human === 'bank' ? (g.phase === 'assault' ? '警察 POLICE' : '支店長 MANAGER') : '';
+    this.role.className = `clock-role ${human ?? ''}`;
     if (human === 'bank' && g.phase === 'assault') this.funds.textContent = `指揮 ${Math.floor(g.cp)} CP`;
     else if (human) this.funds.textContent = money(g.funds[human]);
     else this.funds.textContent = `${money(g.funds.bank)} / ${money(g.funds.crew)}`;
 
     // 見出し
-    const viewer = this.viewer();
-    const recent = g.events.filter((e) => e.big && (e.vis === 'all' || e.vis === viewer || viewer === null) && g.time - e.t < 14);
+    const recent = g.events.filter((e) => e.big && (e.vis === 'all' || e.vis === human || human === null) && g.time - e.t < 14);
     let head = recent.length ? recent[recent.length - 1]!.text : '';
     if (!head) {
       if (g.phase === 'casing') head = 'ハーバーライト銀行 中央支店 — 本日も平常どおり営業中';
@@ -228,8 +219,9 @@ export class Hud {
     this.panelT -= dt;
     if (this.panelT <= 0) {
       this.panelT = 0.15;
-      const l = human === 'crew' ? this.crewLeft() : human === 'bank' ? this.bankLeft() : this.spectatorLeft();
-      const r = human === 'crew' ? this.crewRight() : human === 'bank' ? this.bankRight() : this.spectatorRight();
+      // 操作していないとき（タイトル裏の中継）はパネルを出さない
+      const l = human === 'crew' ? this.crewLeft() : human === 'bank' ? this.bankLeft() : '';
+      const r = human === 'crew' ? this.crewRight() : human === 'bank' ? this.bankRight() : '';
       if (l !== this.leftHtml) morph(this.left, (this.leftHtml = l));
       if (r !== this.rightHtml) morph(this.right, (this.rightHtml = r));
     }
@@ -434,81 +426,11 @@ export class Hud {
     return h;
   }
 
-  private spectatorLeft() {
-    const { g, view } = this.app;
-    if (view.side === 'bank') {
-      const units = g.units.filter((u) => (u.kind === 'guard' || u.kind === 'swat') && active(u));
-      return `<h3>${g.phase === 'assault' ? '警備・警察' : '警備員'} <small>${units.length}人</small></h3><div class="cards">${units.map((u) => this.watchBankCard(u)).join('')}</div>`;
-    }
-    const crew = g.units.filter((u) => u.kind === 'crew' && u.alive && !u.escaped);
-    return `<h3>強盗団 <small>${crew.length}人</small></h3><div class="cards">${crew.map((u) => this.crewCard(u)).join('')}</div>`;
-  }
-
-  // 観戦の銀行視点で並べる警備員・SWAT（名札 G1/S1 は地図上と同じ番号）
-  private watchBankCard(u: Unit) {
-    const name = this.bankName(u);
-    const tags: string[] = [`<em class="t blue">${u.kind === 'swat' ? (u.heavy ? '重装SWAT' : 'SWAT') : '警備員'}</em>`, this.autoTags(u)];
-    if (u.action) tags.push(`<em class="t">作業中</em>`);
-    if (u.stun > 0) tags.push(`<em class="t warn">ひるみ</em>`);
-    return `<div class="card"><div class="card-head"><b>${name}</b><span>${roomNameAt(u.x, u.y)}</span></div>
-      ${this.bar(u.hp / u.maxHp, 'hp')}${u.maxArmor ? this.bar(u.armor / u.maxArmor, 'armor') : ''}<div class="tags">${tags.join('')}</div></div>`;
-  }
-
-  private spectatorRight() {
-    const g = this.app.g;
-    const b = g.breach;
-    const { view, speed, watch } = this.app;
-    const seg = (cmd: string, opts: [string, string, boolean][]) =>
-      `<div class="seg">${opts.map(([v, label, on]) => `<button class="${on ? 'on' : ''}" data-cmd="${cmd}:${v}">${label}</button>`).join('')}</div>`;
-    return `<h3>観戦 <small>AI 対 AI</small></h3>
-      <div class="kv"><span>計画</span><span>${b.method} / ${g.plan.escape}</span></div>
-      <div class="kv"><span>金庫</span><span>${b.open ? '開放' : Math.floor(b.progress * 100) + '%'}</span></div>
-      <div class="kv"><span>戦利品</span><span>${g.van ? g.van.bags : securedBags(g)}/${CONFIG.gold.quotaBags}</span></div>
-      <div class="kv"><span>警備・SWAT</span><span>${g.units.filter((u) => (u.kind === 'guard' || u.kind === 'swat') && active(u)).length}</span></div>
-      <h3>視点 <small>V</small></h3>
-      ${seg('view', [
-        ['spectator', '全体', view.side === 'spectator'],
-        ['crew', '強盗', view.side === 'crew'],
-        ['bank', '銀行', view.side === 'bank'],
-      ])}
-      <h3>速度 <small>1・2・3／Space</small></h3>
-      ${seg('speedset', [
-        ['0', '❚❚', this.app.paused],
-        ['1', '×1', !this.app.paused && speed === 1],
-        ['2', '×2', !this.app.paused && speed === 2],
-        ['4', '×4', !this.app.paused && speed === 4],
-      ])}
-      ${watch ? watch.info() + this.btn('next', '次の試合へ', { key: 'N' }) : ''}`;
-  }
-
   // ---------- コマンド ----------
   private onCommand(cmd: string, _el: HTMLElement) {
     const app = this.app;
     const { g, view } = app;
     const side = app.human;
-    if (cmd === 'speed') {
-      app.speed = app.speed >= 4 ? 1 : app.speed * 2;
-      return;
-    }
-    if (cmd.startsWith('view:')) {
-      app.view.side = cmd.slice(5) as typeof app.view.side;
-      app.view.selected.clear();
-      this.refreshTicker();
-      return;
-    }
-    if (cmd.startsWith('speedset:')) {
-      const v = Number(cmd.slice(9));
-      if (v === 0) app.paused = !app.paused;
-      else {
-        app.speed = v;
-        app.paused = false;
-      }
-      return;
-    }
-    if (cmd === 'next') {
-      app.watch?.next();
-      return;
-    }
     if (!side) return;
     const sel = selectedUnits(g, side, view.selected);
     const run = (c: Command) => {

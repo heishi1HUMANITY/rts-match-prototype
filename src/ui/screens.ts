@@ -63,7 +63,7 @@ function overlay(cls: string, html: string): HTMLElement {
   return d;
 }
 
-export function titleScreen(onPick: (human: Side | null) => void): HTMLElement {
+export function titleScreen(onPick: (human: Side) => void): HTMLElement {
   const d = overlay(
     'title',
     `<div class="title-bug"><b>LBN</b><span>24</span><em>SPECIAL REPORT</em></div>
@@ -76,8 +76,6 @@ export function titleScreen(onPick: (human: Side | null) => void): HTMLElement {
         <button class="pick bank" data-pick="bank"><small>DEFEND</small><b>支店長として守る</b><span>防犯カメラと警備員で不審者を見抜き、通報後は警察を指揮する</span></button>
         <button class="pick crew" data-pick="crew"><small>STEAL</small><b>強盗団として奪う</b><span>客に紛れて下準備。金庫を破り、金塊を抱えて逃げ切る</span></button>
       </div>
-      <button class="pick-spec" data-pick="spec">AI同士の試合を観戦する</button>
-      <a class="title-watch" href="watch/index.html">AI中継だけを流し続けるページへ →</a>
       <div class="title-phases">
         <div><b>1 偵察</b><span>強盗は客と見分けがつかない。支店長は不審な行動を5秒観察してはじめて通報できる</span></div>
         <div><b>2 警察到着待ち</b><span>銃撃戦が始まる。強盗は人質を取り、籠城装備を展開する</span></div>
@@ -90,7 +88,7 @@ export function titleScreen(onPick: (human: Side | null) => void): HTMLElement {
     if (!b) return;
     const p = b.dataset.pick;
     d.remove();
-    onPick(p === 'spec' ? null : (p as Side));
+    onPick(p as Side);
   });
   return d;
 }
@@ -131,7 +129,7 @@ export function planScreen(onStart: (plan: StartChoice['plan']) => void, onBack:
   });
 }
 
-export function briefing(side: Side | null, layout: number, onGo: () => void) {
+export function briefing(side: Side, layout: number, onGo: () => void) {
   const crew = `<li><b>偵察</b>：クルーは客と同じ見た目。<b>右クリック</b>で移動・行動。カメラの赤い視界を避けて準備を進める。</li>
     <li>カメラにループ映像を仕込む・警備員を買収する・扉をピッキングする。<b>作業中・関係者エリア・金塊運搬</b>は不審行動。</li>
     <li><b>マスク</b>・<b>重武装</b>・<b>関係者エリア</b>で見つかると即通報。それ以外は支店長が5秒観察しないと通報できない。</li>
@@ -144,8 +142,8 @@ export function briefing(side: Side | null, layout: number, onGo: () => void) {
     <li>強盗が金塊を持ち出して逃げ切れば負け。</li>`;
   const d = overlay(
     'brief',
-    `<div class="brief-box"><div class="plan-head"><span class="breaking">BRIEFING</span><h2>${side === 'crew' ? '強盗団' : side === 'bank' ? '支店長' : '観戦'} — 作戦説明</h2></div>
-    <ul>${side === 'crew' ? crew : side === 'bank' ? bank : '<li>AI同士の試合を全視界で観戦します。</li>'}
+    `<div class="brief-box"><div class="plan-head"><span class="breaking">BRIEFING</span><h2>${side === 'crew' ? '強盗団' : '支店長'} — 作戦説明</h2></div>
+    <ul>${side === 'crew' ? crew : bank}
     <li>支店の間取りは毎回少し違う（扉の位置・家具・金塊の置き場・キーカードの場所）。今回は <b>レイアウト No.${layout}</b>。</li></ul>
     <div class="keys"><span><kbd>左</kbd>選択／ドラッグで範囲</span><span><kbd>右</kbd>移動・行動</span><span><kbd>Q</kbd>全員選択</span><span><kbd>Space</kbd>一時停止</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>速度</span><span><kbd>H</kbd>ヘルプ</span></div>
     <button class="go" data-act="go">中継開始</button></div>`,
@@ -157,9 +155,9 @@ export function briefing(side: Side | null, layout: number, onGo: () => void) {
   return d;
 }
 
-export function resultScreen(g: Game, human: Side | null, onAgain: () => void, onTitle: () => void) {
+export function resultScreen(g: Game, human: Side, onAgain: () => void, onTitle: () => void) {
   const crewWon = g.winner === 'crew';
-  const you = human === null ? '' : g.winner === human ? '<span class="win">YOU WIN</span>' : '<span class="lose">YOU LOSE</span>';
+  const you = g.winner === human ? '<span class="win">YOU WIN</span>' : '<span class="lose">YOU LOSE</span>';
   const bags = g.van ? g.van.bags : securedBags(g);
   const d = overlay(
     'result',
@@ -188,6 +186,3 @@ export function resultScreen(g: Game, human: Side | null, onAgain: () => void, o
   return d;
 }
 
-export function helpScreen(side: Side | null, layout: number): HTMLElement {
-  return briefing(side, layout, () => {});
-}

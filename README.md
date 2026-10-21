@@ -1,6 +1,6 @@
 # ROB YOU
 
-銀行の支店長と強盗団に分かれて、金庫の金塊（$2,000,000）を守る・奪う、非対称型の見下ろし対戦ストラテジー。ブラウザで遊べます。相手側はAIが操作します（AI同士の観戦もできます）。
+銀行の支店長と強盗団に分かれて、金庫の金塊（$2,000,000）を守る・奪う、非対称型の見下ろし対戦ストラテジー。ブラウザで遊べます。相手側はAIが操作します。
 
 画面はニュース番組「LBN 24」の生中継という体裁です。上部のテロップの文面と色で状況が変わったことがわかり、下部の速報テロップとティッカーで事件の経過が流れます。
 
@@ -18,10 +18,7 @@ npm run check    # 型検査・テスト・ビルド
 npm run build:standalone
 ```
 
-`dist-standalone/` をそのまま静的ホスティングに置くか、`index.html` をブラウザで直接開けば遊べます（JS・CSS を埋め込んだ1ファイル。外部への読み込みは Web フォントだけ）。
-
-- `index.html`：ゲーム本体（強盗・支店長で遊ぶ、AI同士を観戦する）
-- `watch/index.html`：AI同士の中継だけを流し続けるページ。試合が終わると12秒後に次の試合。視点（全体／強盗／銀行、`V`）と速度（`1` `2` `3`、`Space` で一時停止）を切り替えられ、`N` で次の試合へ。URL で試合を指定できる：`?seed=12&layout=5038&plan=thermal-van&view=crew&speed=2`（パネルの「この試合のURL」）。開発中は `npm run dev` で `/watch/` を開く。
+`dist-standalone/index.html` をそのまま静的ホスティングに置くか、ブラウザで直接開けば遊べます（JS・CSS を埋め込んだ1ファイル。外部への読み込みは Web フォントだけ）。
 
 ## 流れ
 
@@ -73,7 +70,7 @@ npm run build:standalone
 - `src/ai/` 強盗側AI・銀行側AI（見えている情報だけを使う）
 - `src/render/` Canvas描画（床の質感・壁の陰・家具・小物、人物の描き分け、自陣営の目印）、`src/ui/` ニュース風HUD・入力・画面
 - `src/sim/auto.ts` 戦闘員ごとの自動行動
-- `src/watch.ts`・`watch/index.html` AI中継ページ、`vite.standalone.config.ts`・`build/inline-html.ts` スタンドアロン版のビルド
+- `vite.standalone.config.ts`・`build/inline-html.ts` スタンドアロン版のビルド
 
 ## エージェント対戦（バランス調整用）
 

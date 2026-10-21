@@ -488,34 +488,6 @@ body[data-mode='menu'] .hud {
   background: #2d3b52;
   color: #cfe3ff;
 }
-.watch-info {
-  margin: 8px 0 6px;
-  font-size: 11px;
-  line-height: 1.6;
-  color: #9fb0c8;
-}
-.watch-info b {
-  color: #fff;
-  font-family: var(--cond);
-}
-.watch-info a {
-  color: #8fc3ff;
-}
-.watch-info .score {
-  display: flex;
-  justify-content: space-between;
-  margin: 4px 0;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.06);
-  font: 700 13px var(--cond), sans-serif;
-  color: #fff;
-}
-.watch-info .score .c {
-  color: #ff7a5c;
-}
-.watch-info .score .b {
-  color: #7ab8ff;
-}
 .btn-cost {
   font: 600 12px var(--cond);
   color: var(--red-dark);
@@ -853,15 +825,6 @@ body[data-mode='menu'] .hud {
   font-size: 12px;
   line-height: 1.5;
   opacity: 0.9;
-}
-.pick-spec {
-  margin-top: 10px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #dfe5ee;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-size: 12px;
 }
 .title-phases {
   margin-top: 26px;
@@ -1207,10 +1170,3 @@ body[data-mode='menu'] .hud {
   }
 }
 
-.title-watch {
-  display: block;
-  margin: 6px 0 0;
-  font: 600 12px 'Noto Sans JP', sans-serif;
-  color: #8fc3ff;
-  text-align: center;
-}

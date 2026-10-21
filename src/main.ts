@@ -48,7 +48,7 @@ const app: App = {
 const hud = new Hud(app, document.body);
 const input = new Input(app, hud, canvas);
 let mode: 'title' | 'menu' | 'play' | 'result' = 'title';
-let last: { human: Side | null; plan: { breach: BreachMethod; escape: EscapeMethod } } | null = null;
+let last: { human: Side; plan: { breach: BreachMethod; escape: EscapeMethod } } | null = null;
 const pauseBox = document.createElement('div');
 pauseBox.className = 'pausebox';
 pauseBox.innerHTML = '<b>一時停止中</b><span>中継はこのあとも続きます — Spaceで再開</span>';
@@ -60,7 +60,7 @@ function setMode(m: typeof mode) {
   document.body.dataset.mode = m;
 }
 
-function start(human: Side | null, plan: { breach: BreachMethod; escape: EscapeMethod }) {
+function start(human: Side, plan: { breach: BreachMethod; escape: EscapeMethod }) {
   last = { human, plan };
   app.g = newGame({ plan, ai: { bank: human !== 'bank', crew: human !== 'crew' } });
   app.human = human;
@@ -103,6 +103,7 @@ input.onHelp = () => {
     return;
   }
   app.paused = true;
+  if (!app.human) return;
   helpOpen = briefing(app.human, app.g.layout, () => {
     helpOpen = null;
     app.paused = false;
@@ -146,7 +147,8 @@ function frame(now: number) {
   pauseBox.classList.toggle('on', app.paused && mode === 'play' && !helpOpen && !document.querySelector('.screen'));
   if (mode === 'play' && g.phase === 'ended') {
     setMode('result');
-    setTimeout(() => resultScreen(app.g, app.human, () => app.restart(), toTitle), 1600);
+    const human = app.human;
+    if (human) setTimeout(() => resultScreen(app.g, human, () => app.restart(), toTitle), 1600);
   }
   requestAnimationFrame(frame);
 }
